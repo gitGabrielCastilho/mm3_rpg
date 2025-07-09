@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load filtros %}
+<h1>Meus Personagens</h1>
+
+<ul>
+  {% for personagem in personagens %}
+    <li>
+      <a href="{% url 'ficha_personagem' personagem.id %}">{{ personagem.nome }}</a>
+      (NP {{ personagem.nivel_poder|default:"?" }})
+      
+      <a href="{% url 'editar_personagem' personagem.id %}">
+        <button type="button">Editar</button>
+      </a>
+      
+      <form action="{% url 'excluir_personagem' personagem.id %}" method="post" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" onclick="return confirm('Tem certeza que deseja excluir este personagem?')">Excluir</button>
+      </form>
+    </li>
+  {% empty %}
+    <p>Você ainda não criou nenhum personagem.</p>
+  {% endfor %}
+</ul>
+{% endblock %}

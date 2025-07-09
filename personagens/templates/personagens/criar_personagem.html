@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load filtros %}
+
+{% block content %}
+  <h1>Criar Personagem</h1>
+  <form method="post">
+    {% csrf_token %}
+    
+    <div>{{ form.nome.label_tag }} {{ form.nome }}</div>
+    <div>{{ form.nivel_poder.label_tag }} {{ form.nivel_poder }}</div>
+
+    <h2>Características</h2>
+    {% for campo in caracteristicas %}
+      <div>
+        {% with field=form|lookup:campo %}
+          {{ field.label_tag }} {{ field }}
+        {% endwith %}
+      </div>
+    {% endfor %}
+
+    <h2>Defesas</h2>
+    {% for campo in defesas %}
+      <div>
+        {% with field=form|lookup:campo %}
+          {{ field.label_tag }} {{ field }}
+        {% endwith %}
+      </div>
+    {% endfor %}
+
+    <h2>Perícias</h2>
+    {% for campo in pericias %}
+      <div>
+        {% with field=form|lookup:campo %}
+          {{ field.label_tag }} {{ field }}
+        {% endwith %}
+      </div>
+    {% endfor %}
+
+    <h2>Poderes</h2>
+    <div id="poderes-formset">
+      {{ formset.management_form }}
+      {% for form in formset %}
+        <div class="poder-form">
+          {{ form.id }}
+          {{ form.nome.label_tag }} {{ form.nome }}
+          {{ form.bonus_ataque.label_tag }} {{ form.bonus_ataque }}
+          {{ form.nivel_efeito.label_tag }} {{ form.nivel_efeito }}
+          {% if form.instance.pk %}{{ form.DELETE }} Remover{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+
+    <button type="button" onclick="adicionarPoder()">Adicionar Poder</button>
+    <button type="button" onclick="removerPoder()">Remover Último Poder</button>
+    <br><br>
+    <input type="submit" value="Salvar">
+  </form>
+
+<script>
+function adicionarPoder() {
+  const formsetDiv = document.getElementById('poderes-formset');
+  const totalFormsInput = document.getElementById('id_poder_set-TOTAL_FORMS');
+
+  if (!totalFormsInput) {
+    console.error('TOTAL_FORMS não encontrado.');
+    return;
+  }
+
+  const formIdx = parseInt(totalFormsInput.value);
+  const emptyFormHtml = `{{ formset.empty_form.as_p|escapejs }}`;
+  const newFormHtml = emptyFormHtml.replace(/__prefix__/g, formIdx);
+
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = newFormHtml;
+  formsetDiv.appendChild(wrapper);
+
+  totalFormsInput.value = formIdx + 1;
+}
+</script>
+
+<script>
+function removerPoder() {
+  const formsetDiv = document.getElementById('poderes-formset');
+  const totalFormsInput = document.getElementById('id_poder_set-TOTAL_FORMS');
+
+  const formCount = parseInt(totalFormsInput.value);
+  if (formCount > 0) {
+    // Tenta remover o último formulário visível (ignorando os que já estão salvos e têm checkbox DELETE)
+    const poderForms = formsetDiv.querySelectorAll('.poder-form');
+    const lastForm = poderForms[poderForms.length - 1];
+
+    if (lastForm) {
+      formsetDiv.removeChild(lastForm);
+      totalFormsInput.value = formCount - 1;
+    }
+  }
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% load filtros %}
+
+{% block content %}
+  <h1>Ficha de {{ personagem.nome }}</h1>
+
+  <h2>Habilidades</h2>
+  <ul>
+    {% for campo in categorias.caracteristicas %}
+      <li><strong>{{ campo|capfirst }}:</strong> {{ personagem|attr:campo }}</li>
+    {% endfor %}
+  </ul>
+
+  <h2>Defesas</h2>
+  <ul>
+    {% for campo in categorias.defesas %}
+      <li><strong>{{ campo|capfirst }}:</strong> {{ personagem|attr:campo }}</li>
+    {% endfor %}
+  </ul>
+
+  <h2>Perícias</h2>
+  <ul>
+    {% for campo in categorias.pericias %}
+      <li><strong>{{ campo|capfirst }}:</strong> {{ personagem|attr:campo }}</li>
+    {% endfor %}
+  </ul>
+
+  <a href="{% url 'editar_personagem' personagem.id %}" class="btn btn-primary">Editar</a>
+  <a href="{% url 'listar_personagens' %}" class="btn btn-secondary">Voltar</a>
+{% endblock %}

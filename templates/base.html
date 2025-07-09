@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Mutantes & Malfeitores</title>
+</head>
+<body>
+  <nav>
+    <a href="/">Home</a>
+    {% if user.is_authenticated %}
+      | <a href="{% url 'listar_personagens' %}">Meus Personagens</a>
+      | <a href="{% url 'criar_personagem' %}">Criar Personagem</a>
+      | <a href="{% url 'usar_poder' %}">Combate</a>
+      | <form action="{% url 'logout' %}" method="post" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" style="background:none;border:none;color:blue;text-decoration:underline;cursor:pointer;">Sair</button>
+        </form>
+    {% else %}
+      | <a href="{% url 'login' %}">Login</a>
+      | <a href="{% url 'cadastrar_usuario' %}">Cadastro</a>
+    {% endif %}
+  </nav>
+  <hr>
+  {% block content %}{% endblock %}
+</body>
+</html>

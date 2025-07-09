@@ -1,0 +1,125 @@
+from django.db import models
+from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+
+class Personagem(models.Model):
+    nome = models.CharField(max_length=100)
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE)
+    nivel_poder = models.IntegerField(default=10)
+
+    # Características
+    forca = models.IntegerField(default=0)
+    vigor = models.IntegerField(default=0)
+    destreza = models.IntegerField(default=0)
+    agilidade = models.IntegerField(default=0)
+    luta = models.IntegerField(default=0)
+    inteligencia = models.IntegerField(default=0)
+    prontidao = models.IntegerField(default=0)
+    presenca = models.IntegerField(default=0)
+
+    # Defesas
+    aparar = models.IntegerField(default=0)
+    esquivar = models.IntegerField(default=0)
+    fortitude = models.IntegerField(default=0)
+    vontade = models.IntegerField(default=0)
+    resistencia = models.IntegerField(default=0)
+
+    # Perícias
+    acrobacias = models.IntegerField(default=0)
+    atletismo = models.IntegerField(default=0)
+    combate_distancia = models.IntegerField(default=0)
+    combate_corpo = models.IntegerField(default=0)
+    enganacao = models.IntegerField(default=0)
+    especialidade = models.IntegerField(default=0)
+    furtividade = models.IntegerField(default=0)
+    intimidacao = models.IntegerField(default=0)
+    intuicao = models.IntegerField(default=0)
+    investigacao = models.IntegerField(default=0)
+    percepcao = models.IntegerField(default=0)
+    persuasao = models.IntegerField(default=0)
+    prestidigitacao = models.IntegerField(default=0)
+    tecnologia = models.IntegerField(default=0)
+    tratamento = models.IntegerField(default=0)
+    veiculos = models.IntegerField(default=0)
+    historia = models.IntegerField(default=0)
+    sobrevivencia = models.IntegerField(default=0)
+
+    def clean(self):
+        np = self.nivel_poder
+
+        # Limitar características a NP + 5
+        atributos = [
+            self.forca, self.vigor, self.destreza, self.agilidade,
+            self.luta, self.inteligencia, self.prontidao, self.presenca
+        ]
+        if any(valor > np + 5 for valor in atributos):
+            raise ValidationError("Nenhuma característica pode exceder o nível de poder + 5.")
+
+        # Validar defesas combinadas
+        if self.aparar + self.resistencia> np * 2:
+            raise ValidationError("Aparar + Esquiva não pode exceder o dobro do Nível de Poder.")
+
+        if self.esquivar + self.resistencia > np * 2:
+            raise ValidationError("Esquivar + Resistencia não pode exceder o dobro do Nível de Poder.")
+
+        if self.fortitude + self.resistencia > np * 2:
+            raise ValidationError("Fortitude + Resistencia não pode exceder o dobro do Nível de Poder.")
+
+        if self.vontade + self.resistencia > np * 2:
+            raise ValidationError("Vontade + Resistencia não pode exceder o dobro do Nível de Poder.")
+
+        if self.vontade + self.fortitude > np * 2:
+            raise ValidationError("Vontade + Fortitude não pode exceder o dobro do Nível de Poder.")
+        
+        if self.aparar + self.fortitude > np * 2:
+            raise ValidationError("Aparar + Fortitude não pode exceder o dobro do Nível de Poder.")
+        
+        if self.esquivar + self.fortitude > np * 2:
+            raise ValidationError("Esquivar + Fortitude não pode exceder o dobro do Nível de Poder.")
+
+        if self.esquivar + self.vontade > np * 2:
+            raise ValidationError("Esquivar + Vontade não pode exceder o dobro do Nível de Poder.")
+        
+        if self.aparar + self.vontade > np * 2:
+            raise ValidationError("Aparar + Vontade não pode exceder o dobro do Nível de Poder.")
+
+        if self.aparar + self.esquivar > np * 2:
+            raise ValidationError("Aparar + Esquivar não pode exceder o dobro do Nível de Poder.")
+
+        # Validar perícias
+        pericias = [
+            ('Acrobacias', self.acrobacias),
+            ('Atletismo', self.atletismo),
+            ('Combate À Distância', self.combate_distancia),
+            ('Combate Corpo-a-corpo', self.combate_corpo),
+            ('Enganação', self.enganacao),
+            ('Especialidade', self.especialidade),
+            ('Furtividade', self.furtividade),
+            ('Intimidação', self.intimidacao),
+            ('Intuição', self.intuicao),
+            ('Investigação', self.investigacao),
+            ('Percepção', self.percepcao),
+            ('Persuasão', self.persuasao),
+            ('Prestidigitação', self.prestidigitacao),
+            ('Tecnologia', self.tecnologia),
+            ('Tratamento', self.tratamento),
+            ('Veículos', self.veiculos),
+            ('História', self.historia),
+            ('Sobrevivência', self.sobrevivencia),
+        ]
+
+        for nome, valor in pericias:
+            if valor > np + 5:
+                raise ValidationError(f"A perícia {nome} não pode exceder o nível de poder + 5.")
+
+    def __str__(self):
+        return self.nome
+    
+class Poder(models.Model):
+        personagem = models.ForeignKey(Personagem, on_delete=models.CASCADE, related_name='poderes')
+        nome = models.CharField(max_length=100)
+        bonus_ataque = models.IntegerField(default=0)
+        nivel_efeito = models.IntegerField(default=0)
+
+        def __str__(self):
+            return f"{self.nome} (Bônus: {self.bonus_ataque}, Nível: {self.nivel_efeito})"
