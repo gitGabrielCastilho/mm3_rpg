@@ -25,6 +25,17 @@
     {% endfor %}
   </ul>
 
+  <h2>Poderes</h2>
+  <ul>
+    {% for poder in personagem.poder_set.all %}
+      <li>
+        <strong>{{ poder.nome }}</strong> — Bônus de Ataque: {{ poder.bonus_ataque }}, Nível do Efeito: {{ poder.nivel_efeito }}
+      </li>
+    {% empty %}
+      <li>Nenhum poder adicionado.</li>
+    {% endfor %}
+  </ul>
+
   <a href="{% url 'editar_personagem' personagem.id %}" class="btn btn-primary">Editar</a>
   <a href="{% url 'listar_personagens' %}" class="btn btn-secondary">Voltar</a>
 {% endblock %}

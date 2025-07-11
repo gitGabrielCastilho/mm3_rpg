@@ -1,12 +1,29 @@
 from django.db import models
 from personagens.models import Personagem
 
-class Ataque(models.Model):
-    atacante = models.ForeignKey(Personagem, related_name="ataques_feitos", on_delete=models.CASCADE)
-    alvo = models.ForeignKey(Personagem, related_name="ataques_recebidos", on_delete=models.CASCADE)
-    tipo = models.CharField(max_length=20, choices=[("dano", "Dano"), ("aflicao", "Aflição")])
-    alcance = models.CharField(max_length=20, choices=[("comum", "Comum"), ("area", "Área"), ("percepcao", "Percepção")])
-    nivel = models.IntegerField()
-    defesa_usada = models.CharField(max_length=20)
-    acertou = models.BooleanField()
-    data = models.DateTimeField(auto_now_add=True)
+class Combate(models.Model):
+    criado_em = models.DateTimeField(auto_now_add=True)
+    ativo = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"Combate #{self.id} - {'Ativo' if self.ativo else 'Finalizado'}"
+
+class Participante(models.Model):
+    personagem = models.ForeignKey(Personagem, on_delete=models.CASCADE)
+    combate = models.ForeignKey(Combate, on_delete=models.CASCADE)
+    iniciativa = models.IntegerField()
+
+    def __str__(self):
+        return f"{self.personagem.nome} (Iniciativa {self.iniciativa})"
+
+
+class Turno(models.Model):
+    combate = models.ForeignKey(Combate, on_delete=models.CASCADE)
+    personagem = models.ForeignKey(Personagem, on_delete=models.CASCADE)
+    ordem = models.PositiveIntegerField()
+    ativo = models.BooleanField(default=False)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    descricao = models.TextField(blank=True, null=True)  # <-- Adicione esta linha!
+
+    def __str__(self):
+        return f"Turno {self.ordem} - {self.personagem.nome}"

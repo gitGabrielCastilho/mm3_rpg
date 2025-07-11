@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>Combates Ativos</h1>
+  <ul>
+    {% for combate in combates %}
+      <li>
+        Combate #{{ combate.id }} - Criado em {{ combate.criado_em|date:"d/m/Y H:i" }}
+        <a href="{% url 'detalhes_combate' combate.id %}">Ver detalhes</a>
+      </li>
+    {% empty %}
+      <li>Nenhum combate criado ainda.</li>
+    {% endfor %}
+  </ul>
+
+  <a href="{% url 'criar_combate' %}" class="btn btn-primary">Criar novo combate</a>
+{% endblock %}

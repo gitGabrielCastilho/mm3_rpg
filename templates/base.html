@@ -3,24 +3,63 @@
 <head>
   <meta charset="UTF-8">
   <title>Mutantes & Malfeitores</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    nav {
+      background-color: #eee;
+      padding: 10px;
+      border-radius: 5px;
+    }
+    nav a {
+      margin-right: 15px;
+      text-decoration: none;
+      color: #333;
+      font-weight: bold;
+    }
+    nav form {
+      display: inline;
+    }
+    nav button {
+      background: none;
+      border: none;
+      color: blue;
+      cursor: pointer;
+      font-weight: bold;
+      text-decoration: underline;
+    }
+  </style>
 </head>
 <body>
   <nav>
     <a href="/">Home</a>
+
     {% if user.is_authenticated %}
-      | <a href="{% url 'listar_personagens' %}">Meus Personagens</a>
-      | <a href="{% url 'criar_personagem' %}">Criar Personagem</a>
-      | <a href="{% url 'usar_poder' %}">Combate</a>
-      | <form action="{% url 'logout' %}" method="post" style="display:inline;">
-          {% csrf_token %}
-          <button type="submit" style="background:none;border:none;color:blue;text-decoration:underline;cursor:pointer;">Sair</button>
-        </form>
+      <a href="{% url 'listar_personagens' %}">Meus Personagens</a>
+      <a href="{% url 'criar_personagem' %}">Criar Personagem</a>
+      <a href="{% url 'criar_combate' %}">Novo Combate</a>
+|     <a href="{% url 'listar_combates' %}">Combates</a>
+
+
+      <form action="{% url 'logout' %}" method="post">
+        {% csrf_token %}
+        <button type="submit">Sair</button>
+      </form>
     {% else %}
-      | <a href="{% url 'login' %}">Login</a>
-      | <a href="{% url 'cadastrar_usuario' %}">Cadastro</a>
+      <a href="{% url 'login' %}">Login</a>
+      <a href="{% url 'cadastrar_usuario' %}">Cadastro</a>
     {% endif %}
   </nav>
   <hr>
+  {% if messages %}
+  <ul>
+    {% for message in messages %}
+      <li style="color: green;">{{ message }}</li>
+    {% endfor %}
+  </ul>
+{% endif %}
   {% block content %}{% endblock %}
 </body>
 </html>
