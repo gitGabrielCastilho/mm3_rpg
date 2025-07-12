@@ -35,18 +35,22 @@
   {% endfor %}
 
     <h2>Poderes</h2>
-    <div id="poderes-formset">
-      {{ formset.management_form }}
-      {% for form in formset %}
-        <div class="poder-form">
-          {{ form.id }}
-          {{ form.nome.label_tag }} {{ form.nome }}
-          {{ form.bonus_ataque.label_tag }} {{ form.bonus_ataque }}
-          {{ form.nivel_efeito.label_tag }} {{ form.nivel_efeito }}
-          {% if form.instance.pk %}{{ form.DELETE }} Remover{% endif %}
-        </div>
-      {% endfor %}
+<div id="poderes-formset">
+  {{ formset.management_form }}
+  {% for form in formset %}
+    <div class="poder-form">
+      {{ form.id }}
+      {{ form.nome.label_tag }} {{ form.nome }}
+      {{ form.tipo.label_tag }} {{ form.tipo }}
+      {{ form.modo.label_tag }} {{ form.modo }}
+      {{ form.nivel_efeito.label_tag }} {{ form.nivel_efeito }}
+      {{ form.bonus_ataque.label_tag }} {{ form.bonus_ataque }}
+      {{ form.defesa_ativa.label_tag }} {{ form.defesa_ativa }}
+      {{ form.defesa_passiva.label_tag }} {{ form.defesa_passiva }}
+      {% if form.instance.pk %}{{ form.DELETE }} Remover{% endif %}
     </div>
+  {% endfor %}
+</div>
 
     <button type="button" onclick="adicionarPoder()">Adicionar Poder</button>
     <button type="button" onclick="removerPoder()">Remover Último Poder</button>

@@ -1,3 +1,6 @@
+{% extends 'base.html' %}
+
+{% block content %}
 <h2>Controle do Combate</h2>
 
 {% if not turno_ativo %}
@@ -39,7 +42,6 @@
   {% endfor %}
 </select>
 
-
   <button type="submit">Atacar</button>
 </form>
 {% endif %}
@@ -54,24 +56,20 @@
     <button type="submit" style="color: red;">Finalizar Combate</button>
   </form>
 
-  <form method="post" action="{% url 'deletar_combate' combate.id %}" onsubmit="return confirm('Tem certeza que deseja deletar este combate?');">
-    {% csrf_token %}
-    <button type="submit" class="btn btn-danger">Deletar Combate</button>
-</form>
-
 {% endif %}
 <hr>
 <h3>Histórico de Ataques</h3>
 <ul style="list-style-type: none; padding-left: 0;">
   {% for turno in turnos %}
-    <li style="margin-bottom: 0.5em; {% if turno.ativo %}background-color: #f0f8ff; padding: 0.5em; border-left: 4px solid #007bff;{% endif %}">
-      <strong>Rodada {{ turno.ordem }}:</strong>
-      {{ turno.criado_em|date:"d/m/Y H:i" }} – {{ turno.descricao }}
-      {% if turno.ativo %}
-        <span style="color: #007bff; font-weight: bold;">(Turno Ativo)</span>
-      {% endif %}
-    </li>
+<li style="margin-bottom: 0.5em; {% if turno.ativo %}background-color: #f0f8ff; padding: 0.5em; border-left: 4px solid #007bff;{% endif %}">
+  <strong>Rodada {{ turno.ordem }}:</strong>
+  {{ turno.criado_em|date:"d/m/Y H:i" }} – {{ turno.descricao|safe }}
+  {% if turno.ativo %}
+    <span style="color: #007bff; font-weight: bold;">(Turno Ativo)</span>
+  {% endif %}
+</li>
   {% empty %}
     <li>Nenhum ataque registrado ainda.</li>
   {% endfor %}
 </ul>
+{% endblock %}

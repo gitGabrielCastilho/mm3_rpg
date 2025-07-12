@@ -36,6 +36,9 @@
     {% endfor %}
   </ul>
 
+  <p><strong>Penalidade de Resistência:</strong> {{ personagem.penalidade_resistencia }}</p>
+  <p><strong>Condição:</strong> {{ personagem.condicao|default:"Nenhuma" }}</p>
+
   <a href="{% url 'editar_personagem' personagem.id %}" class="btn btn-primary">Editar</a>
   <a href="{% url 'listar_personagens' %}" class="btn btn-secondary">Voltar</a>
 {% endblock %}

@@ -21,16 +21,6 @@ def criar_combate(request):
             p = Participante.objects.create(personagem=personagem, combate=combate, iniciativa=iniciativa)
             ordem.append((p, iniciativa))
 
-        ordem.sort(key=lambda x: x[1], reverse=True)
-
-        for idx, (participante, _) in enumerate(ordem):
-            Turno.objects.create(
-                combate=combate,
-                personagem=participante.personagem,
-                ordem=idx,
-                ativo=(idx == 0)
-            )
-
         return redirect('detalhes_combate', combate_id=combate.id)
 
     personagens = Personagem.objects.all()
@@ -87,10 +77,19 @@ def listar_combates(request):
 @require_POST
 def iniciar_turno(request, combate_id):
     combate = get_object_or_404(Combate, id=combate_id)
+    participantes = Participante.objects.filter(combate=combate).order_by('-iniciativa')
+    if not participantes.exists():
+        messages.error(request, "Nenhum participante encontrado para iniciar o turno.")
+        return redirect('detalhes_combate', combate_id=combate.id)
 
-    ordem = Turno.objects.filter(combate=combate).count() + 1
-    turno = Turno.objects.create(combate=combate, ordem=ordem, ativo=True)
-    messages.success(request, f"Turno {ordem} iniciado.")
+    primeiro_participante = participantes.first()
+    Turno.objects.create(
+        combate=combate,
+        personagem=primeiro_participante.personagem,
+        ordem=0,
+        ativo=True
+    )
+    messages.success(request, f"Turno iniciado para {primeiro_participante.personagem.nome}.")
     return redirect('detalhes_combate', combate_id=combate.id)
 
 
@@ -169,28 +168,55 @@ def realizar_ataque(request, combate_id):
 
     return redirect('detalhes_combate', combate_id=combate_id)
 
-@csrf_exempt  # se der erro de CSRF, pode remover se csrf_token estiver no template
+
+
+@csrf_exempt
 def realizar_ataque(request, combate_id):
     if request.method == 'POST':
-        atacante = Turno.objects.filter(combate_id=combate_id, ativo=True).first().personagem
+        turno_ativo = Turno.objects.filter(combate_id=combate_id, ativo=True).first()
+        atacante = turno_ativo.personagem
         alvo_id = request.POST.get('alvo_id')
         poder_id = request.POST.get('poder_id')
+        defesa_escolhida = request.POST.get('defesa')
 
         alvo = get_object_or_404(Personagem, id=alvo_id)
         poder = get_object_or_404(Poder, id=poder_id)
 
-        defesa_escolhida = request.POST.get('defesa')
         defesa_valor = getattr(alvo, defesa_escolhida.lower(), 10)
         rolagem = random.randint(1, 20) + poder.bonus_ataque
         acertou = rolagem >= defesa_valor
 
-        Turno.objects.create(
-            combate_id=combate_id,
-            personagem=atacante,
-            ordem=Turno.objects.filter(combate_id=combate_id).count(),
-            ativo=False,
-            descricao=f"{atacante.nome} usou {poder.nome} em {alvo.nome} ({rolagem} vs {defesa_valor}) – {'ACERTOU' if acertou else 'ERROU'}",
-            criado_em=timezone.now()
-        )
+        resultado = ""
+        if acertou:
+            resistencia_total = alvo.resistencia - getattr(alvo, "penalidade_resistencia", 0)
+            teste_resistencia = random.randint(1, 20) + resistencia_total
+            dificuldade = 15 + getattr(poder, "nivel_efeito", 0)
+            margem = teste_resistencia - dificuldade
+
+            if margem >= 0:
+                resultado = f"{alvo.nome} resistiu ao dano!"
+            elif margem >= -5:
+                alvo.penalidade_resistencia += 1
+                resultado = f"{alvo.nome} sofreu 1 penalidade de resistência!"
+            elif margem >= -10:
+                alvo.penalidade_resistencia += 2
+                resultado = f"{alvo.nome} sofreu 2 penalidades de resistência e está Abalado!"
+                alvo.condicao = "Abalado"
+            else:
+                alvo.penalidade_resistencia += 3
+                resultado = f"{alvo.nome} sofreu 3 penalidades de resistência e está Atordoado!"
+                alvo.condicao = "Atordoado"
+            alvo.save()
+        else:
+            resultado = f"{atacante.nome} errou o ataque!"
+
+        nova_descricao = f"{atacante.nome} usou {poder.nome} em {alvo.nome} ({rolagem} vs {defesa_valor}) – {resultado}"
+
+        # Acumule as descrições, separando por quebra de linha se já houver texto
+        if turno_ativo.descricao:
+            turno_ativo.descricao += "<br>" + nova_descricao
+        else:
+            turno_ativo.descricao = nova_descricao
+        turno_ativo.save()
 
     return redirect('detalhes_combate', combate_id=combate_id)

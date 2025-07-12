@@ -7,6 +7,11 @@
       <li>
         Combate #{{ combate.id }} - Criado em {{ combate.criado_em|date:"d/m/Y H:i" }}
         <a href="{% url 'detalhes_combate' combate.id %}">Ver detalhes</a>
+        <!-- Formulário para deletar o combate -->
+        <form method="post" action="{% url 'deletar_combate' combate.id %}" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja deletar este combate?');">
+          {% csrf_token %}
+          <button type="submit" style="color: red; background: none; border: none; cursor: pointer;">Excluir</button>
+        </form>
       </li>
     {% empty %}
       <li>Nenhum combate criado ainda.</li>

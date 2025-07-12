@@ -5,9 +5,13 @@ from .models import Personagem, Poder
 from django.core.exceptions import ValidationError
 from django.forms import inlineformset_factory
 
-
-PoderFormSet = inlineformset_factory(Personagem, Poder, fields=('nome', 'bonus_ataque', 'nivel_efeito'), extra=1, can_delete=True)
-
+PoderFormSet = inlineformset_factory(
+    Personagem,
+    Poder,
+    form=PoderForm,
+    extra=1,
+    can_delete=True
+)
 
 def home(request):
     return render(request, 'home.html')
@@ -27,35 +31,36 @@ def cadastrar_usuario(request):
 def criar_personagem(request):
     if request.method == 'POST':
         form = PersonagemForm(request.POST)
-        formset = PoderFormSet(request.POST, prefix='poder_set')
-
-        if form.is_valid() and formset.is_valid():
+        if form.is_valid():
             personagem = form.save(commit=False)
             personagem.usuario = request.user
             personagem.save()
-
-            poderes = formset.save(commit=False)
-            for poder in poderes:
-                poder.personagem = personagem
-                poder.save()
-
-            return redirect('listar_personagens')
+            formset = PoderFormSet(request.POST, instance=personagem, prefix='poder_set')
+            if formset.is_valid():
+                formset.save()
+                return redirect('listar_personagens')
+        else:
+            formset = PoderFormSet(request.POST, queryset=Poder.objects.none(), prefix='poder_set')
     else:
         form = PersonagemForm()
         formset = PoderFormSet(queryset=Poder.objects.none(), prefix='poder_set')
 
-
     context = {
         'form': form,
         'formset': formset,
-        'caracteristicas' : ['forca', 'vigor', 'destreza', 'agilidade', 'luta', 'inteligencia', 'prontidao', 'presenca'],
-        'defesas' :  ['aparar', 'esquivar', 'fortitude', 'vontade', 'resistencia'],
-        'pericias' :  ['acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao', 'especialidade',
-                    'furtividade', 'intimidacao', 'intuicao', 'investigacao', 'percepcao', 'persuasao',
-                    'prestidigitacao', 'tecnologia', 'tratamento', 'veiculos', 'historia', 'sobrevivencia']
+        'caracteristicas': [
+            'forca', 'vigor', 'destreza', 'agilidade', 'luta', 'inteligencia', 'prontidao', 'presenca'
+        ],
+        'defesas': ['aparar', 'esquivar', 'fortitude', 'vontade', 'resistencia'],
+        'pericias': [
+            'acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao',
+            'especialidade', 'furtividade', 'intimidacao', 'intuicao', 'investigacao',
+            'percepcao', 'persuasao', 'prestidigitacao', 'tecnologia', 'tratamento',
+            'veiculos', 'historia', 'sobrevivencia'
+        ]
     }
-
     return render(request, 'personagens/criar_personagem.html', context)
+
 
 @login_required
 def listar_personagens(request):

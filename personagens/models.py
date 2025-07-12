@@ -23,6 +23,8 @@ class Personagem(models.Model):
     fortitude = models.IntegerField(default=0)
     vontade = models.IntegerField(default=0)
     resistencia = models.IntegerField(default=0)
+    penalidade_resistencia = models.IntegerField(default=0, blank=True)
+    condicao = models.CharField(max_length=30, blank=True, default="")  
 
     # Perícias
     acrobacias = models.IntegerField(default=0)
@@ -43,6 +45,7 @@ class Personagem(models.Model):
     veiculos = models.IntegerField(default=0)
     historia = models.IntegerField(default=0)
     sobrevivencia = models.IntegerField(default=0)
+
 
     def clean(self):
         np = self.nivel_poder
@@ -116,10 +119,53 @@ class Personagem(models.Model):
         return self.nome
     
 class Poder(models.Model):
-        personagem = models.ForeignKey(Personagem, on_delete=models.CASCADE, related_name='poderes')
-        nome = models.CharField(max_length=100)
-        bonus_ataque = models.IntegerField(default=0)
-        nivel_efeito = models.IntegerField(default=0)
+    TIPO_CHOICES = [
+        ('aflicao', 'Aflição'),
+        ('dano', 'Dano'),
+        ('cura', 'Cura'),
+        ('buff', 'Buff'),
+        ('debuff', 'Debuff'),
+    ]
+    MODO_CHOICES = [
+        ('area', 'Área'),
+        ('percepcao', 'Percepção'),
+        ('ranged', 'À Distância'),
+        ('melee', 'Corpo a Corpo'),
+    ]
+    CASTING_ABILITY_CHOICES = [
+        ('forca', 'Força'),
+        ('vigor', 'Vigor'),
+        ('destreza', 'Destreza'),
+        ('agilidade', 'Agilidade'),
+        ('luta', 'Luta'),
+        ('inteligencia', 'Inteligência'),
+        ('prontidao', 'Prontidão'),
+        ('presenca', 'Presença'),
+    ]
+    DEFESA_ATIVA_CHOICES = [
+        ('esquiva', 'Esquiva'),
+        ('aparar', 'Aparar'),
+    ]
+    DEFESA_PASSIVA_CHOICES = [
+        ('fortitude', 'Fortitude'),
+        ('resistencia', 'Resistência'),
+        ('vontade', 'Vontade'),
+    
+    ]
+    casting_ability = models.CharField(
+        max_length=20,
+        choices=CASTING_ABILITY_CHOICES,
+        verbose_name="Habilidade de Conjuração",
+        default='inteligencia'
+    )
+    personagem = models.ForeignKey(Personagem, on_delete=models.CASCADE, related_name='poderes')
+    nome = models.CharField(max_length=100)
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='dano')
+    modo = models.CharField(max_length=20, choices=MODO_CHOICES, default='melee')
+    nivel_efeito = models.IntegerField(default=0)
+    bonus_ataque = models.IntegerField(default=0)
+    defesa_ativa = models.CharField(max_length=20, choices=DEFESA_ATIVA_CHOICES, default='aparar')
+    defesa_passiva = models.CharField(max_length=20, choices=DEFESA_PASSIVA_CHOICES, default='resistencia')
 
-        def __str__(self):
-            return f"{self.nome} (Bônus: {self.bonus_ataque}, Nível: {self.nivel_efeito})"
+    def __str__(self):
+        return f"{self.nome} ({self.tipo}, {self.modo})"
