@@ -39,15 +39,7 @@
   {{ formset.management_form }}
   {% for form in formset %}
     <div class="poder-form">
-      {{ form.id }}
-      {{ form.nome.label_tag }} {{ form.nome }}
-      {{ form.tipo.label_tag }} {{ form.tipo }}
-      {{ form.modo.label_tag }} {{ form.modo }}
-      {{ form.nivel_efeito.label_tag }} {{ form.nivel_efeito }}
-      {{ form.bonus_ataque.label_tag }} {{ form.bonus_ataque }}
-      {{ form.defesa_ativa.label_tag }} {{ form.defesa_ativa }}
-      {{ form.defesa_passiva.label_tag }} {{ form.defesa_passiva }}
-      {% if form.instance.pk %}{{ form.DELETE }} Remover{% endif %}
+      {{ form.as_p }}
     </div>
   {% endfor %}
 </div>
@@ -73,6 +65,7 @@ function adicionarPoder() {
   const newFormHtml = emptyFormHtml.replace(/__prefix__/g, formIdx);
 
   const wrapper = document.createElement('div');
+  wrapper.classList.add('poder-form'); // <-- Adicione esta linha!
   wrapper.innerHTML = newFormHtml;
   formsetDiv.appendChild(wrapper);
 

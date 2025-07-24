@@ -12,6 +12,8 @@ class Participante(models.Model):
     personagem = models.ForeignKey(Personagem, on_delete=models.CASCADE)
     combate = models.ForeignKey(Combate, on_delete=models.CASCADE)
     iniciativa = models.IntegerField()
+    dano = models.IntegerField(default=0)      
+    aflicao = models.IntegerField(default=0)   
 
     def __str__(self):
         return f"{self.personagem.nome} (Iniciativa {self.iniciativa})"

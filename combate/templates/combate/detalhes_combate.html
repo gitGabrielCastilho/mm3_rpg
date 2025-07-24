@@ -2,61 +2,48 @@
 
 {% block content %}
 <h2>Controle do Combate</h2>
-
-{% if not turno_ativo %}
+{% if not turno_ativo and combate.ativo %}
   <form method="post" action="{% url 'iniciar_turno' combate.id %}">
     {% csrf_token %}
     <button type="submit">Iniciar Turno</button>
   </form>
-{% else %}
-  <p><strong>Turno Atual:</strong> {{ turno_ativo.ordem }}</p>
-
+{% endif %}
 {% if turno_ativo %}
   <h3>Ações de {{ turno_ativo.personagem.nome }}</h3>
 
-<form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-ataque">
-  {% csrf_token %}
+  <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-ataque">
+    {% csrf_token %}
 
-  <label for="alvo">Escolha o alvo:</label>
-  <select id="alvo" name="alvo_id" required>
-    {% for p in participantes %}
-      {% if p.personagem.id != turno_ativo.personagem.id %}
+    <label for="alvo">Escolha o(s) alvo(s):</label>
+    <select id="alvo" name="alvo_id" multiple required size="4">
+      {% for p in participantes %}
         <option value="{{ p.personagem.id }}">{{ p.personagem.nome }}</option>
-      {% endif %}
-    {% endfor %}
-  </select>
+      {% endfor %}
+    </select>
 
-  <label for="poder">Escolha o poder:</label>
-<select name="poder_id" id="poder">
-  {% for poder in poderes_disponiveis %}
-    <option value="{{ poder.id }}">{{ poder.nome }}</option>
-  {% empty %}
-    <option disabled>Nenhum poder disponível</option>
-  {% endfor %}
-</select>
+    <label for="poder">Escolha o poder:</label>
+    <select name="poder_id" id="poder" required>
+      {% for poder in poderes_disponiveis %}
+        <option value="{{ poder.id }}">{{ poder.nome }}</option>
+      {% empty %}
+        <option disabled>Nenhum poder disponível</option>
+      {% endfor %}
+    </select>
 
-<label for="defesa">Escolha a defesa:</label>
-<select id="defesa" name="defesa" required>
-  {% for defesa in defesas %}
-    <option value="{{ defesa }}">{{ defesa|capfirst }}</option>
-  {% endfor %}
-</select>
-
-  <button type="submit">Atacar</button>
-</form>
-{% endif %}
+    <button type="submit">Usar Poder</button>
+  </form>
 
   <form method="post" action="{% url 'avancar_turno' combate.id %}">
     {% csrf_token %}
-    <button type="submit">Avançar Turno</button>
+    <button type="submit" formnovalidate>Avançar Turno</button>
   </form>
 
   <form method="post" action="{% url 'finalizar_combate' combate.id %}">
     {% csrf_token %}
-    <button type="submit" style="color: red;">Finalizar Combate</button>
+    <button type="submit" style="color: red;" formnovalidate>Finalizar Combate</button>
   </form>
-
 {% endif %}
+
 <hr>
 <h3>Histórico de Ataques</h3>
 <ul style="list-style-type: none; padding-left: 0;">
@@ -72,4 +59,20 @@
     <li>Nenhum ataque registrado ainda.</li>
   {% endfor %}
 </ul>
+
+<h3>Status dos Participantes</h3>
+<table>
+  <tr>
+    <th>Nome</th>
+    <th>Dano</th>
+    <th>Aflição</th>
+  </tr>
+  {% for p in participantes %}
+    <tr>
+      <td>{{ p.personagem.nome }}</td>
+      <td>{{ p.dano }}</td>
+      <td>{{ p.aflicao }}</td>
+    </tr>
+  {% endfor %}
+</table>
 {% endblock %}

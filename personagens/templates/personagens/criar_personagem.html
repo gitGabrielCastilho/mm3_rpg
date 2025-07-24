@@ -88,6 +88,7 @@ function adicionarPoder() {
   const newFormHtml = emptyFormHtml.replace(/__prefix__/g, formIdx);
 
   const wrapper = document.createElement('div');
+  wrapper.classList.add('poder-form'); // <-- Adicione esta linha!
   wrapper.innerHTML = newFormHtml;
   formsetDiv.appendChild(wrapper);
 

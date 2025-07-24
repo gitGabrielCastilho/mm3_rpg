@@ -73,14 +73,15 @@ def editar_personagem(request, personagem_id):
     personagem = get_object_or_404(Personagem, id=personagem_id, usuario=request.user)
     if request.method == 'POST':
         form = PersonagemForm(request.POST, instance=personagem)
-        formset = PoderFormSet(request.POST or None, instance=personagem, prefix='poder_set')
+        formset = PoderFormSet(request.POST, instance=personagem, prefix='poder_set')
         if form.is_valid() and formset.is_valid():
             form.save()
             formset.save()
             return redirect('listar_personagens')
+        # NÃO sobrescreva form e formset aqui!
     else:
         form = PersonagemForm(instance=personagem)
-        formset = PoderFormSet(request.POST or None, instance=personagem, prefix='poder_set')
+        formset = PoderFormSet(instance=personagem, prefix='poder_set')
 
     context = {
         'form': form,
