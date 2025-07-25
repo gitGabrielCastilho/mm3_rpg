@@ -12,8 +12,10 @@ class Participante(models.Model):
     personagem = models.ForeignKey(Personagem, on_delete=models.CASCADE)
     combate = models.ForeignKey(Combate, on_delete=models.CASCADE)
     iniciativa = models.IntegerField()
-    dano = models.IntegerField(default=0)      
-    aflicao = models.IntegerField(default=0)   
+    dano = models.IntegerField(default=0)
+    aflicao = models.IntegerField(default=0)
+    bonus_temporario = models.IntegerField(default=0)      # Para Buff
+    penalidade_temporaria = models.IntegerField(default=0) # Para Debuff
 
     def __str__(self):
         return f"{self.personagem.nome} (Iniciativa {self.iniciativa})"

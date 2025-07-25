@@ -28,6 +28,7 @@
       </div>
     {% endfor %}
 
+    <h2>Perícias</h2>
   {% for campo in pericias %}
     {% with field=form|lookup:campo %}
       <div>{{ field.label_tag }} {{ field }}</div>

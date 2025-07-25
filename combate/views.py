@@ -157,13 +157,12 @@ def realizar_ataque(request, combate_id):
         for alvo_id in alvo_ids:
             alvo = get_object_or_404(Personagem, id=alvo_id)
             participante_alvo = Participante.objects.get(combate=combate_id, personagem=alvo)
-            
+
             # CURA
             if poder.tipo == 'cura':
                 rolagem = random.randint(1, 20) + getattr(atacante, poder.casting_ability)
                 cd = 10 - poder.nivel_efeito
                 if rolagem >= cd:
-                    # Remove o que estiver mais alto, em empate remove dano
                     if participante_alvo.dano >= participante_alvo.aflicao and participante_alvo.dano > 0:
                         participante_alvo.dano -= 1
                         resultado = f"{atacante.nome} curou {alvo.nome} (Rolagem {rolagem} vs CD {cd}): sucesso! Dano reduzido em 1."
@@ -175,60 +174,117 @@ def realizar_ataque(request, combate_id):
                     participante_alvo.save()
                 else:
                     resultado = f"{atacante.nome} tentou curar {alvo.nome} (Rolagem {rolagem} vs CD {cd}): falhou."
-                
+
             # BUFF
-            elif poder.tipo == 'buff':
-                # Implemente um campo temporário ou lógica para bônus na próxima rolagem
+            if poder.tipo == 'buff':
+                participante_alvo.bonus_temporario += poder.nivel_efeito
+                participante_alvo.save()
                 resultado = f"{alvo.nome} recebe um bônus de +{poder.nivel_efeito} na próxima rolagem."
+
             # DEBUFF
             elif poder.tipo == 'debuff':
+                participante_alvo.penalidade_temporaria += poder.nivel_efeito
+                participante_alvo.save()
                 resultado = f"{alvo.nome} recebe uma penalidade de -{poder.nivel_efeito} na próxima rolagem."
+
             # ÁREA
             elif poder.modo == 'area':
                 esquiva = getattr(alvo, 'esquivar', 0)
-                rolagem_esquiva = random.randint(1, 20) + esquiva
+                rolagem_esquiva_base = random.randint(1, 20)
+                rolagem_esquiva = rolagem_esquiva_base + esquiva
                 if poder.tipo == 'dano':
                     cd = poder.nivel_efeito + 15
                     cd_sucesso = (15 + poder.nivel_efeito) // 2
-                else:  # aflicao
+                else:
                     cd = poder.nivel_efeito + 10
                     cd_sucesso = (10 + poder.nivel_efeito) // 2
                 if rolagem_esquiva < cd:
-                    # Falhou, faz teste de defesa_passiva
                     defesa_valor = getattr(alvo, poder.defesa_passiva, 0)
-                    rolagem_defesa = random.randint(1, 20) + defesa_valor
+                    buff = participante_alvo.bonus_temporario
+                    debuff = participante_alvo.penalidade_temporaria
+                    rolagem_defesa_base = random.randint(1, 20)
+                    rolagem_defesa = rolagem_defesa_base + defesa_valor + buff - debuff
+                    participante_alvo.bonus_temporario = 0
+                    participante_alvo.penalidade_temporaria = 0
+                    participante_alvo.save()
+
+                    defesa_msg = (
+                        f"{rolagem_defesa_base} + {defesa_valor}"
+                        f"{' + ' + str(buff) if buff else ''}"
+                        f"{' - ' + str(debuff) if debuff else ''}"
+                        f" = {rolagem_defesa}"
+                    )
+
                     if poder.tipo == 'dano':
                         if rolagem_defesa < cd:
                             participante_alvo.dano += 1
                             participante_alvo.save()
-                            resultado = f"{alvo.nome} falhou na esquiva ({rolagem_esquiva} vs {cd}), defesa {poder.defesa_passiva}: {rolagem_defesa} <b>Sofreu 1 de dano!</b>"
+                            resultado = (
+                                f"{alvo.nome} falhou na esquiva ({rolagem_esquiva_base} + {esquiva} = {rolagem_esquiva} vs {cd}), "
+                                f"defesa {poder.defesa_passiva}: {defesa_msg} <b>Sofreu 1 de dano!</b>"
+                            )
                         else:
-                            resultado = f"{alvo.nome} falhou na esquiva ({rolagem_esquiva} vs {cd}), defesa {poder.defesa_passiva}: {rolagem_defesa} (sem dano)"
-                    else:  # aflicao
+                            resultado = (
+                                f"{alvo.nome} falhou na esquiva ({rolagem_esquiva_base} + {esquiva} = {rolagem_esquiva} vs {cd}), "
+                                f"defesa {poder.defesa_passiva}: {defesa_msg} (sem dano)"
+                            )
+                    else:
                         if rolagem_defesa < cd:
                             participante_alvo.aflicao += 1
                             participante_alvo.save()
-                            resultado = f"{alvo.nome} falhou na esquiva ({rolagem_esquiva} vs {cd}), defesa {poder.defesa_passiva}: {rolagem_defesa} <b>Sofreu 1 de aflição!</b>"
+                            resultado = (
+                                f"{alvo.nome} falhou na esquiva ({rolagem_esquiva_base} + {esquiva} = {rolagem_esquiva} vs {cd}), "
+                                f"defesa {poder.defesa_passiva}: {defesa_msg} <b>Sofreu 1 de aflição!</b>"
+                            )
                         else:
-                            resultado = f"{alvo.nome} falhou na esquiva ({rolagem_esquiva} vs {cd}), defesa {poder.defesa_passiva}: {rolagem_defesa} (sem aflição)"
+                            resultado = (
+                                f"{alvo.nome} falhou na esquiva ({rolagem_esquiva_base} + {esquiva} = {rolagem_esquiva} vs {cd}), "
+                                f"defesa {poder.defesa_passiva}: {defesa_msg} (sem aflição)"
+                            )
                 else:
-                    # Sucesso parcial
                     defesa_valor = getattr(alvo, poder.defesa_passiva, 0)
-                    rolagem_defesa = random.randint(1, 20) + defesa_valor
+                    buff = participante_alvo.bonus_temporario
+                    debuff = participante_alvo.penalidade_temporaria
+                    rolagem_defesa_base = random.randint(1, 20)
+                    rolagem_defesa = rolagem_defesa_base + defesa_valor + buff - debuff
+                    participante_alvo.bonus_temporario = 0
+                    participante_alvo.penalidade_temporaria = 0
+                    participante_alvo.save()
+
+                    defesa_msg = (
+                        f"{rolagem_defesa_base} + {defesa_valor}"
+                        f"{' + ' + str(buff) if buff else ''}"
+                        f"{' - ' + str(debuff) if debuff else ''}"
+                        f" = {rolagem_defesa}"
+                    )
+
                     if poder.tipo == 'dano':
                         if rolagem_defesa < cd_sucesso:
                             participante_alvo.dano += 1
                             participante_alvo.save()
-                            resultado = f"{alvo.nome} teve sucesso parcial na esquiva ({rolagem_esquiva} vs {cd}), defesa {poder.defesa_passiva} contra CD {cd_sucesso}: {rolagem_defesa} <b>Sofreu 1 de dano!</b>"
+                            resultado = (
+                                f"{alvo.nome} teve sucesso parcial na esquiva ({rolagem_esquiva_base} + {esquiva} = {rolagem_esquiva} vs {cd}), "
+                                f"defesa {poder.defesa_passiva} contra CD {cd_sucesso}: {defesa_msg} <b>Sofreu 1 de dano!</b>"
+                            )
                         else:
-                            resultado = f"{alvo.nome} teve sucesso parcial na esquiva ({rolagem_esquiva} vs {cd}), defesa {poder.defesa_passiva} contra CD {cd_sucesso}: {rolagem_defesa} (sem dano)"
+                            resultado = (
+                                f"{alvo.nome} teve sucesso parcial na esquiva ({rolagem_esquiva_base} + {esquiva} = {rolagem_esquiva} vs {cd}), "
+                                f"defesa {poder.defesa_passiva} contra CD {cd_sucesso}: {defesa_msg} (sem dano)"
+                            )
                     else:
                         if rolagem_defesa < cd_sucesso:
                             participante_alvo.aflicao += 1
                             participante_alvo.save()
-                            resultado = f"{alvo.nome} teve sucesso parcial na esquiva ({rolagem_esquiva} vs {cd}), defesa {poder.defesa_passiva} contra CD {cd_sucesso}: {rolagem_defesa} <b>Sofreu 1 de aflição!</b>"
+                            resultado = (
+                                f"{alvo.nome} teve sucesso parcial na esquiva ({rolagem_esquiva_base} + {esquiva} = {rolagem_esquiva} vs {cd}), "
+                                f"defesa {poder.defesa_passiva} contra CD {cd_sucesso}: {defesa_msg} <b>Sofreu 1 de aflição!</b>"
+                            )
                         else:
-                            resultado = f"{alvo.nome} teve sucesso parcial na esquiva ({rolagem_esquiva} vs {cd}), defesa {poder.defesa_passiva} contra CD {cd_sucesso}: {rolagem_defesa} (sem aflição)"
+                            resultado = (
+                                f"{alvo.nome} teve sucesso parcial na esquiva ({rolagem_esquiva_base} + {esquiva} = {rolagem_esquiva} vs {cd}), "
+                                f"defesa {poder.defesa_passiva} contra CD {cd_sucesso}: {defesa_msg} (sem aflição)"
+                            )
+
             # PERCEPÇÃO
             elif poder.modo == 'percepcao':
                 if poder.tipo == 'dano':
@@ -236,77 +292,183 @@ def realizar_ataque(request, combate_id):
                 else:
                     cd = poder.nivel_efeito + 10
                 defesa_valor = getattr(alvo, poder.defesa_passiva, 0)
-                rolagem_defesa = random.randint(1, 20) + defesa_valor
+                buff = participante_alvo.bonus_temporario
+                debuff = participante_alvo.penalidade_temporaria
+                rolagem_defesa_base = random.randint(1, 20)
+                rolagem_defesa = rolagem_defesa_base + defesa_valor + buff - debuff
+                participante_alvo.bonus_temporario = 0
+                participante_alvo.penalidade_temporaria = 0
+                participante_alvo.save()
+
+                defesa_msg = (
+                    f"{rolagem_defesa_base} + {defesa_valor}"
+                    f"{' + ' + str(buff) if buff else ''}"
+                    f"{' - ' + str(debuff) if debuff else ''}"
+                    f" = {rolagem_defesa}"
+                )
+
                 if poder.tipo == 'dano':
                     if rolagem_defesa < cd:
                         participante_alvo.dano += 1
                         participante_alvo.save()
-                        resultado = f"{alvo.nome} faz teste de {poder.defesa_passiva} ({rolagem_defesa}) contra CD {cd} <b>Sofreu 1 de dano!</b>"
+                        resultado = f"{alvo.nome} faz teste de {poder.defesa_passiva} ({defesa_msg}) contra CD {cd} <b>Sofreu 1 de dano!</b>"
                     else:
-                        resultado = f"{alvo.nome} faz teste de {poder.defesa_passiva} ({rolagem_defesa}) contra CD {cd} (sem dano)"
+                        resultado = f"{alvo.nome} faz teste de {poder.defesa_passiva} ({defesa_msg}) contra CD {cd} (sem dano)"
                 else:
                     if rolagem_defesa < cd:
                         participante_alvo.aflicao += 1
                         participante_alvo.save()
-                        resultado = f"{alvo.nome} faz teste de {poder.defesa_passiva} ({rolagem_defesa}) contra CD {cd} <b>Sofreu 1 de aflição!</b>"
+                        resultado = f"{alvo.nome} faz teste de {poder.defesa_passiva} ({defesa_msg}) contra CD {cd} <b>Sofreu 1 de aflição!</b>"
                     else:
-                        resultado = f"{alvo.nome} faz teste de {poder.defesa_passiva} ({rolagem_defesa}) contra CD {cd} (sem aflição)"
+                        resultado = f"{alvo.nome} faz teste de {poder.defesa_passiva} ({defesa_msg}) contra CD {cd} (sem aflição)"
+
             # MELEE
             elif poder.modo == 'melee':
-                ataque = random.randint(1, 20) + poder.bonus_ataque
+                participante_atacante = Participante.objects.get(combate=combate_id, personagem=atacante)
+                buff_atacante = participante_atacante.bonus_temporario
+                debuff_atacante = participante_atacante.penalidade_temporaria
+                ataque_base = random.randint(1, 20)
+                ataque = ataque_base + poder.bonus_ataque + buff_atacante - debuff_atacante
                 aparar = getattr(alvo, 'aparar', 0)
+                participante_atacante.bonus_temporario = 0
+                participante_atacante.penalidade_temporaria = 0
+                participante_atacante.save()
                 if poder.tipo == 'dano':
                     cd = 15 + poder.nivel_efeito
                 else:
                     cd = 10 + poder.nivel_efeito
                 if ataque > 10 + aparar:
                     defesa_valor = getattr(alvo, poder.defesa_passiva, 0)
-                    rolagem_defesa = random.randint(1, 20) + defesa_valor
+                    buff = participante_alvo.bonus_temporario
+                    debuff = participante_alvo.penalidade_temporaria
+                    rolagem_defesa_base = random.randint(1, 20)
+                    rolagem_defesa = rolagem_defesa_base + defesa_valor + buff - debuff
+                    participante_alvo.bonus_temporario = 0
+                    participante_alvo.penalidade_temporaria = 0
+                    participante_alvo.save()
+
+                    defesa_msg = (
+                        f"{rolagem_defesa_base} + {defesa_valor}"
+                        f"{' + ' + str(buff) if buff else ''}"
+                        f"{' - ' + str(debuff) if debuff else ''}"
+                        f" = {rolagem_defesa}"
+                    )
+
+                    ataque_msg = (
+                        f"{ataque_base} + {poder.bonus_ataque}"
+                        f"{' + ' + str(buff_atacante) if buff_atacante else ''}"
+                        f"{' - ' + str(debuff_atacante) if debuff_atacante else ''}"
+                        f" = {ataque}"
+                    )
+
                     if poder.tipo == 'dano':
                         if rolagem_defesa < cd:
                             participante_alvo.dano += 1
                             participante_alvo.save()
-                            resultado = f"{atacante.nome} acertou {alvo.nome} (ataque {ataque} vs {10+aparar}), defesa {poder.defesa_passiva} ({rolagem_defesa}) contra CD {cd} <b>Sofreu 1 de dano!</b>"
+                            resultado = (
+                                f"{atacante.nome} acertou {alvo.nome} (ataque {ataque_msg} vs {10+aparar}), "
+                                f"defesa {poder.defesa_passiva} ({defesa_msg}) contra CD {cd} <b>Sofreu 1 de dano!</b>"
+                            )
                         else:
-                            resultado = f"{atacante.nome} acertou {alvo.nome} (ataque {ataque} vs {10+aparar}), defesa {poder.defesa_passiva} ({rolagem_defesa}) contra CD {cd} (sem dano)"
+                            resultado = (
+                                f"{atacante.nome} acertou {alvo.nome} (ataque {ataque_msg} vs {10+aparar}), "
+                                f"defesa {poder.defesa_passiva} ({defesa_msg}) contra CD {cd} (sem dano)"
+                            )
                     else:
                         if rolagem_defesa < cd:
                             participante_alvo.aflicao += 1
                             participante_alvo.save()
-                            resultado = f"{atacante.nome} acertou {alvo.nome} (ataque {ataque} vs {10+aparar}), defesa {poder.defesa_passiva} ({rolagem_defesa}) contra CD {cd} <b>Sofreu 1 de aflição!</b>"
+                            resultado = (
+                                f"{atacante.nome} acertou {alvo.nome} (ataque {ataque_msg} vs {10+aparar}), "
+                                f"defesa {poder.defesa_passiva} ({defesa_msg}) contra CD {cd} <b>Sofreu 1 de aflição!</b>"
+                            )
                         else:
-                            resultado = f"{atacante.nome} acertou {alvo.nome} (ataque {ataque} vs {10+aparar}), defesa {poder.defesa_passiva} ({rolagem_defesa}) contra CD {cd} (sem aflição)"
+                            resultado = (
+                                f"{atacante.nome} acertou {alvo.nome} (ataque {ataque_msg} vs {10+aparar}), "
+                                f"defesa {poder.defesa_passiva} ({defesa_msg}) contra CD {cd} (sem aflição)"
+                            )
                 else:
-                    resultado = f"{atacante.nome} errou {alvo.nome} (ataque {ataque} vs {10+aparar})"
+                    ataque_msg = (
+                        f"{ataque_base} + {poder.bonus_ataque}"
+                        f"{' + ' + str(buff_atacante) if buff_atacante else ''}"
+                        f"{' - ' + str(debuff_atacante) if debuff_atacante else ''}"
+                        f" = {ataque}"
+                    )
+                    resultado = f"{atacante.nome} errou {alvo.nome} (ataque {ataque_msg} vs {10+aparar})"
+
             # RANGED
             elif poder.modo == 'ranged':
-                ataque = random.randint(1, 20) + poder.bonus_ataque
+                participante_atacante = Participante.objects.get(combate=combate_id, personagem=atacante)
+                buff_atacante = participante_atacante.bonus_temporario
+                debuff_atacante = participante_atacante.penalidade_temporaria
+                ataque_base = random.randint(1, 20)
+                ataque = ataque_base + poder.bonus_ataque + buff_atacante - debuff_atacante
                 esquiva = getattr(alvo, 'esquivar', 0)
+                participante_atacante.bonus_temporario = 0
+                participante_atacante.penalidade_temporaria = 0
+                participante_atacante.save()
                 if poder.tipo == 'dano':
                     cd = 15 + poder.nivel_efeito
                 else:
                     cd = 10 + poder.nivel_efeito
                 if ataque > 10 + esquiva:
                     defesa_valor = getattr(alvo, poder.defesa_passiva, 0)
-                    rolagem_defesa = random.randint(1, 20) + defesa_valor
+                    buff = participante_alvo.bonus_temporario
+                    debuff = participante_alvo.penalidade_temporaria
+                    rolagem_defesa_base = random.randint(1, 20)
+                    rolagem_defesa = rolagem_defesa_base + defesa_valor + buff - debuff
+                    participante_alvo.bonus_temporario = 0
+                    participante_alvo.penalidade_temporaria = 0
+                    participante_alvo.save()
+
+                    defesa_msg = (
+                        f"{rolagem_defesa_base} + {defesa_valor}"
+                        f"{' + ' + str(buff) if buff else ''}"
+                        f"{' - ' + str(debuff) if debuff else ''}"
+                        f" = {rolagem_defesa}"
+                    )
+
+                    ataque_msg = (
+                        f"{ataque_base} + {poder.bonus_ataque}"
+                        f"{' + ' + str(buff_atacante) if buff_atacante else ''}"
+                        f"{' - ' + str(debuff_atacante) if debuff_atacante else ''}"
+                        f" = {ataque}"
+                    )
+
                     if poder.tipo == 'dano':
                         if rolagem_defesa < cd:
                             participante_alvo.dano += 1
                             participante_alvo.save()
-                            resultado = f"{atacante.nome} acertou {alvo.nome} (ataque {ataque} vs {10+esquiva}), defesa {poder.defesa_passiva} ({rolagem_defesa}) contra CD {cd} <b>Sofreu 1 de dano!</b>"
+                            resultado = (
+                                f"{atacante.nome} acertou {alvo.nome} (ataque {ataque_msg} vs {10+esquiva}), "
+                                f"defesa {poder.defesa_passiva} ({defesa_msg}) contra CD {cd} <b>Sofreu 1 de dano!</b>"
+                            )
                         else:
-                            resultado = f"{atacante.nome} acertou {alvo.nome} (ataque {ataque} vs {10+esquiva}), defesa {poder.defesa_passiva} ({rolagem_defesa}) contra CD {cd} (sem dano)"
+                            resultado = (
+                                f"{atacante.nome} acertou {alvo.nome} (ataque {ataque_msg} vs {10+esquiva}), "
+                                f"defesa {poder.defesa_passiva} ({defesa_msg}) contra CD {cd} (sem dano)"
+                            )
                     else:
                         if rolagem_defesa < cd:
                             participante_alvo.aflicao += 1
                             participante_alvo.save()
-                            resultado = f"{atacante.nome} acertou {alvo.nome} (ataque {ataque} vs {10+esquiva}), defesa {poder.defesa_passiva} ({rolagem_defesa}) contra CD {cd} <b>Sofreu 1 de aflição!</b>"
+                            resultado = (
+                                f"{atacante.nome} acertou {alvo.nome} (ataque {ataque_msg} vs {10+esquiva}), "
+                                f"defesa {poder.defesa_passiva} ({defesa_msg}) contra CD {cd} <b>Sofreu 1 de aflição!</b>"
+                            )
                         else:
-                            resultado = f"{atacante.nome} acertou {alvo.nome} (ataque {ataque} vs {10+esquiva}), defesa {poder.defesa_passiva} ({rolagem_defesa}) contra CD {cd} (sem aflição)"
+                            resultado = (
+                                f"{atacante.nome} acertou {alvo.nome} (ataque {ataque_msg} vs {10+esquiva}), "
+                                f"defesa {poder.defesa_passiva} ({defesa_msg}) contra CD {cd} (sem aflição)"
+                            )
                 else:
-                    resultado = f"{atacante.nome} errou {alvo.nome} (ataque {ataque} vs {10+esquiva})"
-            else:
-                resultado = "Ação não implementada."
+                    ataque_msg = (
+                        f"{ataque_base} + {poder.bonus_ataque}"
+                        f"{' + ' + str(buff_atacante) if buff_atacante else ''}"
+                        f"{' - ' + str(debuff_atacante) if debuff_atacante else ''}"
+                        f" = {ataque}"
+                    )
+                    resultado = f"{atacante.nome} errou {alvo.nome} (ataque {ataque_msg} vs {10+esquiva})"
 
             resultados.append(resultado)
 
