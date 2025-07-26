@@ -33,6 +33,18 @@
     <button type="submit">Usar Poder</button>
   </form>
 
+<form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-pericia" style="margin-top: 1em;">
+  {% csrf_token %}
+  <label for="pericia_rolar">Escolha a perícia:</label>
+  <select name="pericia" id="pericia_rolar" required>
+    <option value="">-- Selecione uma perícia --</option>
+    {% for pericia in pericias %}
+      <option value="{{ pericia }}">{{ pericia|capfirst }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" name="rolar_pericia" value="1">Rolar Perícia</button>
+</form>
+
   <form method="post" action="{% url 'avancar_turno' combate.id %}">
     {% csrf_token %}
     <button type="submit" formnovalidate>Avançar Turno</button>

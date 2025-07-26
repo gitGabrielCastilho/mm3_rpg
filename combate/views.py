@@ -36,6 +36,14 @@ def detalhes_combate(request, combate_id):
     poderes_disponiveis = Poder.objects.filter(personagem=turno_ativo.personagem) if turno_ativo else []
 
     defesas_disponiveis = ["vontade", "fortitude", "resistencia", "aparar", "esquivar"]
+
+    pericias = [
+        'acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao',
+        'especialidade', 'furtividade', 'intimidacao', 'intuicao', 'investigacao',
+        'percepcao', 'persuasao', 'prestidigitacao', 'tecnologia', 'tratamento',
+        'veiculos', 'historia', 'sobrevivencia'
+    ]
+
     context = {
         'combate': combate,
         'participantes': participantes,
@@ -43,12 +51,11 @@ def detalhes_combate(request, combate_id):
         'turno_ativo': turno_ativo,
         'poderes_disponiveis': poderes_disponiveis,  # <-- Corrija aqui!
         'defesas': defesas_disponiveis,
+        'pericias': pericias,
     }
 
     return render(request, 'combate/detalhes_combate.html', context)
 
-
-from django.views.decorators.http import require_POST
 
 @require_POST
 def passar_turno(request, combate_id):
@@ -149,6 +156,56 @@ def realizar_ataque(request, combate_id):
     if request.method == 'POST':
         turno_ativo = Turno.objects.filter(combate_id=combate_id, ativo=True).first()
         atacante = turno_ativo.personagem
+        resultados = []
+
+        # Se for rolar só perícia (botão separado)
+        if request.POST.get('rolar_pericia'):
+            pericia_escolhida = request.POST.get('pericia')
+            if pericia_escolhida:
+                participante_atacante = Participante.objects.get(combate=combate_id, personagem=atacante)
+                valor_pericia = getattr(atacante, pericia_escolhida, None)
+                buff = participante_atacante.bonus_temporario
+                debuff = participante_atacante.penalidade_temporaria
+                if valor_pericia is not None:
+                    rolagem_base = random.randint(1, 20)
+                    total = rolagem_base + valor_pericia + buff - debuff
+                    resultados.append(
+                        f"{atacante.nome} rolou {pericia_escolhida.capitalize()}: {rolagem_base} + {valor_pericia}"
+                        f"{' + ' + str(buff) if buff else ''}"
+                        f"{' - ' + str(debuff) if debuff else ''}"
+                        f" = <b>{total}</b>"
+                    )
+                    # Zera buff/debuff após uso
+                    participante_atacante.bonus_temporario = 0
+                    participante_atacante.penalidade_temporaria = 0
+                    participante_atacante.save()
+                else:
+                    resultados.append(f"{atacante.nome} não possui a perícia {pericia_escolhida}.")
+            else:
+                resultados.append("Nenhuma perícia selecionada.")
+
+            # Salva só o resultado da perícia e retorna
+            nova_descricao = "<br>".join(resultados)
+            if turno_ativo.descricao:
+                turno_ativo.descricao += "<br>" + nova_descricao
+            else:
+                turno_ativo.descricao = nova_descricao
+            turno_ativo.save()
+            return redirect('detalhes_combate', combate_id=combate_id)
+
+        # --- Rola perícia junto com ataque/poder, se selecionada ---
+        pericia_escolhida = request.POST.get('pericia')
+        if pericia_escolhida:
+            valor_pericia = getattr(atacante, pericia_escolhida, None)
+            if valor_pericia is not None:
+                rolagem_base = random.randint(1, 20)
+                total = rolagem_base + valor_pericia
+                resultados.append(
+                    f"{atacante.nome} rolou {pericia_escolhida.capitalize()}: {rolagem_base} + {valor_pericia} = <b>{total}</b>"
+                )
+            else:
+                resultados.append(f"{atacante.nome} não possui a perícia {pericia_escolhida}.")
+
         alvo_ids = request.POST.getlist('alvo_id')  # Permite múltiplos alvos
         poder_id = request.POST.get('poder_id')
         poder = get_object_or_404(Poder, id=poder_id)
