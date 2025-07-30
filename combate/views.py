@@ -77,6 +77,7 @@ def passar_turno(request, combate_id):
 
     return redirect('detalhes_combate', combate_id=combate.id)
 
+
 def listar_combates(request):
     combates = Combate.objects.all().order_by('-criado_em')
     return render(request, 'combate/listar_combates.html', {'combates': combates})
@@ -233,7 +234,7 @@ def realizar_ataque(request, combate_id):
                     resultado = f"{atacante.nome} tentou curar {alvo.nome} (Rolagem {rolagem} vs CD {cd}): falhou."
 
             # BUFF
-            if poder.tipo == 'buff':
+            elif poder.tipo == 'buff':
                 participante_alvo.bonus_temporario += poder.nivel_efeito
                 participante_alvo.save()
                 resultado = f"{alvo.nome} recebe um bônus de +{poder.nivel_efeito} na próxima rolagem."
