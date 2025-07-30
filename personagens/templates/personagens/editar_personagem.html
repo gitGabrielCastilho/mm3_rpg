@@ -3,6 +3,11 @@
 {% load filtros %}
 
 {% block content %}
+<style>
+input[type="checkbox"][name$="DELETE"] {
+  display: none;
+}
+</style>
   <h1>Editar Personagem</h1>
   <form method="post">
     {% csrf_token %}
@@ -38,11 +43,17 @@
     <h2>Poderes</h2>
 <div id="poderes-formset">
   {{ formset.management_form }}
-  {% for form in formset %}
-    <div class="poder-form">
-      {{ form.as_p }}
-    </div>
-  {% endfor %}
+{% for form in formset %}
+  <div class="poder-form">
+    {% for field in form %}
+      {% if field.name != 'DELETE' %}
+        {{ field.label_tag }} {{ field }}
+      {% else %}
+        {{ field }}
+      {% endif %}
+    {% endfor %}
+  </div>
+{% endfor %}
 </div>
 
     <button type="button" onclick="adicionarPoder()">Adicionar Poder</button>
@@ -77,18 +88,21 @@ function adicionarPoder() {
 <script>
 function removerPoder() {
   const formsetDiv = document.getElementById('poderes-formset');
-  const totalFormsInput = document.getElementById('id_poder_set-TOTAL_FORMS');
+  const poderForms = formsetDiv.querySelectorAll('.poder-form');
+  if (poderForms.length === 0) return;
 
-  const formCount = parseInt(totalFormsInput.value);
-  if (formCount > 0) {
-    // Tenta remover o último formulário visível (ignorando os que já estão salvos e têm checkbox DELETE)
-    const poderForms = formsetDiv.querySelectorAll('.poder-form');
-    const lastForm = poderForms[poderForms.length - 1];
+  const lastForm = poderForms[poderForms.length - 1];
+  const deleteCheckbox = lastForm.querySelector('input[type="checkbox"][name$="DELETE"]');
 
-    if (lastForm) {
-      formsetDiv.removeChild(lastForm);
-      totalFormsInput.value = formCount - 1;
-    }
+  if (deleteCheckbox) {
+    // Poder já salvo: marca para deletar e esconde visualmente
+    deleteCheckbox.checked = true;
+    lastForm.style.display = 'none';
+  } else {
+    // Poder novo: remove do DOM e atualiza TOTAL_FORMS
+    lastForm.remove();
+    const totalFormsInput = document.getElementById('id_poder_set-TOTAL_FORMS');
+    totalFormsInput.value = poderForms.length - 1;
   }
 }
 </script>

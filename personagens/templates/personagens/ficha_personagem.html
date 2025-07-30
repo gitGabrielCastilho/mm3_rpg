@@ -27,7 +27,7 @@
 
   <h2>Poderes</h2>
   <ul>
-    {% for poder in personagem.poder_set.all %}
+    {% for poder in personagem.poderes.all %}
       <li>
         <strong>{{ poder.nome }}</strong> — Bônus de Ataque: {{ poder.bonus_ataque }}, Nível do Efeito: {{ poder.nivel_efeito }}
       </li>
