@@ -45,6 +45,23 @@
   <button type="submit" name="rolar_pericia" value="1">Rolar Perícia</button>
 </form>
 
+<form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-caracteristica" style="margin-top: 1em;">
+  {% csrf_token %}
+  <label for="caracteristica_rolar">Escolha a característica:</label>
+  <select name="caracteristica" id="caracteristica_rolar" required>
+    <option value="">-- Selecione uma característica --</option>
+    {% for c in caracteristicas %}
+      <option value="{{ c }}">{{ c|capfirst }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" name="rolar_caracteristica" value="1">Rolar Característica</button>
+</form>
+
+<form method="post" action="{% url 'realizar_ataque' combate.id %}" style="margin-top: 1em;">
+  {% csrf_token %}
+  <button type="submit" name="rolar_d20" value="1">Rolar d20</button>
+</form>
+
   <form method="post" action="{% url 'avancar_turno' combate.id %}">
     {% csrf_token %}
     <button type="submit" formnovalidate>Avançar Turno</button>
@@ -78,12 +95,16 @@
     <th>Nome</th>
     <th>Dano</th>
     <th>Aflição</th>
+    <th>Ficha</th>
   </tr>
   {% for p in participantes %}
     <tr>
       <td>{{ p.personagem.nome }}</td>
       <td>{{ p.dano }}</td>
       <td>{{ p.aflicao }}</td>
+      <td>
+        <a href="{% url 'ficha_personagem' p.personagem.id %}" target="_blank">Ver Ficha</a>
+      </td>
     </tr>
   {% endfor %}
 </table>

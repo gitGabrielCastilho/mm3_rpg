@@ -43,7 +43,9 @@ def detalhes_combate(request, combate_id):
         'percepcao', 'persuasao', 'prestidigitacao', 'tecnologia', 'tratamento',
         'veiculos', 'historia', 'sobrevivencia'
     ]
-
+    caracteristicas = [
+        'forca', 'vigor', 'destreza', 'agilidade', 'luta', 'inteligencia', 'prontidao', 'presenca'
+    ]
     context = {
         'combate': combate,
         'participantes': participantes,
@@ -52,6 +54,7 @@ def detalhes_combate(request, combate_id):
         'poderes_disponiveis': poderes_disponiveis,  # <-- Corrija aqui!
         'defesas': defesas_disponiveis,
         'pericias': pericias,
+        'caracteristicas': caracteristicas,
     }
 
     return render(request, 'combate/detalhes_combate.html', context)
@@ -206,6 +209,49 @@ def realizar_ataque(request, combate_id):
                 )
             else:
                 resultados.append(f"{atacante.nome} não possui a perícia {pericia_escolhida}.")
+
+        if request.POST.get('rolar_caracteristica'):
+            caracteristica_escolhida = request.POST.get('caracteristica')
+            if caracteristica_escolhida:
+                participante_atacante = Participante.objects.get(combate=combate_id, personagem=atacante)
+                valor_caracteristica = getattr(atacante, caracteristica_escolhida, None)
+                buff = participante_atacante.bonus_temporario
+                debuff = participante_atacante.penalidade_temporaria
+                if valor_caracteristica is not None:
+                    rolagem_base = random.randint(1, 20)
+                    total = rolagem_base + valor_caracteristica + buff - debuff
+                    resultados.append(
+                        f"{atacante.nome} rolou {caracteristica_escolhida.capitalize()}: {rolagem_base} + {valor_caracteristica}"
+                        f"{' + ' + str(buff) if buff else ''}"
+                        f"{' - ' + str(debuff) if debuff else ''}"
+                        f" = <b>{total}</b>"
+                    )
+                    participante_atacante.bonus_temporario = 0
+                    participante_atacante.penalidade_temporaria = 0
+                    participante_atacante.save()
+                else:
+                    resultados.append(f"{atacante.nome} não possui a característica {caracteristica_escolhida}.")
+            else:
+                resultados.append("Nenhuma característica selecionada.")
+
+            nova_descricao = "<br>".join(resultados)
+            if turno_ativo.descricao:
+                turno_ativo.descricao += "<br>" + nova_descricao
+            else:
+                turno_ativo.descricao = nova_descricao
+            turno_ativo.save()
+            return redirect('detalhes_combate', combate_id=combate_id)
+        
+        if request.POST.get('rolar_d20'):
+            rolagem_base = random.randint(1, 20)
+            resultados.append(f"{atacante.nome} rolou um d20: <b>{rolagem_base}</b>")
+            nova_descricao = "<br>".join(resultados)
+            if turno_ativo.descricao:
+                turno_ativo.descricao += "<br>" + nova_descricao
+            else:
+                turno_ativo.descricao = nova_descricao
+            turno_ativo.save()
+            return redirect('detalhes_combate', combate_id=combate_id)
 
         alvo_ids = request.POST.getlist('alvo_id')  # Permite múltiplos alvos
         poder_id = request.POST.get('poder_id')
