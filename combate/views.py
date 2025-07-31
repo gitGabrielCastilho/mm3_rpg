@@ -183,7 +183,27 @@ def realizar_ataque(request, combate_id):
         atacante = turno_ativo.personagem
         resultados = []
 
-        # Se for rolar só perícia (botão separado)
+        PERICIA_CARACTERISTICA = {
+            'acrobacias': 'agilidade',
+            'atletismo': 'forca',
+            'combate_distancia': 'destreza',
+            'combate_corpo': 'luta',
+            'enganacao': 'presenca',
+            'especialidade': 'casting_ability',  
+            'furtividade': 'agilidade',
+            'intimidacao': 'presenca',
+            'intuicao': 'prontidao',
+            'investigacao': 'inteligencia',
+            'percepcao': 'prontidao',
+            'persuasao': 'presenca',
+            'prestidigitacao': 'destreza',
+            'tecnologia': 'inteligencia',
+            'tratamento': 'inteligencia',
+            'veiculos': 'destreza',
+            'historia': 'inteligencia',
+            'sobrevivencia': 'prontidao',
+        }
+
         if request.POST.get('rolar_pericia'):
             pericia_escolhida = request.POST.get('pericia')
             if pericia_escolhida:
@@ -191,16 +211,24 @@ def realizar_ataque(request, combate_id):
                 valor_pericia = getattr(atacante, pericia_escolhida, None)
                 buff = participante_atacante.bonus_temporario
                 debuff = participante_atacante.penalidade_temporaria
+
+                # Descobre a característica base
+                caracteristica_base = PERICIA_CARACTERISTICA.get(pericia_escolhida)
+                if pericia_escolhida == 'especialidade':
+                    valor_caracteristica = getattr(atacante, atacante.especialidade_casting_ability, 0)
+                else:
+                    valor_caracteristica = getattr(atacante, caracteristica_base, 0)
+
+
                 if valor_pericia is not None:
                     rolagem_base = random.randint(1, 20)
-                    total = rolagem_base + valor_pericia + buff - debuff
+                    total = rolagem_base + valor_pericia + valor_caracteristica + buff - debuff
                     resultados.append(
-                        f"{atacante.nome} rolou {pericia_escolhida.capitalize()}: {rolagem_base} + {valor_pericia}"
+                        f"{atacante.nome} rolou {pericia_escolhida.capitalize()}: {rolagem_base} + {valor_pericia} (perícia) + {valor_caracteristica} ({caracteristica_base.replace('_', ' ').capitalize()})"
                         f"{' + ' + str(buff) if buff else ''}"
                         f"{' - ' + str(debuff) if debuff else ''}"
                         f" = <b>{total}</b>"
                     )
-                    # Zera buff/debuff após uso
                     participante_atacante.bonus_temporario = 0
                     participante_atacante.penalidade_temporaria = 0
                     participante_atacante.save()
@@ -209,7 +237,6 @@ def realizar_ataque(request, combate_id):
             else:
                 resultados.append("Nenhuma perícia selecionada.")
 
-            # Salva só o resultado da perícia e retorna
             nova_descricao = "<br>".join(resultados)
             if turno_ativo.descricao:
                 turno_ativo.descricao += "<br>" + nova_descricao
@@ -217,19 +244,6 @@ def realizar_ataque(request, combate_id):
                 turno_ativo.descricao = nova_descricao
             turno_ativo.save()
             return redirect('detalhes_combate', combate_id=combate_id)
-
-        # --- Rola perícia junto com ataque/poder, se selecionada ---
-        pericia_escolhida = request.POST.get('pericia')
-        if pericia_escolhida:
-            valor_pericia = getattr(atacante, pericia_escolhida, None)
-            if valor_pericia is not None:
-                rolagem_base = random.randint(1, 20)
-                total = rolagem_base + valor_pericia
-                resultados.append(
-                    f"{atacante.nome} rolou {pericia_escolhida.capitalize()}: {rolagem_base} + {valor_pericia} = <b>{total}</b>"
-                )
-            else:
-                resultados.append(f"{atacante.nome} não possui a perícia {pericia_escolhida}.")
 
         if request.POST.get('rolar_caracteristica'):
             caracteristica_escolhida = request.POST.get('caracteristica')

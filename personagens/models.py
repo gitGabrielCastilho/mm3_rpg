@@ -2,7 +2,25 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 
+CASTING_ABILITY_CHOICES = [
+    ('forca', 'Força'),
+    ('vigor', 'Vigor'),
+    ('destreza', 'Destreza'),
+    ('agilidade', 'Agilidade'),
+    ('luta', 'Luta'),
+    ('inteligencia', 'Inteligência'),
+    ('prontidao', 'Prontidão'),
+    ('presenca', 'Presença'),
+]
 class Personagem(models.Model):
+
+    especialidade_casting_ability = models.CharField(
+        max_length=20,
+        choices=CASTING_ABILITY_CHOICES,
+        verbose_name="Habilidade de Conjuração da Especialidade",
+        default='inteligencia'
+    )
+
     nome = models.CharField(max_length=100)
     usuario = models.ForeignKey(User, on_delete=models.CASCADE)
     nivel_poder = models.IntegerField(default=10)
@@ -49,8 +67,6 @@ class Personagem(models.Model):
 
     def clean(self):
         np = self.nivel_poder
-
-        # Limitar características a NP + 5
         atributos = [
             self.forca, self.vigor, self.destreza, self.agilidade,
             self.luta, self.inteligencia, self.prontidao, self.presenca
@@ -132,16 +148,7 @@ class Poder(models.Model):
         ('ranged', 'À Distância'),
         ('melee', 'Corpo a Corpo'),
     ]
-    CASTING_ABILITY_CHOICES = [
-        ('forca', 'Força'),
-        ('vigor', 'Vigor'),
-        ('destreza', 'Destreza'),
-        ('agilidade', 'Agilidade'),
-        ('luta', 'Luta'),
-        ('inteligencia', 'Inteligência'),
-        ('prontidao', 'Prontidão'),
-        ('presenca', 'Presença'),
-    ]
+
     DEFESA_ATIVA_CHOICES = [
         ('esquiva', 'Esquiva'),
         ('aparar', 'Aparar'),

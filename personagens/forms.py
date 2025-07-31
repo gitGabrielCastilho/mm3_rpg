@@ -12,6 +12,20 @@ class CadastroForm(UserCreationForm):
 class PersonagemForm(forms.ModelForm):
     class Meta:
         model = Personagem
+        fields = [
+            'nome',
+            'nivel_poder',
+            # Características
+            'forca', 'vigor', 'destreza', 'agilidade', 'luta', 'inteligencia', 'prontidao', 'presenca',
+            # Defesas
+            'aparar', 'esquivar', 'fortitude', 'vontade', 'resistencia', 'penalidade_resistencia', 'condicao',
+            # Perícias
+            'acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao', 'especialidade',
+            'furtividade', 'intimidacao', 'intuicao', 'investigacao', 'percepcao', 'persuasao',
+            'prestidigitacao', 'tecnologia', 'tratamento', 'veiculos', 'historia', 'sobrevivencia',
+            # Campo especialidade_casting_ability
+            'especialidade_casting_ability',
+        ]
         exclude = ['usuario']
 
 

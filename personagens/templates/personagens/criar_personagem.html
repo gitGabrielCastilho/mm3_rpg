@@ -34,7 +34,12 @@
   </div>
 {% endfor %}
 
+
     <h2>Perícias</h2>
+<div>
+  {{ form.especialidade_casting_ability.label_tag }} {{ form.especialidade_casting_ability }}
+</div>
+
 {% for campo in pericias %}
   <div>
     {% with field=form|lookup:campo %}
@@ -59,13 +64,21 @@
   {% endfor %}
 </div>
 
+{% if form.non_field_errors %}
+  <div style="color: red; margin-bottom: 1em;">
+    {% for error in form.non_field_errors %}
+      <div>{{ error }}</div>
+    {% endfor %}
+  </div>
+{% endif %}
 
-    {% if form.errors %}
-  <div style="color:red;">{{ form.errors }}</div>
-    {% endif %}
-    {% if formset.non_form_errors %}
-  <div style="color:red;">{{ formset.non_form_errors }}</div>
-    {% endif %}
+{% if formset.non_form_errors %}
+  <div style="color: red; margin-bottom: 1em;">
+    {% for error in formset.non_form_errors %}
+      <div>{{ error }}</div>
+    {% endfor %}
+  </div>
+{% endif %}
 
     <button type="button" onclick="adicionarPoder()">Adicionar Poder</button>
     <button type="button" onclick="removerPoder()">Remover Último Poder</button>
@@ -107,14 +120,13 @@ function removerPoder() {
   if (formCount > 0) {
     const lastForm = poderForms[poderForms.length - 1];
 
-    // Se o último formulário tem checkbox DELETE, marque-o
     const deleteCheckbox = lastForm.querySelector('input[type="checkbox"][name$="DELETE"]');
     if (deleteCheckbox) {
       deleteCheckbox.checked = true;
-      // Opcional: esconda o formulário visualmente
+
       lastForm.style.display = 'none';
     } else {
-      // Se não tem checkbox DELETE, é um novo formulário: remova do DOM
+
       formsetDiv.removeChild(lastForm);
       totalFormsInput.value = formCount - 1;
     }

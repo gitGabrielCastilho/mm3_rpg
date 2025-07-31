@@ -34,6 +34,10 @@ input[type="checkbox"][name$="DELETE"] {
     {% endfor %}
 
     <h2>Perícias</h2>
+  <div>
+  {{ form.especialidade_casting_ability.label_tag }} {{ form.especialidade_casting_ability }}
+</div>
+
   {% for campo in pericias %}
     {% with field=form|lookup:campo %}
       <div>{{ field.label_tag }} {{ field }}</div>
@@ -54,6 +58,25 @@ input[type="checkbox"][name$="DELETE"] {
     {% endfor %}
   </div>
 {% endfor %}
+
+<!-- ...campos do formulário... -->
+
+{% if form.non_field_errors %}
+  <div style="color: red; margin-bottom: 1em;">
+    {% for error in form.non_field_errors %}
+      <div>{{ error }}</div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% if formset.non_form_errors %}
+  <div style="color: red; margin-bottom: 1em;">
+    {% for error in formset.non_form_errors %}
+      <div>{{ error }}</div>
+    {% endfor %}
+  </div>
+{% endif %}
+
 </div>
 
     <button type="button" onclick="adicionarPoder()">Adicionar Poder</button>
