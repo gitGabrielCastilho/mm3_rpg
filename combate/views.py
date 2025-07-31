@@ -46,6 +46,10 @@ def detalhes_combate(request, combate_id):
     caracteristicas = [
         'forca', 'vigor', 'destreza', 'agilidade', 'luta', 'inteligencia', 'prontidao', 'presenca'
     ]
+
+    personagens_no_combate_ids = participantes.values_list('personagem_id', flat=True)
+    personagens_disponiveis = Personagem.objects.filter(usuario=request.user).exclude(id__in=personagens_no_combate_ids)
+    
     context = {
         'combate': combate,
         'participantes': participantes,
@@ -53,6 +57,7 @@ def detalhes_combate(request, combate_id):
         'turno_ativo': turno_ativo,
         'poderes_disponiveis': poderes_disponiveis,  # <-- Corrija aqui!
         'defesas': defesas_disponiveis,
+        'personagens_disponiveis': personagens_disponiveis,
         'pericias': pericias,
         'caracteristicas': caracteristicas,
     }
@@ -154,6 +159,22 @@ def deletar_combate(request, combate_id):
     return redirect('listar_combates')
 
 
+@require_POST
+@login_required
+def adicionar_participante(request, combate_id):
+    combate = get_object_or_404(Combate, id=combate_id)
+    personagem_id = request.POST.get('personagem_id')
+    personagem = get_object_or_404(Personagem, id=personagem_id, usuario=request.user)
+    iniciativa = random.randint(1, 20) + personagem.prontidao
+    Participante.objects.create(personagem=personagem, combate=combate, iniciativa=iniciativa)
+    return redirect('detalhes_combate', combate_id=combate_id)
+
+
+@require_POST
+def remover_participante(request, combate_id, participante_id):
+    participante = get_object_or_404(Participante, id=participante_id, combate_id=combate_id)
+    participante.delete()
+    return redirect('detalhes_combate', combate_id=combate_id)
 
 @csrf_exempt
 def realizar_ataque(request, combate_id):

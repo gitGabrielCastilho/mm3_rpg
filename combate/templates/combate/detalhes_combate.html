@@ -9,6 +9,19 @@
   </form>
 {% endif %}
 {% if turno_ativo %}
+  {% if personagens_disponiveis %}
+    <h3>Adicionar Participante</h3>
+    <form method="post" action="{% url 'adicionar_participante' combate.id %}">
+      {% csrf_token %}
+      <label for="novo_participante">Escolha um personagem:</label>
+      <select name="personagem_id" id="novo_participante" required>
+        {% for personagem in personagens_disponiveis %}
+          <option value="{{ personagem.id }}">{{ personagem.nome }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit">Adicionar ao Combate</button>
+    </form>
+  {% endif %}
   <h3>Ações de {{ turno_ativo.personagem.nome }}</h3>
 
   <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-ataque">
@@ -96,6 +109,7 @@
     <th>Dano</th>
     <th>Aflição</th>
     <th>Ficha</th>
+    <th>Remover</th>
   </tr>
   {% for p in participantes %}
     <tr>
@@ -104,6 +118,12 @@
       <td>{{ p.aflicao }}</td>
       <td>
         <a href="{% url 'ficha_personagem' p.personagem.id %}" target="_blank">Ver Ficha</a>
+      </td>
+      <td>
+        <form method="post" action="{% url 'remover_participante' combate.id p.id %}" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" style="color:red;">Remover</button>
+        </form>
       </td>
     </tr>
   {% endfor %}
