@@ -30,12 +30,12 @@ def cadastrar_usuario(request):
 @login_required
 def criar_personagem(request):
     if request.method == 'POST':
-        form = PersonagemForm(request.POST)
+        form = PersonagemForm(request.POST, request.FILES)
         if form.is_valid():
             personagem = form.save(commit=False)
             personagem.usuario = request.user
             personagem.save()
-            formset = PoderFormSet(request.POST, instance=personagem, prefix='poder_set')
+            formset = PoderFormSet(request.POST, request.FILES, instance=personagem, prefix='poder_set')
             if formset.is_valid():
                 formset.save()
                 return redirect('listar_personagens')
@@ -72,8 +72,8 @@ def listar_personagens(request):
 def editar_personagem(request, personagem_id):
     personagem = get_object_or_404(Personagem, id=personagem_id, usuario=request.user)
     if request.method == 'POST':
-        form = PersonagemForm(request.POST, instance=personagem)
-        formset = PoderFormSet(request.POST, instance=personagem, prefix='poder_set')
+        form = PersonagemForm(request.POST, request.FILES, instance=personagem)
+        formset = PoderFormSet(request.POST, request.FILES, instance=personagem, prefix='poder_set')
         if form.is_valid() and formset.is_valid():
             form.save()
             formset.save()

@@ -1,5 +1,6 @@
 from django import forms
 from personagens.models import Personagem
+from .models import Mapa
 
 class AtaqueForm(forms.Form):
     atacante = forms.ModelChoiceField(queryset=Personagem.objects.all())
@@ -10,3 +11,10 @@ class AtaqueForm(forms.Form):
     bonus_ataque = forms.IntegerField()
     defesa = forms.ChoiceField(choices=[("aparar", "aparar"), ("esquivar", "esquivar")])
     resistencia = forms.ChoiceField(choices=[("fortitude", "fortitude"),("vontade", "vontade"), ("resistencia", "resistencia")])
+
+
+
+class MapaForm(forms.ModelForm):
+    class Meta:
+        model = Mapa
+        fields = ['nome', 'imagem']

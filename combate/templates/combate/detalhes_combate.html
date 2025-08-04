@@ -105,6 +105,7 @@
 <h3>Status dos Participantes</h3>
 <table>
   <tr>
+    <th>Foto</th>
     <th>Nome</th>
     <th>Dano</th>
     <th>Aflição</th>
@@ -113,6 +114,13 @@
   </tr>
   {% for p in participantes %}
     <tr>
+      <td>
+        {% if p.personagem.foto %}
+          <img src="{{ p.personagem.foto.url }}" alt="Foto" style="max-width:60px; max-height:60px;">
+        {% else %}
+          <span>—</span>
+        {% endif %}
+      </td>
       <td>{{ p.personagem.nome }}</td>
       <td>{{ p.dano }}</td>
       <td>{{ p.aflicao }}</td>
@@ -128,4 +136,88 @@
     </tr>
   {% endfor %}
 </table>
+<h3>Mapa do Combate</h3>
+
+{% if combate.mapas.all %}
+  {% for mapa in combate.mapas.all %}
+    <div id="mapa-area-{{ mapa.id }}" style="position:relative; width:600px; height:400px;">
+      <img src="{{ mapa.imagem.url }}" alt="{{ mapa.nome }}" style="width:600px; height:400px;">
+      {% for posicao in posicoes %}
+        {% if posicao.mapa.id == mapa.id %}
+          {% if posicao.participante.personagem.foto %}
+            <img src="{{ posicao.participante.personagem.foto.url }}"
+                 id="token-{{ posicao.id }}"
+                 style="position:absolute; left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:40px; height:40px; cursor:move;"
+                 draggable="true"
+                 ondragstart="drag(event, {{ posicao.id }})">
+          {% else %}
+            <div id="token-{{ posicao.id }}"
+                 style="position:absolute; left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:40px; height:40px; background:#ccc; border-radius:50%; text-align:center; line-height:40px; cursor:move;"
+                 draggable="true"
+                 ondragstart="drag(event, {{ posicao.id }})">
+              {{ posicao.participante.personagem.nome|slice:":2"|upper }}
+            </div>
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+      <form method="post" action="{% url 'remover_mapa' combate.id mapa.id %}">
+        {% csrf_token %}
+        <button type="submit" style="color:red;">Remover Mapa</button>
+      </form>
+    </div>
+  {% endfor %}
+{% endif %}
+
+<!-- O formulário para adicionar/selecionar mapas aparece sempre -->
+<form method="post" enctype="multipart/form-data" action="{% url 'adicionar_mapa' combate.id %}">
+  {% csrf_token %}
+  <label for="mapa_existente">Selecionar mapa existente:</label>
+  <select name="mapa_existente" id="mapa_existente">
+    <option value="">-- Escolha um mapa --</option>
+    {% for mapa in mapas_globais %}
+      <option value="{{ mapa.id }}">{{ mapa.nome }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" name="usar_existente" value="1">Usar Mapa Selecionado</button>
+  <hr>
+  <strong>Ou envie um novo mapa:</strong>
+  {{ form.as_p }}
+  <button type="submit">Adicionar Novo Mapa</button>
+</form>
+
+
+
+
+<script>
+function drag(event, id) {
+  event.dataTransfer.setData("tokenId", id);
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+  document.querySelectorAll("[id^='mapa-area-']").forEach(function(mapaArea) {
+    mapaArea.addEventListener("dragover", function(e) { e.preventDefault(); });
+    mapaArea.addEventListener("drop", function(e) {
+      e.preventDefault();
+      const tokenId = e.dataTransfer.getData("tokenId");
+      const rect = mapaArea.getBoundingClientRect();
+      const x = e.clientX - rect.left - 20; // centraliza o token
+      const y = e.clientY - rect.top - 20;
+      fetch(`/combate/atualizar-posicao-token/${tokenId}/`, {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": "{{ csrf_token }}",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({x, y})
+      }).then(() => {
+        const token = document.getElementById("token-" + tokenId);
+        token.style.left = x + "px";
+        token.style.top = y + "px";
+      });
+    });
+  });
+});
+</script>
+
 {% endblock %}
+

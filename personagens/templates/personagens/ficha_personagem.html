@@ -2,6 +2,11 @@
 {% load filtros %}
 
 {% block content %}
+{% if personagem.foto %}
+  <div>
+    <img src="{{ personagem.foto.url }}" alt="Foto de {{ personagem.nome }}" style="max-width:150px; max-height:150px;">
+  </div>
+{% endif %}
   <h1>Ficha de {{ personagem.nome }}</h1>
 
   <h2>Habilidades</h2>

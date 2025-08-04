@@ -9,11 +9,19 @@ input[type="checkbox"][name$="DELETE"] {
 }
 </style>
   <h1>Editar Personagem</h1>
-  <form method="post">
+  <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     
     <div>{{ form.nome.label_tag }} {{ form.nome }}</div>
     <div>{{ form.nivel_poder.label_tag }} {{ form.nivel_poder }}</div>
+
+  <div>
+    {{ form.foto.label_tag }} {{ form.foto }}
+    {% if form.foto.value %}
+      <br>
+      <img src="{{ form.foto.value.url }}" alt="Foto atual" style="max-width:100px;">
+    {% endif %}
+  </div>
 
     <h2>Características</h2>
     {% for campo in caracteristicas %}

@@ -7,6 +7,10 @@ from django.utils import timezone
 import random
 from django.views.decorators.http import require_POST
 from django.contrib import messages
+from .models import Mapa
+from .forms import MapaForm
+from django.http import JsonResponse
+import json
 
 def criar_combate(request):
     if request.method == 'POST':
@@ -32,6 +36,9 @@ def detalhes_combate(request, combate_id):
     participantes = Participante.objects.filter(combate=combate).order_by('-iniciativa')
     turnos = Turno.objects.filter(combate=combate).order_by('criado_em')  # ou por ordem
     turno_ativo = turnos.filter(ativo=True).first()
+    mapas_globais = Mapa.objects.filter(combate__isnull=True, criado_por=request.user)
+    mapa = combate.mapas.first()
+    posicoes = PosicaoPersonagem.objects.filter(mapa=mapa) if mapa else []
 
     poderes_disponiveis = Poder.objects.filter(personagem=turno_ativo.personagem) if turno_ativo else []
 
@@ -55,15 +62,27 @@ def detalhes_combate(request, combate_id):
         'participantes': participantes,
         'turnos': turnos,
         'turno_ativo': turno_ativo,
-        'poderes_disponiveis': poderes_disponiveis,  # <-- Corrija aqui!
+        'poderes_disponiveis': poderes_disponiveis,  
         'defesas': defesas_disponiveis,
         'personagens_disponiveis': personagens_disponiveis,
         'pericias': pericias,
         'caracteristicas': caracteristicas,
+        'mapas_globais': mapas_globais,
+        'mapa': mapa,
+        'posicoes': posicoes,
     }
 
     return render(request, 'combate/detalhes_combate.html', context)
-
+@csrf_exempt
+@login_required
+def atualizar_posicao_token(request, token_id):
+    if request.method == "POST":
+        posicao = get_object_or_404(PosicaoPersonagem, id=token_id)
+        data = json.loads(request.body)
+        posicao.x = int(data.get("x", posicao.x))
+        posicao.y = int(data.get("y", posicao.y))
+        posicao.save()
+        return JsonResponse({"status": "ok"})
 
 @require_POST
 def passar_turno(request, combate_id):
@@ -159,6 +178,8 @@ def deletar_combate(request, combate_id):
     return redirect('listar_combates')
 
 
+from .models import PosicaoPersonagem
+
 @require_POST
 @login_required
 def adicionar_participante(request, combate_id):
@@ -166,7 +187,13 @@ def adicionar_participante(request, combate_id):
     personagem_id = request.POST.get('personagem_id')
     personagem = get_object_or_404(Personagem, id=personagem_id, usuario=request.user)
     iniciativa = random.randint(1, 20) + personagem.prontidao
-    Participante.objects.create(personagem=personagem, combate=combate, iniciativa=iniciativa)
+    participante = Participante.objects.create(personagem=personagem, combate=combate, iniciativa=iniciativa)
+
+    # Cria token na posição inicial (exemplo: 10,10) para o mapa ativo
+    mapa = combate.mapas.first()
+    if mapa:
+        PosicaoPersonagem.objects.create(mapa=mapa, participante=participante, x=10, y=10)
+
     return redirect('detalhes_combate', combate_id=combate_id)
 
 
@@ -176,8 +203,117 @@ def remover_participante(request, combate_id, participante_id):
     participante.delete()
     return redirect('detalhes_combate', combate_id=combate_id)
 
+
+@login_required
+def adicionar_mapa(request, combate_id):
+    combate = get_object_or_404(Combate, id=combate_id)
+    mapas_globais = Mapa.objects.filter(combate__isnull=True, criado_por=request.user)
+    form = MapaForm()
+
+    if request.method == 'POST':
+        # Se o usuário clicou em "Usar Mapa Selecionado"
+        if request.POST.get('usar_existente'):
+            mapa_id = request.POST.get('mapa_existente')
+            if mapa_id:
+                mapa = get_object_or_404(Mapa, id=mapa_id, criado_por=request.user, combate__isnull=True)
+                mapa.combate = combate
+                mapa.save()
+
+                # CRIA OS TOKENS PARA TODOS OS PARTICIPANTES JÁ EXISTENTES
+                participantes = Participante.objects.filter(combate=combate)
+                for participante in participantes:
+                    if not PosicaoPersonagem.objects.filter(mapa=mapa, participante=participante).exists():
+                        PosicaoPersonagem.objects.create(mapa=mapa, participante=participante, x=10, y=10)
+
+                return redirect('detalhes_combate', combate_id=combate_id)
+        else:
+            # Se o usuário enviou um novo mapa
+            form = MapaForm(request.POST, request.FILES)
+            if form.is_valid():
+                mapa = form.save(commit=False)
+                mapa.combate = combate
+                mapa.criado_por = request.user
+                mapa.save()
+
+                # CRIA OS TOKENS PARA TODOS OS PARTICIPANTES JÁ EXISTENTES
+                participantes = Participante.objects.filter(combate=combate)
+                for participante in participantes:
+                    if not PosicaoPersonagem.objects.filter(mapa=mapa, participante=participante).exists():
+                        PosicaoPersonagem.objects.create(mapa=mapa, participante=participante, x=10, y=10)
+
+                return redirect('detalhes_combate', combate_id=combate_id)
+
+    return render(request, 'combate/adicionar_mapa.html', {
+        'form': form,
+        'combate': combate,
+        'mapas_globais': mapas_globais,
+    })
+    combate = get_object_or_404(Combate, id=combate_id)
+    mapas_globais = Mapa.objects.filter(combate__isnull=True, criado_por=request.user)
+    form = MapaForm()
+
+    if request.method == 'POST':
+        # Se o usuário clicou em "Usar Mapa Selecionado"
+        if request.POST.get('usar_existente'):
+            mapa_id = request.POST.get('mapa_existente')
+            if mapa_id:
+                mapa = get_object_or_404(Mapa, id=mapa_id, criado_por=request.user, combate__isnull=True)
+                mapa.combate = combate
+                mapa.save()
+                return redirect('detalhes_combate', combate_id=combate_id)
+            else:
+                # Nenhum mapa selecionado, pode mostrar uma mensagem de erro se quiser
+                pass
+        else:
+            # Se o usuário enviou um novo mapa
+            form = MapaForm(request.POST, request.FILES)
+            if form.is_valid():
+                mapa = form.save(commit=False)
+                mapa.combate = combate
+                mapa.criado_por = request.user
+                mapa.save()
+                return redirect('detalhes_combate', combate_id=combate_id)
+
+    return render(request, 'combate/adicionar_mapa.html', {
+        'form': form,
+        'combate': combate,
+        'mapas_globais': mapas_globais,
+    })
+
+@login_required
+def remover_mapa(request, combate_id, mapa_id):
+    mapa = get_object_or_404(Mapa, id=mapa_id, combate_id=combate_id)
+    mapa.combate = None  # Apenas desvincula do combate
+    mapa.save()
+    return redirect('detalhes_combate', combate_id=combate_id)
+
+@login_required
+def adicionar_mapa_global(request):
+    if request.method == 'POST':
+        form = MapaForm(request.POST, request.FILES)
+        if form.is_valid():
+            mapa = form.save(commit=False)
+            mapa.criado_por = request.user
+            mapa.save()
+            return redirect('listar_mapas')
+    else:
+        form = MapaForm()
+    return render(request, 'combate/adicionar_mapa.html', {'form': form})
+
+@login_required
+def remover_mapa_global(request, mapa_id):
+    mapa = get_object_or_404(Mapa, id=mapa_id, combate__isnull=True, criado_por=request.user)
+    mapa.delete()
+    return redirect('listar_mapas')
+
+@login_required
+def listar_mapas(request):
+    mapas = Mapa.objects.filter(combate__isnull=True, criado_por=request.user)
+    return render(request, 'combate/listar_mapas.html', {'mapas': mapas})
+
 @csrf_exempt
 def realizar_ataque(request, combate_id):
+
     if request.method == 'POST':
         turno_ativo = Turno.objects.filter(combate_id=combate_id, ativo=True).first()
         atacante = turno_ativo.personagem

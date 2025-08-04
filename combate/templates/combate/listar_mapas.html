@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h2>Meus Mapas</h2>
+  <a href="{% url 'adicionar_mapa_global' %}">Adicionar Novo Mapa</a>
+  <ul>
+    {% for mapa in mapas %}
+      <li>
+        <strong>{{ mapa.nome }}</strong><br>
+        {% if mapa.imagem %}
+          <img src="{{ mapa.imagem.url }}" alt="{{ mapa.nome }}" style="max-width:200px;">
+        {% endif %}
+        <br>
+        Criado em: {{ mapa.criado_em|date:"d/m/Y H:i" }}
+    <form method="post" action="{% url 'remover_mapa_global' mapa.id %}" style="display:inline;">
+    {% csrf_token %}
+    <button type="submit" style="color:red;">Remover</button>
+    </form>
+      </li>
+    {% empty %}
+      <li>Nenhum mapa cadastrado.</li>
+    {% endfor %}
+  </ul>
+{% endblock %}

@@ -13,6 +13,7 @@ class PersonagemForm(forms.ModelForm):
     class Meta:
         model = Personagem
         fields = [
+            'foto',
             'nome',
             'nivel_poder',
             # Características

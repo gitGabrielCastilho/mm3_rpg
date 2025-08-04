@@ -31,3 +31,16 @@ class Turno(models.Model):
 
     def __str__(self):
         return f"Turno {self.ordem} - {self.personagem.nome}"
+
+class Mapa(models.Model):
+    nome = models.CharField(max_length=100)
+    imagem = models.ImageField(upload_to='mapas/')
+    combate = models.ForeignKey('Combate', on_delete=models.CASCADE, related_name='mapas', blank=True, null=True)  # <-- Torne opcional
+    criado_por = models.ForeignKey('auth.User', on_delete=models.CASCADE)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    
+class PosicaoPersonagem(models.Model):
+    mapa = models.ForeignKey(Mapa, on_delete=models.CASCADE)
+    participante = models.ForeignKey('Participante', on_delete=models.CASCADE)
+    x = models.IntegerField(default=0)
+    y = models.IntegerField(default=0)

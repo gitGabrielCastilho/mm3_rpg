@@ -33,25 +33,24 @@
   </style>
 </head>
 <body>
-  <nav>
-    <a href="/">Home</a>
-
-    {% if user.is_authenticated %}
-      <a href="{% url 'listar_personagens' %}">Meus Personagens</a>
-      <a href="{% url 'criar_personagem' %}">Criar Personagem</a>
-      <a href="{% url 'criar_combate' %}">Novo Combate</a>
-|     <a href="{% url 'listar_combates' %}">Combates</a>
-
-
-      <form action="{% url 'logout' %}" method="post">
-        {% csrf_token %}
-        <button type="submit">Sair</button>
-      </form>
-    {% else %}
-      <a href="{% url 'login' %}">Login</a>
-      <a href="{% url 'cadastrar_usuario' %}">Cadastro</a>
-    {% endif %}
-  </nav>
+<nav>
+  <a href="/">Home</a>
+  {% if user.is_authenticated %}
+    <a href="{% url 'listar_personagens' %}">Meus Personagens</a>
+    <a href="{% url 'criar_personagem' %}">Criar Personagem</a>
+    <a href="{% url 'criar_combate' %}">Novo Combate</a>
+    | <a href="{% url 'listar_combates' %}">Combates</a>
+    <a href="{% url 'listar_mapas' %}">Meus Mapas</a>
+    <a href="{% url 'adicionar_mapa_global' %}">Adicionar Mapa</a>
+    <form action="{% url 'logout' %}" method="post">
+      {% csrf_token %}
+      <button type="submit">Sair</button>
+    </form>
+  {% else %}
+    <a href="{% url 'login' %}">Login</a>
+    <a href="{% url 'cadastrar_usuario' %}">Cadastro</a>
+  {% endif %}
+</nav>
   <hr>
   {% if messages %}
   <ul>

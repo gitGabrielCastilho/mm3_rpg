@@ -24,6 +24,7 @@ class Personagem(models.Model):
     nome = models.CharField(max_length=100)
     usuario = models.ForeignKey(User, on_delete=models.CASCADE)
     nivel_poder = models.IntegerField(default=10)
+    foto = models.ImageField(upload_to='personagens_fotos/', blank=True, null=True)
 
     # Características
     forca = models.IntegerField(default=0)
