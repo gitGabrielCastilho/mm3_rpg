@@ -9,6 +9,7 @@ urlpatterns = [
     path('', home, name='home'),
     path('combate/', include('combate.urls')),
     path('personagens/', include('personagens.urls')),
+    path('salas/', include('salas.urls')),
     path('accounts/', include('django.contrib.auth.urls')),
     path('accounts/cadastro/', cadastrar_usuario, name='cadastrar_usuario'),
 ]

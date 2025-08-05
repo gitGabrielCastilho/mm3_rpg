@@ -2,6 +2,7 @@ from django.db import models
 from personagens.models import Personagem
 
 class Combate(models.Model):
+    sala = models.ForeignKey('salas.Sala', on_delete=models.CASCADE, related_name='combates', null=True, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
     ativo = models.BooleanField(default=True)
 

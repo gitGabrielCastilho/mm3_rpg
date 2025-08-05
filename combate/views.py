@@ -7,17 +7,21 @@ from django.utils import timezone
 import random
 from django.views.decorators.http import require_POST
 from django.contrib import messages
-from .models import Mapa
+from .models import Mapa, PosicaoPersonagem
 from .forms import MapaForm
+from salas.models import Sala
 from django.http import JsonResponse
 import json
 
-def criar_combate(request):
+def criar_combate(request, sala_id):
+    sala = get_object_or_404(Sala, id=sala_id, game_master=request.user)
+    if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
+        return redirect('home')
     if request.method == 'POST':
         personagem_ids = request.POST.getlist('personagens')
         personagens = Personagem.objects.filter(id__in=personagem_ids)
 
-        combate = Combate.objects.create(ativo=True)
+        combate = Combate.objects.create(sala=sala, ativo=True)
 
         ordem = []
         for personagem in personagens:
@@ -105,12 +109,19 @@ def passar_turno(request, combate_id):
     return redirect('detalhes_combate', combate_id=combate.id)
 
 
-def listar_combates(request):
-    combates = Combate.objects.all().order_by('-criado_em')
-    return render(request, 'combate/listar_combates.html', {'combates': combates})
+@login_required
+def listar_combates(request, sala_id):
+    sala = get_object_or_404(Sala, id=sala_id)
+    # Verifica se o usuário está na sala (GM ou jogador)
+    if sala.game_master != request.user and request.user not in sala.jogadores.all():
+        return redirect('home')
+    combates = Combate.objects.filter(sala=sala).order_by('-criado_em')
+    return render(request, 'combate/listar_combates.html', {'combates': combates, 'sala': sala})
 
 @require_POST
 def iniciar_turno(request, combate_id):
+    if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
+        return redirect('home')
     combate = get_object_or_404(Combate, id=combate_id)
     participantes = Participante.objects.filter(combate=combate).order_by('-iniciativa')
     if not participantes.exists():
@@ -161,28 +172,34 @@ def avancar_turno(request, combate_id):
 
 @require_POST
 def finalizar_combate(request, combate_id):
+    if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
+        return redirect('home')
     combate = get_object_or_404(Combate, id=combate_id)
     combate.ativo = False
     combate.save()
 
     Turno.objects.filter(combate=combate, ativo=True).update(ativo=False)
     messages.success(request, "Combate finalizado.")
-    return redirect('listar_combates')
+    return redirect('listar_combates', sala_id=combate.sala.id)
 
 
 
 @login_required
 def deletar_combate(request, combate_id):
     combate = get_object_or_404(Combate, id=combate_id)
-    combate.delete()
-    return redirect('listar_combates')
+    sala_id = combate.sala.id
+    if request.method == 'POST':
+        combate.delete()
+        return redirect('listar_combates', sala_id)
+    return render(request, 'combate/deletar_combate.html', {'combate': combate})
 
 
-from .models import PosicaoPersonagem
 
 @require_POST
 @login_required
 def adicionar_participante(request, combate_id):
+    if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
+        return redirect('home')
     combate = get_object_or_404(Combate, id=combate_id)
     personagem_id = request.POST.get('personagem_id')
     personagem = get_object_or_404(Personagem, id=personagem_id, usuario=request.user)
@@ -199,6 +216,8 @@ def adicionar_participante(request, combate_id):
 
 @require_POST
 def remover_participante(request, combate_id, participante_id):
+    if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
+        return redirect('home')
     participante = get_object_or_404(Participante, id=participante_id, combate_id=combate_id)
     participante.delete()
     return redirect('detalhes_combate', combate_id=combate_id)
@@ -206,6 +225,8 @@ def remover_participante(request, combate_id, participante_id):
 
 @login_required
 def adicionar_mapa(request, combate_id):
+    if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
+        return redirect('home')
     combate = get_object_or_404(Combate, id=combate_id)
     mapas_globais = Mapa.objects.filter(combate__isnull=True, criado_por=request.user)
     form = MapaForm()
@@ -248,40 +269,12 @@ def adicionar_mapa(request, combate_id):
         'combate': combate,
         'mapas_globais': mapas_globais,
     })
-    combate = get_object_or_404(Combate, id=combate_id)
-    mapas_globais = Mapa.objects.filter(combate__isnull=True, criado_por=request.user)
-    form = MapaForm()
 
-    if request.method == 'POST':
-        # Se o usuário clicou em "Usar Mapa Selecionado"
-        if request.POST.get('usar_existente'):
-            mapa_id = request.POST.get('mapa_existente')
-            if mapa_id:
-                mapa = get_object_or_404(Mapa, id=mapa_id, criado_por=request.user, combate__isnull=True)
-                mapa.combate = combate
-                mapa.save()
-                return redirect('detalhes_combate', combate_id=combate_id)
-            else:
-                # Nenhum mapa selecionado, pode mostrar uma mensagem de erro se quiser
-                pass
-        else:
-            # Se o usuário enviou um novo mapa
-            form = MapaForm(request.POST, request.FILES)
-            if form.is_valid():
-                mapa = form.save(commit=False)
-                mapa.combate = combate
-                mapa.criado_por = request.user
-                mapa.save()
-                return redirect('detalhes_combate', combate_id=combate_id)
-
-    return render(request, 'combate/adicionar_mapa.html', {
-        'form': form,
-        'combate': combate,
-        'mapas_globais': mapas_globais,
-    })
 
 @login_required
 def remover_mapa(request, combate_id, mapa_id):
+    if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
+        return redirect('home')
     mapa = get_object_or_404(Mapa, id=mapa_id, combate_id=combate_id)
     mapa.combate = None  # Apenas desvincula do combate
     mapa.save()
@@ -289,6 +282,8 @@ def remover_mapa(request, combate_id, mapa_id):
 
 @login_required
 def adicionar_mapa_global(request):
+    if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
+        return redirect('home')
     if request.method == 'POST':
         form = MapaForm(request.POST, request.FILES)
         if form.is_valid():
@@ -302,12 +297,16 @@ def adicionar_mapa_global(request):
 
 @login_required
 def remover_mapa_global(request, mapa_id):
+    if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
+        return redirect('home')
     mapa = get_object_or_404(Mapa, id=mapa_id, combate__isnull=True, criado_por=request.user)
     mapa.delete()
     return redirect('listar_mapas')
 
 @login_required
 def listar_mapas(request):
+    if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
+        return redirect('home')
     mapas = Mapa.objects.filter(combate__isnull=True, criado_por=request.user)
     return render(request, 'combate/listar_mapas.html', {'mapas': mapas})
 

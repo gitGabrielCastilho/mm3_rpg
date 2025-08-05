@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from salas.models import Sala
 
 CASTING_ABILITY_CHOICES = [
     ('forca', 'Força'),
@@ -177,3 +178,9 @@ class Poder(models.Model):
 
     def __str__(self):
         return f"{self.nome} ({self.tipo}, {self.modo})"
+ 
+    
+class PerfilUsuario(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    tipo = models.CharField(max_length=20, choices=[('jogador', 'Jogador'), ('game_master', 'Game Master')])
+    sala_atual = models.ForeignKey(Sala, on_delete=models.SET_NULL, null=True, blank=True)

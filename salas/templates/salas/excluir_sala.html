@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Excluir Sala</h2>
+<p>Tem certeza que deseja excluir a sala "{{ sala.nome }}"?</p>
+<form method="post">
+  {% csrf_token %}
+  <button type="submit">Confirmar Exclusão</button>
+  <a href="{% url 'listar_salas' %}">Cancelar</a>
+</form>
+{% endblock %}

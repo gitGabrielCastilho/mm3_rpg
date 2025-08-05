@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Minhas Salas</h2>
+<ul>
+  {% for sala in salas %}
+    <li>
+      {{ sala.nome }} ({{ sala.codigo }})
+      <a href="{% url 'entrar_sala' sala.id %}">Entrar</a>
+      <form method="post" action="{% url 'excluir_sala' sala.id %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" onclick="return confirm('Excluir esta sala?')">Excluir</button>
+      </form>
+    </li>
+  {% empty %}
+    <li>Você não criou nenhuma sala.</li>
+  {% endfor %}
+</ul>
+{% endblock %}
