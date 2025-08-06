@@ -184,3 +184,20 @@ class PerfilUsuario(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     tipo = models.CharField(max_length=20, choices=[('jogador', 'Jogador'), ('game_master', 'Game Master')])
     sala_atual = models.ForeignKey(Sala, on_delete=models.SET_NULL, null=True, blank=True)
+
+
+class Item(models.Model):
+    nome = models.CharField(max_length=100)
+    raridade = models.CharField(max_length=50)
+    descricao = models.TextField()
+    preco = models.PositiveIntegerField(default=0)
+    tipo = models.CharField(max_length=50, blank=True)  # se você adicionou
+
+    def __str__(self):
+        return self.nome
+
+class Inventario(models.Model):
+    personagem = models.OneToOneField('Personagem', on_delete=models.CASCADE, related_name='inventario')
+    itens = models.ManyToManyField(Item, blank=True)
+    ouro = models.PositiveIntegerField(default=0)
+    dragon_shard = models.PositiveIntegerField(default=0)

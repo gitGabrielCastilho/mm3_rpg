@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from .forms import CadastroForm, PersonagemForm, PoderForm
-from .models import Personagem, Poder
+from .forms import CadastroForm, PersonagemForm, PoderForm, InventarioForm
+from .models import Personagem, Poder, Inventario
 from django.core.exceptions import ValidationError
 from django.forms import inlineformset_factory
 
@@ -31,22 +31,27 @@ def cadastrar_usuario(request):
 def criar_personagem(request):
     if request.method == 'POST':
         form = PersonagemForm(request.POST, request.FILES)
-        if form.is_valid():
+        inventario_form = InventarioForm(request.POST)
+        formset = PoderFormSet(request.POST, request.FILES, prefix='poder_set')
+        if form.is_valid() and inventario_form.is_valid() and formset.is_valid():
             personagem = form.save(commit=False)
             personagem.usuario = request.user
             personagem.save()
-            formset = PoderFormSet(request.POST, request.FILES, instance=personagem, prefix='poder_set')
-            if formset.is_valid():
-                formset.save()
-                return redirect('listar_personagens')
-        else:
-            formset = PoderFormSet(request.POST, queryset=Poder.objects.none(), prefix='poder_set')
+            inventario = inventario_form.save(commit=False)
+            inventario.personagem = personagem
+            inventario.save()
+            inventario_form.save_m2m()
+            formset.instance = personagem
+            formset.save()
+            return redirect('listar_personagens')
     else:
         form = PersonagemForm()
-        formset = PoderFormSet(queryset=Poder.objects.none(), prefix='poder_set')
+        inventario_form = InventarioForm()
+        formset = PoderFormSet(prefix='poder_set')
 
     context = {
         'form': form,
+        'inventario_form': inventario_form,
         'formset': formset,
         'caracteristicas': [
             'forca', 'vigor', 'destreza', 'agilidade', 'luta', 'inteligencia', 'prontidao', 'presenca'
@@ -71,20 +76,25 @@ def listar_personagens(request):
 @login_required
 def editar_personagem(request, personagem_id):
     personagem = get_object_or_404(Personagem, id=personagem_id, usuario=request.user)
+    # Garante que o inventário existe
+    inventario, created = Inventario.objects.get_or_create(personagem=personagem)
     if request.method == 'POST':
         form = PersonagemForm(request.POST, request.FILES, instance=personagem)
+        inventario_form = InventarioForm(request.POST, instance=inventario)
         formset = PoderFormSet(request.POST, request.FILES, instance=personagem, prefix='poder_set')
-        if form.is_valid() and formset.is_valid():
+        if form.is_valid() and inventario_form.is_valid() and formset.is_valid():
             form.save()
+            inventario_form.save()
             formset.save()
             return redirect('listar_personagens')
-        # NÃO sobrescreva form e formset aqui!
     else:
         form = PersonagemForm(instance=personagem)
+        inventario_form = InventarioForm(instance=inventario)
         formset = PoderFormSet(instance=personagem, prefix='poder_set')
 
     context = {
         'form': form,
+        'inventario_form': inventario_form,
         'formset': formset,
         'caracteristicas': [
             'forca', 'vigor', 'destreza', 'agilidade', 'luta', 'inteligencia', 'prontidao', 'presenca'

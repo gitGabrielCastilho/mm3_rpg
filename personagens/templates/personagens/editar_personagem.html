@@ -67,6 +67,7 @@ input[type="checkbox"][name$="DELETE"] {
   </div>
 {% endfor %}
 
+
 <!-- ...campos do formulário... -->
 
 {% if form.non_field_errors %}
@@ -89,6 +90,42 @@ input[type="checkbox"][name$="DELETE"] {
 
     <button type="button" onclick="adicionarPoder()">Adicionar Poder</button>
     <button type="button" onclick="removerPoder()">Remover Último Poder</button>
+    <br><br>
+<h2>Inventário</h2>
+<div>
+  Ouro: {{ inventario_form.ouro }}
+</div>
+<div>
+  Dragon shard: {{ inventario_form.dragon_shard }}
+</div>
+
+<table border="1">
+  <thead>
+    <tr>
+      <th>Selecionar</th>
+      <th>Nome</th>
+      <th>Tipo</th>
+      <th>Raridade</th>
+      <th>Descrição</th>
+      <th>Preço</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in inventario_form.fields.itens.queryset %}
+      <tr>
+        <td>
+          <input type="checkbox" name="itens" value="{{ item.id }}"
+            {% if item in inventario_form.instance.itens.all %}checked{% endif %}>
+        </td>
+        <td>{{ item.nome }}</td>
+        <td>{{ item.tipo }}</td>
+        <td>{{ item.raridade }}</td>
+        <td>{{ item.descricao }}</td>
+        <td>{{ item.preco }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
     <br><br>
     <input type="submit" value="Salvar Alterações">
   </form>
