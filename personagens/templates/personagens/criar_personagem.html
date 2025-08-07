@@ -98,34 +98,45 @@
 <div>
   Dragon shard: {{ inventario_form.dragon_shard }}
 </div>
-
-<table border="1">
-  <thead>
-    <tr>
-      <th>Selecionar</th>
-      <th>Nome</th>
-      <th>Tipo</th>
-      <th>Raridade</th>
-      <th>Descrição</th>
-      <th>Preço</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for item in inventario_form.fields.itens.queryset %}
+<input type="text" id="busca-item" placeholder="Buscar por nome...">
+<select id="filtro-raridade">
+  <option value="">Todas as raridades</option>
+  <option value="common">Comum</option>
+  <option value="uncommon">Incomum</option>
+  <option value="rare">Rara</option>
+  <option value="very rare">Muito Rara</option>
+  <option value="legendary">Lendária</option>
+</select>
+<div style="max-height: 350px; overflow-y: auto;">
+  <table id="tabela-itens" border="1" style="width:100%;">
+    <thead>
       <tr>
-        <td>
-          <input type="checkbox" name="itens" value="{{ item.id }}"
-            {% if item in inventario_form.instance.itens.all %}checked{% endif %}>
-        </td>
-        <td>{{ item.nome }}</td>
-        <td>{{ item.tipo }}</td>
-        <td>{{ item.raridade }}</td>
-        <td>{{ item.descricao }}</td>
-        <td>{{ item.preco }}</td>
+        <th>Selecionar</th>
+        <th>Nome</th>
+        <th>Tipo</th>
+        <th>Raridade</th>
+        <th>Descrição</th>
+        <th>Preço</th>
       </tr>
-    {% endfor %}
-  </tbody>
-</table>
+    </thead>
+    <tbody>
+      {% for item in inventario_form.fields.itens.queryset %}
+        <tr>
+          <td>
+            <input type="checkbox" name="itens" value="{{ item.id }}"
+              {% if item in inventario_form.instance.itens.all %}checked{% endif %}>
+          </td>
+          <td class="nome-item">{{ item.nome }}</td>
+          <td>{{ item.tipo }}</td>
+          <td class="raridade-item">{{ item.raridade }}</td>
+          <td>{{ item.descricao }}</td>
+          <td>{{ item.preco }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
    <br><br>
     <input type="submit" value="Salvar">
 
@@ -179,5 +190,32 @@ function removerPoder() {
   }
 }
 </script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const busca = document.getElementById('busca-item');
+  const filtro = document.getElementById('filtro-raridade');
+  const linhas = document.querySelectorAll('#tabela-itens tbody tr');
 
+  function filtrar() {
+    const texto = busca.value.toLowerCase();
+    const raridade = filtro.value.toLowerCase();
+    let mostrados = 0;
+    linhas.forEach(tr => {
+      const nome = tr.querySelector('.nome-item').textContent.toLowerCase();
+      const rar = tr.querySelector('.raridade-item').textContent.toLowerCase();
+      const matchNome = nome.includes(texto);
+      const matchRaridade = !raridade || rar === raridade;
+      if (matchNome && matchRaridade) {
+        tr.style.display = '';
+      } else {
+        tr.style.display = 'none';
+      }
+    });
+  }
+
+  busca.addEventListener('input', filtrar);
+  filtro.addEventListener('change', filtrar);
+  filtrar(); // mostrar só os 10 primeiros ao carregar
+});
+</script>
 {% endblock %}
