@@ -29,6 +29,7 @@ class Personagem(models.Model):
     usuario = models.ForeignKey(User, on_delete=models.CASCADE)
     nivel_poder = models.IntegerField(default=10)
     foto = models.ImageField(upload_to='personagens_fotos/', blank=True, null=True)
+    vantagens = models.ManyToManyField('Vantagem', blank=True)
 
     # Características
     forca = models.IntegerField(default=0)
@@ -183,6 +184,11 @@ class Poder(models.Model):
         'itens.Item', on_delete=models.SET_NULL, null=True, blank=True,
         help_text="Se for poder de item, selecione o item de origem."
     )
+    de_vantagem = models.BooleanField("Poder de Vantagem?", default=False)
+    vantagem_origem = models.ForeignKey(
+        'Vantagem', on_delete=models.SET_NULL, null=True, blank=True,
+        help_text="Se for poder de vantagem, selecione a vantagem de origem."
+    )
     def __str__(self):
         return f"{self.nome} ({self.tipo}, {self.modo})"
  
@@ -200,3 +206,10 @@ class Inventario(models.Model):
     itens = models.ManyToManyField(Item, blank=True)
     ouro = models.PositiveIntegerField(default=0)
     dragon_shard = models.PositiveIntegerField(default=0)
+
+class Vantagem(models.Model):
+    nome = models.CharField(max_length=100, unique=True)
+    descricao = models.TextField()
+
+    def __str__(self):
+        return self.nome

@@ -15,7 +15,17 @@
       <li><strong>{{ campo|capfirst }}:</strong> {{ personagem|attr:campo }}</li>
     {% endfor %}
   </ul>
-
+<h2>Vantagens</h2>
+<ul>
+  {% for vantagem in personagem.vantagens.all %}
+    <li>
+      <strong>{{ vantagem.nome }}</strong>
+      {% if vantagem.descricao %} — {{ vantagem.descricao }}{% endif %}
+    </li>
+  {% empty %}
+    <li>Nenhuma vantagem selecionada.</li>
+  {% endfor %}
+</ul>
   <h2>Defesas</h2>
   <ul>
     {% for campo in categorias.defesas %}

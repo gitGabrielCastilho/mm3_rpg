@@ -8,12 +8,12 @@ input[type="checkbox"][name$="DELETE"] {
   display: none;
 }
 </style>
-  <h1>Editar Personagem</h1>
-  <form method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-    
-    <div>{{ form.nome.label_tag }} {{ form.nome }}</div>
-    <div>{{ form.nivel_poder.label_tag }} {{ form.nivel_poder }}</div>
+<h1>Editar Personagem</h1>
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+
+  <div>{{ form.nome.label_tag }} {{ form.nome }}</div>
+  <div>{{ form.nivel_poder.label_tag }} {{ form.nivel_poder }}</div>
 
   <div>
     {{ form.foto.label_tag }} {{ form.foto }}
@@ -23,29 +23,60 @@ input[type="checkbox"][name$="DELETE"] {
     {% endif %}
   </div>
 
-    <h2>Características</h2>
-    {% for campo in caracteristicas %}
-      <div>
-        {% with field=form|lookup:campo %}
-          {{ field.label_tag }} {{ field }}
-        {% endwith %}
-      </div>
-    {% endfor %}
+  <h2>Características</h2>
+  {% for campo in caracteristicas %}
+    <div>
+      {% with field=form|lookup:campo %}
+        {{ field.label_tag }} {{ field }}
+      {% endwith %}
+    </div>
+  {% endfor %}
 
-    <h2>Defesas</h2>
-    {% for campo in defesas %}
-      <div>
-        {% with field=form|lookup:campo %}
-          {{ field.label_tag }} {{ field }}
-        {% endwith %}
-      </div>
-    {% endfor %}
+  <h2>Vantagens</h2>
+  <input type="text" id="busca-vantagem" placeholder="Buscar vantagem...">
+    <label>
+    <input type="checkbox" id="filtro-vantagem-selecionada">
+    Mostrar apenas vantagens já selecionadas
+  </label>
+  <div style="max-height: 250px; overflow-y: auto;">
+    <table id="tabela-vantagens" border="1" style="width:100%;">
+      <thead>
+        <tr>
+          <th>Selecionar</th>
+          <th>Nome</th>
+          <th>Descrição</th>
+        </tr>
+      </thead>
+      <tbody>
+{% with vantagens_selecionadas=form.vantagens.value %}
+{% for vantagem in form.fields.vantagens.queryset %}
+  <tr>
+    <td>
+      <input type="checkbox" name="vantagens" value="{{ vantagem.id }}"
+        {% if vantagens_selecionadas and vantagem.id|stringformat:"s" in vantagens_selecionadas|stringformat:"s" %}checked{% endif %}>
+    </td>
+    <td class="nome-vantagem">{{ vantagem.nome }}</td>
+    <td>{{ vantagem.descricao }}</td>
+  </tr>
+{% endfor %}
+{% endwith %}
+      </tbody>
+    </table>
+  </div>
 
-    <h2>Perícias</h2>
+  <h2>Defesas</h2>
+  {% for campo in defesas %}
+    <div>
+      {% with field=form|lookup:campo %}
+        {{ field.label_tag }} {{ field }}
+      {% endwith %}
+    </div>
+  {% endfor %}
+
+  <h2>Perícias</h2>
   <div>
-  {{ form.especialidade_casting_ability.label_tag }} {{ form.especialidade_casting_ability }}
-</div>
-
+    {{ form.especialidade_casting_ability.label_tag }} {{ form.especialidade_casting_ability }}
+  </div>
   {% for campo in pericias %}
     {% with field=form|lookup:campo %}
       <div>{{ field.label_tag }} {{ field }}</div>
@@ -56,56 +87,68 @@ input[type="checkbox"][name$="DELETE"] {
 <div id="poderes-formset">
   {{ formset.management_form }}
   {% for form in formset %}
-    <div class="poder-form">
-      {% for field in form.hidden_fields %}
-        {{ field }}
+    <div class="poder-form" style="border:1px solid #ccc; margin-bottom:1em; padding:1em;">
+      {% for hidden in form.hidden_fields %}
+        {{ hidden }}
       {% endfor %}
-      {% for field in form.visible_fields %}
-        {% if field.name != 'DELETE' %}
-          {{ field.label_tag }} {{ field }}
-        {% endif %}
-      {% endfor %}
+      <div>
+        {{ form.nome.label_tag }} {{ form.nome }}
+      </div>
+      <div>
+        {{ form.tipo.label_tag }} {{ form.tipo }}
+        {{ form.modo.label_tag }} {{ form.modo }}
+        {{ form.nivel_efeito.label_tag }} {{ form.nivel_efeito }}
+        {{ form.bonus_ataque.label_tag }} {{ form.bonus_ataque }}
+        {{ form.defesa_ativa.label_tag }} {{ form.defesa_ativa }}
+        {{ form.defesa_passiva.label_tag }} {{ form.defesa_passiva }}
+        {{ form.casting_ability.label_tag }} {{ form.casting_ability }}
+      </div>
+      <div>
+        {{ form.de_item.label_tag }} {{ form.de_item }}
+        {{ form.item_origem.label_tag }} {{ form.item_origem }}
+      </div>
+      <div>
+        {{ form.de_vantagem.label_tag }} {{ form.de_vantagem }}
+        {{ form.vantagem_origem.label_tag }} {{ form.vantagem_origem }}
+      </div>
       {% if form.DELETE %}
-        {{ form.DELETE }}
+        <div style="margin-top: 1em;">
+          {{ form.DELETE }} <button type="button" onclick="removerPoder()">Remover</button>
+        </div>
       {% endif %}
     </div>
   {% endfor %}
 </div>
 
+  {% if form.non_field_errors %}
+    <div style="color: red; margin-bottom: 1em;">
+      {% for error in form.non_field_errors %}
+        <div>{{ error }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
 
+  {% if formset.non_form_errors %}
+    <div style="color: red; margin-bottom: 1em;">
+      {% for error in formset.non_form_errors %}
+        <div>{{ error }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
 
-<!-- ...campos do formulário... -->
+  <button type="button" onclick="adicionarPoder()">Adicionar Poder</button>
+  <button type="button" onclick="removerPoder()">Remover Último Poder</button>
+  <br><br>
 
-{% if form.non_field_errors %}
-  <div style="color: red; margin-bottom: 1em;">
-    {% for error in form.non_field_errors %}
-      <div>{{ error }}</div>
-    {% endfor %}
+  <h2>Inventário</h2>
+  <div>
+    Ouro: {{ inventario_form.ouro }}
   </div>
-{% endif %}
-
-{% if formset.non_form_errors %}
-  <div style="color: red; margin-bottom: 1em;">
-    {% for error in formset.non_form_errors %}
-      <div>{{ error }}</div>
-    {% endfor %}
+  <div>
+    Dragon shard: {{ inventario_form.dragon_shard }}
   </div>
-{% endif %}
-
-</div>
-
-    <button type="button" onclick="adicionarPoder()">Adicionar Poder</button>
-    <button type="button" onclick="removerPoder()">Remover Último Poder</button>
-    <br><br>
-<h2>Inventário</h2>
-<div>
-  Ouro: {{ inventario_form.ouro }}
-</div>
-<div>
-  Dragon shard: {{ inventario_form.dragon_shard }}
-</div>
-<input type="text" id="busca-item" placeholder="Buscar por nome...">
-<select id="filtro-raridade">
+  <input type="text" id="busca-item" placeholder="Buscar por nome...">
+  <select id="filtro-raridade">
   <option value="">All rarities</option>
   <option value="Common">Common</option>
   <option value="Uncommon">Uncommon</option>
@@ -151,43 +194,43 @@ input[type="checkbox"][name$="DELETE"] {
   <option value="Space Vehicle">Space Vehicle</option>
   <option value="Idol/Relic">Idol/Relic</option>
   <option value="Other">Other</option>
-</select>
-<label>
-  <input type="checkbox" id="filtro-possuido">
-  Mostrar apenas itens já possuídos
-</label>
-<div style="max-height: 350px; overflow-y: auto;">
-  <table id="tabela-itens" border="1" style="width:100%;">
-    <thead>
-      <tr>
-        <th>Selecionar</th>
-        <th>Nome</th>
-        <th>Tipo</th>
-        <th>Raridade</th>
-        <th>Descrição</th>
-        <th>Preço</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in inventario_form.fields.itens.queryset %}
+  </select>
+  <label>
+    <input type="checkbox" id="filtro-possuido">
+    Mostrar apenas itens já possuídos
+  </label>
+  <div style="max-height: 350px; overflow-y: auto;">
+    <table id="tabela-itens" border="1" style="width:100%;">
+      <thead>
         <tr>
-          <td>
-            <input type="checkbox" name="itens" value="{{ item.id }}"
-              {% if item in inventario_form.instance.itens.all %}checked{% endif %}>
-          </td>
-          <td class="nome-item">{{ item.nome }}</td>
-          <td>{{ item.tipo }}</td>
-          <td class="raridade-item">{{ item.raridade }}</td>
-          <td>{{ item.descricao }}</td>
-          <td>{{ item.preco }}</td>
+          <th>Selecionar</th>
+          <th>Nome</th>
+          <th>Tipo</th>
+          <th>Raridade</th>
+          <th>Descrição</th>
+          <th>Preço</th>
         </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-    <br><br>
-    <input type="submit" value="Salvar Alterações">
-  </form>
+      </thead>
+      <tbody>
+        {% for item in inventario_form.fields.itens.queryset %}
+          <tr>
+            <td>
+              <input type="checkbox" name="itens" value="{{ item.id }}"
+                {% if item in inventario_form.instance.itens.all %}checked{% endif %}>
+            </td>
+            <td class="nome-item">{{ item.nome }}</td>
+            <td>{{ item.tipo }}</td>
+            <td class="raridade-item">{{ item.raridade }}</td>
+            <td>{{ item.descricao }}</td>
+            <td>{{ item.preco }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <br><br>
+  <input type="submit" value="Salvar Alterações">
+</form>
 
 <script>
 function adicionarPoder() {
@@ -204,11 +247,14 @@ function adicionarPoder() {
   const newFormHtml = emptyFormHtml.replace(/__prefix__/g, formIdx);
 
   const wrapper = document.createElement('div');
-  wrapper.classList.add('poder-form'); // <-- Adicione esta linha!
+  wrapper.classList.add('poder-form');
   wrapper.innerHTML = newFormHtml;
   formsetDiv.appendChild(wrapper);
 
   totalFormsInput.value = formIdx + 1;
+
+  // Atualiza campos de origem para o novo poder
+  atualizarCamposOrigem(wrapper);
 }
 </script>
 
@@ -272,6 +318,80 @@ document.addEventListener('DOMContentLoaded', function() {
   filtroTipo.addEventListener('change', filtrar);
   filtroPossuido.addEventListener('change', filtrar);
   filtrar();
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const busca = document.getElementById('busca-vantagem');
+  const filtroSelecionada = document.getElementById('filtro-vantagem-selecionada');
+  const linhas = document.querySelectorAll('#tabela-vantagens tbody tr');
+
+  function filtrar() {
+    const texto = busca.value.toLowerCase();
+    const soSelecionada = filtroSelecionada.checked;
+
+    linhas.forEach(tr => {
+      const nome = tr.querySelector('.nome-vantagem').textContent.toLowerCase();
+      const checkbox = tr.querySelector('input[type="checkbox"][name="vantagens"]');
+      const selecionada = checkbox && checkbox.checked;
+
+      const matchNome = nome.includes(texto);
+      const matchSelecionada = !soSelecionada || selecionada;
+
+      if (matchNome && matchSelecionada) {
+        tr.style.display = '';
+      } else {
+        tr.style.display = 'none';
+      }
+    });
+  }
+
+  busca.addEventListener('input', filtrar);
+  filtroSelecionada.addEventListener('change', filtrar);
+  linhas.forEach(tr => {
+    const checkbox = tr.querySelector('input[type="checkbox"][name="vantagens"]');
+    if (checkbox) checkbox.addEventListener('change', filtrar);
+  });
+  filtrar();
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  function atualizarCamposOrigem(poderForm) {
+    const deItem = poderForm.querySelector('input[type="checkbox"][name$="de_item"]');
+    const deVantagem = poderForm.querySelector('input[type="checkbox"][name$="de_vantagem"]');
+    // const itemOrigem = poderForm.querySelector('select[name$="item_origem"]');
+    // const vantagemOrigem = poderForm.querySelector('select[name$="vantagem_origem"]');
+    // const itemOrigemDiv = itemOrigem ? itemOrigem.parentElement : null;
+    // const vantagemOrigemDiv = vantagemOrigem ? vantagemOrigem.parentElement : null;
+
+    // REMOVA OU COMENTE AS LINHAS ABAIXO:
+    // if (deItem && itemOrigemDiv) {
+    //   itemOrigemDiv.style.display = deItem.checked ? '' : 'none';
+    // }
+    // if (deVantagem && vantagemOrigemDiv) {
+    //   vantagemOrigemDiv.style.display = deVantagem.checked ? '' : 'none';
+    // }
+
+    // Impede marcar ambos ao mesmo tempo
+    if (deItem && deVantagem) {
+      deItem.addEventListener('change', function() {
+        if (deItem.checked) deVantagem.checked = false;
+      });
+      deVantagem.addEventListener('change', function() {
+        if (deVantagem.checked) deItem.checked = false;
+      });
+    }
+  }
+
+  document.querySelectorAll('.poder-form').forEach(function(poderForm) {
+    atualizarCamposOrigem(poderForm);
+    // Atualiza ao mudar checkboxes
+    const deItem = poderForm.querySelector('input[type="checkbox"][name$="de_item"]');
+    const deVantagem = poderForm.querySelector('input[type="checkbox"][name$="de_vantagem"]');
+    if (deItem) deItem.addEventListener('change', function() { atualizarCamposOrigem(poderForm); });
+    if (deVantagem) deVantagem.addEventListener('change', function() { atualizarCamposOrigem(poderForm); });
+  });
 });
 </script>
 {% endblock %}

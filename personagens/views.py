@@ -43,12 +43,22 @@ def criar_personagem(request):
             inventario.save()
             inventario_form.save_m2m()
             poderes = formset.save(commit=False)
+
+            # Coleta vantagens selecionadas manualmente
+            vantagens_ids = set(request.POST.getlist('vantagens'))
+            personagem.vantagens.set(vantagens_ids)
+            # Salva os poderes e coleta vantagens de origem dos poderes
             for poder in poderes:
                 poder.personagem = personagem
                 poder.save()
-                # Adiciona item ao inventário se for poder de item
+                if getattr(poder, 'de_vantagem', False) and getattr(poder, 'vantagem_origem', None):
+                    vantagens_ids.add(str(poder.vantagem_origem.id))
                 if getattr(poder, 'de_item', False) and getattr(poder, 'item_origem', None):
                     inventario.itens.add(poder.item_origem)
+
+            # Salva todas as vantagens (sem duplicidade)
+            personagem.vantagens.set(vantagens_ids)
+
             formset.save_m2m()
             return redirect('listar_personagens')
     else:
@@ -81,7 +91,6 @@ def listar_personagens(request):
 
 
 @login_required
-@login_required
 def editar_personagem(request, personagem_id):
     personagem = get_object_or_404(Personagem, id=personagem_id, usuario=request.user)
     inventario, created = Inventario.objects.get_or_create(personagem=personagem)
@@ -93,12 +102,26 @@ def editar_personagem(request, personagem_id):
             personagem = form.save()
             inventario = inventario_form.save()
             poderes = formset.save(commit=False)
+
+            # Limpa itens de origem antes de atualizar
+            inventario.itens.clear()
+
+            # Coleta vantagens selecionadas manualmente
+            vantagens_ids = set(request.POST.getlist('vantagens'))
+
             for poder in poderes:
                 poder.personagem = personagem
                 poder.save()
+                # Adiciona vantagem ao personagem se for poder de vantagem
+                if getattr(poder, 'de_vantagem', False) and getattr(poder, 'vantagem_origem', None):
+                    vantagens_ids.add(str(poder.vantagem_origem.id))
                 # Adiciona item ao inventário se for poder de item
                 if getattr(poder, 'de_item', False) and getattr(poder, 'item_origem', None):
                     inventario.itens.add(poder.item_origem)
+
+            # Salva todas as vantagens (sem duplicidade)
+            personagem.vantagens.set(vantagens_ids)
+
             formset.save_m2m()
             return redirect('listar_personagens')
     else:

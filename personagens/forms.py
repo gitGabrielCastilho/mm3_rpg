@@ -2,7 +2,7 @@ from django import forms
 from django.forms import inlineformset_factory
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Personagem, Poder, Inventario
+from .models import Personagem, Poder, Inventario, Vantagem
 
 
 class CadastroForm(UserCreationForm):
@@ -11,6 +11,12 @@ class CadastroForm(UserCreationForm):
         fields = ['username', 'email', 'password1', 'password2']
 
 class PersonagemForm(forms.ModelForm):
+    vantagens = forms.ModelMultipleChoiceField(
+        queryset=Vantagem.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        label="Vantagens"
+    )
     class Meta:
         model = Personagem
         fields = [
@@ -27,6 +33,7 @@ class PersonagemForm(forms.ModelForm):
             'prestidigitacao', 'tecnologia', 'tratamento', 'veiculos', 'historia', 'sobrevivencia',
             # Campo especialidade_casting_ability
             'especialidade_casting_ability',
+            'vantagens',
         ]
         exclude = ['usuario']
 
@@ -37,8 +44,28 @@ class PoderForm(forms.ModelForm):
         fields = [
             'nome', 'tipo', 'modo', 'nivel_efeito', 'bonus_ataque',
             'defesa_ativa', 'defesa_passiva', 'casting_ability',
-            'de_item', 'item_origem'
+            'de_item', 'item_origem', 'de_vantagem', 'vantagem_origem'
         ]
+
+    def clean(self):
+        cleaned_data = super().clean()
+        de_item = cleaned_data.get('de_item')
+        item_origem = cleaned_data.get('item_origem')
+        de_vantagem = cleaned_data.get('de_vantagem')
+        vantagem_origem = cleaned_data.get('vantagem_origem')
+
+        # Não pode ter duas origens
+        if de_item and de_vantagem:
+            raise forms.ValidationError("Selecione apenas uma origem: Item ou Vantagem.")
+        if de_item and not item_origem:
+            raise forms.ValidationError("Selecione o item de origem.")
+        if de_vantagem and not vantagem_origem:
+            raise forms.ValidationError("Selecione a vantagem de origem.")
+        if not de_item and item_origem:
+            raise forms.ValidationError("Marque 'Poder de Item?' para selecionar um item de origem.")
+        if not de_vantagem and vantagem_origem:
+            raise forms.ValidationError("Marque 'Poder de Vantagem?' para selecionar uma vantagem de origem.")
+        return cleaned_data
 
 PoderFormSet = inlineformset_factory(
     Personagem,

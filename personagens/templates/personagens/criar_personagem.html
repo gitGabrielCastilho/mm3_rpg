@@ -29,7 +29,35 @@
     {% endwith %}
   </div>
 {% endfor %}
-
+<h2>Vantagens</h2>
+<input type="text" id="busca-vantagem" placeholder="Buscar vantagem...">
+  <label>
+    <input type="checkbox" id="filtro-vantagem-selecionada">
+    Mostrar apenas vantagens já selecionadas
+  </label>
+<div style="max-height: 250px; overflow-y: auto;">
+  <table id="tabela-vantagens" border="1" style="width:100%;">
+    <thead>
+      <tr>
+        <th>Selecionar</th>
+        <th>Nome</th>
+        <th>Descrição</th>
+      </tr>
+    </thead>
+    <tbody>
+{% for vantagem in form.fields.vantagens.queryset %}
+  <tr>
+    <td>
+      <input type="checkbox" name="vantagens" value="{{ vantagem.id }}"
+        {% if vantagem.id|stringformat:"s" in form.vantagens.value %}checked{% endif %}>
+    </td>
+    <td class="nome-vantagem">{{ vantagem.nome }}</td>
+    <td>{{ vantagem.descricao }}</td>
+  </tr>
+{% endfor %}
+    </tbody>
+  </table>
+</div>
     <h2>Defesas</h2>
 {% for campo in defesas %}
   <div>
@@ -59,19 +87,37 @@
   </div>
 {% endfor %}
 
-    <h2>Poderes</h2>
+<h2>Poderes</h2>
 <div id="poderes-formset">
   {{ formset.management_form }}
   {% for form in formset %}
-  {% for field in form.visible_fields %}
-  {{ field.label_tag }} {{ field }}
-{% endfor %}
-    <div class="poder-form">
-      {% for field in form.visible_fields %}
-        {{ field.label_tag }} {{ field }}
-      {% endfor %}
-      {% if form.instance.pk %}{{ form.DELETE }} Remover{% endif %}
+<div class="poder-form" style="border:1px solid #ccc; margin-bottom:1em; padding:1em;">
+  <div>
+    {{ form.nome.label_tag }} {{ form.nome }}
+  </div>
+  <div>
+    {{ form.tipo.label_tag }} {{ form.tipo }}
+    {{ form.modo.label_tag }} {{ form.modo }}
+    {{ form.nivel_efeito.label_tag }} {{ form.nivel_efeito }}
+    {{ form.bonus_ataque.label_tag }} {{ form.bonus_ataque }}
+    {{ form.defesa_ativa.label_tag }} {{ form.defesa_ativa }}
+    {{ form.defesa_passiva.label_tag }} {{ form.defesa_passiva }}
+    {{ form.casting_ability.label_tag }} {{ form.casting_ability }}
+  </div>
+<div>
+  {{ form.de_item.label_tag }} {{ form.de_item }}
+  {{ form.item_origem.label_tag }} {{ form.item_origem }}
+</div>
+<div>
+  {{ form.de_vantagem.label_tag }} {{ form.de_vantagem }}
+  {{ form.vantagem_origem.label_tag }} {{ form.vantagem_origem }}
+</div>
+  {% if form.DELETE %}
+    <div style="margin-top: 1em;">
+      {{ form.DELETE }} <button type="button" onclick="removerPoder()">Remover</button>
     </div>
+  {% endif %}
+</div>
   {% endfor %}
 </div>
 
@@ -204,11 +250,14 @@ function adicionarPoder() {
   const newFormHtml = emptyFormHtml.replace(/__prefix__/g, formIdx);
 
   const wrapper = document.createElement('div');
-  wrapper.classList.add('poder-form'); // <-- Adicione esta linha!
+  wrapper.classList.add('poder-form');
   wrapper.innerHTML = newFormHtml;
   formsetDiv.appendChild(wrapper);
 
   totalFormsInput.value = formIdx + 1;
+
+  // Atualiza campos de origem para o novo poder
+  atualizarCamposOrigem(wrapper);
 }
 </script>
 
@@ -303,6 +352,80 @@ document.addEventListener('DOMContentLoaded', function() {
   filtroTipo.addEventListener('change', filtrar);
   filtroPossuido.addEventListener('change', filtrar);
   filtrar();
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const busca = document.getElementById('busca-vantagem');
+  const filtroSelecionada = document.getElementById('filtro-vantagem-selecionada');
+  const linhas = document.querySelectorAll('#tabela-vantagens tbody tr');
+
+  function filtrar() {
+    const texto = busca.value.toLowerCase();
+    const soSelecionada = filtroSelecionada.checked;
+
+    linhas.forEach(tr => {
+      const nome = tr.querySelector('.nome-vantagem').textContent.toLowerCase();
+      const checkbox = tr.querySelector('input[type="checkbox"][name="vantagens"]');
+      const selecionada = checkbox && checkbox.checked;
+
+      const matchNome = nome.includes(texto);
+      const matchSelecionada = !soSelecionada || selecionada;
+
+      if (matchNome && matchSelecionada) {
+        tr.style.display = '';
+      } else {
+        tr.style.display = 'none';
+      }
+    });
+  }
+
+  busca.addEventListener('input', filtrar);
+  filtroSelecionada.addEventListener('change', filtrar);
+  linhas.forEach(tr => {
+    const checkbox = tr.querySelector('input[type="checkbox"][name="vantagens"]');
+    if (checkbox) checkbox.addEventListener('change', filtrar);
+  });
+  filtrar();
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  function atualizarCamposOrigem(poderForm) {
+    const deItem = poderForm.querySelector('input[type="checkbox"][name$="de_item"]');
+    const deVantagem = poderForm.querySelector('input[type="checkbox"][name$="de_vantagem"]');
+    // const itemOrigem = poderForm.querySelector('select[name$="item_origem"]');
+    // const vantagemOrigem = poderForm.querySelector('select[name$="vantagem_origem"]');
+    // const itemOrigemDiv = itemOrigem ? itemOrigem.parentElement : null;
+    // const vantagemOrigemDiv = vantagemOrigem ? vantagemOrigem.parentElement : null;
+
+    // REMOVA OU COMENTE AS LINHAS ABAIXO:
+    // if (deItem && itemOrigemDiv) {
+    //   itemOrigemDiv.style.display = deItem.checked ? '' : 'none';
+    // }
+    // if (deVantagem && vantagemOrigemDiv) {
+    //   vantagemOrigemDiv.style.display = deVantagem.checked ? '' : 'none';
+    // }
+
+    // Impede marcar ambos ao mesmo tempo
+    if (deItem && deVantagem) {
+      deItem.addEventListener('change', function() {
+        if (deItem.checked) deVantagem.checked = false;
+      });
+      deVantagem.addEventListener('change', function() {
+        if (deVantagem.checked) deItem.checked = false;
+      });
+    }
+  }
+
+  document.querySelectorAll('.poder-form').forEach(function(poderForm) {
+    atualizarCamposOrigem(poderForm);
+    // Atualiza ao mudar checkboxes
+    const deItem = poderForm.querySelector('input[type="checkbox"][name$="de_item"]');
+    const deVantagem = poderForm.querySelector('input[type="checkbox"][name$="de_vantagem"]');
+    if (deItem) deItem.addEventListener('change', function() { atualizarCamposOrigem(poderForm); });
+    if (deVantagem) deVantagem.addEventListener('change', function() { atualizarCamposOrigem(poderForm); });
+  });
 });
 </script>
 {% endblock %}
