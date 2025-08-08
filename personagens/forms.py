@@ -36,7 +36,8 @@ class PoderForm(forms.ModelForm):
         model = Poder
         fields = [
             'nome', 'tipo', 'modo', 'nivel_efeito', 'bonus_ataque',
-            'defesa_ativa', 'defesa_passiva', 'casting_ability'
+            'defesa_ativa', 'defesa_passiva', 'casting_ability',
+            'de_item', 'item_origem'
         ]
 
 PoderFormSet = inlineformset_factory(

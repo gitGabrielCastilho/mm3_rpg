@@ -41,8 +41,14 @@ def criar_personagem(request):
             inventario.personagem = personagem
             inventario.save()
             inventario_form.save_m2m()
-            formset.instance = personagem
-            formset.save()
+            poderes = formset.save(commit=False)
+            for poder in poderes:
+                poder.personagem = personagem
+                poder.save()
+                # Adiciona item ao inventário se for poder de item
+                if getattr(poder, 'de_item', False) and getattr(poder, 'item_origem', None):
+                    inventario.itens.add(poder.item_origem)
+            formset.save_m2m()
             return redirect('listar_personagens')
     else:
         form = PersonagemForm()
@@ -74,18 +80,25 @@ def listar_personagens(request):
 
 
 @login_required
+@login_required
 def editar_personagem(request, personagem_id):
     personagem = get_object_or_404(Personagem, id=personagem_id, usuario=request.user)
-    # Garante que o inventário existe
     inventario, created = Inventario.objects.get_or_create(personagem=personagem)
     if request.method == 'POST':
         form = PersonagemForm(request.POST, request.FILES, instance=personagem)
         inventario_form = InventarioForm(request.POST, instance=inventario)
         formset = PoderFormSet(request.POST, request.FILES, instance=personagem, prefix='poder_set')
         if form.is_valid() and inventario_form.is_valid() and formset.is_valid():
-            form.save()
-            inventario_form.save()
-            formset.save()
+            personagem = form.save()
+            inventario = inventario_form.save()
+            poderes = formset.save(commit=False)
+            for poder in poderes:
+                poder.personagem = personagem
+                poder.save()
+                # Adiciona item ao inventário se for poder de item
+                if getattr(poder, 'de_item', False) and getattr(poder, 'item_origem', None):
+                    inventario.itens.add(poder.item_origem)
+            formset.save_m2m()
             return redirect('listar_personagens')
     else:
         form = PersonagemForm(instance=personagem)
@@ -126,7 +139,7 @@ def visualizar_personagem(request, personagem_id):
 @login_required
 def ficha_personagem(request, personagem_id):
     personagem = get_object_or_404(Personagem, pk=personagem_id, usuario=request.user)
-
+    poderes_de_item = poderes_de_item = personagem.poderes.filter(de_item=True)
     categorias = {
         'caracteristicas': ['forca', 'destreza', 'agilidade', 'luta', 'vigor', 'inteligencia', 'prontidao', 'presenca'],
         'defesas': ['aparar', 'esquivar', 'fortitude', 'vontade', 'resistencia'],
@@ -137,5 +150,6 @@ def ficha_personagem(request, personagem_id):
 
     return render(request, 'personagens/ficha_personagem.html', {
         'personagem': personagem,
-        'categorias': categorias
+        'categorias': categorias,
+        'poderes_de_item': poderes_de_item
     })

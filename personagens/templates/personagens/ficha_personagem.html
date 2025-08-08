@@ -31,15 +31,32 @@
   </ul>
 
   <h2>Poderes</h2>
-  <ul>
-    {% for poder in personagem.poderes.all %}
+<ul>
+  {% for poder in personagem.poderes.all %}
+    {% if not poder.de_item %}
       <li>
         <strong>{{ poder.nome }}</strong> — Bônus de Ataque: {{ poder.bonus_ataque }}, Nível do Efeito: {{ poder.nivel_efeito }}
       </li>
-    {% empty %}
-      <li>Nenhum poder adicionado.</li>
+    {% endif %}
+  {% empty %}
+    <li>Nenhum poder adicionado.</li>
+  {% endfor %}
+</ul>
+
+<h3>Poderes de Itens</h3>
+<ul>
+  {% if poderes_de_item %}
+    {% for poder in poderes_de_item %}
+      <li>
+        <strong>{{ poder.nome }}</strong>
+        {% if poder.item_origem %} ({{ poder.item_origem.nome }}){% endif %}
+        — Bônus de Ataque: {{ poder.bonus_ataque }}, Nível do Efeito: {{ poder.nivel_efeito }}
+      </li>
     {% endfor %}
-  </ul>
+  {% else %}
+    <li>Nenhum poder de item.</li>
+  {% endif %}
+</ul>
 
 <h2>Inventário</h2>
 <p>Ouro: {{ personagem.inventario.ouro }}</p>

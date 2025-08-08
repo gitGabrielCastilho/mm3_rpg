@@ -63,6 +63,9 @@
 <div id="poderes-formset">
   {{ formset.management_form }}
   {% for form in formset %}
+  {% for field in form.visible_fields %}
+  {{ field.label_tag }} {{ field }}
+{% endfor %}
     <div class="poder-form">
       {% for field in form.visible_fields %}
         {{ field.label_tag }} {{ field }}
@@ -100,13 +103,56 @@
 </div>
 <input type="text" id="busca-item" placeholder="Buscar por nome...">
 <select id="filtro-raridade">
-  <option value="">Todas as raridades</option>
-  <option value="common">Comum</option>
-  <option value="uncommon">Incomum</option>
-  <option value="rare">Rara</option>
-  <option value="very rare">Muito Rara</option>
-  <option value="legendary">Lendária</option>
+  <option value="">All rarities</option>
+  <option value="Common">Common</option>
+  <option value="Uncommon">Uncommon</option>
+  <option value="Rare">Rare</option>
+  <option value="Very Rare">Very Rare</option>
+  <option value="Legendary">Legendary</option>
+  <option value="Artifact">Artifact</option>
+  <option value="None">None</option>
+  <option value="Unknown">Unknown</option>
+  <option value="Unknown (Magic)">Unknown (Magic)</option>
+  <option value="Varies">Varies</option>
 </select>
+<select id="filtro-tipo">
+  <option value="">All types</option>
+  <option value="Melee Weapon">Melee Weapon</option>
+  <option value="Ranged Weapon">Ranged Weapon</option>
+  <option value="Light Armor">Light Armor</option>
+  <option value="Medium Armor">Medium Armor</option>
+  <option value="Heavy Armor">Heavy Armor</option>
+  <option value="Shield">Shield</option>
+  <option value="Ammunition">Ammunition</option>
+  <option value="Rod">Rod</option>
+  <option value="Wondrous Item">Wondrous Item</option>
+  <option value="Trade Good">Trade Good</option>
+  <option value="Adventuring Gear">Adventuring Gear</option>
+  <option value="Generic Variant">Generic Variant</option>
+  <option value="Gaming Set">Gaming Set</option>
+  <option value="Tool">Tool</option>
+  <option value="Artisan's Tools">Artisan's Tools</option>
+  <option value="Instrument">Instrument</option>
+  <option value="Spellcasting Focus">Spellcasting Focus</option>
+  <option value="Scroll">Scroll</option>
+  <option value="Poison">Poison</option>
+  <option value="Food/Drink">Food/Drink</option>
+  <option value="Explosive">Explosive</option>
+  <option value="Ring">Ring</option>
+  <option value="Tack and Harness">Tack and Harness</option>
+  <option value="Mount">Mount</option>
+  <option value="Vehicle">Vehicle</option>
+  <option value="Ship">Ship</option>
+  <option value="Air Vehicle">Air Vehicle</option>
+  <option value="Tinker’s Tool (Bundle)">Tinker’s Tool (Bundle)</option>
+  <option value="Space Vehicle">Space Vehicle</option>
+  <option value="Idol/Relic">Idol/Relic</option>
+  <option value="Other">Other</option>
+</select>
+<label>
+  <input type="checkbox" id="filtro-possuido">
+  Mostrar apenas itens já possuídos
+</label>
 <div style="max-height: 350px; overflow-y: auto;">
   <table id="tabela-itens" border="1" style="width:100%;">
     <thead>
@@ -216,6 +262,47 @@ document.addEventListener('DOMContentLoaded', function() {
   busca.addEventListener('input', filtrar);
   filtro.addEventListener('change', filtrar);
   filtrar(); // mostrar só os 10 primeiros ao carregar
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const busca = document.getElementById('busca-item');
+  const filtroRaridade = document.getElementById('filtro-raridade');
+  const filtroTipo = document.getElementById('filtro-tipo');
+  const filtroPossuido = document.getElementById('filtro-possuido');
+  const linhas = document.querySelectorAll('#tabela-itens tbody tr');
+
+  function filtrar() {
+    const texto = busca.value.toLowerCase();
+    const raridade = filtroRaridade.value.toLowerCase();
+    const tipo = filtroTipo.value.toLowerCase();
+    const soPossuido = filtroPossuido.checked;
+
+    linhas.forEach(tr => {
+      const nome = tr.querySelector('.nome-item').textContent.toLowerCase();
+      const rar = tr.querySelector('.raridade-item').textContent.toLowerCase();
+      const tipoItem = tr.children[2].textContent.toLowerCase();
+      const checkbox = tr.querySelector('input[type="checkbox"][name="itens"]');
+      const possuido = checkbox && checkbox.checked;
+
+      const matchNome = nome.includes(texto);
+      const matchRaridade = !raridade || rar === raridade;
+      const matchTipo = !tipo || tipoItem === tipo;
+      const matchPossuido = !soPossuido || possuido;
+
+      if (matchNome && matchRaridade && matchTipo && matchPossuido) {
+        tr.style.display = '';
+      } else {
+        tr.style.display = 'none';
+      }
+    });
+  }
+
+  busca.addEventListener('input', filtrar);
+  filtroRaridade.addEventListener('change', filtrar);
+  filtroTipo.addEventListener('change', filtrar);
+  filtroPossuido.addEventListener('change', filtrar);
+  filtrar();
 });
 </script>
 {% endblock %}
