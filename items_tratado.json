@@ -1486,17 +1486,17 @@
                 {
                   "type": "item",
                   "name": "Piety 10+",
-                  "entry": "The hammer has 1 randomly determined {@table Artifact Properties; Minor Beneficial Properties|dmg|minor beneficial} property."
+                  "entry": "The hammer has 1 randomly determined Artifact Properties; Minor Beneficial Properties property."
                 },
                 {
                   "type": "item",
                   "name": "Piety 25+",
-                  "entry": "The hammer has 1 randomly determined {@table Artifact Properties; Major Beneficial Properties|dmg|major beneficial} property."
+                  "entry": "The hammer has 1 randomly determined Artifact Properties; Major Beneficial Properties property."
                 },
                 {
                   "type": "item",
                   "name": "Piety 50+",
-                  "entry": "The hammer has 1 additional randomly determined {@table Artifact Properties; Major Beneficial Properties|dmg|major beneficial} property."
+                  "entry": "The hammer has 1 additional randomly determined Artifact Properties; Major Beneficial Properties property."
                 }
               ]
             },
@@ -17924,7 +17924,7 @@
                 "roll": {
                   "exact": 1
                 },
-                "entry": " 3 {@color ♦|#ff0000}"
+                "entry": " 3 ♦"
               },
               "Wooden abacus"
             ],
@@ -17934,7 +17934,7 @@
                 "roll": {
                   "exact": 2
                 },
-                "entry": " 4 {@color ♦|#ff0000}"
+                "entry": " 4 ♦"
               },
               "Four Perfume (vial)"
             ],
@@ -17944,7 +17944,7 @@
                 "roll": {
                   "exact": 3
                 },
-                "entry": " 5 {@color ♦|#ff0000}"
+                "entry": " 5 ♦"
               },
               "5 days' worth of Rations (1 day)"
             ],
@@ -17954,7 +17954,7 @@
                 "roll": {
                   "exact": 4
                 },
-                "entry": " 6 {@color ♦|#ff0000}"
+                "entry": " 6 ♦"
               },
               "Iron pot"
             ],
@@ -17964,7 +17964,7 @@
                 "roll": {
                   "exact": 5
                 },
-                "entry": " 7 {@color ♦|#ff0000}"
+                "entry": " 7 ♦"
               },
               "Disguise kit"
             ],
@@ -17974,7 +17974,7 @@
                 "roll": {
                   "exact": 6
                 },
-                "entry": " 8 {@color ♦|#ff0000}"
+                "entry": " 8 ♦"
               },
               "Window (up to 5 feet wide and 5 feet high), which you can place on a vertical surface up to 5 feet thick and which allows you to look through the surface"
             ],
@@ -17984,7 +17984,7 @@
                 "roll": {
                   "exact": 7
                 },
-                "entry": " 9 {@color ♦|#ff0000}"
+                "entry": " 9 ♦"
               },
               "Manacles"
             ],
@@ -17994,7 +17994,7 @@
                 "roll": {
                   "exact": 8
                 },
-                "entry": "10 {@color ♦|#ff0000}"
+                "entry": "10 ♦"
               },
               "Ten Parchment (one sheet)"
             ],
@@ -18004,7 +18004,7 @@
                 "roll": {
                   "exact": 9
                 },
-                "entry": " 3 {@color ♥|#ff0000}"
+                "entry": " 3 ♥"
               },
               "Three dagger"
             ],
@@ -18014,7 +18014,7 @@
                 "roll": {
                   "exact": 10
                 },
-                "entry": " 4 {@color ♥|#ff0000}"
+                "entry": " 4 ♥"
               },
               "Four Oil (flask)"
             ],
@@ -18024,7 +18024,7 @@
                 "roll": {
                   "exact": 11
                 },
-                "entry": " 5 {@color ♥|#ff0000}"
+                "entry": " 5 ♥"
               },
               "Five silk robes"
             ],
@@ -18034,7 +18034,7 @@
                 "roll": {
                   "exact": 12
                 },
-                "entry": " 6 {@color ♥|#ff0000}"
+                "entry": " 6 ♥"
               },
               "Forgery kit"
             ],
@@ -18044,7 +18044,7 @@
                 "roll": {
                   "exact": 13
                 },
-                "entry": " 7 {@color ♥|#ff0000}"
+                "entry": " 7 ♥"
               },
               "Quarterstaff"
             ],
@@ -18054,7 +18054,7 @@
                 "roll": {
                   "exact": 14
                 },
-                "entry": " 8 {@color ♥|#ff0000}"
+                "entry": " 8 ♥"
               },
               "Fishing tackle"
             ],
@@ -18064,7 +18064,7 @@
                 "roll": {
                   "exact": 15
                 },
-                "entry": " 9 {@color ♥|#ff0000}"
+                "entry": " 9 ♥"
               },
               "Leather pouch containing 18 gp"
             ],
@@ -18074,7 +18074,7 @@
                 "roll": {
                   "exact": 16
                 },
-                "entry": "10 {@color ♥|#ff0000}"
+                "entry": "10 ♥"
               },
               "10 crossbow bolt"
             ],
@@ -18778,7 +18778,7 @@
                 "roll": {
                   "exact": 1
                 },
-                "entry": "A {@color ♦|#ff0000}"
+                "entry": "A ♦"
               },
               "Chancellor*"
             ],
@@ -18788,7 +18788,7 @@
                 "roll": {
                   "exact": 2
                 },
-                "entry": "K {@color ♦|#ff0000}"
+                "entry": "K ♦"
               },
               "Day"
             ],
@@ -18798,7 +18798,7 @@
                 "roll": {
                   "exact": 3
                 },
-                "entry": "Q {@color ♦|#ff0000}"
+                "entry": "Q ♦"
               },
               "Night"
             ],
@@ -18808,7 +18808,7 @@
                 "roll": {
                   "exact": 4
                 },
-                "entry": "J {@color ♦|#ff0000}"
+                "entry": "J ♦"
               },
               "Dawn"
             ],
@@ -18818,7 +18818,7 @@
                 "roll": {
                   "exact": 5
                 },
-                "entry": "2 {@color ♦|#ff0000}"
+                "entry": "2 ♦"
               },
               "Dusk*"
             ],
@@ -18828,7 +18828,7 @@
                 "roll": {
                   "exact": 6
                 },
-                "entry": "A {@color ♥|#ff0000}"
+                "entry": "A ♥"
               },
               "Destiny*"
             ],
@@ -18838,7 +18838,7 @@
                 "roll": {
                   "exact": 7
                 },
-                "entry": "K {@color ♥|#ff0000}"
+                "entry": "K ♥"
               },
               "Crown"
             ],
@@ -18848,7 +18848,7 @@
                 "roll": {
                   "exact": 8
                 },
-                "entry": "Q {@color ♥|#ff0000}"
+                "entry": "Q ♥"
               },
               "Lock"
             ],
@@ -18858,7 +18858,7 @@
                 "roll": {
                   "exact": 9
                 },
-                "entry": "J {@color ♥|#ff0000}"
+                "entry": "J ♥"
               },
               "Champion"
             ],
@@ -18868,7 +18868,7 @@
                 "roll": {
                   "exact": 10
                 },
-                "entry": "2 {@color ♥|#ff0000}"
+                "entry": "2 ♥"
               },
               "Coin*"
             ],
@@ -19208,12 +19208,12 @@
                 {
                   "type": "item",
                   "name": "Piety 25+",
-                  "entry": "The bident has 1 randomly determined {@table Artifact Properties; Minor Beneficial Properties|dmg|minor beneficial} property."
+                  "entry": "The bident has 1 randomly determined Artifact Properties; Minor Beneficial Properties property."
                 },
                 {
                   "type": "item",
                   "name": "Piety 50+",
-                  "entry": "The bident has 1 randomly determined {@table Artifact Properties; Major Beneficial Properties|dmg|major beneficial} property."
+                  "entry": "The bident has 1 randomly determined Artifact Properties; Major Beneficial Properties property."
                 }
               ]
             },
@@ -22840,12 +22840,12 @@
                 {
                   "type": "item",
                   "name": "Piety 10+",
-                  "entry": "The bow has 1 randomly determined {@table Artifact Properties; Minor Beneficial Properties|dmg|minor beneficial} property."
+                  "entry": "The bow has 1 randomly determined Artifact Properties; Minor Beneficial Properties property."
                 },
                 {
                   "type": "item",
                   "name": "Piety 25+",
-                  "entry": "The bow has 1 randomly determined {@table Artifact Properties; Major Beneficial Properties|dmg|major beneficial} property."
+                  "entry": "The bow has 1 randomly determined Artifact Properties; Major Beneficial Properties property."
                 }
               ]
             },
@@ -35717,17 +35717,17 @@
                 {
                   "type": "item",
                   "name": "Piety 10+",
-                  "entry": "The spear has 1 randomly determined {@table Artifact Properties; Minor Beneficial Properties|dmg|minor beneficial} property."
+                  "entry": "The spear has 1 randomly determined Artifact Properties; Minor Beneficial Properties property."
                 },
                 {
                   "type": "item",
                   "name": "Piety 25+",
-                  "entry": "The spear has 1 additional randomly determined {@table Artifact Properties; Minor Beneficial Properties|dmg|minor beneficial} property."
+                  "entry": "The spear has 1 additional randomly determined Artifact Properties; Minor Beneficial Properties property."
                 },
                 {
                   "type": "item",
                   "name": "Piety 50+",
-                  "entry": "The spear has 1 randomly determined {@table Artifact Properties; Major Beneficial Properties|dmg|major beneficial} property."
+                  "entry": "The spear has 1 randomly determined Artifact Properties; Major Beneficial Properties property."
                 }
               ]
             },
@@ -36549,12 +36549,12 @@
                     {
                       "type": "item",
                       "name": "Dead Eyes",
-                      "entry": "A creature that fails the saving throw against this poison is {@condition poisoned} for 1 hour. While {@condition poisoned} in this way, the creature is {@condition blinded}."
+                      "entry": "A creature that fails the saving throw against this poison is poisoned for 1 hour. While poisoned in this way, the creature is blinded."
                     },
                     {
                       "type": "item",
                       "name": "Serpent Venom",
-                      "entry": "A creature that fails the saving throw against this poison takes {@damage 3d6} poison damage, or half as much damage on a successful save."
+                      "entry": "A creature that fails the saving throw against this poison takes 3d6 poison damage, or half as much damage on a successful save."
                     }
                   ]
                 }
@@ -39064,17 +39064,17 @@
                 {
                   "type": "item",
                   "name": "Piety 1+",
-                  "entry": "The whip has 1 randomly determined {@table Artifact Properties; Minor Detrimental Properties|dmg|minor detrimental} property—a burden Erebos imposes to test his faithful."
+                  "entry": "The whip has 1 randomly determined Artifact Properties; Minor Detrimental Properties property—a burden Erebos imposes to test his faithful."
                 },
                 {
                   "type": "item",
                   "name": "Piety 25+",
-                  "entry": "The whip has 1 randomly determined {@table Artifact Properties; Major Beneficial Properties|dmg|major beneficial} property."
+                  "entry": "The whip has 1 randomly determined Artifact Properties; Major Beneficial Properties property."
                 },
                 {
                   "type": "item",
                   "name": "Piety 50+",
-                  "entry": "The whip has 1 additional randomly determined {@table Artifact Properties; Major Beneficial Properties|dmg|major beneficial} property."
+                  "entry": "The whip has 1 additional randomly determined Artifact Properties; Major Beneficial Properties property."
                 }
               ]
             },
@@ -42253,7 +42253,7 @@
                 {
                   "type": "item",
                   "name": "Weapon",
-                  "entry": "The weapon is now an uncommon magic weapon. It deals an extra {@damage 1d6} fire damage to any target it hits."
+                  "entry": "The weapon is now an uncommon magic weapon. It deals an extra 1d6 fire damage to any target it hits."
                 },
                 {
                   "type": "item",
@@ -42591,7 +42591,7 @@
                 {
                   "type": "item",
                   "name": "Boots",
-                  "entry": "The pair of boots is now an uncommon magic item that requires attunement. While you wear the boots, you have advantage on Strength saving throws, and you can use your reaction to avoid being knocked {@condition prone}."
+                  "entry": "The pair of boots is now an uncommon magic item that requires attunement. While you wear the boots, you have advantage on Strength saving throws, and you can use your reaction to avoid being knocked prone."
                 }
               ]
             }
@@ -43606,12 +43606,12 @@
                 {
                   "type": "item",
                   "name": "Armor",
-                  "entry": "The armor is now an uncommon magic item that requires attunement. You gain a bonus to speed of 5 feet while you wear the armor, and if it normally imposes disadvantage on {@skill Stealth} checks, it no longer does so."
+                  "entry": "The armor is now an uncommon magic item that requires attunement. You gain a bonus to speed of 5 feet while you wear the armor, and if it normally imposes disadvantage on Stealth checks, it no longer does so."
                 },
                 {
                   "type": "item",
                   "name": "Boots/Cloak",
-                  "entry": "The pair of boots or cloak is now a rare magic item that requires attunement. While wearing the item, you can convert up to 20 feet of your movement on each of your turns into flight. If you don't land at the end of this flight, you fall unless you have another means of staying aloft. You can also cast {@spell feather fall} once from the item, and you regain the ability to do so when you finish a short or long rest."
+                  "entry": "The pair of boots or cloak is now a rare magic item that requires attunement. While wearing the item, you can convert up to 20 feet of your movement on each of your turns into flight. If you don't land at the end of this flight, you fall unless you have another means of staying aloft. You can also cast feather fall once from the item, and you regain the ability to do so when you finish a short or long rest."
                 }
               ]
             }
@@ -55859,12 +55859,12 @@
                 {
                   "type": "item",
                   "name": "Cloak",
-                  "entry": "The cloak is now a rare magic item that requires attunement. While wearing it, you have resistance to fire damage, and you have advantage on Dexterity ({@skill Stealth}) checks made while in snowy terrain."
+                  "entry": "The cloak is now a rare magic item that requires attunement. While wearing it, you have resistance to fire damage, and you have advantage on Dexterity (Stealth) checks made while in snowy terrain."
                 },
                 {
                   "type": "item",
                   "name": "Boots",
-                  "entry": "The pair of boots is now a rare magic item that requires attunement. While wearing it, you ignore {@quickref difficult terrain||3} while walking, and you can walk on water."
+                  "entry": "The pair of boots is now a rare magic item that requires attunement. While wearing it, you ignore difficult terrain while walking, and you can walk on water."
                 }
               ]
             }
@@ -58110,7 +58110,7 @@
                 {
                   "type": "item",
                   "name": "Drain Life",
-                  "entry": "You siphon away some of the soul's essence and gain {@dice 1d10} temporary hit points."
+                  "entry": "You siphon away some of the soul's essence and gain 1d10 temporary hit points."
                 },
                 {
                   "type": "item",
@@ -64915,7 +64915,7 @@
                 {
                   "type": "item",
                   "name": "Truesight",
-                  "entry": "Your eyes become luminous pools of silver. You can see in normal and magical darkness, see {@condition invisible} creatures and objects, automatically detect visual illusions and succeed on saving throws against them, perceive the original form of a shapechanger or a creature that is transformed by magic, and see into the Ethereal Plane, all within a range of 60 feet."
+                  "entry": "Your eyes become luminous pools of silver. You can see in normal and magical darkness, see invisible creatures and objects, automatically detect visual illusions and succeed on saving throws against them, perceive the original form of a shapechanger or a creature that is transformed by magic, and see into the Ethereal Plane, all within a range of 60 feet."
                 },
                 {
                   "type": "item",

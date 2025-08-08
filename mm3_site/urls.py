@@ -12,6 +12,7 @@ urlpatterns = [
     path('salas/', include('salas.urls')),
     path('accounts/', include('django.contrib.auth.urls')),
     path('accounts/cadastro/', cadastrar_usuario, name='cadastrar_usuario'),
+    path('itens/', include('itens.urls')),
 ]
 
 if settings.DEBUG:

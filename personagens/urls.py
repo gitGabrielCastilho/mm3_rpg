@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import itens, criar_personagem, listar_personagens, editar_personagem, excluir_personagem, ficha_personagem
+from .views import criar_personagem, listar_personagens, editar_personagem, excluir_personagem, ficha_personagem
 
 urlpatterns = [
     path('criar/', criar_personagem, name='criar_personagem'),
@@ -7,5 +7,4 @@ urlpatterns = [
     path('editar/<int:personagem_id>/', editar_personagem, name='editar_personagem'),
     path('excluir/<int:personagem_id>/', excluir_personagem, name='excluir_personagem'),
     path('ficha/<int:personagem_id>/', ficha_personagem, name='ficha_personagem'),
-    path('itens/', itens, name='itens'),
 ]

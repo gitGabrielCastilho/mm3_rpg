@@ -2,7 +2,7 @@ from django import forms
 from django.forms import inlineformset_factory
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Personagem, Poder, Inventario, Item
+from .models import Personagem, Poder, Inventario
 
 
 class CadastroForm(UserCreationForm):
@@ -48,7 +48,6 @@ PoderFormSet = inlineformset_factory(
     can_delete=True
 )
 
-from .models import Inventario, Item
 
 class InventarioForm(forms.ModelForm):
     class Meta:
@@ -58,10 +57,3 @@ class InventarioForm(forms.ModelForm):
             'itens': forms.SelectMultiple(attrs={'size': 10}),  # ou CheckboxSelectMultiple
         }
 
-class ItemForm(forms.ModelForm):
-    class Meta:
-        model = Item
-        fields = ['nome', 'tipo', 'raridade', 'descricao']
-        widgets = {
-            'descricao': forms.Textarea(attrs={'rows': 2}),
-        }

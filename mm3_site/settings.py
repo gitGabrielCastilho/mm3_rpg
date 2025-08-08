@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'personagens',
     'combate',
     'salas',
+    'itens',
 ]
 
 MIDDLEWARE = [
