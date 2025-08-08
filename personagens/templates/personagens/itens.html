@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<h2>Criar Item</h2>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit">Criar</button>
+</form>
+
+<h2>Itens</h2>
+<input type="text" id="busca-item" placeholder="Buscar por nome...">
+<select id="filtro-tipo">
+  <option value="">Todos os tipos</option>
+  {% for key, label in tipos %}
+    <option value="{{ label }}">{{ label }}</option>
+  {% endfor %}
+</select>
+<select id="filtro-raridade">
+  <option value="">Todas as raridades</option>
+  {% for key, label in raridades %}
+    <option value="{{ label }}">{{ label }}</option>
+  {% endfor %}
+</select>
+
+<div style="max-height: 350px; overflow-y: auto;">
+  <table id="tabela-itens" border="1" style="width:100%;">
+    <thead>
+      <tr>
+        <th>Nome</th>
+        <th>Tipo</th>
+        <th>Raridade</th>
+        <th>Descrição</th>
+        <th>Preço</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in itens %}
+        <tr>
+          <td class="nome-item">{{ item.nome }}</td>
+          <td class="tipo-item">{{ item.tipo }}</td>
+          <td class="raridade-item">{{ item.raridade }}</td>
+          <td>{{ item.descricao }}</td>
+          <td>{{ item.preco }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const busca = document.getElementById('busca-item');
+  const filtroTipo = document.getElementById('filtro-tipo');
+  const filtroRaridade = document.getElementById('filtro-raridade');
+  const linhas = document.querySelectorAll('#tabela-itens tbody tr');
+
+  function filtrar() {
+    const texto = busca.value.toLowerCase();
+    const tipo = filtroTipo.value.toLowerCase();
+    const raridade = filtroRaridade.value.toLowerCase();
+
+    linhas.forEach(tr => {
+      const nome = tr.querySelector('.nome-item').textContent.toLowerCase();
+      const tipoItem = tr.querySelector('.tipo-item').textContent.toLowerCase();
+      const rar = tr.querySelector('.raridade-item').textContent.toLowerCase();
+
+      const matchNome = nome.includes(texto);
+      const matchTipo = !tipo || tipoItem === tipo;
+      const matchRaridade = !raridade || rar === raridade;
+
+      if (matchNome && matchTipo && matchRaridade) {
+        tr.style.display = '';
+      } else {
+        tr.style.display = 'none';
+      }
+    });
+  }
+
+  busca.addEventListener('input', filtrar);
+  filtroTipo.addEventListener('change', filtrar);
+  filtroRaridade.addEventListener('change', filtrar);
+  filtrar();
+});
+</script>
+{% endblock %}

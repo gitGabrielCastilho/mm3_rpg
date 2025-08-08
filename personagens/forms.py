@@ -57,3 +57,11 @@ class InventarioForm(forms.ModelForm):
         widgets = {
             'itens': forms.SelectMultiple(attrs={'size': 10}),  # ou CheckboxSelectMultiple
         }
+
+class ItemForm(forms.ModelForm):
+    class Meta:
+        model = Item
+        fields = ['nome', 'tipo', 'raridade', 'descricao']
+        widgets = {
+            'descricao': forms.Textarea(attrs={'rows': 2}),
+        }

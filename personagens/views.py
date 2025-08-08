@@ -1,9 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from .forms import CadastroForm, PersonagemForm, PoderForm, InventarioForm
-from .models import Personagem, Poder, Inventario
+from .forms import CadastroForm, PersonagemForm, PoderForm, InventarioForm, ItemForm
+from .models import Personagem, Poder, Inventario, Item
 from django.core.exceptions import ValidationError
 from django.forms import inlineformset_factory
+import random
 
 PoderFormSet = inlineformset_factory(
     Personagem,
@@ -152,4 +153,38 @@ def ficha_personagem(request, personagem_id):
         'personagem': personagem,
         'categorias': categorias,
         'poderes_de_item': poderes_de_item
+    })
+
+
+
+def calcular_valor(raridade):
+    rarity = (raridade or "").lower()
+    if rarity == "common":
+        return (random.randint(1, 6) + 1) * 10
+    elif rarity == "uncommon":
+        return random.randint(1, 6) * 500
+    elif rarity == "rare":
+        return random.randint(1, 10) * 10000
+    elif rarity == "very rare":
+        return (random.randint(1, 4) + 1) * 30000
+    elif rarity == "legendary":
+        return (random.randint(1, 6) + 6) * 25000
+    else:
+        return 0
+
+def itens(request):
+    form = ItemForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        item = form.save(commit=False)
+        item.preco = calcular_valor(item.raridade)
+        item.save()
+        return redirect('itens')
+    itens = Item.objects.all()
+    tipos = Item._meta.get_field('tipo').choices
+    raridades = Item._meta.get_field('raridade').choices
+    return render(request, 'personagens/itens.html', {
+        'form': form,
+        'itens': itens,
+        'tipos': tipos,
+        'raridades': raridades,
     })
