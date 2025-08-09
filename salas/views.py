@@ -1,6 +1,14 @@
+from django.http import HttpResponse
+# View para detalhes da sala
+from django.contrib.auth.decorators import login_required
+@login_required
+def detalhes_sala(request, sala_id):
+    sala = get_object_or_404(Sala, id=sala_id)
+    return render(request, 'salas/detalhes_sala.html', {'sala': sala})
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from .models import Sala
+from django.db.models import Q
 from django import forms
 from personagens.models import PerfilUsuario
 
@@ -16,8 +24,15 @@ def criar_sala(request):
         if form.is_valid():
             sala = form.save(commit=False)
             sala.game_master = request.user
+            sala.criador = request.user
             sala.save()
-            sala.jogadores.add(request.user)  # Opcional: adiciona o GM como jogador também
+            sala.jogadores.add(request.user)
+            sala.participantes.add(request.user)
+            # Atualiza perfil do usuário
+            perfil, _ = PerfilUsuario.objects.get_or_create(user=request.user)
+            perfil.sala_atual = sala
+            perfil.tipo = 'game_master'
+            perfil.save()
             return redirect('listar_salas')
     else:
         form = SalaForm()
@@ -25,8 +40,17 @@ def criar_sala(request):
 
 @login_required
 def listar_salas(request):
-    salas = Sala.objects.filter(game_master=request.user)
-    return render(request, 'salas/listar_salas.html', {'salas': salas})
+    query = request.GET.get('q', '').strip()
+    salas = Sala.objects.all()
+    if query:
+        salas = salas.filter(
+            Q(nome__icontains=query) |
+            Q(codigo__icontains=query) |
+            Q(criador__username__icontains=query)
+        )
+    perfil, _ = PerfilUsuario.objects.get_or_create(user=request.user)
+    sala_atual = getattr(perfil, 'sala_atual', None)
+    return render(request, 'salas/listar_salas.html', {'salas': salas, 'sala_atual': sala_atual, 'query': query})
 
 @login_required
 def excluir_sala(request, sala_id):
@@ -39,21 +63,27 @@ def excluir_sala(request, sala_id):
 @login_required
 def entrar_sala(request, sala_id):
     sala = get_object_or_404(Sala, id=sala_id)
-    # Cria perfil se não existir
-    perfil, created = PerfilUsuario.objects.get_or_create(user=request.user)
+    perfil, _ = PerfilUsuario.objects.get_or_create(user=request.user)
+    # Se já está em outra sala, remove
+    if perfil.sala_atual and perfil.sala_atual != sala:
+        # Opcional: pode remover o usuário da lista de participantes da sala antiga, se necessário
+        pass
     perfil.sala_atual = sala
-    # Atualiza tipo: GM se for criador, jogador se não for
     if sala.game_master == request.user:
         perfil.tipo = 'game_master'
     else:
         perfil.tipo = 'jogador'
     perfil.save()
+    sala.participantes.add(request.user)
+    sala.jogadores.add(request.user)
     return redirect('listar_combates', sala_id=sala.id)
 
 @login_required
 def sair_sala(request):
-    perfil, created = PerfilUsuario.objects.get_or_create(user=request.user)
+    perfil, _ = PerfilUsuario.objects.get_or_create(user=request.user)
     perfil.sala_atual = None
     perfil.tipo = 'jogador'
     perfil.save()
     return redirect('listar_salas')
+
+

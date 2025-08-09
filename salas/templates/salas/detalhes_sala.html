@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Detalhes da Sala</h2>
+<p><strong>Nome:</strong> {{ sala.nome }}</p>
+<p><strong>Código:</strong> {{ sala.codigo }}</p>
+<p><strong>Criador:</strong> {{ sala.criador }}</p>
+<p><strong>Game Master:</strong> {{ sala.game_master }}</p>
+<p><strong>Jogadores:</strong> 
+  {% for jogador in sala.jogadores.all %}
+    {{ jogador.username }}{% if not forloop.last %}, {% endif %}
+  {% empty %}Nenhum jogador ainda.{% endfor %}
+</p>
+<p><strong>Ativa:</strong> {{ sala.ativa|yesno:"Sim,Não" }}</p>
+<h2>Participantes</h2>
+<ul>
+  {% for participante in sala.participantes.all %}
+    <li>{{ participante.username }}</li>
+  {% endfor %}
+</ul>
+<a href="{% url 'listar_salas' %}">Voltar para Salas</a>
+{% endblock %}

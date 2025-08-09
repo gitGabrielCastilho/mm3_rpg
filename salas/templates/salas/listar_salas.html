@@ -1,18 +1,41 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2>Minhas Salas</h2>
+<h2>Salas Disponíveis</h2>
+
+<form method="get" style="margin-bottom: 20px;">
+  <input type="text" name="q" placeholder="Buscar por nome, código ou dono" value="{{ query|default:'' }}" style="padding: 4px; width: 250px;">
+  <button type="submit">Buscar</button>
+</form>
+
+{% if sala_atual %}
+  <div style="margin-bottom: 20px;">
+    <strong>Você está atualmente na sala:</strong> {{ sala_atual.nome }} ({{ sala_atual.codigo }})
+    <form method="post" action="{% url 'sair_sala' %}" style="display:inline;">
+      {% csrf_token %}
+      <button type="submit">Sair da sala</button>
+    </form>
+  </div>
+{% endif %}
+
 <ul>
   {% for sala in salas %}
-    <li>
-      {{ sala.nome }} ({{ sala.codigo }})
-      <a href="{% url 'entrar_sala' sala.id %}">Entrar</a>
-      <form method="post" action="{% url 'excluir_sala' sala.id %}" style="display:inline;">
-        {% csrf_token %}
-        <button type="submit" onclick="return confirm('Excluir esta sala?')">Excluir</button>
-      </form>
+    <li {% if sala_atual and sala_atual.id == sala.id %}style="background: #e0ffe0; font-weight: bold;"{% endif %}>
+      <strong>{{ sala.nome }}</strong> ({{ sala.codigo }})
+      <span style="color: #888; font-size: 0.95em;">— Dono: {{ sala.criador.username|default:'-' }}</span>
+      {% if sala_atual and sala_atual.id == sala.id %}
+        <span style="color: green; font-weight: bold;">Você já está nesta sala</span>
+      {% elif not sala_atual %}
+        <a href="{% url 'entrar_sala' sala.id %}">Entrar</a>
+      {% endif %}
+      {% if sala.game_master == user %}
+        <form method="post" action="{% url 'excluir_sala' sala.id %}" style="display:inline; margin-left: 10px;">
+          {% csrf_token %}
+          <button type="submit" onclick="return confirm('Excluir esta sala?')">Excluir</button>
+        </form>
+      {% endif %}
     </li>
   {% empty %}
-    <li>Você não criou nenhuma sala.</li>
+    <li>Não há salas disponíveis.</li>
   {% endfor %}
 </ul>
 {% endblock %}

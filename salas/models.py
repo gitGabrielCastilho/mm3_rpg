@@ -5,6 +5,8 @@ import string
 
 class Sala(models.Model):
     nome = models.CharField(max_length=100)
+    criador = models.ForeignKey(User, on_delete=models.CASCADE, related_name='salas_criadas')
+    participantes = models.ManyToManyField(User, related_name='salas_participando', blank=True)
     codigo = models.CharField(max_length=6, unique=True)
     game_master = models.ForeignKey(User, on_delete=models.CASCADE, related_name='salas_gm')
     jogadores = models.ManyToManyField(User, related_name='salas_jogador', blank=True)

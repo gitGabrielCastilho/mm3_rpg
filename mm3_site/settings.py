@@ -42,7 +42,10 @@ INSTALLED_APPS = [
     'combate',
     'salas',
     'itens',
+    'channels',
 ]
+
+ASGI_APPLICATION = "mm3_site.asgi.application"
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

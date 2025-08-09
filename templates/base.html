@@ -33,12 +33,17 @@
   </style>
 </head>
 <body>
-{% if user.is_authenticated and user.perfilusuario.sala_atual %}
-  <div>
-    Sala atual: <strong>{{ user.perfilusuario.sala_atual.nome }}</strong>
-    (Código: <strong>{{ user.perfilusuario.sala_atual.codigo }}</strong>)
-  </div>
-{% endif %}
+<header style="margin-bottom: 10px;">
+  {% if user.is_authenticated and user.perfilusuario.sala_atual %}
+    <span style="background: #e0ffe0; padding: 6px 12px; border-radius: 6px; font-weight: bold; margin-right: 10px;">
+      Sala atual: {{ user.perfilusuario.sala_atual.nome }} ({{ user.perfilusuario.sala_atual.codigo }})
+    </span>
+    <form method="post" action="{% url 'sair_sala' %}" style="display:inline; margin-right: 20px;">
+      {% csrf_token %}
+      <button type="submit" style="background: #ffdddd; color: #a00; border-radius: 4px; border: 1px solid #a00; padding: 4px 10px; font-weight: bold;">Sair da Sala</button>
+    </form>
+  {% endif %}
+</header>
 <nav>
   <a href="/">Home</a>
   {% if user.is_authenticated %}
@@ -66,12 +71,7 @@
     <a href="{% url 'cadastrar_usuario' %}">Cadastro</a>
   {% endif %}
 </nav> 
-{% if user.is_authenticated and user.perfilusuario.sala_atual %}
-  <form method="post" action="{% url 'sair_sala' %}" style="display:inline;">
-    {% csrf_token %}
-    <button type="submit">Sair da Sala</button>
-  </form>
-{% endif %}
+
 <hr>
   {% if messages %}
   <ul>

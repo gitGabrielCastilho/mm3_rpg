@@ -219,5 +219,23 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 </script>
 
+
+<script>
+const combateId = "{{ combate.id }}";
+const socket = new WebSocket(
+    'ws://' + window.location.host + '/ws/combate/' + combateId + '/'
+);
+
+socket.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    // Atualize a interface do combate em tempo real aqui
+};
+
+function enviarAcao(acao) {
+    socket.send(JSON.stringify({
+        'acao': acao
+    }));
+}
+</script>
 {% endblock %}
 
