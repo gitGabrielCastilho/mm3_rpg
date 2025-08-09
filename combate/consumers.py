@@ -5,7 +5,7 @@ class CombateConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.combate_id = self.scope['url_route']['kwargs']['combate_id']
         self.combate_group_name = f'combate_{self.combate_id}'
-
+        print('Cliente conectou ao combate', self.combate_id)
         await self.channel_layer.group_add(
             self.combate_group_name,
             self.channel_name
@@ -29,4 +29,5 @@ class CombateConsumer(AsyncWebsocketConsumer):
         )
 
     async def combate_message(self, event):
+        print('Enviando mensagem para o cliente:', event['message'])
         await self.send(text_data=event['message'])

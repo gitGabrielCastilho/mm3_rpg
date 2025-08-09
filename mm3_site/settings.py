@@ -106,7 +106,11 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 

@@ -6,6 +6,9 @@ def detalhes_sala(request, sala_id):
     sala = get_object_or_404(Sala, id=sala_id)
     return render(request, 'salas/detalhes_sala.html', {'sala': sala})
 from django.shortcuts import render, redirect, get_object_or_404
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+from django.db import transaction
 from django.contrib.auth.decorators import login_required
 from .models import Sala
 from django.db.models import Q
@@ -76,14 +79,40 @@ def entrar_sala(request, sala_id):
     perfil.save()
     sala.participantes.add(request.user)
     sala.jogadores.add(request.user)
+    # Notifica todos os participantes da sala sobre a entrada após commit
+    def send_event():
+        print(f"[Channels] Enviando evento ENTRADA para sala_{sala.id} ({request.user.username})")
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'sala_{sala.id}',
+            {
+                'type': 'sala_message',
+                'message': {'evento': 'entrada', 'usuario': request.user.username}
+            }
+        )
+    transaction.on_commit(send_event)
     return redirect('listar_combates', sala_id=sala.id)
 
 @login_required
 def sair_sala(request):
     perfil, _ = PerfilUsuario.objects.get_or_create(user=request.user)
+    sala = perfil.sala_atual
     perfil.sala_atual = None
     perfil.tipo = 'jogador'
     perfil.save()
+    # Notifica todos os participantes da sala sobre a saída após commit
+    if sala:
+        def send_event():
+            print(f"[Channels] Enviando evento SAIDA para sala_{sala.id} ({request.user.username})")
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'sala_{sala.id}',
+                {
+                    'type': 'sala_message',
+                    'message': {'evento': 'saida', 'usuario': request.user.username}
+                }
+            )
+        transaction.on_commit(send_event)
     return redirect('listar_salas')
 
 

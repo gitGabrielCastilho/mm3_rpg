@@ -2,11 +2,38 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mutantes & Malfeitores</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       padding: 20px;
+      margin-left: 250px;
+    }
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 220px;
+      height: 100vh;
+      background: #f8f8ff;
+      border-right: 1px solid #ccc;
+      padding: 20px 10px 10px 20px;
+      box-sizing: border-box;
+      z-index: 100;
+    }
+    .sidebar h3 {
+      margin-top: 0;
+      font-size: 1.1em;
+      margin-bottom: 8px;
+    }
+    .sidebar ul {
+      margin: 0 0 10px 15px;
+      padding: 0;
+      font-size: 0.98em;
+    }
+    .sidebar li {
+      margin-bottom: 2px;
     }
     nav {
       background-color: #eee;
@@ -44,6 +71,48 @@
     </form>
   {% endif %}
 </header>
+
+{% if user.is_authenticated and user.perfilusuario.sala_atual %}
+<aside class="sidebar">
+  <h3>Participantes da Sala</h3>
+  <div style="margin-bottom: 8px;">
+    <strong>Game Master:</strong> {{ user.perfilusuario.sala_atual.game_master.username }}
+  </div>
+  <div id="sidebar-participantes">
+    {% include 'salas/_sidebar_participantes.html' with sala=user.perfilusuario.sala_atual user=user %}
+  </div>
+</aside>
+{% block sidebar_ws %}
+{% if user.is_authenticated and user.perfilusuario.sala_atual %}
+<script>
+  console.log('Sidebar script carregado');
+  document.addEventListener('DOMContentLoaded', function() {
+    const salaId = '{{ user.perfilusuario.sala_atual.id }}';
+    const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const wsPath = `${wsScheme}://${window.location.host}/ws/sala/${salaId}/`;
+    const salaSocket = new WebSocket(wsPath);
+    salaSocket.onmessage = function(e) {
+      console.log('[Sidebar WS] Mensagem recebida:', e.data);
+      // Pequeno delay para garantir que o banco já atualizou
+      setTimeout(function() {
+  const url = `/salas/sidebar_participantes/${salaId}/?t=` + Date.now();
+        console.log('[Sidebar AJAX] Buscando:', url);
+        fetch(url, {cache: 'reload'})
+          .then(response => response.text())
+          .then(html => {
+            document.getElementById('sidebar-participantes').innerHTML = html;
+            console.log('[Sidebar AJAX] Atualizado!');
+          });
+      }, 300);
+    };
+    salaSocket.onclose = function(e) {
+      console.warn('WebSocket da sala fechado.');
+    };
+  });
+</script>
+{% endif %}
+{% endblock %}
+{% endif %}
 <nav>
   <a href="/">Home</a>
   {% if user.is_authenticated %}
@@ -59,6 +128,8 @@
           <a href="{% url 'listar_combates' perfil.sala_atual.id %}">Combates</a>
           <a href="{% url 'listar_mapas' %}">Meus Mapas</a>
           <a href="{% url 'adicionar_mapa_global' %}">Adicionar Mapa</a>
+        {% else %}
+          <a href="{% url 'listar_combates' perfil.sala_atual.id %}">Combates</a>
         {% endif %}
       {% endif %}
     {% endwith %}

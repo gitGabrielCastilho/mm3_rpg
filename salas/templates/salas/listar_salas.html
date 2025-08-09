@@ -8,8 +8,29 @@
 </form>
 
 {% if sala_atual %}
-  <div style="margin-bottom: 20px;">
-    <strong>Você está atualmente na sala:</strong> {{ sala_atual.nome }} ({{ sala_atual.codigo }})
+  <div style="margin-bottom: 20px; background: #f8f8ff; border: 1px solid #ccc; padding: 12px; border-radius: 8px;">
+    <strong>Você está atualmente na sala:</strong> {{ sala_atual.nome }} ({{ sala_atual.codigo }})<br>
+    <strong>Game Master:</strong> {{ sala_atual.game_master.username }}<br>
+    <strong>Participantes:</strong>
+    <ul style="margin: 4px 0 8px 20px;">
+      {% for participante in sala_atual.participantes.all %}
+        {% with perfil=participante.perfilusuario %}
+          <li>
+            {{ participante.username }}
+            {% if perfil.sala_atual and perfil.sala_atual.id == sala_atual.id %}
+              <span style="color: green; font-size: 0.9em;">(conectado)</span>
+            {% else %}
+              <span style="color: #a00; font-size: 0.9em;">(não conectado)</span>
+            {% endif %}
+            {% if sala_atual.game_master == participante %}
+              <span style="color: #0077cc; font-size: 0.9em; font-weight: bold;">[GM]</span>
+            {% endif %}
+          </li>
+        {% endwith %}
+      {% empty %}
+        <li>Nenhum participante ainda.</li>
+      {% endfor %}
+    </ul>
     <form method="post" action="{% url 'sair_sala' %}" style="display:inline;">
       {% csrf_token %}
       <button type="submit">Sair da sala</button>

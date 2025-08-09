@@ -1,0 +1,20 @@
+{# Template parcial para a lista de participantes da sidebar #}
+<ul>
+  {% for participante in sala.participantes.all %}
+    {% with perfil=participante.perfilusuario %}
+      <li>
+        {{ participante.username }}
+        {% if perfil.sala_atual and perfil.sala_atual.id == sala.id %}
+          <span style="color: green; font-size: 0.9em;">(conectado)</span>
+        {% else %}
+          <span style="color: #a00; font-size: 0.9em;">(não conectado)</span>
+        {% endif %}
+        {% if sala.game_master == participante %}
+          <span style="color: #0077cc; font-size: 0.9em; font-weight: bold;">[GM]</span>
+        {% endif %}
+      </li>
+    {% endwith %}
+  {% empty %}
+    <li>Nenhum participante ainda.</li>
+  {% endfor %}
+</ul>

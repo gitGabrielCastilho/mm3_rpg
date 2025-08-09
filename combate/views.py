@@ -1,3 +1,5 @@
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
@@ -29,6 +31,15 @@ def criar_combate(request, sala_id):
             p = Participante.objects.create(personagem=personagem, combate=combate, iniciativa=iniciativa)
             ordem.append((p, iniciativa))
 
+        # Notifica todos os participantes sobre o novo combate
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'combate_{combate.id}',
+            {
+                'type': 'combate_message',
+                'message': json.dumps({'evento': 'novo_combate', 'descricao': f'Combate criado na sala {sala.nome}.'})
+            }
+        )
         return redirect('detalhes_combate', combate_id=combate.id)
 
     personagens = Personagem.objects.all()
@@ -59,7 +70,12 @@ def detalhes_combate(request, combate_id):
     ]
 
     personagens_no_combate_ids = participantes.values_list('personagem_id', flat=True)
-    personagens_disponiveis = Personagem.objects.filter(usuario=request.user).exclude(id__in=personagens_no_combate_ids)
+    if hasattr(request.user, 'perfilusuario') and request.user.perfilusuario.sala_atual and request.user.perfilusuario.sala_atual.game_master == request.user:
+        # GM pode adicionar qualquer personagem dos participantes da sala
+        sala = request.user.perfilusuario.sala_atual
+        personagens_disponiveis = Personagem.objects.filter(usuario__in=sala.participantes.all()).exclude(id__in=personagens_no_combate_ids)
+    else:
+        personagens_disponiveis = Personagem.objects.filter(usuario=request.user).exclude(id__in=personagens_no_combate_ids)
     
     context = {
         'combate': combate,
@@ -86,6 +102,15 @@ def atualizar_posicao_token(request, token_id):
         posicao.x = int(data.get("x", posicao.x))
         posicao.y = int(data.get("y", posicao.y))
         posicao.save()
+        # Notifica todos os participantes sobre a atualização do mapa
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'combate_{posicao.participante.combate.id}',
+            {
+                'type': 'combate_message',
+                'message': json.dumps({'evento': 'mapa', 'descricao': f'Posição de {posicao.participante.personagem.nome} atualizada.'})
+            }
+        )
         return JsonResponse({"status": "ok"})
 
 @require_POST
@@ -106,6 +131,15 @@ def passar_turno(request, combate_id):
         proximo.ativo = True
         proximo.save()
 
+    # Notifica todos os participantes sobre o avanço de turno
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f'combate_{combate.id}',
+        {
+            'type': 'combate_message',
+            'message': json.dumps({'evento': 'avancar_turno', 'descricao': 'Turno avançado.'})
+        }
+    )
     return redirect('detalhes_combate', combate_id=combate.id)
 
 
@@ -115,7 +149,11 @@ def listar_combates(request, sala_id):
     # Verifica se o usuário está na sala (GM ou jogador)
     if sala.game_master != request.user and request.user not in sala.jogadores.all():
         return redirect('home')
-    combates = Combate.objects.filter(sala=sala).order_by('-criado_em')
+    if sala.game_master == request.user:
+        combates = Combate.objects.filter(sala=sala).order_by('-criado_em')
+    else:
+        personagens_usuario = Personagem.objects.filter(usuario=request.user)
+        combates = Combate.objects.filter(sala=sala, participante__personagem__in=personagens_usuario).distinct().order_by('-criado_em')
     return render(request, 'combate/listar_combates.html', {'combates': combates, 'sala': sala})
 
 @require_POST
@@ -136,6 +174,15 @@ def iniciar_turno(request, combate_id):
         ativo=True
     )
     messages.success(request, f"Turno iniciado para {primeiro_participante.personagem.nome}.")
+    # Notifica todos os participantes sobre o início do turno
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f'combate_{combate.id}',
+        {
+            'type': 'combate_message',
+            'message': json.dumps({'evento': 'iniciar_turno', 'descricao': f'Turno iniciado para {primeiro_participante.personagem.nome}.'})
+        }
+    )
     return redirect('detalhes_combate', combate_id=combate.id)
 
 
@@ -144,28 +191,32 @@ def avancar_turno(request, combate_id):
     combate = get_object_or_404(Combate, id=combate_id)
     turnos = Turno.objects.filter(combate=combate).order_by('ordem')
     turno_ativo = turnos.filter(ativo=True).first()
-
     if turno_ativo:
         turno_ativo.ativo = False
         turno_ativo.save()
-
         participantes = Participante.objects.filter(combate=combate).order_by('-iniciativa')
         participante_ids = list(participantes.values_list('id', flat=True))
         personagem_ids = list(participantes.values_list('personagem_id', flat=True))
-
         if turno_ativo.personagem_id in personagem_ids:
             idx = personagem_ids.index(turno_ativo.personagem_id)
             proximo_idx = (idx + 1) % len(personagem_ids)
         else:
             proximo_idx = 0  
-
         personagem_proximo = participantes[proximo_idx].personagem
-
         Turno.objects.create(
             combate=combate,
             personagem=personagem_proximo,
             ordem=turno_ativo.ordem + 1,
             ativo=True
+        )
+        # Notifica todos os participantes sobre o avanço do turno
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'combate_{combate.id}',
+            {
+                'type': 'combate_message',
+                'message': json.dumps({'evento': 'avancar_turno', 'descricao': f'Turno avançado para {personagem_proximo.nome}.'})
+            }
         )
     return redirect('detalhes_combate', combate_id=combate.id)
 
@@ -177,8 +228,16 @@ def finalizar_combate(request, combate_id):
     combate = get_object_or_404(Combate, id=combate_id)
     combate.ativo = False
     combate.save()
-
     Turno.objects.filter(combate=combate, ativo=True).update(ativo=False)
+    # Notifica todos os participantes sobre o fim do combate
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f'combate_{combate.id}',
+        {
+            'type': 'combate_message',
+            'message': json.dumps({'evento': 'finalizar_combate', 'descricao': 'Combate finalizado.'})
+        }
+    )
     messages.success(request, "Combate finalizado.")
     return redirect('listar_combates', sala_id=combate.sala.id)
 
@@ -195,90 +254,13 @@ def deletar_combate(request, combate_id):
 
 
 
-@require_POST
-@login_required
-def adicionar_participante(request, combate_id):
-    if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
-        return redirect('home')
-    combate = get_object_or_404(Combate, id=combate_id)
-    personagem_id = request.POST.get('personagem_id')
-    personagem = get_object_or_404(Personagem, id=personagem_id, usuario=request.user)
-    iniciativa = random.randint(1, 20) + personagem.prontidao
-    participante = Participante.objects.create(personagem=personagem, combate=combate, iniciativa=iniciativa)
-
-    # Cria token na posição inicial (exemplo: 10,10) para o mapa ativo
-    mapa = combate.mapas.first()
-    if mapa:
-        PosicaoPersonagem.objects.create(mapa=mapa, participante=participante, x=10, y=10)
-
-    return redirect('detalhes_combate', combate_id=combate_id)
 
 
-@require_POST
-def remover_participante(request, combate_id, participante_id):
-    if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
-        return redirect('home')
-    participante = get_object_or_404(Participante, id=participante_id, combate_id=combate_id)
-    participante.delete()
-    return redirect('detalhes_combate', combate_id=combate_id)
+
+
 
 
 @login_required
-def adicionar_mapa(request, combate_id):
-    if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
-        return redirect('home')
-    combate = get_object_or_404(Combate, id=combate_id)
-    mapas_globais = Mapa.objects.filter(combate__isnull=True, criado_por=request.user)
-    form = MapaForm()
-
-    if request.method == 'POST':
-        # Se o usuário clicou em "Usar Mapa Selecionado"
-        if request.POST.get('usar_existente'):
-            mapa_id = request.POST.get('mapa_existente')
-            if mapa_id:
-                mapa = get_object_or_404(Mapa, id=mapa_id, criado_por=request.user, combate__isnull=True)
-                mapa.combate = combate
-                mapa.save()
-
-                # CRIA OS TOKENS PARA TODOS OS PARTICIPANTES JÁ EXISTENTES
-                participantes = Participante.objects.filter(combate=combate)
-                for participante in participantes:
-                    if not PosicaoPersonagem.objects.filter(mapa=mapa, participante=participante).exists():
-                        PosicaoPersonagem.objects.create(mapa=mapa, participante=participante, x=10, y=10)
-
-                return redirect('detalhes_combate', combate_id=combate_id)
-        else:
-            # Se o usuário enviou um novo mapa
-            form = MapaForm(request.POST, request.FILES)
-            if form.is_valid():
-                mapa = form.save(commit=False)
-                mapa.combate = combate
-                mapa.criado_por = request.user
-                mapa.save()
-
-                # CRIA OS TOKENS PARA TODOS OS PARTICIPANTES JÁ EXISTENTES
-                participantes = Participante.objects.filter(combate=combate)
-                for participante in participantes:
-                    if not PosicaoPersonagem.objects.filter(mapa=mapa, participante=participante).exists():
-                        PosicaoPersonagem.objects.create(mapa=mapa, participante=participante, x=10, y=10)
-
-                return redirect('detalhes_combate', combate_id=combate_id)
-
-    return render(request, 'combate/adicionar_mapa.html', {
-        'form': form,
-        'combate': combate,
-        'mapas_globais': mapas_globais,
-    })
-
-
-@login_required
-def remover_mapa(request, combate_id, mapa_id):
-    if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
-        return redirect('home')
-    mapa = get_object_or_404(Mapa, id=mapa_id, combate_id=combate_id)
-    mapa.combate = None  # Apenas desvincula do combate
-    mapa.save()
-    return redirect('detalhes_combate', combate_id=combate_id)
 
 @login_required
 def adicionar_mapa_global(request):
@@ -378,6 +360,15 @@ def realizar_ataque(request, combate_id):
             else:
                 turno_ativo.descricao = nova_descricao
             turno_ativo.save()
+            # Notifica todos os participantes sobre a ação
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'combate_{combate_id}',
+                {
+                    'type': 'combate_message',
+                    'message': json.dumps({'evento': 'rolagem', 'descricao': nova_descricao})
+                }
+            )
             return redirect('detalhes_combate', combate_id=combate_id)
 
         if request.POST.get('rolar_caracteristica'):
@@ -410,6 +401,14 @@ def realizar_ataque(request, combate_id):
             else:
                 turno_ativo.descricao = nova_descricao
             turno_ativo.save()
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'combate_{combate_id}',
+                {
+                    'type': 'combate_message',
+                    'message': json.dumps({'evento': 'rolagem', 'descricao': nova_descricao})
+                }
+            )
             return redirect('detalhes_combate', combate_id=combate_id)
         
         if request.POST.get('rolar_d20'):
@@ -421,6 +420,14 @@ def realizar_ataque(request, combate_id):
             else:
                 turno_ativo.descricao = nova_descricao
             turno_ativo.save()
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'combate_{combate_id}',
+                {
+                    'type': 'combate_message',
+                    'message': json.dumps({'evento': 'rolagem', 'descricao': nova_descricao})
+                }
+            )
             return redirect('detalhes_combate', combate_id=combate_id)
 
         alvo_ids = request.POST.getlist('alvo_id')  # Permite múltiplos alvos
@@ -754,4 +761,132 @@ def realizar_ataque(request, combate_id):
             turno_ativo.descricao = nova_descricao
         turno_ativo.save()
 
+    # Notifica todos os participantes sobre a ação
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f'combate_{combate_id}',
+        {
+            'type': 'combate_message',
+            'message': json.dumps({'evento': 'rolagem', 'descricao': nova_descricao if 'nova_descricao' in locals() else ''})
+        }
+    )
+    return redirect('detalhes_combate', combate_id=combate_id)
+
+def adicionar_participante(request, combate_id):
+    if not hasattr(request.user, 'perfilusuario') or not request.user.perfilusuario.sala_atual:
+        return redirect('home')
+    combate = get_object_or_404(Combate, id=combate_id)
+    personagem_id = request.POST.get('personagem_id')
+    sala = combate.sala
+    if sala.game_master == request.user:
+        personagem = get_object_or_404(Personagem, id=personagem_id, usuario__in=sala.participantes.all())
+    else:
+        personagem = get_object_or_404(Personagem, id=personagem_id, usuario=request.user)
+    iniciativa = random.randint(1, 20) + personagem.prontidao
+    participante = Participante.objects.create(personagem=personagem, combate=combate, iniciativa=iniciativa)
+    mapa = combate.mapas.first()
+    if mapa:
+        PosicaoPersonagem.objects.create(mapa=mapa, participante=participante, x=10, y=10)
+    # Notifica todos os participantes sobre a adição
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f'combate_{combate.id}',
+        {
+            'type': 'combate_message',
+            'message': json.dumps({'evento': 'adicionar_participante', 'descricao': f'{personagem.nome} entrou no combate.'})
+        }
+    )
+    return redirect('detalhes_combate', combate_id=combate_id)
+
+def remover_participante(request, combate_id, participante_id):
+    if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
+        return redirect('home')
+    participante = get_object_or_404(Participante, id=participante_id, combate_id=combate_id)
+    nome = participante.personagem.nome
+    participante.delete()
+    # Notifica todos os participantes sobre a remoção
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f'combate_{combate_id}',
+        {
+            'type': 'combate_message',
+            'message': json.dumps({'evento': 'remover_participante', 'descricao': f'{nome} foi removido do combate.'})
+        }
+    )
+    return redirect('detalhes_combate', combate_id=combate_id)
+
+def adicionar_mapa(request, combate_id):
+    if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
+        return redirect('home')
+    combate = get_object_or_404(Combate, id=combate_id)
+    mapas_globais = Mapa.objects.filter(combate__isnull=True, criado_por=request.user)
+    form = MapaForm()
+    if request.method == 'POST':
+        # Se o usuário clicou em "Usar Mapa Selecionado"
+        if request.POST.get('usar_existente'):
+            mapa_id = request.POST.get('mapa_existente')
+            if mapa_id:
+                mapa = get_object_or_404(Mapa, id=mapa_id, criado_por=request.user, combate__isnull=True)
+                mapa.combate = combate
+                mapa.save()
+                # CRIA OS TOKENS PARA TODOS OS PARTICIPANTES JÁ EXISTENTES
+                participantes = Participante.objects.filter(combate=combate)
+                for participante in participantes:
+                    if not PosicaoPersonagem.objects.filter(mapa=mapa, participante=participante).exists():
+                        PosicaoPersonagem.objects.create(mapa=mapa, participante=participante, x=10, y=10)
+                # Notifica todos os participantes sobre o novo mapa
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    f'combate_{combate.id}',
+                    {
+                        'type': 'combate_message',
+                        'message': json.dumps({'evento': 'adicionar_mapa', 'descricao': f'Mapa {mapa.nome} adicionado ao combate.'})
+                    }
+                )
+                return redirect('detalhes_combate', combate_id=combate_id)
+        else:
+            # Se o usuário enviou um novo mapa
+            form = MapaForm(request.POST, request.FILES)
+            if form.is_valid():
+                mapa = form.save(commit=False)
+                mapa.combate = combate
+                mapa.criado_por = request.user
+                mapa.save()
+                # CRIA OS TOKENS PARA TODOS OS PARTICIPANTES JÁ EXISTENTES
+                participantes = Participante.objects.filter(combate=combate)
+                for participante in participantes:
+                    if not PosicaoPersonagem.objects.filter(mapa=mapa, participante=participante).exists():
+                        PosicaoPersonagem.objects.create(mapa=mapa, participante=participante, x=10, y=10)
+                # Notifica todos os participantes sobre o novo mapa
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    f'combate_{combate.id}',
+                    {
+                        'type': 'combate_message',
+                        'message': json.dumps({'evento': 'adicionar_mapa', 'descricao': f'Mapa {mapa.nome} adicionado ao combate.'})
+                    }
+                )
+                return redirect('detalhes_combate', combate_id=combate_id)
+    return render(request, 'combate/adicionar_mapa.html', {
+        'form': form,
+        'combate': combate,
+        'mapas_globais': mapas_globais,
+    })
+
+def remover_mapa(request, combate_id, mapa_id):
+    if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
+        return redirect('home')
+    mapa = get_object_or_404(Mapa, id=mapa_id, combate_id=combate_id)
+    nome = mapa.nome
+    mapa.combate = None  # Apenas desvincula do combate
+    mapa.save()
+    # Notifica todos os participantes sobre a remoção do mapa
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f'combate_{combate_id}',
+        {
+            'type': 'combate_message',
+            'message': json.dumps({'evento': 'remover_mapa', 'descricao': f'Mapa {nome} removido do combate.'})
+        }
+    )
     return redirect('detalhes_combate', combate_id=combate_id)

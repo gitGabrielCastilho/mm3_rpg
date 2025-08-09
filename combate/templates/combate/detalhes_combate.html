@@ -1,6 +1,55 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const combateId = '{{ combate.id }}';
+    const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const wsPath = `${wsScheme}://${window.location.host}/ws/combate/${combateId}/`;
+    const combateSocket = new WebSocket(wsPath);
+
+    combateSocket.onmessage = function(e) {
+      console.log('WebSocket recebeu:', e.data);
+      let data;
+      try {
+        data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+      } catch (err) {
+        data = e.data;
+      }
+      // Opcional: log do evento
+      const log = document.getElementById('combate-log');
+      if (log && data && data.descricao) {
+        log.innerHTML += `<div>${data.descricao}</div>`;
+      }
+      // Atualiza apenas a tabela de participantes via AJAX
+      atualizarTabelaParticipantes();
+    };
+  // Função para atualizar a tabela de participantes via AJAX
+  function atualizarTabelaParticipantes() {
+    fetch(window.location.pathname + 'tabela_participantes/')
+      .then(response => response.text())
+      .then(html => {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+        const novaTabela = tempDiv.querySelector('#tabela-participantes');
+        const tabelaAtual = document.getElementById('tabela-participantes');
+        if (novaTabela && tabelaAtual) {
+          tabelaAtual.innerHTML = novaTabela.innerHTML;
+        }
+      });
+  }
+
+    combateSocket.onclose = function(e) {
+      console.warn('WebSocket fechado.');
+    };
+
+    // Exemplo: enviar mensagem manualmente
+    window.enviarMensagemCombate = function(msg) {
+      combateSocket.send(msg);
+    };
+  });
+</script>
+<div id="combate-log" style="background:#f8f8f8; border:1px solid #ccc; padding:8px; margin-bottom:10px; min-height:30px;"></div>
 <h2>Controle do Combate</h2>
 {% if not turno_ativo and combate.ativo %}
   <form method="post" action="{% url 'iniciar_turno' combate.id %}">
@@ -10,16 +59,16 @@
 {% endif %}
 {% if turno_ativo %}
   {% if personagens_disponiveis %}
-    <h3>Adicionar Participante</h3>
+    <h3>Adicionar Personagem</h3>
     <form method="post" action="{% url 'adicionar_participante' combate.id %}">
       {% csrf_token %}
       <label for="novo_participante">Escolha um personagem:</label>
       <select name="personagem_id" id="novo_participante" required>
         {% for personagem in personagens_disponiveis %}
-          <option value="{{ personagem.id }}">{{ personagem.nome }}</option>
+          <option value="{{ personagem.id }}">{{ personagem.nome }} ({{ personagem.usuario.username }})</option>
         {% endfor %}
       </select>
-      <button type="submit">Adicionar ao Combate</button>
+          <button type="submit">Adicionar Personagem</button>
     </form>
   {% endif %}
   <h3>Ações de {{ turno_ativo.personagem.nome }}</h3>
@@ -103,39 +152,7 @@
 </ul>
 
 <h3>Status dos Participantes</h3>
-<table>
-  <tr>
-    <th>Foto</th>
-    <th>Nome</th>
-    <th>Dano</th>
-    <th>Aflição</th>
-    <th>Ficha</th>
-    <th>Remover</th>
-  </tr>
-  {% for p in participantes %}
-    <tr>
-      <td>
-        {% if p.personagem.foto %}
-          <img src="{{ p.personagem.foto.url }}" alt="Foto" style="max-width:60px; max-height:60px;">
-        {% else %}
-          <span>—</span>
-        {% endif %}
-      </td>
-      <td>{{ p.personagem.nome }}</td>
-      <td>{{ p.dano }}</td>
-      <td>{{ p.aflicao }}</td>
-      <td>
-        <a href="{% url 'ficha_personagem' p.personagem.id %}" target="_blank">Ver Ficha</a>
-      </td>
-      <td>
-        <form method="post" action="{% url 'remover_participante' combate.id p.id %}" style="display:inline;">
-          {% csrf_token %}
-          <button type="submit" style="color:red;">Remover</button>
-        </form>
-      </td>
-    </tr>
-  {% endfor %}
-</table>
+{% include 'combate/_tabela_participantes.html' %}
 <h3>Mapa do Combate</h3>
 
 {% if combate.mapas.all %}
@@ -219,23 +236,5 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 </script>
 
-
-<script>
-const combateId = "{{ combate.id }}";
-const socket = new WebSocket(
-    'ws://' + window.location.host + '/ws/combate/' + combateId + '/'
-);
-
-socket.onmessage = function(e) {
-    const data = JSON.parse(e.data);
-    // Atualize a interface do combate em tempo real aqui
-};
-
-function enviarAcao(acao) {
-    socket.send(JSON.stringify({
-        'acao': acao
-    }));
-}
-</script>
 {% endblock %}
 

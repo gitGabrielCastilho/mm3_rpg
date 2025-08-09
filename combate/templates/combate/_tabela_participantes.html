@@ -1,0 +1,40 @@
+{# Template parcial para a tabela de participantes, reutilizável para AJAX #}
+<table id="tabela-participantes">
+  <tr>
+    <th>Foto</th>
+    <th>Nome</th>
+    <th>Dano</th>
+    <th>Aflição</th>
+    <th>Ficha</th>
+      {% if user.perfilusuario.sala_atual.game_master == user %}
+        <th>Remover</th>
+      {% endif %}
+  </tr>
+  {% for p in participantes %}
+    <tr>
+      <td>
+        {% if p.personagem.foto %}
+          <img src="{{ p.personagem.foto.url }}" alt="Foto" style="max-width:60px; max-height:60px;">
+        {% else %}
+          <span>—</span>
+        {% endif %}
+      </td>
+      <td>{{ p.personagem.nome }}</td>
+      <td>{{ p.dano }}</td>
+      <td>{{ p.aflicao }}</td>
+      <td>
+        {% if p.personagem.usuario == user %}
+          <a href="{% url 'ficha_personagem' p.personagem.id %}" target="_blank">Ver Ficha</a>
+        {% endif %}
+      </td>
+        {% if user.perfilusuario.sala_atual.game_master == user %}
+          <td>
+            <form method="post" action="{% url 'remover_participante' combate.id p.id %}" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" style="color:red;">Remover</button>
+            </form>
+          </td>
+        {% endif %}
+    </tr>
+  {% endfor %}
+</table>
