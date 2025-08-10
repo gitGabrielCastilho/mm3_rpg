@@ -24,10 +24,31 @@
             <button type="submit">Adicionar Personagem</button>
       </form>
     {% endif %}
-    <h3>Ações de {{ turno_ativo.personagem.nome }}</h3>
+
+    {% if turno_ativo %}
+      <div style="margin: 1em 0; padding: 0.5em; background: #f0f8ff; border-left: 4px solid #007bff;">
+        <strong>Turno de:</strong> {{ turno_ativo.personagem.nome }}
+      </div>
+    {% endif %}
+    <h3>Ações de
+      <select id="personagem_acao" name="personagem_acao" form="form-ataque">
+        {% if combate.sala.game_master == user %}
+          {% for p in participantes %}
+            <option value="{{ p.personagem.id }}">{{ p.personagem.nome }}</option>
+          {% endfor %}
+        {% else %}
+          {% for p in participantes %}
+            {% if p.personagem.usuario == user %}
+              <option value="{{ p.personagem.id }}">{{ p.personagem.nome }}</option>
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+      </select>
+    </h3>
 
     <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-ataque">
       {% csrf_token %}
+      <input type="hidden" name="personagem_acao" id="personagem_acao_hidden" value="{{ participantes.0.personagem.id }}">
 
       <label for="alvo">Escolha o(s) alvo(s):</label>
       <select id="alvo" name="alvo_id" multiple required size="4">
@@ -50,6 +71,7 @@
 
   <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-pericia" style="margin-top: 1em;">
     {% csrf_token %}
+    <input type="hidden" name="personagem_acao" id="personagem_acao_hidden_pericia" value="{{ participantes.0.personagem.id }}">
     <label for="pericia_rolar">Escolha a perícia:</label>
     <select name="pericia" id="pericia_rolar" required>
       <option value="">-- Selecione uma perícia --</option>
@@ -62,6 +84,7 @@
 
   <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-caracteristica" style="margin-top: 1em;">
     {% csrf_token %}
+    <input type="hidden" name="personagem_acao" id="personagem_acao_hidden_caracteristica" value="{{ participantes.0.personagem.id }}">
     <label for="caracteristica_rolar">Escolha a característica:</label>
     <select name="caracteristica" id="caracteristica_rolar" required>
       <option value="">-- Selecione uma característica --</option>
@@ -72,10 +95,50 @@
     <button type="submit" name="rolar_caracteristica" value="1">Rolar Característica</button>
   </form>
 
-  <form method="post" action="{% url 'realizar_ataque' combate.id %}" style="margin-top: 1em;">
+  <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-d20" style="margin-top: 1em;">
     {% csrf_token %}
+    <input type="hidden" name="personagem_acao" id="personagem_acao_hidden_d20" value="{{ participantes.0.personagem.id }}">
     <button type="submit" name="rolar_d20" value="1">Rolar d20</button>
   </form>
+
+  <script>
+  // Sincroniza o personagem selecionado para todos os formulários de ação e recarrega poderes
+  document.addEventListener('DOMContentLoaded', function() {
+    var select = document.getElementById('personagem_acao');
+    var poderSelect = document.getElementById('poder');
+    function syncPersonagemAcao() {
+      var val = select.value;
+      document.getElementById('personagem_acao_hidden').value = val;
+      document.getElementById('personagem_acao_hidden_pericia').value = val;
+      document.getElementById('personagem_acao_hidden_caracteristica').value = val;
+      document.getElementById('personagem_acao_hidden_d20').value = val;
+
+      // AJAX para atualizar poderes
+      fetch('/combate/poderes-personagem-ajax/?personagem_id=' + val)
+        .then(resp => resp.json())
+        .then(data => {
+          if (poderSelect) {
+            poderSelect.innerHTML = '';
+            if (data.poderes && data.poderes.length > 0) {
+              data.poderes.forEach(function(p) {
+                var opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = p.nome;
+                poderSelect.appendChild(opt);
+              });
+            } else {
+              var opt = document.createElement('option');
+              opt.disabled = true;
+              opt.textContent = 'Nenhum poder disponível';
+              poderSelect.appendChild(opt);
+            }
+          }
+        });
+    }
+    select.addEventListener('change', syncPersonagemAcao);
+    syncPersonagemAcao();
+  });
+  </script>
 
     <form method="post" action="{% url 'avancar_turno' combate.id %}">
       {% csrf_token %}

@@ -1,8 +1,10 @@
 from django.urls import path
+from . import views
 from .views import atualizar_posicao_token, remover_mapa_global, adicionar_mapa_global, listar_mapas, adicionar_mapa, remover_mapa, remover_participante, adicionar_participante, realizar_ataque ,criar_combate, detalhes_combate, passar_turno, listar_combates, iniciar_turno, avancar_turno, deletar_combate,finalizar_combate
 from . import views_ajax
 
 urlpatterns = [
+    path('poderes-personagem-ajax/', views.poderes_personagem_ajax, name='poderes_personagem_ajax'),
     path('combate/<int:combate_id>/atacar/', realizar_ataque, name='realizar_ataque'),
     path('novo/<int:sala_id>/', criar_combate, name='criar_combate'),
     path('<int:combate_id>/', detalhes_combate, name='detalhes_combate'),

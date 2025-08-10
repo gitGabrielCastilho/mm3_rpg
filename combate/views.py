@@ -1,8 +1,10 @@
+
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse, HttpResponseBadRequest
 from .models import Combate, Turno, Participante
 from personagens.models import Personagem, Poder
 from django.utils import timezone
@@ -12,8 +14,20 @@ from django.contrib import messages
 from .models import Mapa, PosicaoPersonagem
 from .forms import MapaForm
 from salas.models import Sala
-from django.http import JsonResponse
 import json
+
+# AJAX: retorna poderes de um personagem
+@login_required
+def poderes_personagem_ajax(request):
+    personagem_id = request.GET.get('personagem_id')
+    if not personagem_id:
+        return HttpResponseBadRequest('personagem_id obrigatório')
+    try:
+        personagem = Personagem.objects.get(id=personagem_id)
+    except Personagem.DoesNotExist:
+        return JsonResponse({'poderes': []})
+    poderes = list(Poder.objects.filter(personagem=personagem).values('id', 'nome'))
+    return JsonResponse({'poderes': poderes})
 
 def criar_combate(request, sala_id):
     sala = get_object_or_404(Sala, id=sala_id, game_master=request.user)
@@ -293,12 +307,23 @@ def listar_mapas(request):
     return render(request, 'combate/listar_mapas.html', {'mapas': mapas})
 
 @csrf_exempt
-def realizar_ataque(request, combate_id):
 
+def realizar_ataque(request, combate_id):
     if request.method == 'POST':
         turno_ativo = Turno.objects.filter(combate_id=combate_id, ativo=True).first()
-        atacante = turno_ativo.personagem
         resultados = []
+        # Use o personagem_acao do POST, se fornecido, senão caia no turno ativo
+        personagem_acao_id = request.POST.get('personagem_acao')
+        if personagem_acao_id:
+            try:
+                atacante = Personagem.objects.get(id=personagem_acao_id)
+            except Personagem.DoesNotExist:
+                atacante = turno_ativo.personagem if turno_ativo else None
+        else:
+            atacante = turno_ativo.personagem if turno_ativo else None
+        if not atacante:
+            # Não há personagem para agir
+            return redirect('detalhes_combate', combate_id=combate_id)
 
         PERICIA_CARACTERISTICA = {
             'acrobacias': 'agilidade',
@@ -321,6 +346,7 @@ def realizar_ataque(request, combate_id):
             'sobrevivencia': 'prontidao',
         }
 
+
         if request.POST.get('rolar_pericia'):
             pericia_escolhida = request.POST.get('pericia')
             if pericia_escolhida:
@@ -335,7 +361,6 @@ def realizar_ataque(request, combate_id):
                     valor_caracteristica = getattr(atacante, atacante.especialidade_casting_ability, 0)
                 else:
                     valor_caracteristica = getattr(atacante, caracteristica_base, 0)
-
 
                 if valor_pericia is not None:
                     rolagem_base = random.randint(1, 20)
@@ -370,6 +395,7 @@ def realizar_ataque(request, combate_id):
                 }
             )
             return redirect('detalhes_combate', combate_id=combate_id)
+
 
         if request.POST.get('rolar_caracteristica'):
             caracteristica_escolhida = request.POST.get('caracteristica')
@@ -411,6 +437,7 @@ def realizar_ataque(request, combate_id):
             )
             return redirect('detalhes_combate', combate_id=combate_id)
         
+
         if request.POST.get('rolar_d20'):
             rolagem_base = random.randint(1, 20)
             resultados.append(f"{atacante.nome} rolou um d20: <b>{rolagem_base}</b>")
@@ -430,14 +457,16 @@ def realizar_ataque(request, combate_id):
             )
             return redirect('detalhes_combate', combate_id=combate_id)
 
+
         alvo_ids = request.POST.getlist('alvo_id')  # Permite múltiplos alvos
         poder_id = request.POST.get('poder_id')
-        poder = get_object_or_404(Poder, id=poder_id)
-        resultados = []
+        if poder_id:
+            poder = get_object_or_404(Poder, id=poder_id)
+            resultados = []
 
-        for alvo_id in alvo_ids:
-            alvo = get_object_or_404(Personagem, id=alvo_id)
-            participante_alvo = Participante.objects.get(combate=combate_id, personagem=alvo)
+            for alvo_id in alvo_ids:
+                alvo = get_object_or_404(Personagem, id=alvo_id)
+                participante_alvo = Participante.objects.get(combate=combate_id, personagem=alvo)
 
             # CURA
             if poder.tipo == 'cura':
