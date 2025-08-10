@@ -4,73 +4,59 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mutantes & Malfeitores</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      margin-left: 250px;
-    }
-    .sidebar {
-      position: fixed;
-      left: 0;
-      top: 0;
-      width: 220px;
-      height: 100vh;
-      background: #f8f8ff;
-      border-right: 1px solid #ccc;
-      padding: 20px 10px 10px 20px;
-      box-sizing: border-box;
-      z-index: 100;
-    }
-    .sidebar h3 {
-      margin-top: 0;
-      font-size: 1.1em;
-      margin-bottom: 8px;
-    }
-    .sidebar ul {
-      margin: 0 0 10px 15px;
-      padding: 0;
-      font-size: 0.98em;
-    }
-    .sidebar li {
-      margin-bottom: 2px;
-    }
-    nav {
-      background-color: #eee;
-      padding: 10px;
-      border-radius: 5px;
-    }
-    nav a {
-      margin-right: 15px;
-      text-decoration: none;
-      color: #333;
-      font-weight: bold;
-    }
-    nav form {
-      display: inline;
-    }
-    nav button {
-      background: none;
-      border: none;
-      color: blue;
-      cursor: pointer;
-      font-weight: bold;
-      text-decoration: underline;
-    }
-  </style>
-</head>
+
+  <link rel="stylesheet" href="/static/css/style.css">
+ </head>
 <body>
-<header style="margin-bottom: 10px;">
-  {% if user.is_authenticated and user.perfilusuario.sala_atual %}
-    <span style="background: #e0ffe0; padding: 6px 12px; border-radius: 6px; font-weight: bold; margin-right: 10px;">
-      Sala atual: {{ user.perfilusuario.sala_atual.nome }} ({{ user.perfilusuario.sala_atual.codigo }})
-    </span>
-    <form method="post" action="{% url 'sair_sala' %}" style="display:inline; margin-right: 20px;">
+
+<nav class="nav-bar">
+  <div class="nav-group">
+    <a href="/">Home</a>
+    {% if user.is_authenticated %}
+      <div class="dropdown">
+        <button class="dropbtn">Personagens ▾</button>
+        <div class="dropdown-content">
+          <a href="{% url 'listar_personagens' %}">Meus Personagens</a>
+          <a href="{% url 'criar_personagem' %}">Criar Personagem</a>
+        </div>
+      </div>
+      <a href="{% url 'itens' %}">Itens</a>
+      <div class="dropdown">
+        <button class="dropbtn">Salas ▾</button>
+        <div class="dropdown-content">
+          <a href="{% url 'criar_sala' %}">Criar Sala</a>
+          <a href="{% url 'listar_salas' %}">Minhas Salas</a>
+        </div>
+      </div>
+      {% with perfil=user.perfilusuario %}
+        {% if perfil.sala_atual %}
+          <div class="dropdown">
+            <button class="dropbtn">Combate & Mapas ▾</button>
+            <div class="dropdown-content">
+              {% if perfil.tipo == 'game_master' %}
+                <a href="{% url 'criar_combate' perfil.sala_atual.id %}">Novo Combate</a>
+                <a href="{% url 'listar_combates' perfil.sala_atual.id %}">Combates</a>
+                <a href="{% url 'listar_mapas' %}">Meus Mapas</a>
+                <a href="{% url 'adicionar_mapa_global' %}">Adicionar Mapa</a>
+              {% else %}
+                <a href="{% url 'listar_combates' perfil.sala_atual.id %}">Combates</a>
+              {% endif %}
+            </div>
+          </div>
+        {% endif %}
+      {% endwith %}
+    {% else %}
+      <a href="{% url 'login' %}">Login</a>
+      <a href="{% url 'cadastrar_usuario' %}">Cadastro</a>
+    {% endif %}
+  </div>
+  {% if user.is_authenticated %}
+    <form action="{% url 'logout' %}" method="post" class="logout-form">
       {% csrf_token %}
-      <button type="submit" style="background: #ffdddd; color: #a00; border-radius: 4px; border: 1px solid #a00; padding: 4px 10px; font-weight: bold;">Sair da Sala</button>
+      <button type="submit">Sair</button>
     </form>
   {% endif %}
-</header>
+</nav>
 
 {% if user.is_authenticated and user.perfilusuario.sala_atual %}
 <aside class="sidebar">
@@ -95,7 +81,7 @@
       console.log('[Sidebar WS] Mensagem recebida:', e.data);
       // Pequeno delay para garantir que o banco já atualizou
       setTimeout(function() {
-  const url = `/salas/sidebar_participantes/${salaId}/?t=` + Date.now();
+        const url = `/salas/sidebar_participantes/${salaId}/?t=` + Date.now();
         console.log('[Sidebar AJAX] Buscando:', url);
         fetch(url, {cache: 'reload'})
           .then(response => response.text())
@@ -113,35 +99,6 @@
 {% endif %}
 {% endblock %}
 {% endif %}
-<nav>
-  <a href="/">Home</a>
-  {% if user.is_authenticated %}
-    <a href="{% url 'listar_personagens' %}">Meus Personagens</a>
-    <a href="{% url 'criar_personagem' %}">Criar Personagem</a>
-    <a href="{% url 'itens' %}">Itens</a>
-    <a href="{% url 'criar_sala' %}">Criar Sala</a>
-    <a href="{% url 'listar_salas' %}">Minhas Salas</a>
-    {% with perfil=user.perfilusuario %}
-      {% if perfil.sala_atual %}
-        {% if perfil.tipo == 'game_master' %}
-          <a href="{% url 'criar_combate' perfil.sala_atual.id %}">Novo Combate</a>
-          <a href="{% url 'listar_combates' perfil.sala_atual.id %}">Combates</a>
-          <a href="{% url 'listar_mapas' %}">Meus Mapas</a>
-          <a href="{% url 'adicionar_mapa_global' %}">Adicionar Mapa</a>
-        {% else %}
-          <a href="{% url 'listar_combates' perfil.sala_atual.id %}">Combates</a>
-        {% endif %}
-      {% endif %}
-    {% endwith %}
-    <form action="{% url 'logout' %}" method="post" style="display:inline;">
-      {% csrf_token %}
-      <button type="submit">Sair</button>
-    </form>
-  {% else %}
-    <a href="{% url 'login' %}">Login</a>
-    <a href="{% url 'cadastrar_usuario' %}">Cadastro</a>
-  {% endif %}
-</nav> 
 
 <hr>
   {% if messages %}
@@ -153,4 +110,3 @@
 {% endif %}
   {% block content %}{% endblock %}
 </body>
-</html>

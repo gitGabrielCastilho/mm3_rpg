@@ -1,0 +1,226 @@
+
+/*
+  Estilo inspirado no D&D Beyond
+  Paleta: tons escuros, vermelho, dourado, branco
+  Tipografia elegante, cards, botões destacados
+*/
+
+:root {
+  --primary-bg: #23272a;
+  --secondary-bg: #2c2f33;
+  --accent: #c53131;
+  --gold: #e6c200;
+  --text-main: #f5f5f5;
+  --text-dark: #23272a;
+  --card-bg: #262626;
+  --card-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  --border-radius: 12px;
+  --transition: 0.2s cubic-bezier(.4,0,.2,1);
+}
+
+body {
+  background: var(--primary-bg);
+  color: var(--text-main);
+  font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
+  margin: 0;
+  min-height: 100vh;
+}
+
+.nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--secondary-bg);
+  padding: 0 2rem;
+  height: 64px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.nav-group {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.nav-bar a, .nav-bar .dropbtn, .nav-bar button {
+  color: var(--text-main) !important;
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: var(--border-radius);
+  transition: background var(--transition), color var(--transition), box-shadow var(--transition);
+  cursor: pointer;
+  text-decoration: none;
+  outline: none;
+}
+
+.nav-bar a:hover, .nav-bar .dropbtn:hover, .nav-bar button:hover {
+  background: var(--accent);
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(197,49,49,0.18);
+}
+
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background: var(--secondary-bg);
+  min-width: 180px;
+  box-shadow: var(--card-shadow);
+  border-radius: var(--border-radius);
+  z-index: 200;
+  margin-top: 0.5rem;
+  overflow: hidden;
+}
+
+.dropdown:hover .dropdown-content,
+.dropdown:focus-within .dropdown-content {
+  display: block;
+}
+
+.dropdown-content a {
+  color: var(--text-main) !important;
+  padding: 0.75rem 1.25rem;
+  display: block;
+  text-decoration: none;
+  transition: background var(--transition), color var(--transition);
+}
+
+.dropdown-content a:hover {
+  background: var(--accent);
+  color: #fff !important;
+}
+
+.logout-form button {
+  background: var(--accent);
+  color: #fff !important;
+  border: none;
+  border-radius: var(--border-radius);
+  padding: 0.5rem 1.2rem;
+  font-weight: 600;
+  margin-left: 1rem;
+  transition: background var(--transition), box-shadow var(--transition);
+  box-shadow: 0 2px 8px rgba(197,49,49,0.12);
+}
+
+.logout-form button:hover {
+  background: var(--gold);
+  color: var(--text-dark) !important;
+}
+
+.sidebar {
+  position: fixed;
+  right: 0;
+  top: 64px;
+  width: 320px;
+  height: calc(100vh - 64px);
+  background: var(--card-bg);
+  box-shadow: -2px 0 12px rgba(0,0,0,0.18);
+  border-radius: 16px 0 0 16px;
+  padding: 2rem 1.5rem;
+  color: var(--text-main);
+  overflow-y: auto;
+  z-index: 90;
+}
+
+.card {
+  background: var(--card-bg);
+  border-radius: var(--border-radius);
+  box-shadow: var(--card-shadow);
+  padding: 1.5rem 2rem;
+  margin-bottom: 2rem;
+  color: var(--text-main);
+  transition: box-shadow var(--transition), transform var(--transition);
+}
+
+.card:hover {
+  box-shadow: 0 8px 32px rgba(230,194,0,0.12);
+  transform: translateY(-2px) scale(1.01);
+}
+
+.btn, .button {
+  background: var(--accent);
+  color: #fff !important;
+  border: none;
+  border-radius: var(--border-radius);
+  padding: 0.6rem 1.5rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition), box-shadow var(--transition), color var(--transition);
+  box-shadow: 0 2px 8px rgba(197,49,49,0.12);
+  text-decoration: none;
+  display: inline-block;
+}
+
+.btn:hover, .button:hover {
+  background: var(--gold);
+  color: var(--text-dark) !important;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--gold);
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+input, select, textarea {
+  background: #222;
+  color: var(--text-main);
+  border: 1px solid #444;
+  border-radius: var(--border-radius);
+  padding: 0.5rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  transition: border var(--transition), box-shadow var(--transition);
+}
+
+input:focus, select:focus, textarea:focus {
+  border: 1.5px solid var(--gold);
+  box-shadow: 0 0 0 2px rgba(230,194,0,0.15);
+  outline: none;
+}
+
+@media (max-width: 900px) {
+  .sidebar {
+    width: 100vw;
+    left: 0;
+    right: 0;
+    top: 64px;
+    border-radius: 0 0 16px 16px;
+    height: auto;
+    min-height: 180px;
+    padding: 1.2rem 0.8rem;
+  }
+  .nav-bar {
+    flex-direction: column;
+    height: auto;
+    padding: 0.5rem 1rem;
+  }
+  .nav-group {
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  background: #222;
+}
+::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 8px;
+}
+
+/* Fim do estilo D&D Beyond */
