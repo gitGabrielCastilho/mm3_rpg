@@ -130,15 +130,17 @@
             {% endif %}
           {% endif %}
         {% endfor %}
+        {% if combate.sala.game_master == user %}
         <form method="post" action="{% url 'remover_mapa' combate.id mapa.id %}">
           {% csrf_token %}
           <button type="submit" style="color:red;">Remover Mapa</button>
         </form>
+        {% endif %}
       </div>
     {% endfor %}
   {% endif %}
 
-  <!-- O formulário para adicionar/selecionar mapas aparece sempre -->
+  {% if combate.sala.game_master == user %}
   <form method="post" enctype="multipart/form-data" action="{% url 'adicionar_mapa' combate.id %}">
     {% csrf_token %}
     <label for="mapa_existente">Selecionar mapa existente:</label>
@@ -154,6 +156,7 @@
     {{ form.as_p }}
     <button type="submit">Adicionar Novo Mapa</button>
   </form>
+  {% endif %}
 </div>
 
 <script>
