@@ -1,6 +1,161 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<div id="combate-content">
+  <div id="combate-log" style="background:#f8f8f8; border:1px solid #ccc; padding:8px; margin-bottom:10px; min-height:30px;"></div>
+  <h2>Controle do Combate</h2>
+  {% if not turno_ativo and combate.ativo %}
+    <form method="post" action="{% url 'iniciar_turno' combate.id %}">
+      {% csrf_token %}
+      <button type="submit">Iniciar Turno</button>
+    </form>
+  {% endif %}
+  {% if turno_ativo %}
+    {% if personagens_disponiveis %}
+      <h3>Adicionar Personagem</h3>
+      <form method="post" action="{% url 'adicionar_participante' combate.id %}">
+        {% csrf_token %}
+        <label for="novo_participante">Escolha um personagem:</label>
+        <select name="personagem_id" id="novo_participante" required>
+          {% for personagem in personagens_disponiveis %}
+            <option value="{{ personagem.id }}">{{ personagem.nome }} ({{ personagem.usuario.username }})</option>
+          {% endfor %}
+        </select>
+            <button type="submit">Adicionar Personagem</button>
+      </form>
+    {% endif %}
+    <h3>Ações de {{ turno_ativo.personagem.nome }}</h3>
+
+    <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-ataque">
+      {% csrf_token %}
+
+      <label for="alvo">Escolha o(s) alvo(s):</label>
+      <select id="alvo" name="alvo_id" multiple required size="4">
+        {% for p in participantes %}
+          <option value="{{ p.personagem.id }}">{{ p.personagem.nome }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="poder">Escolha o poder:</label>
+      <select name="poder_id" id="poder" required>
+        {% for poder in poderes_disponiveis %}
+          <option value="{{ poder.id }}">{{ poder.nome }}</option>
+        {% empty %}
+          <option disabled>Nenhum poder disponível</option>
+        {% endfor %}
+      </select>
+
+      <button type="submit">Usar Poder</button>
+    </form>
+
+  <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-pericia" style="margin-top: 1em;">
+    {% csrf_token %}
+    <label for="pericia_rolar">Escolha a perícia:</label>
+    <select name="pericia" id="pericia_rolar" required>
+      <option value="">-- Selecione uma perícia --</option>
+      {% for pericia in pericias %}
+        <option value="{{ pericia }}">{{ pericia|capfirst }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" name="rolar_pericia" value="1">Rolar Perícia</button>
+  </form>
+
+  <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-caracteristica" style="margin-top: 1em;">
+    {% csrf_token %}
+    <label for="caracteristica_rolar">Escolha a característica:</label>
+    <select name="caracteristica" id="caracteristica_rolar" required>
+      <option value="">-- Selecione uma característica --</option>
+      {% for c in caracteristicas %}
+        <option value="{{ c }}">{{ c|capfirst }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" name="rolar_caracteristica" value="1">Rolar Característica</button>
+  </form>
+
+  <form method="post" action="{% url 'realizar_ataque' combate.id %}" style="margin-top: 1em;">
+    {% csrf_token %}
+    <button type="submit" name="rolar_d20" value="1">Rolar d20</button>
+  </form>
+
+    <form method="post" action="{% url 'avancar_turno' combate.id %}">
+      {% csrf_token %}
+      <button type="submit" formnovalidate>Avançar Turno</button>
+    </form>
+
+    <form method="post" action="{% url 'finalizar_combate' combate.id %}">
+      {% csrf_token %}
+      <button type="submit" style="color: red;" formnovalidate>Finalizar Combate</button>
+    </form>
+  {% endif %}
+
+  <hr>
+  <h3>Histórico de Ataques</h3>
+  <ul style="list-style-type: none; padding-left: 0;">
+    {% for turno in turnos %}
+  <li style="margin-bottom: 0.5em; {% if turno.ativo %}background-color: #f0f8ff; padding: 0.5em; border-left: 4px solid #007bff;{% endif %}">
+    <strong>Rodada {{ turno.ordem }}:</strong>
+    {{ turno.criado_em|date:"d/m/Y H:i" }} – {{ turno.descricao|safe }}
+    {% if turno.ativo %}
+      <span style="color: #007bff; font-weight: bold;">(Turno Ativo)</span>
+    {% endif %}
+  </li>
+    {% empty %}
+      <li>Nenhum ataque registrado ainda.</li>
+    {% endfor %}
+  </ul>
+
+  <h3>Status dos Participantes</h3>
+  {% include 'combate/_tabela_participantes.html' %}
+  <h3>Mapa do Combate</h3>
+
+  {% if combate.mapas.all %}
+    {% for mapa in combate.mapas.all %}
+      <div id="mapa-area-{{ mapa.id }}" style="position:relative; width:600px; height:400px;">
+        <img src="{{ mapa.imagem.url }}" alt="{{ mapa.nome }}" style="width:600px; height:400px;">
+        {% for posicao in posicoes %}
+          {% if posicao.mapa.id == mapa.id %}
+            {% if posicao.participante.personagem.foto %}
+              <img src="{{ posicao.participante.personagem.foto.url }}"
+                   id="token-{{ posicao.id }}"
+                   style="position:absolute; left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:40px; height:40px; cursor:move;"
+                   draggable="true"
+                   ondragstart="drag(event, {{ posicao.id }})">
+            {% else %}
+              <div id="token-{{ posicao.id }}"
+                   style="position:absolute; left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:40px; height:40px; background:#ccc; border-radius:50%; text-align:center; line-height:40px; cursor:move;"
+                   draggable="true"
+                   ondragstart="drag(event, {{ posicao.id }})">
+                {{ posicao.participante.personagem.nome|slice:"0:2"|upper }}
+              </div>
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+        <form method="post" action="{% url 'remover_mapa' combate.id mapa.id %}">
+          {% csrf_token %}
+          <button type="submit" style="color:red;">Remover Mapa</button>
+        </form>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- O formulário para adicionar/selecionar mapas aparece sempre -->
+  <form method="post" enctype="multipart/form-data" action="{% url 'adicionar_mapa' combate.id %}">
+    {% csrf_token %}
+    <label for="mapa_existente">Selecionar mapa existente:</label>
+    <select name="mapa_existente" id="mapa_existente">
+      <option value="">-- Escolha um mapa --</option>
+      {% for mapa in mapas_globais %}
+        <option value="{{ mapa.id }}">{{ mapa.nome }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" name="usar_existente" value="1">Usar Mapa Selecionado</button>
+    <hr>
+    <strong>Ou envie um novo mapa:</strong>
+    {{ form.as_p }}
+    <button type="submit">Adicionar Novo Mapa</button>
+  </form>
+</div>
+
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     const combateId = '{{ combate.id }}';
@@ -8,232 +163,49 @@
     const wsPath = `${wsScheme}://${window.location.host}/ws/combate/${combateId}/`;
     const combateSocket = new WebSocket(wsPath);
 
+
     combateSocket.onmessage = function(e) {
-      console.log('WebSocket recebeu:', e.data);
-      let data;
-      try {
-        data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
-      } catch (err) {
-        data = e.data;
-      }
-      // Opcional: log do evento
-      const log = document.getElementById('combate-log');
-      if (log && data && data.descricao) {
-        log.innerHTML += `<div>${data.descricao}</div>`;
-      }
-      // Atualiza apenas a tabela de participantes via AJAX
-      atualizarTabelaParticipantes();
+      // Recarrega toda a página ao receber mensagem WebSocket
+      window.location.reload();
     };
-  // Função para atualizar a tabela de participantes via AJAX
-  function atualizarTabelaParticipantes() {
-    fetch(window.location.pathname + 'tabela_participantes/')
-      .then(response => response.text())
-      .then(html => {
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = html;
-        const novaTabela = tempDiv.querySelector('#tabela-participantes');
-        const tabelaAtual = document.getElementById('tabela-participantes');
-        if (novaTabela && tabelaAtual) {
-          tabelaAtual.innerHTML = novaTabela.innerHTML;
-        }
-      });
-  }
 
     combateSocket.onclose = function(e) {
       console.warn('WebSocket fechado.');
     };
 
-    // Exemplo: enviar mensagem manualmente
     window.enviarMensagemCombate = function(msg) {
       combateSocket.send(msg);
     };
   });
-</script>
-<div id="combate-log" style="background:#f8f8f8; border:1px solid #ccc; padding:8px; margin-bottom:10px; min-height:30px;"></div>
-<h2>Controle do Combate</h2>
-{% if not turno_ativo and combate.ativo %}
-  <form method="post" action="{% url 'iniciar_turno' combate.id %}">
-    {% csrf_token %}
-    <button type="submit">Iniciar Turno</button>
-  </form>
-{% endif %}
-{% if turno_ativo %}
-  {% if personagens_disponiveis %}
-    <h3>Adicionar Personagem</h3>
-    <form method="post" action="{% url 'adicionar_participante' combate.id %}">
-      {% csrf_token %}
-      <label for="novo_participante">Escolha um personagem:</label>
-      <select name="personagem_id" id="novo_participante" required>
-        {% for personagem in personagens_disponiveis %}
-          <option value="{{ personagem.id }}">{{ personagem.nome }} ({{ personagem.usuario.username }})</option>
-        {% endfor %}
-      </select>
-          <button type="submit">Adicionar Personagem</button>
-    </form>
-  {% endif %}
-  <h3>Ações de {{ turno_ativo.personagem.nome }}</h3>
 
-  <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-ataque">
-    {% csrf_token %}
+  function drag(event, id) {
+    event.dataTransfer.setData("tokenId", id);
+  }
 
-    <label for="alvo">Escolha o(s) alvo(s):</label>
-    <select id="alvo" name="alvo_id" multiple required size="4">
-      {% for p in participantes %}
-        <option value="{{ p.personagem.id }}">{{ p.personagem.nome }}</option>
-      {% endfor %}
-    </select>
-
-    <label for="poder">Escolha o poder:</label>
-    <select name="poder_id" id="poder" required>
-      {% for poder in poderes_disponiveis %}
-        <option value="{{ poder.id }}">{{ poder.nome }}</option>
-      {% empty %}
-        <option disabled>Nenhum poder disponível</option>
-      {% endfor %}
-    </select>
-
-    <button type="submit">Usar Poder</button>
-  </form>
-
-<form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-pericia" style="margin-top: 1em;">
-  {% csrf_token %}
-  <label for="pericia_rolar">Escolha a perícia:</label>
-  <select name="pericia" id="pericia_rolar" required>
-    <option value="">-- Selecione uma perícia --</option>
-    {% for pericia in pericias %}
-      <option value="{{ pericia }}">{{ pericia|capfirst }}</option>
-    {% endfor %}
-  </select>
-  <button type="submit" name="rolar_pericia" value="1">Rolar Perícia</button>
-</form>
-
-<form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-caracteristica" style="margin-top: 1em;">
-  {% csrf_token %}
-  <label for="caracteristica_rolar">Escolha a característica:</label>
-  <select name="caracteristica" id="caracteristica_rolar" required>
-    <option value="">-- Selecione uma característica --</option>
-    {% for c in caracteristicas %}
-      <option value="{{ c }}">{{ c|capfirst }}</option>
-    {% endfor %}
-  </select>
-  <button type="submit" name="rolar_caracteristica" value="1">Rolar Característica</button>
-</form>
-
-<form method="post" action="{% url 'realizar_ataque' combate.id %}" style="margin-top: 1em;">
-  {% csrf_token %}
-  <button type="submit" name="rolar_d20" value="1">Rolar d20</button>
-</form>
-
-  <form method="post" action="{% url 'avancar_turno' combate.id %}">
-    {% csrf_token %}
-    <button type="submit" formnovalidate>Avançar Turno</button>
-  </form>
-
-  <form method="post" action="{% url 'finalizar_combate' combate.id %}">
-    {% csrf_token %}
-    <button type="submit" style="color: red;" formnovalidate>Finalizar Combate</button>
-  </form>
-{% endif %}
-
-<hr>
-<h3>Histórico de Ataques</h3>
-<ul style="list-style-type: none; padding-left: 0;">
-  {% for turno in turnos %}
-<li style="margin-bottom: 0.5em; {% if turno.ativo %}background-color: #f0f8ff; padding: 0.5em; border-left: 4px solid #007bff;{% endif %}">
-  <strong>Rodada {{ turno.ordem }}:</strong>
-  {{ turno.criado_em|date:"d/m/Y H:i" }} – {{ turno.descricao|safe }}
-  {% if turno.ativo %}
-    <span style="color: #007bff; font-weight: bold;">(Turno Ativo)</span>
-  {% endif %}
-</li>
-  {% empty %}
-    <li>Nenhum ataque registrado ainda.</li>
-  {% endfor %}
-</ul>
-
-<h3>Status dos Participantes</h3>
-{% include 'combate/_tabela_participantes.html' %}
-<h3>Mapa do Combate</h3>
-
-{% if combate.mapas.all %}
-  {% for mapa in combate.mapas.all %}
-    <div id="mapa-area-{{ mapa.id }}" style="position:relative; width:600px; height:400px;">
-      <img src="{{ mapa.imagem.url }}" alt="{{ mapa.nome }}" style="width:600px; height:400px;">
-      {% for posicao in posicoes %}
-        {% if posicao.mapa.id == mapa.id %}
-          {% if posicao.participante.personagem.foto %}
-            <img src="{{ posicao.participante.personagem.foto.url }}"
-                 id="token-{{ posicao.id }}"
-                 style="position:absolute; left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:40px; height:40px; cursor:move;"
-                 draggable="true"
-                 ondragstart="drag(event, {{ posicao.id }})">
-          {% else %}
-            <div id="token-{{ posicao.id }}"
-                 style="position:absolute; left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:40px; height:40px; background:#ccc; border-radius:50%; text-align:center; line-height:40px; cursor:move;"
-                 draggable="true"
-                 ondragstart="drag(event, {{ posicao.id }})">
-              {{ posicao.participante.personagem.nome|slice:":2"|upper }}
-            </div>
-          {% endif %}
-        {% endif %}
-      {% endfor %}
-      <form method="post" action="{% url 'remover_mapa' combate.id mapa.id %}">
-        {% csrf_token %}
-        <button type="submit" style="color:red;">Remover Mapa</button>
-      </form>
-    </div>
-  {% endfor %}
-{% endif %}
-
-<!-- O formulário para adicionar/selecionar mapas aparece sempre -->
-<form method="post" enctype="multipart/form-data" action="{% url 'adicionar_mapa' combate.id %}">
-  {% csrf_token %}
-  <label for="mapa_existente">Selecionar mapa existente:</label>
-  <select name="mapa_existente" id="mapa_existente">
-    <option value="">-- Escolha um mapa --</option>
-    {% for mapa in mapas_globais %}
-      <option value="{{ mapa.id }}">{{ mapa.nome }}</option>
-    {% endfor %}
-  </select>
-  <button type="submit" name="usar_existente" value="1">Usar Mapa Selecionado</button>
-  <hr>
-  <strong>Ou envie um novo mapa:</strong>
-  {{ form.as_p }}
-  <button type="submit">Adicionar Novo Mapa</button>
-</form>
-
-
-
-
-<script>
-function drag(event, id) {
-  event.dataTransfer.setData("tokenId", id);
-}
-
-document.addEventListener("DOMContentLoaded", function() {
-  document.querySelectorAll("[id^='mapa-area-']").forEach(function(mapaArea) {
-    mapaArea.addEventListener("dragover", function(e) { e.preventDefault(); });
-    mapaArea.addEventListener("drop", function(e) {
-      e.preventDefault();
-      const tokenId = e.dataTransfer.getData("tokenId");
-      const rect = mapaArea.getBoundingClientRect();
-      const x = e.clientX - rect.left - 20; // centraliza o token
-      const y = e.clientY - rect.top - 20;
-      fetch(`/combate/atualizar-posicao-token/${tokenId}/`, {
-        method: "POST",
-        headers: {
-          "X-CSRFToken": "{{ csrf_token }}",
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({x, y})
-      }).then(() => {
-        const token = document.getElementById("token-" + tokenId);
-        token.style.left = x + "px";
-        token.style.top = y + "px";
+  document.addEventListener("DOMContentLoaded", function() {
+    document.querySelectorAll("[id^='mapa-area-']").forEach(function(mapaArea) {
+      mapaArea.addEventListener("dragover", function(e) { e.preventDefault(); });
+      mapaArea.addEventListener("drop", function(e) {
+        e.preventDefault();
+        const tokenId = e.dataTransfer.getData("tokenId");
+        const rect = mapaArea.getBoundingClientRect();
+        const x = e.clientX - rect.left - 20;
+        const y = e.clientY - rect.top - 20;
+        fetch(`/combate/atualizar-posicao-token/${tokenId}/`, {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": "{{ csrf_token }}",
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({x, y})
+        }).then(() => {
+          const token = document.getElementById("token-" + tokenId);
+          token.style.left = x + "px";
+          token.style.top = y + "px";
+        });
       });
     });
   });
-});
 </script>
 
 {% endblock %}
