@@ -1,3 +1,191 @@
+/* Centralização e estilo para página de Meus Personagens */
+.personagens-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 60vh;
+  margin-top: 2rem;
+}
+.personagens-title {
+  font-size: 2.3rem;
+  margin-bottom: 2rem;
+  color: var(--gold);
+  text-align: center;
+}
+.personagens-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  max-width: 520px;
+}
+.personagens-list li {
+  background: var(--card-bg);
+  border-radius: var(--border-radius);
+  box-shadow: var(--card-shadow);
+  margin-bottom: 1.2rem;
+  padding: 1.2rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  font-size: 1.13rem;
+}
+.personagem-link {
+  color: var(--gold);
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 1.15rem;
+  margin-right: 0.5rem;
+}
+.personagem-link:hover {
+  text-decoration: underline;
+  color: #fff;
+}
+.personagem-np {
+  color: var(--text-main);
+  margin-right: auto;
+  font-size: 1.08rem;
+}
+.btn {
+  background: var(--accent);
+  color: #fff !important;
+  border: none;
+  border-radius: var(--border-radius);
+  padding: 0.4rem 1.1rem;
+  font-weight: 600;
+  font-size: 1rem;
+  margin-left: 0.3rem;
+  transition: background var(--transition), box-shadow var(--transition);
+  box-shadow: 0 2px 8px rgba(197,49,49,0.12);
+  cursor: pointer;
+}
+.btn:hover {
+  background: var(--gold);
+  color: var(--text-dark) !important;
+}
+.btn-excluir {
+  background: #a32a2a;
+}
+.btn-excluir:hover {
+  background: #e6c200;
+  color: var(--text-dark) !important;
+}
+/* Área responsiva para título, filtros e tabela de itens */
+.itens-area-responsive {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto 2rem auto;
+  overflow-x: auto;
+  padding: 0 2.5vw 2rem 2.5vw;
+  box-sizing: border-box;
+}
+.itens-title {
+  margin-left: 0.2rem;
+  margin-top: 0;
+  margin-bottom: 1.2rem;
+}
+.itens-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+  padding-left: 0.2rem;
+}
+.itens-filtros input,
+.itens-filtros select {
+  min-width: 180px;
+  max-width: 260px;
+}
+/* Responsividade para tabelas longas */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  margin: 0;
+  max-height: 400px;
+  overflow-y: auto;
+  /* Agora o padding está na .itens-area-responsive */
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 600px;
+}
+
+th, td {
+  padding: 1rem 1.5rem;
+  text-align: left;
+  border: 1px solid #444;
+}
+
+@media (max-width: 900px) {
+  .table-responsive {
+    min-width: 0;
+    overflow-x: auto;
+  }
+  table {
+    min-width: 500px;
+    font-size: 0.95rem;
+  }
+}
+
+/* Centralizar formulário de criação de item */
+.item-form-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  max-width: 480px;
+  margin: 0 auto 2rem auto;
+  background: var(--card-bg);
+  border-radius: var(--border-radius);
+  box-shadow: var(--card-shadow);
+  padding: 2rem 2.5rem 1.5rem 2.5rem;
+}
+.item-form-center h2 {
+  margin-top: 0;
+}
+.item-form-center form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.item-form-center label {
+  font-size: 1.08rem;
+  margin-bottom: 0.2rem;
+  color: var(--text-main);
+  font-weight: 500;
+}
+
+.item-form-center input,
+.item-form-center select,
+.item-form-center textarea {
+  width: 100%;
+  margin-bottom: 0;
+}
+
+.item-form-center button[type="submit"] {
+  background: var(--accent);
+  color: #fff !important;
+  border: none;
+  border-radius: var(--border-radius);
+  padding: 0.5rem 1.2rem;
+  font-weight: 600;
+  margin-left: 0;
+  margin-top: 0.5rem;
+  transition: background var(--transition), box-shadow var(--transition);
+  box-shadow: 0 2px 8px rgba(197,49,49,0.12);
+  width: fit-content;
+  align-self: flex-end;
+}
+.item-form-center button[type="submit"]:hover {
+  background: var(--gold);
+  color: var(--text-dark) !important;
+}
+
 
 /*
   Estilo inspirado no D&D Beyond
@@ -26,6 +214,7 @@ body {
   min-height: 100vh;
 }
 
+/* NAVBAR E DROPDOWNS */
 .nav-bar {
   display: flex;
   align-items: center;
@@ -42,24 +231,35 @@ body {
 .nav-group {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  height: 64px;
+  gap: 0.5rem;
 }
 
-.nav-bar a, .nav-bar .dropbtn, .nav-bar button {
+.nav-bar .nav-group > a,
+.nav-bar .dropbtn {
   color: var(--text-main) !important;
   background: none;
   border: none;
   font-size: 1.1rem;
   font-weight: 500;
-  padding: 0.5rem 1rem;
-  border-radius: var(--border-radius);
+  padding: 0 2rem;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
   transition: background var(--transition), color var(--transition), box-shadow var(--transition);
   cursor: pointer;
   text-decoration: none;
   outline: none;
+  min-width: 120px;
+  box-sizing: border-box;
+  background-clip: padding-box;
 }
 
-.nav-bar a:hover, .nav-bar .dropbtn:hover, .nav-bar button:hover {
+.nav-bar .nav-group > a:hover,
+.nav-bar .dropbtn:hover,
+.nav-bar .dropbtn:focus {
   background: var(--accent);
   color: #fff !important;
   box-shadow: 0 2px 8px rgba(197,49,49,0.18);
@@ -67,19 +267,39 @@ body {
 
 .dropdown {
   position: relative;
-  display: inline-block;
+  display: flex;
+  align-items: center;
+  height: 64px;
+}
+
+.dropdown .dropbtn {
+  width: 100%;
 }
 
 .dropdown-content {
   display: none;
   position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
   background: var(--secondary-bg);
   min-width: 180px;
   box-shadow: var(--card-shadow);
   border-radius: var(--border-radius);
   z-index: 200;
-  margin-top: 0.5rem;
+  margin-top: 0.4rem;
   overflow: hidden;
+  padding-top: 0.4rem;
+}
+
+/* Centralizar mensagem da home */
+.home-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 40vh;
+  text-align: center;
 }
 
 .dropdown:hover .dropdown-content,
@@ -126,10 +346,45 @@ body {
   background: var(--card-bg);
   box-shadow: -2px 0 12px rgba(0,0,0,0.18);
   border-radius: 16px 0 0 16px;
-  padding: 2rem 1.5rem;
+  padding: 2rem 1.5rem 1.5rem 1.5rem;
   color: var(--text-main);
   overflow-y: auto;
   z-index: 90;
+  transition: right 0.3s cubic-bezier(.4,0,.2,1), width 0.3s cubic-bezier(.4,0,.2,1);
+}
+.sidebar.closed {
+  right: 0;
+  width: 40px;
+  min-width: 40px;
+  max-width: 40px;
+  padding-left: 0.2rem;
+  padding-right: 0.2rem;
+  overflow: hidden;
+}
+.sidebar.closed > *:not(.sidebar-toggle) {
+  display: none !important;
+}
+.sidebar.closed .sidebar-toggle {
+  display: flex !important;
+}
+.sidebar-toggle {
+  position: fixed;
+  right: 0;
+  top: 84px;
+  width: 36px;
+  height: 36px;
+  background: var(--secondary-bg);
+  color: var(--gold);
+  border: none;
+  border-radius: 18px 0 0 18px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  cursor: pointer;
+  font-size: 1.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  transition: right 0.3s cubic-bezier(.4,0,.2,1);
 }
 
 .card {

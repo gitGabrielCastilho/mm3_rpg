@@ -12,6 +12,7 @@
 <nav class="nav-bar">
   <div class="nav-group">
     <a href="/">Home</a>
+    <a href="{% url 'itens' %}">Itens</a>
     {% if user.is_authenticated %}
       <div class="dropdown">
         <button class="dropbtn">Personagens ▾</button>
@@ -20,7 +21,6 @@
           <a href="{% url 'criar_personagem' %}">Criar Personagem</a>
         </div>
       </div>
-      <a href="{% url 'itens' %}">Itens</a>
       <div class="dropdown">
         <button class="dropbtn">Salas ▾</button>
         <div class="dropdown-content">
@@ -58,9 +58,42 @@
   {% endif %}
 </nav>
 
+<script>
+// Dropdown robusto: abre ao passar mouse ou focar, fecha ao sair
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.dropdown').forEach(function(drop) {
+    let timeout;
+    const menu = drop.querySelector('.dropdown-content');
+    drop.addEventListener('mouseenter', function() {
+      clearTimeout(timeout);
+      menu.style.display = 'block';
+    });
+    drop.addEventListener('mouseleave', function() {
+      timeout = setTimeout(() => { menu.style.display = 'none'; }, 120);
+    });
+    drop.querySelector('.dropbtn').addEventListener('focus', function() {
+      menu.style.display = 'block';
+    });
+    drop.querySelector('.dropbtn').addEventListener('blur', function() {
+      timeout = setTimeout(() => { menu.style.display = 'none'; }, 120);
+    });
+    menu.addEventListener('mouseenter', function() {
+      clearTimeout(timeout);
+      menu.style.display = 'block';
+    });
+    menu.addEventListener('mouseleave', function() {
+      timeout = setTimeout(() => { menu.style.display = 'none'; }, 120);
+    });
+  });
+});
+</script>
+
 {% if user.is_authenticated and user.perfilusuario.sala_atual %}
-<aside class="sidebar">
-  <h3>Participantes da Sala</h3>
+<aside class="sidebar closed" id="sidebar">
+  <button id="sidebar-toggle" class="sidebar-toggle" onclick="toggleSidebar()" title="Abrir/Fechar participantes">
+    <span id="sidebar-toggle-icon">⮜</span>
+  </button>
+  <h3 style="margin-top:0;">{{ user.perfilusuario.sala_atual.nome|default:'Sala' }}</h3>
   <div style="margin-bottom: 8px;">
     <strong>Game Master:</strong> {{ user.perfilusuario.sala_atual.game_master.username }}
   </div>
@@ -68,6 +101,29 @@
     {% include 'salas/_sidebar_participantes.html' with sala=user.perfilusuario.sala_atual user=user %}
   </div>
 </aside>
+<script>
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const icon = document.getElementById('sidebar-toggle-icon');
+  sidebar.classList.toggle('closed');
+  if (sidebar.classList.contains('closed')) {
+    icon.textContent = '⮞';
+    sidebar.setAttribute('aria-expanded', 'false');
+  } else {
+    icon.textContent = '⮜';
+    sidebar.setAttribute('aria-expanded', 'true');
+  }
+}
+// Sidebar começa fechado por padrão, garantir ícone correto ao carregar
+document.addEventListener('DOMContentLoaded', function() {
+  const sidebar = document.getElementById('sidebar');
+  const icon = document.getElementById('sidebar-toggle-icon');
+  if (sidebar && sidebar.classList.contains('closed')) {
+    icon.textContent = '⮞';
+    sidebar.setAttribute('aria-expanded', 'false');
+  }
+});
+</script>
 {% block sidebar_ws %}
 {% if user.is_authenticated and user.perfilusuario.sala_atual %}
 <script>

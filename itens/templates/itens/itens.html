@@ -2,32 +2,37 @@
 {% load static %}
 
 {% block content %}
+
 {% if pode_criar %}
-  <h2>Criar Item</h2>
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Criar</button>
-  </form>
+  <div class="item-form-center">
+    <h2>Criar Item</h2>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit">Criar</button>
+    </form>
+  </div>
 {% endif %}
 
-<h2>Itens</h2>
-<input type="text" id="busca-item" placeholder="Buscar por nome...">
-<select id="filtro-tipo">
-  <option value="">Todos os tipos</option>
-  {% for key, label in tipos %}
-    <option value="{{ label }}">{{ label }}</option>
-  {% endfor %}
-</select>
-<select id="filtro-raridade">
-  <option value="">Todas as raridades</option>
-  {% for key, label in raridades %}
-    <option value="{{ label }}">{{ label }}</option>
-  {% endfor %}
-</select>
-
-<div style="max-height: 350px; overflow-y: auto;">
-  <table id="tabela-itens" border="1" style="width:100%;">
+<div class="itens-area-responsive">
+  <h2 class="itens-title">Itens</h2>
+  <div class="itens-filtros">
+    <input type="text" id="busca-item" placeholder="Buscar por nome...">
+    <select id="filtro-tipo">
+      <option value="">Todos os tipos</option>
+      {% for key, label in tipos %}
+        <option value="{{ label }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select id="filtro-raridade">
+      <option value="">Todas as raridades</option>
+      {% for key, label in raridades %}
+        <option value="{{ label }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="table-responsive">
+    <table id="tabela-itens" border="1">
     <thead>
       <tr>
         <th>Nome</th>
