@@ -1,3 +1,126 @@
+/* Vantagens: container com scroll e cabeçalho fixo */
+.table-container {
+  max-height: 250px;
+  overflow-y: auto;
+  position: relative;
+}
+#tabela-vantagens {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+#tabela-vantagens thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #232323 !important;
+  color: var(--text-main) !important;
+  padding: 8px 10px !important;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.vantagens-table th, .vantagens-table td {
+  padding: 6px 4px;
+  white-space: normal;
+  word-break: break-word;
+  overflow: hidden;
+}
+.vantagens-table th {
+  font-size: 1.05em;
+  font-weight: bold;
+}
+.vantagens-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+/* Alinhamento das colunas da tabela de vantagens */
+.vantagens-table {
+  table-layout: fixed;
+  width: 100%;
+}
+.vantagens-table th:nth-child(1),
+.vantagens-table td:nth-child(1) {
+  width: 60px;
+  min-width: 60px;
+  max-width: 60px;
+  text-align: center;
+}
+.vantagens-table th:nth-child(2),
+.vantagens-table td:nth-child(2) {
+  width: 180px;
+  min-width: 180px;
+  max-width: 180px;
+}
+.vantagens-table th:nth-child(3),
+.vantagens-table td:nth-child(3) {
+  width: auto;
+}
+.table-scroll {
+  table-layout: fixed;
+  width: 100%;
+}
+.table-scroll th, .table-scroll td {
+  padding: 8px 10px !important;
+  overflow: hidden;
+  word-break: break-word;
+  box-sizing: border-box;
+}
+.table-scroll th {
+  height: auto !important;
+  min-height: 34px !important;
+  line-height: 1.2 !important;
+  padding: 8px 10px !important;
+}
+.table-scroll th:nth-child(1),
+.table-scroll td:nth-child(1) {
+  width: 60px;
+  min-width: 60px;
+  max-width: 60px;
+  text-align: center;
+}
+.table-scroll th:nth-child(2),
+.table-scroll td:nth-child(2) {
+  width: 220px;
+  min-width: 200px;
+  max-width: 260px;
+}
+.table-scroll th:nth-child(3),
+.table-scroll td:nth-child(3) {
+  width: auto;
+}
+/* Reverter display padrões para evitar desalinhamento */
+.table-scroll tbody {
+  display: table-row-group;
+  max-height: none;
+  overflow: visible;
+  width: auto;
+}
+.table-scroll thead, .table-scroll tfoot {
+  display: table-header-group;
+  width: auto;
+  table-layout: fixed;
+}
+.table-scroll tr {
+  display: table-row;
+  width: auto;
+  table-layout: fixed;
+}
+th {
+  min-height: 2.5em !important;
+  box-sizing: border-box !important;
+  color: var(--text-main) !important;
+  background: #232323 !important;
+  font-weight: bold !important;
+  padding: 1rem 1.5rem !important;
+  border-bottom: 2px solid #444 !important;
+  height: 2.2em !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+thead {
+  display: table-header-group !important;
+  background: #232323 !important;
+}
 /* Centraliza o formulário de poderes na tela */
 .poder-form-outer {
   width: 100%;

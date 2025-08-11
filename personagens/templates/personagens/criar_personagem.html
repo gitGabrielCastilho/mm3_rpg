@@ -44,12 +44,13 @@
           <input type="checkbox" id="filtro-vantagem-selecionada" style="margin: 0;">
         </label>
       </div>
-      <div style="max-height: 250px; overflow-y: auto;">
-        <table id="tabela-vantagens" border="1" style="width:100%;">
+      <div class="table-container">
+        <table id="tabela-vantagens" class="table-scroll" border="1" style="width:100%;">
+          
           <thead>
             <tr>
-              <th style="width: 60px;">Selecionar</th>
-              <th style="min-width: 140px;">Nome</th>
+              <th style="width: 50px;">Sel.</th>
+              <th style="min-width: 120px;">Nome</th>
               <th>Descrição</th>
             </tr>
           </thead>
@@ -261,7 +262,8 @@
         Mostrar apenas itens já possuídos
       </label>
       <div style="max-height: 350px; overflow-y: auto;">
-        <table id="tabela-itens" border="1" style="width:100%;">
+        <table id="tabela-itens" class="table-scroll" border="1" style="width:100%;">
+          
           <thead>
             <tr>
               <th>Selecionar</th>
