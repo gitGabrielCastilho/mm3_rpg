@@ -66,6 +66,15 @@ def criar_personagem(request):
         inventario_form = InventarioForm()
         formset = PoderFormSet(prefix='poder_set')
 
+    pericias = [
+        'acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao',
+        'especialidade', 'furtividade', 'intimidacao', 'intuicao', 'investigacao',
+        'percepcao', 'persuasao', 'prestidigitacao', 'tecnologia', 'tratamento',
+        'veiculos', 'historia', 'sobrevivencia'
+    ]
+    meio = len(pericias) // 2 + len(pericias) % 2
+    pericias_col1 = pericias[:meio]
+    pericias_col2 = pericias[meio:]
     context = {
         'form': form,
         'inventario_form': inventario_form,
@@ -74,12 +83,8 @@ def criar_personagem(request):
             'forca', 'vigor', 'destreza', 'agilidade', 'luta', 'inteligencia', 'prontidao', 'presenca'
         ],
         'defesas': ['aparar', 'esquivar', 'fortitude', 'vontade', 'resistencia'],
-        'pericias': [
-            'acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao',
-            'especialidade', 'furtividade', 'intimidacao', 'intuicao', 'investigacao',
-            'percepcao', 'persuasao', 'prestidigitacao', 'tecnologia', 'tratamento',
-            'veiculos', 'historia', 'sobrevivencia'
-        ]
+        'pericias_col1': pericias_col1,
+        'pericias_col2': pericias_col2,
     }
     return render(request, 'personagens/criar_personagem.html', context)
 
@@ -129,6 +134,15 @@ def editar_personagem(request, personagem_id):
         inventario_form = InventarioForm(instance=inventario)
         formset = PoderFormSet(instance=personagem, prefix='poder_set')
 
+    pericias = [
+        'acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao',
+        'especialidade', 'furtividade', 'intimidacao', 'intuicao', 'investigacao',
+        'percepcao', 'persuasao', 'prestidigitacao', 'tecnologia', 'tratamento',
+        'veiculos', 'historia', 'sobrevivencia'
+    ]
+    meio = len(pericias) // 2 + len(pericias) % 2
+    pericias_col1 = pericias[:meio]
+    pericias_col2 = pericias[meio:]
     context = {
         'form': form,
         'inventario_form': inventario_form,
@@ -137,12 +151,8 @@ def editar_personagem(request, personagem_id):
             'forca', 'vigor', 'destreza', 'agilidade', 'luta', 'inteligencia', 'prontidao', 'presenca'
         ],
         'defesas': ['aparar', 'esquivar', 'fortitude', 'vontade', 'resistencia'],
-        'pericias': [
-            'acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao',
-            'especialidade', 'furtividade', 'intimidacao', 'intuicao', 'investigacao',
-            'percepcao', 'persuasao', 'prestidigitacao', 'tecnologia', 'tratamento',
-            'veiculos', 'historia', 'sobrevivencia'
-        ]
+        'pericias_col1': pericias_col1,
+        'pericias_col2': pericias_col2,
     }
     return render(request, 'personagens/editar_personagem.html', context)
 

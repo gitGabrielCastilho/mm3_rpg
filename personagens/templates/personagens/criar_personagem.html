@@ -98,17 +98,31 @@
       <div>
         {{ form.especialidade_casting_ability.label_tag }} {{ form.especialidade_casting_ability }}
       </div>
-      {% for campo in pericias %}
-        <div>
-          {% with field=form|lookup:campo %}
-            {{ field.label_tag }} {{ field }}
-            {% if field.errors %}
-              <div style="color:red;">{{ field.errors }}</div>
-            {% endif %}
-          {% endwith %}
+      <div class="pericias-duas-colunas">
+        <div class="pericias-coluna">
+          {% for campo in pericias_col1 %}
+            {% with field=form|lookup:campo %}
+              <label style="font-weight: bold; margin-bottom: 0.2rem;">{{ field.label }}</label>
+              {{ field }}
+              {% if field.errors %}
+                <div style="color:red;">{{ field.errors }}</div>
+              {% endif %}
+            {% endwith %}
+          {% endfor %}
         </div>
-      {% endfor %}
-      <h2>Poderes</h2>
+        <div class="pericias-coluna">
+          {% for campo in pericias_col2 %}
+            {% with field=form|lookup:campo %}
+              <label style="font-weight: bold; margin-bottom: 0.2rem;">{{ field.label }}</label>
+              {{ field }}
+              {% if field.errors %}
+                <div style="color:red;">{{ field.errors }}</div>
+              {% endif %}
+            {% endwith %}
+          {% endfor %}
+        </div>
+      </div>
+            <h2>Poderes</h2>
       <div id="poderes-formset">
         {{ formset.management_form }}
         {% for form in formset %}
@@ -141,20 +155,6 @@
           </div>
         {% endfor %}
       </div>
-      {% if form.non_field_errors %}
-        <div style="color: red; margin-bottom: 1em;">
-          {% for error in form.non_field_errors %}
-            <div>{{ error }}</div>
-          {% endfor %}
-        </div>
-      {% endif %}
-      {% if formset.non_form_errors %}
-        <div style="color: red; margin-bottom: 1em;">
-          {% for error in formset.non_form_errors %}
-            <div>{{ error }}</div>
-          {% endfor %}
-        </div>
-      {% endif %}
       <div class="personagem-form-btns">
         <button type="button" onclick="adicionarPoder()">Adicionar Poder</button>
         <button type="button" onclick="removerPoder()">Remover Último Poder</button>

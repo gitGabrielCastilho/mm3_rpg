@@ -1,3 +1,29 @@
+/* Perícias em duas colunas */
+.pericias-duas-colunas {
+  display: flex;
+  gap: 2.5rem;
+  margin-bottom: 2rem;
+  justify-content: center;
+  width: 100%;
+}
+.pericias-coluna {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  width: 50%;
+  min-width: 220px;
+  box-sizing: border-box;
+}
+@media (max-width: 900px) {
+  .pericias-duas-colunas {
+    flex-direction: column;
+    gap: 1.2rem;
+  }
+  .pericias-coluna {
+    width: 100%;
+    min-width: 0;
+  }
+}
 .linha-nome-full {
   width: 100%;
   margin-bottom: 1.1rem;

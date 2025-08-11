@@ -29,6 +29,9 @@
           <div class="campo-carac">
             {% with field=form|lookup:campo %}
               {{ field.label_tag }} {{ field }}
+              {% if field.errors %}
+                <div style="color:red;">{{ field.errors }}</div>
+              {% endif %}
             {% endwith %}
           </div>
         {% endfor %}
@@ -73,6 +76,9 @@
             <div class="campo-def">
               {% with field=form|lookup:campo %}
                 {{ field.label_tag }} {{ field }}
+                {% if field.errors %}
+                  <div style="color:red;">{{ field.errors }}</div>
+                {% endif %}
               {% endwith %}
             </div>
           {% endfor %}
@@ -82,6 +88,9 @@
             <div class="campo-def">
               {% with field=form|lookup:campo %}
                 {{ field.label_tag }} {{ field }}
+                {% if field.errors %}
+                  <div style="color:red;">{{ field.errors }}</div>
+                {% endif %}
               {% endwith %}
             </div>
           {% endfor %}
@@ -91,19 +100,37 @@
       <div>
         {{ form.especialidade_casting_ability.label_tag }} {{ form.especialidade_casting_ability }}
       </div>
-      {% for campo in pericias %}
-        {% with field=form|lookup:campo %}
-          <div>{{ field.label_tag }} {{ field }}</div>
-        {% endwith %}
-      {% endfor %}
+      {% if pericias_col1 and pericias_col2 %}
+      <div class="pericias-duas-colunas">
+        <div class="pericias-coluna">
+          {% for campo in pericias_col1 %}
+            {% with field=form|lookup:campo %}
+              <label style="font-weight: bold; margin-bottom: 0.2rem;">{{ field.label }}</label>
+              {{ field }}
+              {% if field.errors %}
+                <div style="color:red;">{{ field.errors }}</div>
+              {% endif %}
+            {% endwith %}
+          {% endfor %}
+        </div>
+        <div class="pericias-coluna">
+          {% for campo in pericias_col2 %}
+            {% with field=form|lookup:campo %}
+              <label style="font-weight: bold; margin-bottom: 0.2rem;">{{ field.label }}</label>
+              {{ field }}
+              {% if field.errors %}
+                <div style="color:red;">{{ field.errors }}</div>
+              {% endif %}
+            {% endwith %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
       <h2>Poderes</h2>
       <div id="poderes-formset">
         {{ formset.management_form }}
         {% for form in formset %}
           <div class="poder-form" style="border:1px solid #ccc; margin-bottom:1em; padding:1em;">
-            {% for hidden in form.hidden_fields %}
-              {{ hidden }}
-            {% endfor %}
             <div>
               {{ form.nome.label_tag }} {{ form.nome }}
             </div>
@@ -132,20 +159,6 @@
           </div>
         {% endfor %}
       </div>
-      {% if form.non_field_errors %}
-        <div style="color: red; margin-bottom: 1em;">
-          {% for error in form.non_field_errors %}
-            <div>{{ error }}</div>
-          {% endfor %}
-        </div>
-      {% endif %}
-      {% if formset.non_form_errors %}
-        <div style="color: red; margin-bottom: 1em;">
-          {% for error in formset.non_form_errors %}
-            <div>{{ error }}</div>
-          {% endfor %}
-        </div>
-      {% endif %}
       <div class="personagem-form-btns">
         <button type="button" onclick="adicionarPoder()">Adicionar Poder</button>
         <button type="button" onclick="removerPoder()">Remover Último Poder</button>
@@ -239,7 +252,7 @@
         </table>
       </div>
       <div style="margin-top:2rem; text-align:center;">
-        <input type="submit" value="Salvar Alterações" class="btn">
+  <input type="submit" value="Salvar" class="btn">
       </div>
     </div>
   </form>
