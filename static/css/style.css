@@ -1,3 +1,56 @@
+/* Botão remover (vermelho) para poderes */
+.btn-danger {
+  background: #c0392b;
+  color: #fff;
+  border: none;
+  border-radius: 1.5rem;
+  padding: 0.4rem 1.3rem;
+  font-weight: 600;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  box-shadow: 0 1px 2px #0002;
+}
+.btn-danger:hover, .btn-danger:focus {
+  background: #a93226;
+}
+/* Poderes - grid alinhado */
+.poder-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-gap: 1rem;
+  align-items: center;
+  max-width: 700px;
+  margin: 0 auto 1.5rem auto;
+  background: #232323;
+  border-radius: 8px;
+  padding: 1.2rem 1.5rem;
+}
+.poder-form-grid label,
+.poder-form-grid .poder-label {
+  font-weight: bold;
+  margin-bottom: 0.2rem;
+}
+.poder-form-grid input,
+.poder-form-grid select {
+  width: 100%;
+  min-width: 80px;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 0.2rem;
+}
+.poder-form-grid [type="checkbox"] {
+  width: auto;
+  margin-left: 0.5rem;
+}
+.poder-form-grid > div {
+  margin-bottom: 0.2rem;
+}
+.poder-form-grid .poder-remove {
+  grid-column: 1 / span 2;
+  text-align: right;
+  margin-top: 1em;
+}
 /* Perícias em duas colunas */
 .pericias-duas-colunas {
   display: flex;
