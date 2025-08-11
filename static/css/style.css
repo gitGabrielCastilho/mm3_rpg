@@ -1,3 +1,10 @@
+/* Centraliza o formulário de poderes na tela */
+.poder-form-outer {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
 /* Botão remover (vermelho) para poderes */
 .btn-danger {
   background: #c0392b;
@@ -17,15 +24,40 @@
 /* Poderes - grid alinhado */
 .poder-form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-gap: 1rem;
+  grid-template-columns: max-content 1fr;
+  grid-gap: 1.1rem 1.2rem;
   align-items: center;
-  max-width: 700px;
+ 
   margin: 0 auto 1.5rem auto;
   background: #232323;
-  border-radius: 8px;
-  padding: 1.2rem 1.5rem;
+  border-radius: 12px;
+  padding: 2.5rem 2.8rem;
+  justify-items: stretch;
+  box-sizing: border-box;
 }
+.poder-form-grid > div {
+  margin-bottom: 0.2rem;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+.poder-form-grid label {
+  width: 100%;
+  text-align: right;
+  margin-right: 0.5rem;
+  white-space: nowrap;
+}
+.poder-form-grid input,
+.poder-form-grid select {
+  width: 100%;
+  min-width: 80px;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 0.2rem;
+  text-align: left;
+}
+
 .poder-form-grid label,
 .poder-form-grid .poder-label {
   font-weight: bold;
@@ -254,9 +286,18 @@
 }
 .linha-nome-foto-np > div {
   display: flex;
-  align-items: center;
-  gap: 0.7rem;
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 10px 20px;
+  background: #222;
+  border-radius: 14px;
+  border: 2px solid #fff;
+  padding: 32px 32px 24px 32px;
+  margin: 0 auto 20px auto;
+  max-width: 520px;
+  box-shadow: 0 0 0 2px #222, 0 2px 16px 0 #000a;
 }
+
 .foto-np-group {
   display: flex;
   flex-direction: row;

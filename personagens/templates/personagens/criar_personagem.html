@@ -122,42 +122,84 @@
           {% endfor %}
         </div>
       </div>
-            <h2>Poderes</h2>
-      <div id="poderes-formset">
-        {{ formset.management_form }}
-        {% for form in formset %}
-          <div class="poder-form" style="border:1px solid #ccc; margin-bottom:1em; padding:1em;">
-            <div>
-              {{ form.nome.label_tag }} {{ form.nome }}
-            </div>
-            <div>
-              {{ form.tipo.label_tag }} {{ form.tipo }}
-              {{ form.modo.label_tag }} {{ form.modo }}
-              {{ form.nivel_efeito.label_tag }} {{ form.nivel_efeito }}
-              {{ form.bonus_ataque.label_tag }} {{ form.bonus_ataque }}
-              {{ form.defesa_ativa.label_tag }} {{ form.defesa_ativa }}
-              {{ form.defesa_passiva.label_tag }} {{ form.defesa_passiva }}
-              {{ form.casting_ability.label_tag }} {{ form.casting_ability }}
-            </div>
-            <div>
-              {{ form.de_item.label_tag }} {{ form.de_item }}
-              {{ form.item_origem.label_tag }} {{ form.item_origem }}
-            </div>
-            <div>
-              {{ form.de_vantagem.label_tag }} {{ form.de_vantagem }}
-              {{ form.vantagem_origem.label_tag }} {{ form.vantagem_origem }}
-            </div>
-            {% if form.DELETE %}
-              <div style="margin-top: 1em;">
-                {{ form.DELETE }} <button type="button" onclick="removerPoder()">Remover</button>
-              </div>
-            {% endif %}
+      <h2>Poderes</h2>
+      <!-- Empty form grid para JS clonar (opcional, se usar JS dinâmico igual editar) -->
+      <div id="empty-poder-form" style="display:none;">
+        <div class="poder-form poder-form-grid" style="border:1px solid #ccc; margin-bottom:0; padding:1em; width:100%; max-width: 700px; position: relative;">
+          <div style="grid-column: 1; font-weight: bold;">{{ formset.empty_form.nome.label_tag }}</div>
+          <div style="grid-column: 2;">{{ formset.empty_form.nome }}</div>
+          <div style="grid-column: 1; font-weight: bold;">{{ formset.empty_form.tipo.label_tag }}</div>
+          <div style="grid-column: 2;">{{ formset.empty_form.tipo }}</div>
+          <div style="grid-column: 1; font-weight: bold;">{{ formset.empty_form.modo.label_tag }}</div>
+          <div style="grid-column: 2;">{{ formset.empty_form.modo }}</div>
+          <div style="grid-column: 1; font-weight: bold;">{{ formset.empty_form.nivel_efeito.label_tag }}</div>
+          <div style="grid-column: 2;">{{ formset.empty_form.nivel_efeito }}</div>
+          <div style="grid-column: 1; font-weight: bold;">{{ formset.empty_form.bonus_ataque.label_tag }}</div>
+          <div style="grid-column: 2;">{{ formset.empty_form.bonus_ataque }}</div>
+          <div style="grid-column: 1; font-weight: bold;">{{ formset.empty_form.defesa_ativa.label_tag }}</div>
+          <div style="grid-column: 2;">{{ formset.empty_form.defesa_ativa }}</div>
+          <div style="grid-column: 1; font-weight: bold;">{{ formset.empty_form.defesa_passiva.label_tag }}</div>
+          <div style="grid-column: 2;">{{ formset.empty_form.defesa_passiva }}</div>
+          <div style="grid-column: 1; font-weight: bold;">{{ formset.empty_form.casting_ability.label_tag }}</div>
+          <div style="grid-column: 2;">{{ formset.empty_form.casting_ability }}</div>
+          <div style="grid-column: 1; font-weight: bold;">{{ formset.empty_form.de_item.label_tag }}</div>
+          <div style="grid-column: 2;">{{ formset.empty_form.de_item }}</div>
+          <div style="grid-column: 1; font-weight: bold;">{{ formset.empty_form.item_origem.label_tag }}</div>
+          <div style="grid-column: 2;">{{ formset.empty_form.item_origem }}</div>
+          <div style="grid-column: 1; font-weight: bold;">{{ formset.empty_form.de_vantagem.label_tag }}</div>
+          <div style="grid-column: 2;">{{ formset.empty_form.de_vantagem }}</div>
+          <div style="grid-column: 1; font-weight: bold;">{{ formset.empty_form.vantagem_origem.label_tag }}</div>
+          <div style="grid-column: 2;">{{ formset.empty_form.vantagem_origem }}</div>
+          <div style="grid-column: 1 / span 2; margin-top: 1em; text-align: right; display: flex; align-items: center; gap: 0.7rem; justify-content: flex-end;">
+            <span style="display:none;">{{ formset.empty_form.DELETE }}</span>
+            <button type="button" class="btn btn-danger" onclick="removerPoderLinha(this)">Remover</button>
           </div>
-        {% endfor %}
+        </div>
       </div>
-      <div class="personagem-form-btns">
-        <button type="button" onclick="adicionarPoder()">Adicionar Poder</button>
-        <button type="button" onclick="removerPoder()">Remover Último Poder</button>
+      <div class="poder-form-outer">
+        <div id="poderes-formset">
+          {{ formset.management_form }}
+          <div style="display: flex; flex-direction: column; gap: 1.5rem; align-items: center;">
+            {% for form in formset %}
+              <div class="poder-form poder-form-grid" style="border:1px solid #ccc; margin-bottom:0; padding:1em; width:100%; max-width: 700px; position: relative;">
+                <div style="grid-column: 1; font-weight: bold;">{{ form.nome.label_tag }}</div>
+                <div style="grid-column: 2;">{{ form.nome }}</div>
+                <div style="grid-column: 1; font-weight: bold;">{{ form.tipo.label_tag }}</div>
+                <div style="grid-column: 2;">{{ form.tipo }}</div>
+                <div style="grid-column: 1; font-weight: bold;">{{ form.modo.label_tag }}</div>
+                <div style="grid-column: 2;">{{ form.modo }}</div>
+                <div style="grid-column: 1; font-weight: bold;">{{ form.nivel_efeito.label_tag }}</div>
+                <div style="grid-column: 2;">{{ form.nivel_efeito }}</div>
+                <div style="grid-column: 1; font-weight: bold;">{{ form.bonus_ataque.label_tag }}</div>
+                <div style="grid-column: 2;">{{ form.bonus_ataque }}</div>
+                <div style="grid-column: 1; font-weight: bold;">{{ form.defesa_ativa.label_tag }}</div>
+                <div style="grid-column: 2;">{{ form.defesa_ativa }}</div>
+                <div style="grid-column: 1; font-weight: bold;">{{ form.defesa_passiva.label_tag }}</div>
+                <div style="grid-column: 2;">{{ form.defesa_passiva }}</div>
+                <div style="grid-column: 1; font-weight: bold;">{{ form.casting_ability.label_tag }}</div>
+                <div style="grid-column: 2;">{{ form.casting_ability }}</div>
+                <div style="grid-column: 1; font-weight: bold;">{{ form.de_item.label_tag }}</div>
+                <div style="grid-column: 2;">{{ form.de_item }}</div>
+                <div style="grid-column: 1; font-weight: bold;">{{ form.item_origem.label_tag }}</div>
+                <div style="grid-column: 2;">{{ form.item_origem }}</div>
+                <div style="grid-column: 1; font-weight: bold;">{{ form.de_vantagem.label_tag }}</div>
+                <div style="grid-column: 2;">{{ form.de_vantagem }}</div>
+                <div style="grid-column: 1; font-weight: bold;">{{ form.vantagem_origem.label_tag }}</div>
+                <div style="grid-column: 2;">{{ form.vantagem_origem }}</div>
+              {% if form.DELETE %}
+                <div style="grid-column: 1 / span 2; margin-top: 1em; text-align: right; display: flex; align-items: center; gap: 0.7rem; justify-content: flex-end;">
+                  <span style="display:none;">{{ form.DELETE }}</span>
+                  <button type="button" class="btn btn-danger" onclick="removerPoderLinha(this)">Remover</button>
+                </div>
+              {% endif %}
+            </div>
+          {% endfor %}
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:1.5rem; display:flex; gap:1rem; justify-content:center;">
+        <button type="button" class="btn btn-danger" onclick="adicionarPoder()">Adicionar Poder</button>
+        <button type="button" class="btn btn-danger" onclick="removerPoder()">Remover Último Poder</button>
       </div>
       <h2>Inventário</h2>
       <div>
@@ -257,26 +299,24 @@
 <script>
 function adicionarPoder() {
   const formsetDiv = document.getElementById('poderes-formset');
+  const poderesContainer = formsetDiv.querySelector('div[style*="flex-direction: column"]');
   const totalFormsInput = document.getElementById('id_poder_set-TOTAL_FORMS');
-
   if (!totalFormsInput) {
     console.error('TOTAL_FORMS não encontrado.');
     return;
   }
-
   const formIdx = parseInt(totalFormsInput.value);
-  const emptyFormHtml = `{{ formset.empty_form.as_p|escapejs }}`;
-  const newFormHtml = emptyFormHtml.replace(/__prefix__/g, formIdx);
-
-  const wrapper = document.createElement('div');
-  wrapper.classList.add('poder-form');
-  wrapper.innerHTML = newFormHtml;
-  formsetDiv.appendChild(wrapper);
-
+  // Clona o bloco oculto do empty_form já estruturado
+  const emptyDiv = document.getElementById('empty-poder-form').firstElementChild.cloneNode(true);
+  // Substitui todos os __prefix__ pelo novo índice
+  emptyDiv.innerHTML = emptyDiv.innerHTML.replace(/__prefix__/g, formIdx);
+  if (poderesContainer) {
+    poderesContainer.appendChild(emptyDiv);
+  } else {
+    formsetDiv.appendChild(emptyDiv);
+  }
   totalFormsInput.value = formIdx + 1;
-
-  // Atualiza campos de origem para o novo poder
-  atualizarCamposOrigem(wrapper);
+  atualizarCamposOrigem(emptyDiv);
 }
 </script>
 
