@@ -8,35 +8,45 @@
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     <div class="personagem-form-fields">
-      <div>{{ form.nome.label_tag }} {{ form.nome }}</div>
-      <div>{{ form.nivel_poder.label_tag }} {{ form.nivel_poder }}</div>
-      <div>
-        {{ form.foto.label_tag }} {{ form.foto }}
-        {% if form.foto.value %}
-          <br>
-          <img src="{{ form.foto.value.url }}" alt="Foto atual" style="max-width:100px;">
-        {% endif %}
+      <div class="linha-nome-full">
+        <div class="campo-nome-full">{{ form.nome.label_tag }} {{ form.nome }}</div>
+      </div>
+      <div class="linha-foto-np">
+        <div class="campo-foto">
+          {{ form.foto.label_tag }} {{ form.foto }}
+          {% if form.foto.value %}
+            <br>
+            <img src="{{ form.foto.value.url }}" alt="Foto atual" style="max-width:100px;">
+          {% endif %}
+        </div>
+        <div class="campo-np">
+          {{ form.nivel_poder.label_tag }} {{ form.nivel_poder }}
+        </div>
       </div>
       <h2>Características</h2>
-      {% for campo in caracteristicas %}
-        <div>
-          {% with field=form|lookup:campo %}
-            {{ field.label_tag }} {{ field }}
-          {% endwith %}
-        </div>
-      {% endfor %}
+      <div class="caracteristicas-grid espacamento-campos">
+        {% for campo in caracteristicas %}
+          <div class="campo-carac">
+            {% with field=form|lookup:campo %}
+              {{ field.label_tag }} {{ field }}
+            {% endwith %}
+          </div>
+        {% endfor %}
+      </div>
       <h2>Vantagens</h2>
-      <input type="text" id="busca-vantagem" placeholder="Buscar vantagem...">
-      <label>
-        <input type="checkbox" id="filtro-vantagem-selecionada">
-        Mostrar apenas vantagens já selecionadas
-      </label>
+      <div style="display: flex; align-items: center; gap: 2rem; margin-bottom: 0.7rem; flex-wrap: wrap;">
+        <input type="text" id="busca-vantagem" placeholder="Buscar vantagem..." style="flex: 1 1 250px; min-width: 200px; max-width: 350px;">
+        <label for="filtro-vantagem-selecionada" style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
+          Vantagens já selecionadas
+          <input type="checkbox" id="filtro-vantagem-selecionada" style="margin: 0;">
+        </label>
+      </div>
       <div style="max-height: 250px; overflow-y: auto;">
         <table id="tabela-vantagens" border="1" style="width:100%;">
           <thead>
             <tr>
-              <th>Selecionar</th>
-              <th>Nome</th>
+              <th style="width: 60px;">Selecionar</th>
+              <th style="min-width: 140px;">Nome</th>
               <th>Descrição</th>
             </tr>
           </thead>
@@ -44,7 +54,7 @@
             {% with vantagens_selecionadas=form.vantagens.value %}
               {% for vantagem in form.fields.vantagens.queryset %}
                 <tr>
-                  <td>
+                  <td style="text-align: center;">
                     <input type="checkbox" name="vantagens" value="{{ vantagem.id }}"
                       {% if vantagens_selecionadas and vantagem.id|stringformat:"s" in vantagens_selecionadas|stringformat:"s" %}checked{% endif %}>
                   </td>
@@ -57,13 +67,26 @@
         </table>
       </div>
       <h2>Defesas</h2>
-      {% for campo in defesas %}
-        <div>
-          {% with field=form|lookup:campo %}
-            {{ field.label_tag }} {{ field }}
-          {% endwith %}
+      <div class="defesas-duas-colunas">
+        <div class="defesas-coluna">
+          {% for campo in defesas|slice:':2' %}
+            <div class="campo-def">
+              {% with field=form|lookup:campo %}
+                {{ field.label_tag }} {{ field }}
+              {% endwith %}
+            </div>
+          {% endfor %}
         </div>
-      {% endfor %}
+        <div class="defesas-coluna">
+          {% for campo in defesas|slice:'2:' %}
+            <div class="campo-def">
+              {% with field=form|lookup:campo %}
+                {{ field.label_tag }} {{ field }}
+              {% endwith %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
       <h2>Perícias</h2>
       <div>
         {{ form.especialidade_casting_ability.label_tag }} {{ form.especialidade_casting_ability }}

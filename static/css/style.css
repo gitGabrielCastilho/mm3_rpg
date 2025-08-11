@@ -1,3 +1,235 @@
+.linha-nome-full {
+  width: 100%;
+  margin-bottom: 1.1rem;
+}
+.campo-nome-full {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+}
+.campo-nome-full label {
+  min-width: 60px;
+  font-weight: 600;
+}
+.campo-nome-full input[type="text"] {
+  width: 100%;
+  min-width: 180px;
+  max-width: 100%;
+}
+
+.linha-foto-np {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+  flex-wrap: wrap;
+}
+.campo-foto, .campo-np {
+  width: 50%;
+  min-width: 220px;
+  max-width: 50%;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.7rem;
+  box-sizing: border-box;
+}
+.campo-foto input[type="file"] {
+  max-width: 95%;
+  box-sizing: border-box;
+}
+.campo-np input[type="number"] {
+  max-width: 100%;
+}
+.campo-foto, .campo-np {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  max-width: 100%;
+}
+.campo-foto label, .campo-np label {
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+}
+.campo-foto input[type="file"], .campo-np input[type="number"] {
+  width: 100%;
+  min-width: 120px;
+  max-width: 100%;
+}
+/* Agrupamento visual para campos de características e defesas */
+.caracteristicas-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem 2.5rem;
+  margin-bottom: 1.5rem;
+  justify-content: center;
+  width: 100%;
+}
+@media (max-width: 900px) {
+  .linha-foto-np {
+    flex-direction: column;
+    gap: 1.2rem;
+  }
+  .campo-foto, .campo-np {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+  .campo-foto input[type="file"] {
+    max-width: 100%;
+  }
+  .caracteristicas-grid {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+    gap: 1rem 1.2rem;
+  }
+}
+.caracteristicas-grid .campo-carac {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+  .caracteristicas-grid {
+    grid-template-columns: 1fr;
+    gap: 0.7rem 0.5rem;
+  }
+}
+.caracteristicas-grid label {
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: 0.3rem;
+  text-align: center;
+  font-size: 1.08rem;
+  letter-spacing: 0.5px;
+}
+.caracteristicas-grid input {
+  text-align: center;
+  font-size: 1.1rem;
+  max-width: 70px;
+  min-width: 60px;
+  margin: 0 auto;
+}
+.espacamento-campos > div {
+  margin-bottom: 0.7rem;
+}
+.defesas-duas-colunas {
+  display: flex;
+  gap: 2.5rem;
+  margin-bottom: 2rem;
+  justify-content: flex-start;
+  align-items: flex-start;
+  width: 100%;
+}
+.defesas-coluna:first-child {
+  margin-top: 0.7rem;
+}
+.defesas-coluna {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  width: 50%;
+  min-width: 180px;
+  box-sizing: border-box;
+}
+.defesas-coluna .campo-def {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  min-width: 120px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+@media (max-width: 900px) {
+  .defesas-duas-colunas {
+    flex-direction: column;
+    gap: 1.2rem;
+  }
+  .defesas-coluna {
+    width: 100%;
+    min-width: 0;
+  }
+}
+.defesas-coluna label {
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: 0.3rem;
+  text-align: center;
+  font-size: 1.08rem;
+  letter-spacing: 0.5px;
+}
+.defesas-coluna input {
+  text-align: center;
+  font-size: 1.1rem;
+  max-width: 70px;
+  min-width: 60px;
+  margin: 0 auto;
+}
+
+/* Nome, NP e Foto em linha */
+.linha-nome-foto-np {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2.2rem;
+  margin-bottom: 1.5rem;
+}
+.linha-nome-foto-np > div {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.foto-np-group {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 1.2rem;
+}
+.linha-nome-foto-np label {
+  min-width: 48px;
+  font-weight: 600;
+}
+.linha-nome-foto-np input[type="text"],
+.linha-nome-foto-np input[type="number"],
+.linha-nome-foto-np input[type="file"] {
+  min-width: 120px;
+  max-width: 320px;
+}
+.personagem-form-fields input[type="number"],
+.personagem-form-fields input[type="text"],
+.personagem-form-fields select {
+  max-width: 260px;
+  min-width: 80px;
+  width: auto;
+  display: inline-block;
+  margin-right: 1.2rem;
+}
+
+/* Para campos longos (ex: textarea, file), manter largura total */
+.personagem-form-fields textarea,
+.personagem-form-fields input[type="file"] {
+  max-width: 100%;
+  width: 100%;
+}
+
+/* Alinhar label e campo lado a lado */
+.personagem-form-fields > div {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+.personagem-form-fields > div > label {
+  min-width: 120px;
+  margin-bottom: 0;
+}
+
+/* Ajuste para títulos de seção */
+.personagem-form-fields h2 {
+  display: block;
+  width: 100%;
+  margin-top: 2.2rem;
+  margin-bottom: 0.7rem;
+}
 /* Centralização e estilo para criar/editar personagem */
 .personagem-form-center {
   display: flex;
