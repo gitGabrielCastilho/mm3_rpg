@@ -3,237 +3,230 @@
 {% load filtros %}
 
 {% block content %}
-  <h1>Criar Personagem</h1>
+<div class="personagem-form-center">
+  <h1 class="personagem-form-title">Criar Personagem</h1>
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
-    
-    <div>{{ form.nome.label_tag }} {{ form.nome }}</div>
-    <div>{{ form.nivel_poder.label_tag }} {{ form.nivel_poder }}</div>
-
-  <div>
-    {{ form.foto.label_tag }} {{ form.foto }}
-    {% if form.foto.value %}
-      <br>
-      <img src="{{ form.foto.value.url }}" alt="Foto atual" style="max-width:100px;">
-    {% endif %}
-  </div>
-
-    <h2>Características</h2>
-{% for campo in caracteristicas %}
-  <div>
-    {% with field=form|lookup:campo %}
-      {{ field.label_tag }} {{ field }}
-      {% if field.errors %}
-        <div style="color:red;">{{ field.errors }}</div>
-      {% endif %}
-    {% endwith %}
-  </div>
-{% endfor %}
-<h2>Vantagens</h2>
-<input type="text" id="busca-vantagem" placeholder="Buscar vantagem...">
-  <label>
-    <input type="checkbox" id="filtro-vantagem-selecionada">
-    Mostrar apenas vantagens já selecionadas
-  </label>
-<div style="max-height: 250px; overflow-y: auto;">
-  <table id="tabela-vantagens" border="1" style="width:100%;">
-    <thead>
-      <tr>
-        <th>Selecionar</th>
-        <th>Nome</th>
-        <th>Descrição</th>
-      </tr>
-    </thead>
-    <tbody>
-{% for vantagem in form.fields.vantagens.queryset %}
-  <tr>
-    <td>
-      <input type="checkbox" name="vantagens" value="{{ vantagem.id }}"
-        {% if vantagem.id|stringformat:"s" in form.vantagens.value %}checked{% endif %}>
-    </td>
-    <td class="nome-vantagem">{{ vantagem.nome }}</td>
-    <td>{{ vantagem.descricao }}</td>
-  </tr>
-{% endfor %}
-    </tbody>
-  </table>
-</div>
-    <h2>Defesas</h2>
-{% for campo in defesas %}
-  <div>
-    {% with field=form|lookup:campo %}
-      {{ field.label_tag }} {{ field }}
-      {% if field.errors %}
-        <div style="color:red;">{{ field.errors }}</div>
-      {% endif %}
-    {% endwith %}
-  </div>
-{% endfor %}
-
-
-    <h2>Perícias</h2>
-<div>
-  {{ form.especialidade_casting_ability.label_tag }} {{ form.especialidade_casting_ability }}
-</div>
-
-{% for campo in pericias %}
-  <div>
-    {% with field=form|lookup:campo %}
-      {{ field.label_tag }} {{ field }}
-      {% if field.errors %}
-        <div style="color:red;">{{ field.errors }}</div>
-      {% endif %}
-    {% endwith %}
-  </div>
-{% endfor %}
-
-<h2>Poderes</h2>
-<div id="poderes-formset">
-  {{ formset.management_form }}
-  {% for form in formset %}
-<div class="poder-form" style="border:1px solid #ccc; margin-bottom:1em; padding:1em;">
-  <div>
-    {{ form.nome.label_tag }} {{ form.nome }}
-  </div>
-  <div>
-    {{ form.tipo.label_tag }} {{ form.tipo }}
-    {{ form.modo.label_tag }} {{ form.modo }}
-    {{ form.nivel_efeito.label_tag }} {{ form.nivel_efeito }}
-    {{ form.bonus_ataque.label_tag }} {{ form.bonus_ataque }}
-    {{ form.defesa_ativa.label_tag }} {{ form.defesa_ativa }}
-    {{ form.defesa_passiva.label_tag }} {{ form.defesa_passiva }}
-    {{ form.casting_ability.label_tag }} {{ form.casting_ability }}
-  </div>
-<div>
-  {{ form.de_item.label_tag }} {{ form.de_item }}
-  {{ form.item_origem.label_tag }} {{ form.item_origem }}
-</div>
-<div>
-  {{ form.de_vantagem.label_tag }} {{ form.de_vantagem }}
-  {{ form.vantagem_origem.label_tag }} {{ form.vantagem_origem }}
-</div>
-  {% if form.DELETE %}
-    <div style="margin-top: 1em;">
-      {{ form.DELETE }} <button type="button" onclick="removerPoder()">Remover</button>
-    </div>
-  {% endif %}
-</div>
-  {% endfor %}
-</div>
-
-{% if form.non_field_errors %}
-  <div style="color: red; margin-bottom: 1em;">
-    {% for error in form.non_field_errors %}
-      <div>{{ error }}</div>
-    {% endfor %}
-  </div>
-{% endif %}
-
-{% if formset.non_form_errors %}
-  <div style="color: red; margin-bottom: 1em;">
-    {% for error in formset.non_form_errors %}
-      <div>{{ error }}</div>
-    {% endfor %}
-  </div>
-{% endif %}
-
-    <button type="button" onclick="adicionarPoder()">Adicionar Poder</button>
-    <button type="button" onclick="removerPoder()">Remover Último Poder</button>
-    <br><br>
-<h2>Inventário</h2>
-<div>
-  Ouro: {{ inventario_form.ouro }}
-</div>
-<div>
-  Dragon shard: {{ inventario_form.dragon_shard }}
-</div>
-<input type="text" id="busca-item" placeholder="Buscar por nome...">
-<select id="filtro-raridade">
-  <option value="">All rarities</option>
-  <option value="Common">Common</option>
-  <option value="Uncommon">Uncommon</option>
-  <option value="Rare">Rare</option>
-  <option value="Very Rare">Very Rare</option>
-  <option value="Legendary">Legendary</option>
-  <option value="Artifact">Artifact</option>
-  <option value="None">None</option>
-  <option value="Unknown">Unknown</option>
-  <option value="Unknown (Magic)">Unknown (Magic)</option>
-  <option value="Varies">Varies</option>
-</select>
-<select id="filtro-tipo">
-  <option value="">All types</option>
-  <option value="Melee Weapon">Melee Weapon</option>
-  <option value="Ranged Weapon">Ranged Weapon</option>
-  <option value="Light Armor">Light Armor</option>
-  <option value="Medium Armor">Medium Armor</option>
-  <option value="Heavy Armor">Heavy Armor</option>
-  <option value="Shield">Shield</option>
-  <option value="Ammunition">Ammunition</option>
-  <option value="Rod">Rod</option>
-  <option value="Wondrous Item">Wondrous Item</option>
-  <option value="Trade Good">Trade Good</option>
-  <option value="Adventuring Gear">Adventuring Gear</option>
-  <option value="Generic Variant">Generic Variant</option>
-  <option value="Gaming Set">Gaming Set</option>
-  <option value="Tool">Tool</option>
-  <option value="Artisan's Tools">Artisan's Tools</option>
-  <option value="Instrument">Instrument</option>
-  <option value="Spellcasting Focus">Spellcasting Focus</option>
-  <option value="Scroll">Scroll</option>
-  <option value="Poison">Poison</option>
-  <option value="Food/Drink">Food/Drink</option>
-  <option value="Explosive">Explosive</option>
-  <option value="Ring">Ring</option>
-  <option value="Tack and Harness">Tack and Harness</option>
-  <option value="Mount">Mount</option>
-  <option value="Vehicle">Vehicle</option>
-  <option value="Ship">Ship</option>
-  <option value="Air Vehicle">Air Vehicle</option>
-  <option value="Tinker’s Tool (Bundle)">Tinker’s Tool (Bundle)</option>
-  <option value="Space Vehicle">Space Vehicle</option>
-  <option value="Idol/Relic">Idol/Relic</option>
-  <option value="Other">Other</option>
-</select>
-<label>
-  <input type="checkbox" id="filtro-possuido">
-  Mostrar apenas itens já possuídos
-</label>
-<div style="max-height: 350px; overflow-y: auto;">
-  <table id="tabela-itens" border="1" style="width:100%;">
-    <thead>
-      <tr>
-        <th>Selecionar</th>
-        <th>Nome</th>
-        <th>Tipo</th>
-        <th>Raridade</th>
-        <th>Descrição</th>
-        <th>Preço</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in inventario_form.fields.itens.queryset %}
-        <tr>
-          <td>
-            <input type="checkbox" name="itens" value="{{ item.id }}"
-              {% if item in inventario_form.instance.itens.all %}checked{% endif %}>
-          </td>
-          <td class="nome-item">{{ item.nome }}</td>
-          <td>{{ item.tipo }}</td>
-          <td class="raridade-item">{{ item.raridade }}</td>
-          <td>{{ item.descricao }}</td>
-          <td>{{ item.preco }}</td>
-        </tr>
+    <div class="personagem-form-fields">
+      <div>{{ form.nome.label_tag }} {{ form.nome }}</div>
+      <div>{{ form.nivel_poder.label_tag }} {{ form.nivel_poder }}</div>
+      <div>
+        {{ form.foto.label_tag }} {{ form.foto }}
+        {% if form.foto.value %}
+          <br>
+          <img src="{{ form.foto.value.url }}" alt="Foto atual" style="max-width:100px;">
+        {% endif %}
+      </div>
+      <h2>Características</h2>
+      {% for campo in caracteristicas %}
+        <div>
+          {% with field=form|lookup:campo %}
+            {{ field.label_tag }} {{ field }}
+            {% if field.errors %}
+              <div style="color:red;">{{ field.errors }}</div>
+            {% endif %}
+          {% endwith %}
+        </div>
       {% endfor %}
-    </tbody>
-  </table>
-</div>
-
-   <br><br>
-    <input type="submit" value="Salvar">
-
-
+      <h2>Vantagens</h2>
+      <input type="text" id="busca-vantagem" placeholder="Buscar vantagem...">
+      <label>
+        <input type="checkbox" id="filtro-vantagem-selecionada">
+        Mostrar apenas vantagens já selecionadas
+      </label>
+      <div style="max-height: 250px; overflow-y: auto;">
+        <table id="tabela-vantagens" border="1" style="width:100%;">
+          <thead>
+            <tr>
+              <th>Selecionar</th>
+              <th>Nome</th>
+              <th>Descrição</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for vantagem in form.fields.vantagens.queryset %}
+              <tr>
+                <td>
+                  <input type="checkbox" name="vantagens" value="{{ vantagem.id }}"
+                    {% if vantagem.id|stringformat:"s" in form.vantagens.value %}checked{% endif %}>
+                </td>
+                <td class="nome-vantagem">{{ vantagem.nome }}</td>
+                <td>{{ vantagem.descricao }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <h2>Defesas</h2>
+      {% for campo in defesas %}
+        <div>
+          {% with field=form|lookup:campo %}
+            {{ field.label_tag }} {{ field }}
+            {% if field.errors %}
+              <div style="color:red;">{{ field.errors }}</div>
+            {% endif %}
+          {% endwith %}
+        </div>
+      {% endfor %}
+      <h2>Perícias</h2>
+      <div>
+        {{ form.especialidade_casting_ability.label_tag }} {{ form.especialidade_casting_ability }}
+      </div>
+      {% for campo in pericias %}
+        <div>
+          {% with field=form|lookup:campo %}
+            {{ field.label_tag }} {{ field }}
+            {% if field.errors %}
+              <div style="color:red;">{{ field.errors }}</div>
+            {% endif %}
+          {% endwith %}
+        </div>
+      {% endfor %}
+      <h2>Poderes</h2>
+      <div id="poderes-formset">
+        {{ formset.management_form }}
+        {% for form in formset %}
+          <div class="poder-form" style="border:1px solid #ccc; margin-bottom:1em; padding:1em;">
+            <div>
+              {{ form.nome.label_tag }} {{ form.nome }}
+            </div>
+            <div>
+              {{ form.tipo.label_tag }} {{ form.tipo }}
+              {{ form.modo.label_tag }} {{ form.modo }}
+              {{ form.nivel_efeito.label_tag }} {{ form.nivel_efeito }}
+              {{ form.bonus_ataque.label_tag }} {{ form.bonus_ataque }}
+              {{ form.defesa_ativa.label_tag }} {{ form.defesa_ativa }}
+              {{ form.defesa_passiva.label_tag }} {{ form.defesa_passiva }}
+              {{ form.casting_ability.label_tag }} {{ form.casting_ability }}
+            </div>
+            <div>
+              {{ form.de_item.label_tag }} {{ form.de_item }}
+              {{ form.item_origem.label_tag }} {{ form.item_origem }}
+            </div>
+            <div>
+              {{ form.de_vantagem.label_tag }} {{ form.de_vantagem }}
+              {{ form.vantagem_origem.label_tag }} {{ form.vantagem_origem }}
+            </div>
+            {% if form.DELETE %}
+              <div style="margin-top: 1em;">
+                {{ form.DELETE }} <button type="button" onclick="removerPoder()">Remover</button>
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+      {% if form.non_field_errors %}
+        <div style="color: red; margin-bottom: 1em;">
+          {% for error in form.non_field_errors %}
+            <div>{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+      {% if formset.non_form_errors %}
+        <div style="color: red; margin-bottom: 1em;">
+          {% for error in formset.non_form_errors %}
+            <div>{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+      <div class="personagem-form-btns">
+        <button type="button" onclick="adicionarPoder()">Adicionar Poder</button>
+        <button type="button" onclick="removerPoder()">Remover Último Poder</button>
+      </div>
+      <h2>Inventário</h2>
+      <div>
+        Ouro: {{ inventario_form.ouro }}
+      </div>
+      <div>
+        Dragon shard: {{ inventario_form.dragon_shard }}
+      </div>
+      <input type="text" id="busca-item" placeholder="Buscar por nome...">
+      <select id="filtro-raridade">
+        <option value="">All rarities</option>
+        <option value="Common">Common</option>
+        <option value="Uncommon">Uncommon</option>
+        <option value="Rare">Rare</option>
+        <option value="Very Rare">Very Rare</option>
+        <option value="Legendary">Legendary</option>
+        <option value="Artifact">Artifact</option>
+        <option value="None">None</option>
+        <option value="Unknown">Unknown</option>
+        <option value="Unknown (Magic)">Unknown (Magic)</option>
+        <option value="Varies">Varies</option>
+      </select>
+      <select id="filtro-tipo">
+        <option value="">All types</option>
+        <option value="Melee Weapon">Melee Weapon</option>
+        <option value="Ranged Weapon">Ranged Weapon</option>
+        <option value="Light Armor">Light Armor</option>
+        <option value="Medium Armor">Medium Armor</option>
+        <option value="Heavy Armor">Heavy Armor</option>
+        <option value="Shield">Shield</option>
+        <option value="Ammunition">Ammunition</option>
+        <option value="Rod">Rod</option>
+        <option value="Wondrous Item">Wondrous Item</option>
+        <option value="Trade Good">Trade Good</option>
+        <option value="Adventuring Gear">Adventuring Gear</option>
+        <option value="Generic Variant">Generic Variant</option>
+        <option value="Gaming Set">Gaming Set</option>
+        <option value="Tool">Tool</option>
+        <option value="Artisan's Tools">Artisan's Tools</option>
+        <option value="Instrument">Instrument</option>
+        <option value="Spellcasting Focus">Spellcasting Focus</option>
+        <option value="Scroll">Scroll</option>
+        <option value="Poison">Poison</option>
+        <option value="Food/Drink">Food/Drink</option>
+        <option value="Explosive">Explosive</option>
+        <option value="Ring">Ring</option>
+        <option value="Tack and Harness">Tack and Harness</option>
+        <option value="Mount">Mount</option>
+        <option value="Vehicle">Vehicle</option>
+        <option value="Ship">Ship</option>
+        <option value="Air Vehicle">Air Vehicle</option>
+        <option value="Tinker’s Tool (Bundle)">Tinker’s Tool (Bundle)</option>
+        <option value="Space Vehicle">Space Vehicle</option>
+        <option value="Idol/Relic">Idol/Relic</option>
+        <option value="Other">Other</option>
+      </select>
+      <label>
+        <input type="checkbox" id="filtro-possuido">
+        Mostrar apenas itens já possuídos
+      </label>
+      <div style="max-height: 350px; overflow-y: auto;">
+        <table id="tabela-itens" border="1" style="width:100%;">
+          <thead>
+            <tr>
+              <th>Selecionar</th>
+              <th>Nome</th>
+              <th>Tipo</th>
+              <th>Raridade</th>
+              <th>Descrição</th>
+              <th>Preço</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in inventario_form.fields.itens.queryset %}
+              <tr>
+                <td>
+                  <input type="checkbox" name="itens" value="{{ item.id }}"
+                    {% if item in inventario_form.instance.itens.all %}checked{% endif %}>
+                </td>
+                <td class="nome-item">{{ item.nome }}</td>
+                <td>{{ item.tipo }}</td>
+                <td class="raridade-item">{{ item.raridade }}</td>
+                <td>{{ item.descricao }}</td>
+                <td>{{ item.preco }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-top:2rem; text-align:center;">
+        <input type="submit" value="Salvar" class="btn">
+      </div>
+    </div>
   </form>
+</div>
 
 <script>
 function adicionarPoder() {

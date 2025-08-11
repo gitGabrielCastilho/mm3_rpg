@@ -1,3 +1,76 @@
+/* Centralização e estilo para criar/editar personagem */
+.personagem-form-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 60vh;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+.personagem-form-title {
+  font-size: 2.3rem;
+  margin-bottom: 2rem;
+  color: var(--gold);
+  text-align: center;
+}
+.personagem-form-fields {
+  background: var(--card-bg);
+  border-radius: var(--border-radius);
+  box-shadow: var(--card-shadow);
+  padding: 2.2rem 2.5rem 2.2rem 2.5rem;
+  max-width: 700px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+.personagem-form-fields h2 {
+  color: var(--gold);
+  margin-top: 2.2rem;
+  margin-bottom: 0.7rem;
+  font-size: 1.3rem;
+}
+.personagem-form-fields label {
+  font-size: 1.08rem;
+  margin-bottom: 0.2rem;
+  color: var(--text-main);
+  font-weight: 500;
+}
+.personagem-form-fields input,
+.personagem-form-fields select,
+.personagem-form-fields textarea {
+  width: 100%;
+  margin-bottom: 0;
+}
+.personagem-form-btns {
+  display: flex;
+  gap: 1rem;
+  margin: 1.5rem 0 0.5rem 0;
+  justify-content: flex-end;
+}
+.personagem-form-center .btn,
+.personagem-form-fields .btn {
+  background: var(--accent);
+  color: #fff !important;
+  border: none;
+  border-radius: var(--border-radius);
+  padding: 0.5rem 1.2rem;
+  font-weight: 600;
+  margin-left: 0;
+  margin-top: 0.5rem;
+  transition: background var(--transition), box-shadow var(--transition);
+  box-shadow: 0 2px 8px rgba(197,49,49,0.12);
+  width: fit-content;
+  align-self: flex-end;
+  font-size: 1.08rem;
+  cursor: pointer;
+}
+.personagem-form-center .btn:hover,
+.personagem-form-fields .btn:hover {
+  background: var(--gold);
+  color: var(--text-dark) !important;
+}
 /* Centralização e estilo para página de Meus Personagens */
 .personagens-center {
   display: flex;
