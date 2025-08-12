@@ -1,18 +1,26 @@
 {% extends 'base.html' %}
 
 {% block content %}
-  <h2>Iniciar Combate</h2>
-  <form method="post">
-    {% csrf_token %}
-    {% for personagem in personagens %}
-      <div>
-        <label>
-          <input type="checkbox" name="personagens" value="{{ personagem.id }}">
-          {{ personagem.nome }} (Prontidão: {{ personagem.prontidao }})
-        </label>
+<div class="combate-center">
+  <h2 class="combate-title">Iniciar Combate</h2>
+  <div class="combate-card">
+    <form method="post" class="combate-form-selecao">
+      {% csrf_token %}
+      <div class="personagens-grid">
+        {% for personagem in personagens %}
+          <label class="personagem-check">
+            <input type="checkbox" name="personagens" value="{{ personagem.id }}">
+            <span class="personagem-nome">{{ personagem.nome }}</span>
+            <span class="personagem-prontidao">Prontidão: {{ personagem.prontidao }}</span>
+          </label>
+        {% empty %}
+          <p><em>Nenhum personagem disponível.</em></p>
+        {% endfor %}
       </div>
-    {% endfor %}
-    <br>
-    <input type="submit" value="Iniciar Combate">
-  </form>
+      <div class="combate-form-acoes">
+        <button type="submit" class="btn">Iniciar Combate</button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}

@@ -1,37 +1,37 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div id="combate-content">
-  <div id="combate-log" style="background:#f8f8f8; border:1px solid #ccc; padding:8px; margin-bottom:10px; min-height:30px;"></div>
-  <h2>Controle do Combate</h2>
+<div id="combate-content" class="combate-detalhes-center">
+  <div id="combate-log" class="combate-log"></div>
+  <h2 class="combate-subtitle">Controle do Combate</h2>
   {% if not turno_ativo and combate.ativo %}
-    <form method="post" action="{% url 'iniciar_turno' combate.id %}">
+    <form method="post" action="{% url 'iniciar_turno' combate.id %}" class="combate-inline-form">
       {% csrf_token %}
-      <button type="submit">Iniciar Turno</button>
+      <button type="submit" class="btn">Iniciar Turno</button>
     </form>
   {% endif %}
   {% if turno_ativo %}
     {% if personagens_disponiveis %}
-      <h3>Adicionar Personagem</h3>
-      <form method="post" action="{% url 'adicionar_participante' combate.id %}">
+      <h3 class="combate-section-title">Adicionar Personagem</h3>
+      <form method="post" action="{% url 'adicionar_participante' combate.id %}" class="combate-flex-form">
         {% csrf_token %}
-        <label for="novo_participante">Escolha um personagem:</label>
-        <select name="personagem_id" id="novo_participante" required>
+        <label for="novo_participante">Personagem:</label>
+        <select name="personagem_id" id="novo_participante" required class="select-md">
           {% for personagem in personagens_disponiveis %}
             <option value="{{ personagem.id }}">{{ personagem.nome }} ({{ personagem.usuario.username }})</option>
           {% endfor %}
         </select>
-            <button type="submit">Adicionar Personagem</button>
+        <button type="submit" class="btn btn-sm">Adicionar</button>
       </form>
     {% endif %}
 
     {% if turno_ativo %}
-      <div style="margin: 1em 0; padding: 0.5em; background: #f0f8ff; border-left: 4px solid #007bff;">
-        <strong>Turno de:</strong> {{ turno_ativo.personagem.nome }}
+      <div class="turno-ativo-banner">
+        <strong>Turno:</strong> {{ turno_ativo.personagem.nome }}
       </div>
     {% endif %}
-    <h3>Ações de
-      <select id="personagem_acao" name="personagem_acao" form="form-ataque">
+    <h3 class="combate-section-title">Ações de
+      <select id="personagem_acao" name="personagem_acao" form="form-ataque" class="select-md">
         {% if combate.sala.game_master == user %}
           {% for p in participantes %}
             <option value="{{ p.personagem.id }}">{{ p.personagem.nome }}</option>
@@ -46,19 +46,19 @@
       </select>
     </h3>
 
-    <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-ataque">
+    <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-ataque" class="combate-card ataque-card">
       {% csrf_token %}
       <input type="hidden" name="personagem_acao" id="personagem_acao_hidden" value="{{ participantes.0.personagem.id }}">
 
-      <label for="alvo">Escolha o(s) alvo(s):</label>
-      <select id="alvo" name="alvo_id" multiple required size="4">
+      <label for="alvo">Alvo(s):</label>
+      <select id="alvo" name="alvo_id" multiple required size="4" class="multiselect-alvos">
         {% for p in participantes %}
           <option value="{{ p.personagem.id }}">{{ p.personagem.nome }}</option>
         {% endfor %}
       </select>
 
-      <label for="poder">Escolha o poder:</label>
-      <select name="poder_id" id="poder" required>
+      <label for="poder">Poder:</label>
+      <select name="poder_id" id="poder" required class="select-md">
         {% for poder in poderes_disponiveis %}
           <option value="{{ poder.id }}">{{ poder.nome }}</option>
         {% empty %}
@@ -66,39 +66,39 @@
         {% endfor %}
       </select>
 
-      <button type="submit">Usar Poder</button>
+      <button type="submit" class="btn">Usar Poder</button>
     </form>
 
-  <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-pericia" style="margin-top: 1em;">
+  <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-pericia" class="combate-inline-form form-gap">
     {% csrf_token %}
     <input type="hidden" name="personagem_acao" id="personagem_acao_hidden_pericia" value="{{ participantes.0.personagem.id }}">
-    <label for="pericia_rolar">Escolha a perícia:</label>
-    <select name="pericia" id="pericia_rolar" required>
+    <label for="pericia_rolar">Perícia:</label>
+    <select name="pericia" id="pericia_rolar" required class="select-md">
       <option value="">-- Selecione uma perícia --</option>
       {% for pericia in pericias %}
         <option value="{{ pericia }}">{{ pericia|capfirst }}</option>
       {% endfor %}
     </select>
-    <button type="submit" name="rolar_pericia" value="1">Rolar Perícia</button>
+    <button type="submit" name="rolar_pericia" value="1" class="btn btn-sm">Rolar</button>
   </form>
 
-  <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-caracteristica" style="margin-top: 1em;">
+  <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-caracteristica" class="combate-inline-form form-gap">
     {% csrf_token %}
     <input type="hidden" name="personagem_acao" id="personagem_acao_hidden_caracteristica" value="{{ participantes.0.personagem.id }}">
-    <label for="caracteristica_rolar">Escolha a característica:</label>
-    <select name="caracteristica" id="caracteristica_rolar" required>
+    <label for="caracteristica_rolar">Característica:</label>
+    <select name="caracteristica" id="caracteristica_rolar" required class="select-md">
       <option value="">-- Selecione uma característica --</option>
       {% for c in caracteristicas %}
         <option value="{{ c }}">{{ c|capfirst }}</option>
       {% endfor %}
     </select>
-    <button type="submit" name="rolar_caracteristica" value="1">Rolar Característica</button>
+    <button type="submit" name="rolar_caracteristica" value="1" class="btn btn-sm">Rolar</button>
   </form>
 
-  <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-d20" style="margin-top: 1em;">
+  <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-d20" class="combate-inline-form form-gap">
     {% csrf_token %}
     <input type="hidden" name="personagem_acao" id="personagem_acao_hidden_d20" value="{{ participantes.0.personagem.id }}">
-    <button type="submit" name="rolar_d20" value="1">Rolar d20</button>
+    <button type="submit" name="rolar_d20" value="1" class="btn btn-sm">Rolar d20</button>
   </form>
 
   <script>
@@ -140,52 +140,54 @@
   });
   </script>
 
-    <form method="post" action="{% url 'avancar_turno' combate.id %}">
+    <form method="post" action="{% url 'avancar_turno' combate.id %}" class="combate-inline-form">
       {% csrf_token %}
-      <button type="submit" formnovalidate>Avançar Turno</button>
+      <button type="submit" formnovalidate class="btn">Avançar Turno</button>
     </form>
 
-    <form method="post" action="{% url 'finalizar_combate' combate.id %}">
+    <form method="post" action="{% url 'finalizar_combate' combate.id %}" class="combate-inline-form">
       {% csrf_token %}
-      <button type="submit" style="color: red;" formnovalidate>Finalizar Combate</button>
+      <button type="submit" class="btn btn-danger" formnovalidate>Finalizar Combate</button>
     </form>
   {% endif %}
 
   <hr>
-  <h3>Histórico de Ataques</h3>
-  <ul style="list-style-type: none; padding-left: 0;">
+  <h3 class="combate-section-title">Histórico de Ataques</h3>
+  <ul class="turnos-list">
     {% for turno in turnos %}
-  <li style="margin-bottom: 0.5em; {% if turno.ativo %}background-color: #f0f8ff; padding: 0.5em; border-left: 4px solid #007bff;{% endif %}">
-    <strong>Rodada {{ turno.ordem }}:</strong>
-    {{ turno.criado_em|date:"d/m/Y H:i" }} – {{ turno.descricao|safe }}
-    {% if turno.ativo %}
-      <span style="color: #007bff; font-weight: bold;">(Turno Ativo)</span>
-    {% endif %}
-  </li>
+      <li class="turno-item {% if turno.ativo %}ativo{% endif %}">
+        <div class="turno-header">
+          <strong>Rodada {{ turno.ordem }}</strong>
+          <span class="turno-data">{{ turno.criado_em|date:"d/m/Y H:i" }}</span>
+          {% if turno.ativo %}<span class="status-badge atual">Ativo</span>{% endif %}
+        </div>
+        <div class="turno-desc">{{ turno.descricao|safe }}</div>
+      </li>
     {% empty %}
-      <li>Nenhum ataque registrado ainda.</li>
+      <li class="turno-item vazio"><em>Nenhum ataque registrado ainda.</em></li>
     {% endfor %}
   </ul>
 
-  <h3>Status dos Participantes</h3>
+  <h3 class="combate-section-title">Status dos Participantes</h3>
   {% include 'combate/_tabela_participantes.html' %}
-  <h3>Mapa do Combate</h3>
+  <h3 class="combate-section-title">Mapa do Combate</h3>
 
   {% if combate.mapas.all %}
     {% for mapa in combate.mapas.all %}
-      <div id="mapa-area-{{ mapa.id }}" style="position:relative; width:600px; height:400px;">
-        <img src="{{ mapa.imagem.url }}" alt="{{ mapa.nome }}" style="width:600px; height:400px;">
+      <div id="mapa-area-{{ mapa.id }}" class="mapa-area">
+        <img src="{{ mapa.imagem.url }}" alt="{{ mapa.nome }}" class="mapa-img">
         {% for posicao in posicoes %}
           {% if posicao.mapa.id == mapa.id %}
             {% if posicao.participante.personagem.foto %}
               <img src="{{ posicao.participante.personagem.foto.url }}"
                    id="token-{{ posicao.id }}"
-                   style="position:absolute; left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:40px; height:40px; cursor:move;"
+                   class="mapa-token"
+                   style="left:{{ posicao.x }}px; top:{{ posicao.y }}px;"
                    draggable="true"
                    ondragstart="drag(event, {{ posicao.id }})">
             {% else %}
-              <div id="token-{{ posicao.id }}"
-                   style="position:absolute; left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:40px; height:40px; background:#ccc; border-radius:50%; text-align:center; line-height:40px; cursor:move;"
+              <div id="token-{{ posicao.id }}" class="mapa-token token-fallback"
+                   style="left:{{ posicao.x }}px; top:{{ posicao.y }}px;"
                    draggable="true"
                    ondragstart="drag(event, {{ posicao.id }})">
                 {{ posicao.participante.personagem.nome|slice:"0:2"|upper }}
@@ -194,9 +196,9 @@
           {% endif %}
         {% endfor %}
         {% if combate.sala.game_master == user %}
-        <form method="post" action="{% url 'remover_mapa' combate.id mapa.id %}">
+        <form method="post" action="{% url 'remover_mapa' combate.id mapa.id %}" class="mapa-remover-form">
           {% csrf_token %}
-          <button type="submit" style="color:red;">Remover Mapa</button>
+          <button type="submit" class="btn btn-sm btn-danger">Remover Mapa</button>
         </form>
         {% endif %}
       </div>
@@ -204,20 +206,20 @@
   {% endif %}
 
   {% if combate.sala.game_master == user %}
-  <form method="post" enctype="multipart/form-data" action="{% url 'adicionar_mapa' combate.id %}">
+  <form method="post" enctype="multipart/form-data" action="{% url 'adicionar_mapa' combate.id %}" class="combate-card mapa-upload-form">
     {% csrf_token %}
     <label for="mapa_existente">Selecionar mapa existente:</label>
-    <select name="mapa_existente" id="mapa_existente">
+    <select name="mapa_existente" id="mapa_existente" class="select-md">
       <option value="">-- Escolha um mapa --</option>
       {% for mapa in mapas_globais %}
         <option value="{{ mapa.id }}">{{ mapa.nome }}</option>
       {% endfor %}
     </select>
-    <button type="submit" name="usar_existente" value="1">Usar Mapa Selecionado</button>
+    <button type="submit" name="usar_existente" value="1" class="btn btn-sm">Usar Selecionado</button>
     <hr>
     <strong>Ou envie um novo mapa:</strong>
     {{ form.as_p }}
-    <button type="submit">Adicionar Novo Mapa</button>
+    <button type="submit" class="btn">Adicionar Novo Mapa</button>
   </form>
   {% endif %}
 </div>

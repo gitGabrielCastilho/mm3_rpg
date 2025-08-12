@@ -1,10 +1,12 @@
 {% extends 'base.html' %}
 {% block content %}
+<div class="auth-form-center">
   <h2>Login</h2>
-  <form method="post">
+  <form method="post" class="auth-form">
     {% csrf_token %}
     {{ form.as_p }}
     <button type="submit" class="btn btn-primary">Entrar</button>
   </form>
-  <p>Não tem uma conta? <a href="{% url 'cadastrar_usuario' %}">Cadastre-se</a></p>
+  <p class="auth-alt-link">Não tem uma conta? <a href="{% url 'cadastrar_usuario' %}">Cadastre-se</a></p>
+</div>
 {% endblock %}

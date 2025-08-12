@@ -12,8 +12,8 @@
 <nav class="nav-bar">
   <div class="nav-group">
     <a href="/">Home</a>
-    <a href="{% url 'itens' %}">Itens</a>
     {% if user.is_authenticated %}
+      <a href="{% url 'itens' %}">Itens</a>
       <div class="dropdown">
         <button class="dropbtn">Personagens ▾</button>
         <div class="dropdown-content">

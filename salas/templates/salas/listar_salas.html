@@ -1,62 +1,77 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2>Salas Disponíveis</h2>
+<div class="salas-center">
+  <h2 class="salas-title">Salas Disponíveis</h2>
+  <form method="get" class="salas-filtro-form">
+    <input type="text" name="q" placeholder="Buscar por nome, código ou dono" value="{{ query|default:'' }}">
+    <button type="submit" class="btn">Buscar</button>
+  </form>
 
-<form method="get" style="margin-bottom: 20px;">
-  <input type="text" name="q" placeholder="Buscar por nome, código ou dono" value="{{ query|default:'' }}" style="padding: 4px; width: 250px;">
-  <button type="submit">Buscar</button>
-</form>
+  {% if sala_atual %}
+    <div class="sala-atual-card">
+      <div class="sala-atual-header">
+        <span class="badge badge-atual">Sala Atual</span>
+        <strong class="sala-nome">{{ sala_atual.nome }}</strong>
+        <span class="sala-codigo">({{ sala_atual.codigo }})</span>
+      </div>
+      <div class="sala-meta"><strong>Game Master:</strong> {{ sala_atual.game_master.username }}</div>
+      <div class="sala-participantes">
+        <strong>Participantes:</strong>
+        <ul class="participantes-list">
+          {% for participante in sala_atual.participantes.all %}
+            {% with perfil=participante.perfilusuario %}
+              <li>
+                <span class="participante-nome">{{ participante.username }}</span>
+                {% if perfil.sala_atual and perfil.sala_atual.id == sala_atual.id %}
+                  <span class="status-badge online">conectado</span>
+                {% else %}
+                  <span class="status-badge offline">offline</span>
+                {% endif %}
+                {% if sala_atual.game_master == participante %}
+                  <span class="status-badge gm">GM</span>
+                {% endif %}
+              </li>
+            {% endwith %}
+          {% empty %}
+            <li><em>Nenhum participante ainda.</em></li>
+          {% endfor %}
+        </ul>
+      </div>
+      <form method="post" action="{% url 'sair_sala' %}" class="sala-acoes">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Sair da sala</button>
+      </form>
+    </div>
+  {% endif %}
 
-{% if sala_atual %}
-  <div style="margin-bottom: 20px; background: #f8f8ff; border: 1px solid #ccc; padding: 12px; border-radius: 8px;">
-    <strong>Você está atualmente na sala:</strong> {{ sala_atual.nome }} ({{ sala_atual.codigo }})<br>
-    <strong>Game Master:</strong> {{ sala_atual.game_master.username }}<br>
-    <strong>Participantes:</strong>
-    <ul style="margin: 4px 0 8px 20px;">
-      {% for participante in sala_atual.participantes.all %}
-        {% with perfil=participante.perfilusuario %}
-          <li>
-            {{ participante.username }}
-            {% if perfil.sala_atual and perfil.sala_atual.id == sala_atual.id %}
-              <span style="color: green; font-size: 0.9em;">(conectado)</span>
-            {% else %}
-              <span style="color: #a00; font-size: 0.9em;">(não conectado)</span>
+  <ul class="salas-list">
+    {% for sala in salas %}
+      <li class="sala-item {% if sala_atual and sala_atual.id == sala.id %}atual{% endif %}">
+        <div class="sala-item-main">
+          <div class="sala-item-info">
+            <strong class="sala-nome">{{ sala.nome }}</strong>
+            <span class="sala-codigo">({{ sala.codigo }})</span>
+            <span class="sala-dono">Dono: {{ sala.criador.username|default:'-' }}</span>
+            {% if sala_atual and sala_atual.id == sala.id %}
+              <span class="status-badge atual">Você está nesta sala</span>
             {% endif %}
-            {% if sala_atual.game_master == participante %}
-              <span style="color: #0077cc; font-size: 0.9em; font-weight: bold;">[GM]</span>
+          </div>
+          <div class="sala-item-acoes">
+            {% if not sala_atual %}
+              <a href="{% url 'entrar_sala' sala.id %}" class="btn btn-sm">Entrar</a>
             {% endif %}
-          </li>
-        {% endwith %}
-      {% empty %}
-        <li>Nenhum participante ainda.</li>
-      {% endfor %}
-    </ul>
-    <form method="post" action="{% url 'sair_sala' %}" style="display:inline;">
-      {% csrf_token %}
-      <button type="submit">Sair da sala</button>
-    </form>
-  </div>
-{% endif %}
-
-<ul>
-  {% for sala in salas %}
-    <li {% if sala_atual and sala_atual.id == sala.id %}style="background: #e0ffe0; font-weight: bold;"{% endif %}>
-      <strong>{{ sala.nome }}</strong> ({{ sala.codigo }})
-      <span style="color: #888; font-size: 0.95em;">— Dono: {{ sala.criador.username|default:'-' }}</span>
-      {% if sala_atual and sala_atual.id == sala.id %}
-        <span style="color: green; font-weight: bold;">Você já está nesta sala</span>
-      {% elif not sala_atual %}
-        <a href="{% url 'entrar_sala' sala.id %}">Entrar</a>
-      {% endif %}
-      {% if sala.game_master == user %}
-        <form method="post" action="{% url 'excluir_sala' sala.id %}" style="display:inline; margin-left: 10px;">
-          {% csrf_token %}
-          <button type="submit" onclick="return confirm('Excluir esta sala?')">Excluir</button>
-        </form>
-      {% endif %}
-    </li>
-  {% empty %}
-    <li>Não há salas disponíveis.</li>
-  {% endfor %}
-</ul>
+            {% if sala.game_master == user %}
+              <form method="post" action="{% url 'excluir_sala' sala.id %}" onsubmit="return confirm('Excluir esta sala?')" class="inline-form">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
+              </form>
+            {% endif %}
+          </div>
+        </div>
+      </li>
+    {% empty %}
+      <li class="sala-item vazio"><em>Não há salas disponíveis.</em></li>
+    {% endfor %}
+  </ul>
+</div>
 {% endblock %}

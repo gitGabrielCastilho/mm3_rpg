@@ -1,10 +1,16 @@
 {% extends 'base.html' %}
 
 {% block content %}
-  <h2>Adicionar Mapa ao Combate</h2>
-  <form method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Salvar Mapa</button>
-  </form>
+<div class="mapas-center">
+  <h2 class="combate-title">Adicionar Mapa ao Combate</h2>
+  <div class="combate-card mapa-form-card">
+    <form method="post" enctype="multipart/form-data" class="mapa-form">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="mapa-form-acoes">
+        <button type="submit" class="btn">Salvar Mapa</button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}

@@ -1,24 +1,35 @@
 {% extends 'base.html' %}
 
 {% block content %}
-  <h2>Meus Mapas</h2>
-  <a href="{% url 'adicionar_mapa_global' %}">Adicionar Novo Mapa</a>
-  <ul>
+<div class="mapas-center">
+  <div class="mapas-header">
+    <h2 class="combate-title">Meus Mapas</h2>
+    <a href="{% url 'adicionar_mapa_global' %}" class="btn btn-sm">Novo Mapa</a>
+  </div>
+  <ul class="mapas-list">
     {% for mapa in mapas %}
-      <li>
-        <strong>{{ mapa.nome }}</strong><br>
-        {% if mapa.imagem %}
-          <img src="{{ mapa.imagem.url }}" alt="{{ mapa.nome }}" style="max-width:200px;">
-        {% endif %}
-        <br>
-        Criado em: {{ mapa.criado_em|date:"d/m/Y H:i" }}
-    <form method="post" action="{% url 'remover_mapa_global' mapa.id %}" style="display:inline;">
-    {% csrf_token %}
-    <button type="submit" style="color:red;">Remover</button>
-    </form>
+      <li class="mapa-item">
+        <div class="mapa-thumb-wrapper">
+          {% if mapa.imagem %}
+            <img src="{{ mapa.imagem.url }}" alt="{{ mapa.nome }}" class="mapa-thumb">
+          {% else %}
+            <div class="mapa-thumb placeholder">SEM IMAGEM</div>
+          {% endif %}
+        </div>
+        <div class="mapa-info">
+          <div class="mapa-info-top">
+            <strong class="mapa-nome">{{ mapa.nome }}</strong>
+            <span class="mapa-data">{{ mapa.criado_em|date:"d/m/Y H:i" }}</span>
+          </div>
+          <form method="post" action="{% url 'remover_mapa_global' mapa.id %}" class="inline-form mapa-remover-form" onsubmit="return confirm('Remover este mapa?');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-danger">Remover</button>
+          </form>
+        </div>
       </li>
     {% empty %}
-      <li>Nenhum mapa cadastrado.</li>
+      <li class="mapa-item vazio"><em>Nenhum mapa cadastrado.</em></li>
     {% endfor %}
   </ul>
+</div>
 {% endblock %}

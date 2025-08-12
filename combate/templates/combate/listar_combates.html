@@ -1,22 +1,29 @@
 {% extends 'base.html' %}
 
 {% block content %}
-  <h1>Combates Ativos</h1>
-  <ul>
+<div class="combate-center">
+  <h1 class="combate-title">Combates Ativos</h1>
+  <ul class="combates-list">
     {% for combate in combates %}
-      <li>
-        Combate #{{ combate.id }} - Criado em {{ combate.criado_em|date:"d/m/Y H:i" }}
-        <a href="{% url 'detalhes_combate' combate.id %}">Ver detalhes</a>
-        <!-- Formulário para deletar o combate -->
-        <form method="post" action="{% url 'deletar_combate' combate.id %}" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja deletar este combate?');">
-          {% csrf_token %}
-          <button type="submit" style="color: red; background: none; border: none; cursor: pointer;">Excluir</button>
-        </form>
+      <li class="combate-item">
+        <div class="combate-item-info">
+          <span class="combate-id">#{{ combate.id }}</span>
+          <span class="combate-data">{{ combate.criado_em|date:"d/m/Y H:i" }}</span>
+        </div>
+        <div class="combate-item-acoes">
+          <a href="{% url 'detalhes_combate' combate.id %}" class="btn btn-sm">Detalhes</a>
+          <form method="post" action="{% url 'deletar_combate' combate.id %}" class="inline-form" onsubmit="return confirm('Tem certeza que deseja deletar este combate?');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
+          </form>
+        </div>
       </li>
     {% empty %}
-      <li>Nenhum combate criado ainda.</li>
+      <li class="combate-item vazio"><em>Nenhum combate criado ainda.</em></li>
     {% endfor %}
   </ul>
-
-  <a href="{% url 'criar_combate' sala.id %}" class="btn btn-primary">Criar novo combate</a>
+  <div class="combate-novo-wrap">
+    <a href="{% url 'criar_combate' sala.id %}" class="btn">Criar novo combate</a>
+  </div>
+</div>
 {% endblock %}
