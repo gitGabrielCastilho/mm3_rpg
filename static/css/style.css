@@ -963,6 +963,52 @@ body {
   .mapas-list { grid-template-columns:repeat(auto-fit,minmax(180px,240px)); }
 }
 
+/* Botões/acões em tabela de participantes */
+.btn-link-ficha { display:inline-block; padding:0.35rem 0.7rem; font-size:0.7rem; font-weight:600; letter-spacing:0.5px; text-transform:uppercase; background:#1e1e1e; border:1px solid #3a3a3a; border-radius:0.55rem; color:var(--gold) !important; text-decoration:none; transition:background var(--transition), color var(--transition), border var(--transition), box-shadow var(--transition); }
+.btn-link-ficha:hover { background:var(--gold); color:var(--text-dark) !important; border-color:var(--gold); box-shadow:0 4px 14px rgba(230,194,0,0.18); }
+.form-remover-participante { display:inline; margin:0; padding:0; }
+.btn-remover-participante { background:#7a2323; color:#fff !important; border:none; padding:0.35rem 0.8rem; font-size:0.7rem; font-weight:600; letter-spacing:0.5px; text-transform:uppercase; border-radius:0.55rem; cursor:pointer; transition:background var(--transition), box-shadow var(--transition); box-shadow:0 2px 6px rgba(0,0,0,0.3); }
+.btn-remover-participante:hover { background:#c53131; box-shadow:0 4px 16px rgba(197,49,49,0.4); }
+
+/* ================= Ficha de Personagem ================= */
+.ficha-center { width:100%; max-width:1500px; margin:0 auto 3rem auto; padding:1.4rem 2rem 2.5rem 2rem; box-sizing:border-box; }
+.ficha-header { display:flex; gap:1.8rem; align-items:flex-start; flex-wrap:wrap; margin-bottom:1.8rem; }
+.ficha-foto-wrap { width:160px; height:160px; border:2px solid #333; border-radius:12px; overflow:hidden; box-shadow:0 4px 14px #000a; background:#111; }
+.ficha-foto { width:100%; height:100%; object-fit:cover; display:block; }
+.ficha-header-info { display:flex; flex-direction:column; gap:0.8rem; }
+.ficha-title { margin:0; font-size:2.4rem; line-height:1.1; }
+.ficha-meta { display:flex; gap:0.6rem; flex-wrap:wrap; }
+.ficha-meta .badge { background:#1c1c1c; color:var(--gold); border:1px solid #444; }
+.ficha-sections-grid { display:grid; gap:1.5rem; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); align-items:stretch; }
+.ficha-card { background:var(--card-bg); border-radius:var(--border-radius); border:1px solid #333; box-shadow:var(--card-shadow); padding:1.1rem 1.3rem 1.2rem 1.3rem; display:flex; flex-direction:column; gap:0.7rem; position:relative; }
+.ficha-section-title { margin:0; font-size:1.25rem; letter-spacing:0.5px; }
+.ficha-subtitle { margin:1.1rem 0 0.4rem 0; font-size:1.05rem; color:var(--gold); }
+.ficha-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:0.35rem; font-size:0.9rem; }
+.ficha-list.cols-2 li, .ficha-list.cols-3 li { display:grid; gap:0.4rem 0.6rem; align-items:center; }
+.ficha-list.cols-2 li { grid-template-columns:1fr auto; }
+.ficha-list.cols-3 li { grid-template-columns:1fr auto; }
+.ficha-list .lbl { font-weight:600; color:var(--gold); }
+.ficha-list .val { font-weight:500; text-align:right; }
+.ficha-list .desc { color:#bbb; font-weight:400; }
+.ficha-list .item-origem { color:var(--gold); font-weight:600; }
+.ficha-inventario { grid-column:1 / -1; }
+.ficha-moedas { margin-bottom:0.8rem; }
+.ficha-inv-tabela-wrapper { max-height:300px; overflow:auto; border:1px solid #333; border-radius:0.6rem; background:#151515; }
+.ficha-inv-tabela { border-collapse:collapse; width:100%; font-size:0.85rem; }
+.ficha-inv-tabela th, .ficha-inv-tabela td { padding:0.55rem 0.7rem; border:1px solid #333; text-align:left; }
+.ficha-inv-tabela th { position:sticky; top:0; background:#232323; z-index:2; }
+.ficha-acoes { display:flex; gap:0.8rem; justify-content:flex-end; margin-top:2rem; }
+@media (max-width:860px){
+  .ficha-sections-grid { grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); }
+  .ficha-title { font-size:2rem; }
+  .ficha-foto-wrap { width:140px; height:140px; }
+}
+@media (max-width:560px){
+  .ficha-header { flex-direction:column; align-items:center; text-align:center; }
+  .ficha-header-info { align-items:center; }
+  .ficha-acoes { justify-content:center; flex-wrap:wrap; }
+}
+
 /* NAVBAR E DROPDOWNS */
 .nav-bar {
   display: flex;

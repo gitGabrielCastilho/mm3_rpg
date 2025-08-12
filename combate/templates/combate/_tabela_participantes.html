@@ -24,14 +24,14 @@
       <td>{{ p.aflicao }}</td>
       <td>
         {% if p.personagem.usuario == user %}
-          <a href="{% url 'ficha_personagem' p.personagem.id %}" target="_blank">Ver Ficha</a>
+          <a href="{% url 'ficha_personagem' p.personagem.id %}" target="_blank" class="btn-link-ficha">Ver Ficha</a>
         {% endif %}
       </td>
         {% if user.perfilusuario.sala_atual.game_master == user %}
           <td>
-            <form method="post" action="{% url 'remover_participante' combate.id p.id %}" style="display:inline;">
+            <form method="post" action="{% url 'remover_participante' combate.id p.id %}" class="form-remover-participante">
               {% csrf_token %}
-              <button type="submit" style="color:red;">Remover</button>
+              <button type="submit" class="btn-remover-participante">Remover</button>
             </form>
           </td>
         {% endif %}

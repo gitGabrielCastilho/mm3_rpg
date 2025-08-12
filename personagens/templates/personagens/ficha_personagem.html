@@ -2,103 +2,119 @@
 {% load filtros %}
 
 {% block content %}
-{% if personagem.foto %}
-  <div>
-    <img src="{{ personagem.foto.url }}" alt="Foto de {{ personagem.nome }}" style="max-width:150px; max-height:150px;">
-  </div>
-{% endif %}
-  <h1>Ficha de {{ personagem.nome }}</h1>
-
-  <h2>Habilidades</h2>
-  <ul>
-    {% for campo in categorias.caracteristicas %}
-      <li><strong>{{ campo|capfirst }}:</strong> {{ personagem|attr:campo }}</li>
-    {% endfor %}
-  </ul>
-<h2>Vantagens</h2>
-<ul>
-  {% for vantagem in personagem.vantagens.all %}
-    <li>
-      <strong>{{ vantagem.nome }}</strong>
-      {% if vantagem.descricao %} — {{ vantagem.descricao }}{% endif %}
-    </li>
-  {% empty %}
-    <li>Nenhuma vantagem selecionada.</li>
-  {% endfor %}
-</ul>
-  <h2>Defesas</h2>
-  <ul>
-    {% for campo in categorias.defesas %}
-      <li><strong>{{ campo|capfirst }}:</strong> {{ personagem|attr:campo }}</li>
-    {% endfor %}
-  </ul>
-
-  <h2>Perícias</h2>
-  <ul>
-    {% for campo in categorias.pericias %}
-      <li><strong>{{ campo|capfirst }}:</strong> {{ personagem|attr:campo }}</li>
-    {% endfor %}
-  </ul>
-
-  <h2>Poderes</h2>
-<ul>
-  {% for poder in personagem.poderes.all %}
-    {% if not poder.de_item %}
-      <li>
-        <strong>{{ poder.nome }}</strong> — Bônus de Ataque: {{ poder.bonus_ataque }}, Nível do Efeito: {{ poder.nivel_efeito }}
-      </li>
+<div class="ficha-center">
+  <div class="ficha-header">
+    {% if personagem.foto %}
+      <div class="ficha-foto-wrap">
+        <img src="{{ personagem.foto.url }}" alt="Foto de {{ personagem.nome }}" class="ficha-foto">
+      </div>
     {% endif %}
-  {% empty %}
-    <li>Nenhum poder adicionado.</li>
-  {% endfor %}
-</ul>
+    <div class="ficha-header-info">
+      <h1 class="ficha-title">Ficha de {{ personagem.nome }}</h1>
+      <div class="ficha-meta">
+        <span class="badge">NP {{ personagem.np|default:'?' }}</span>
+        <span class="badge">Usuário: {{ personagem.usuario.username }}</span>
+      </div>
+    </div>
+  </div>
 
-<h3>Poderes de Itens</h3>
-<ul>
-  {% if poderes_de_item %}
-    {% for poder in poderes_de_item %}
-      <li>
-        <strong>{{ poder.nome }}</strong>
-        {% if poder.item_origem %} ({{ poder.item_origem.nome }}){% endif %}
-        — Bônus de Ataque: {{ poder.bonus_ataque }}, Nível do Efeito: {{ poder.nivel_efeito }}
-      </li>
-    {% endfor %}
-  {% else %}
-    <li>Nenhum poder de item.</li>
-  {% endif %}
-</ul>
+  <div class="ficha-sections-grid">
+    <section class="ficha-card">
+      <h2 class="ficha-section-title">Habilidades</h2>
+      <ul class="ficha-list cols-2">
+        {% for campo in categorias.caracteristicas %}
+          <li><span class="lbl">{{ campo|capfirst }}</span><span class="val">{{ personagem|attr:campo }}</span></li>
+        {% endfor %}
+      </ul>
+    </section>
+    <section class="ficha-card">
+      <h2 class="ficha-section-title">Defesas</h2>
+      <ul class="ficha-list cols-2">
+        {% for campo in categorias.defesas %}
+          <li><span class="lbl">{{ campo|capfirst }}</span><span class="val">{{ personagem|attr:campo }}</span></li>
+        {% endfor %}
+      </ul>
+    </section>
+    <section class="ficha-card">
+      <h2 class="ficha-section-title">Perícias</h2>
+      <ul class="ficha-list cols-3">
+        {% for campo in categorias.pericias %}
+          <li><span class="lbl">{{ campo|capfirst }}</span><span class="val">{{ personagem|attr:campo }}</span></li>
+        {% endfor %}
+      </ul>
+    </section>
+    <section class="ficha-card">
+      <h2 class="ficha-section-title">Vantagens</h2>
+      <ul class="ficha-list">
+        {% for vantagem in personagem.vantagens.all %}
+          <li><strong>{{ vantagem.nome }}</strong>{% if vantagem.descricao %} <span class="desc">— {{ vantagem.descricao }}</span>{% endif %}</li>
+        {% empty %}
+          <li><em>Nenhuma vantagem selecionada.</em></li>
+        {% endfor %}
+      </ul>
+    </section>
+    <section class="ficha-card">
+      <h2 class="ficha-section-title">Poderes</h2>
+      <ul class="ficha-list">
+        {% for poder in personagem.poderes.all %}
+          {% if not poder.de_item %}
+            <li><strong>{{ poder.nome }}</strong> <span class="desc">— Ataque: {{ poder.bonus_ataque }}, Efeito: {{ poder.nivel_efeito }}</span></li>
+          {% endif %}
+        {% empty %}
+          <li><em>Nenhum poder adicionado.</em></li>
+        {% endfor %}
+      </ul>
+      <h3 class="ficha-subtitle">Poderes de Itens</h3>
+      <ul class="ficha-list">
+        {% if poderes_de_item %}
+          {% for poder in poderes_de_item %}
+            <li><strong>{{ poder.nome }}</strong>{% if poder.item_origem %} <span class="item-origem">({{ poder.item_origem.nome }})</span>{% endif %} <span class="desc">— Ataque: {{ poder.bonus_ataque }}, Efeito: {{ poder.nivel_efeito }}</span></li>
+          {% endfor %}
+        {% else %}
+          <li><em>Nenhum poder de item.</em></li>
+        {% endif %}
+      </ul>
+    </section>
+    <section class="ficha-card ficha-inventario">
+      <h2 class="ficha-section-title">Inventário</h2>
+      <div class="inventario-moedas-inline ficha-moedas">
+        <div><strong>Ouro:</strong> {{ personagem.inventario.ouro }}</div>
+        <div><strong>Dragon Shard:</strong> {{ personagem.inventario.dragon_shard }}</div>
+      </div>
+      <div class="ficha-inv-tabela-wrapper">
+        <table class="ficha-inv-tabela">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Tipo</th>
+              <th>Raridade</th>
+              <th>Descrição</th>
+              <th>Preço</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in personagem.inventario.itens.all %}
+              <tr>
+                <td>{{ item.nome }}</td>
+                <td>{{ item.tipo }}</td>
+                <td>{{ item.raridade }}</td>
+                <td>{{ item.descricao }}</td>
+                <td>{{ item.preco }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="5"><em>Nenhum item no inventário.</em></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
 
-<h2>Inventário</h2>
-<p>Ouro: {{ personagem.inventario.ouro }}</p>
-<p>Dragon shard: {{ personagem.inventario.dragon_shard }}</p>
-
-<table border="1">
-  <thead>
-    <tr>
-      <th>Nome</th>
-      <th>Tipo</th>
-      <th>Raridade</th>
-      <th>Descrição</th>
-      <th>Preço</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for item in personagem.inventario.itens.all %}
-      <tr>
-        <td>{{ item.nome }}</td>
-        <td>{{ item.tipo }}</td>
-        <td>{{ item.raridade }}</td>
-        <td>{{ item.descricao }}</td>
-        <td>{{ item.preco }}</td>
-      </tr>
-    {% empty %}
-      <tr>
-        <td colspan="5">Nenhum item no inventário.</td>
-      </tr>
-    {% endfor %}
-  </tbody>
-</table>
-
-  <a href="{% url 'editar_personagem' personagem.id %}" class="btn btn-primary">Editar</a>
-  <a href="{% url 'listar_personagens' %}" class="btn btn-secondary">Voltar</a>
+  <div class="ficha-acoes">
+    <a href="{% url 'editar_personagem' personagem.id %}" class="btn">Editar</a>
+    <a href="{% url 'listar_personagens' %}" class="btn btn-secondary">Voltar</a>
+  </div>
+</div>
 {% endblock %}
