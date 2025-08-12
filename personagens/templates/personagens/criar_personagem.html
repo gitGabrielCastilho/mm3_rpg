@@ -8,33 +8,33 @@
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     <div class="personagem-form-fields">
-      <div class="linha-nome-full">
-        <div class="campo-nome-full">{{ form.nome.label_tag }} {{ form.nome }}</div>
-      </div>
-      <div class="linha-foto-np">
-        <div class="campo-foto">
+      <div class="linha-topo" style="display:flex; gap:2rem; flex-wrap:wrap; align-items:flex-start;">
+        <div class="campo-nome" style="flex:1 1 200px; min-width:180px;">
+          {{ form.nome.label_tag }} {{ form.nome }}
+        </div>
+        <div class="campo-foto" style="flex:2 1 320px; min-width:260px;">
           {{ form.foto.label_tag }} {{ form.foto }}
           {% if form.foto.value %}
             <br>
-            <img src="{{ form.foto.value.url }}" alt="Foto atual" style="max-width:100px;">
+            <img src="{{ form.foto.value.url }}" alt="Foto atual" style="max-width:100px; margin-top:0.4rem;">
           {% endif %}
         </div>
-        <div class="campo-np">
+        <div class="campo-np" style="flex:1 1 160px; min-width:140px;">
           {{ form.nivel_poder.label_tag }} {{ form.nivel_poder }}
         </div>
       </div>
       <h2>Características</h2>
-      <div class="caracteristicas-grid espacamento-campos">
-        {% for campo in caracteristicas %}
-          <div class="campo-carac">
-            {% with field=form|lookup:campo %}
-              {{ field.label_tag }} {{ field }}
-              {% if field.errors %}
-                <div style="color:red;">{{ field.errors }}</div>
-              {% endif %}
-            {% endwith %}
-          </div>
-        {% endfor %}
+  <div class="caracteristicas-grid espacamento-campos" style="display:grid; grid-template-columns:repeat(4, minmax(110px,1fr)); gap:1.5rem 2.5rem; justify-items:center;">
+        <!-- Linha 1 -->
+        <div class="campo-carac">{{ form.forca.label_tag }} {{ form.forca }}{% if form.forca.errors %}<div style="color:red;">{{ form.forca.errors }}</div>{% endif %}</div>
+        <div class="campo-carac">{{ form.vigor.label_tag }} {{ form.vigor }}{% if form.vigor.errors %}<div style="color:red;">{{ form.vigor.errors }}</div>{% endif %}</div>
+        <div class="campo-carac">{{ form.destreza.label_tag }} {{ form.destreza }}{% if form.destreza.errors %}<div style="color:red;">{{ form.destreza.errors }}</div>{% endif %}</div>
+        <div class="campo-carac">{{ form.prontidao.label_tag }} {{ form.prontidao }}{% if form.prontidao.errors %}<div style="color:red;">{{ form.prontidao.errors }}</div>{% endif %}</div>
+  <!-- Linha 2 -->
+        <div class="campo-carac">{{ form.presenca.label_tag }} {{ form.presenca }}{% if form.presenca.errors %}<div style="color:red;">{{ form.presenca.errors }}</div>{% endif %}</div>
+        <div class="campo-carac">{{ form.inteligencia.label_tag }} {{ form.inteligencia }}{% if form.inteligencia.errors %}<div style="color:red;">{{ form.inteligencia.errors }}</div>{% endif %}</div>
+        <div class="campo-carac">{{ form.luta.label_tag }} {{ form.luta }}{% if form.luta.errors %}<div style="color:red;">{{ form.luta.errors }}</div>{% endif %}</div>
+        <div class="campo-carac">{{ form.agilidade.label_tag }} {{ form.agilidade }}{% if form.agilidade.errors %}<div style="color:red;">{{ form.agilidade.errors }}</div>{% endif %}</div>
       </div>
       <h2>Vantagens</h2>
       <div style="display: flex; align-items: center; gap: 2rem; margin-bottom: 0.7rem; flex-wrap: wrap;">
@@ -69,89 +69,57 @@
         </table>
       </div>
       <h2>Defesas</h2>
-      <div class="defesas-duas-colunas">
-        <div class="defesas-coluna">
-          {% for campo in defesas|slice:':2' %}
-            <div class="campo-def">
-              {% with field=form|lookup:campo %}
-                {{ field.label_tag }} {{ field }}
-                {% if field.errors %}
-                  <div style="color:red;">{{ field.errors }}</div>
-                {% endif %}
-              {% endwith %}
-            </div>
-          {% endfor %}
-        </div>
-        <div class="defesas-coluna">
-          {% for campo in defesas|slice:'2:' %}
-            <div class="campo-def">
-              {% with field=form|lookup:campo %}
-                {{ field.label_tag }} {{ field }}
-                {% if field.errors %}
-                  <div style="color:red;">{{ field.errors }}</div>
-                {% endif %}
-              {% endwith %}
-            </div>
-          {% endfor %}
-        </div>
+      <div class="defesas-grid" style="display:grid; grid-template-columns:repeat(3, minmax(140px,1fr)); gap:1.8rem 3rem; justify-items:center; margin-bottom:2rem;">
+        <!-- Linha 1: Aparar, Esquivar, Resistência -->
+        <div class="campo-def">{{ form.aparar.label_tag }} {{ form.aparar }}{% if form.aparar.errors %}<div style="color:red;">{{ form.aparar.errors }}</div>{% endif %}</div>
+        <div class="campo-def">{{ form.esquivar.label_tag }} {{ form.esquivar }}{% if form.esquivar.errors %}<div style="color:red;">{{ form.esquivar.errors }}</div>{% endif %}</div>
+        <div class="campo-def">{{ form.resistencia.label_tag }} {{ form.resistencia }}{% if form.resistencia.errors %}<div style="color:red;">{{ form.resistencia.errors }}</div>{% endif %}</div>
+        <!-- Linha 2: Vontade, Fortitude (centralizando com célula vazia final) -->
+        <div class="campo-def">{{ form.vontade.label_tag }} {{ form.vontade }}{% if form.vontade.errors %}<div style="color:red;">{{ form.vontade.errors }}</div>{% endif %}</div>
+        <div class="campo-def">{{ form.fortitude.label_tag }} {{ form.fortitude }}{% if form.fortitude.errors %}<div style="color:red;">{{ form.fortitude.errors }}</div>{% endif %}</div>
+        <div></div>
       </div>
       <h2>Perícias</h2>
       <div>
         {{ form.especialidade_casting_ability.label_tag }} {{ form.especialidade_casting_ability }}
       </div>
-      <div class="pericias-duas-colunas">
-        <div class="pericias-coluna">
-          {% for campo in pericias_col1 %}
-            {% with field=form|lookup:campo %}
-              <label style="font-weight: bold; margin-bottom: 0.2rem;">{{ field.label }}</label>
+      <div class="pericias-grid-4" style="display:grid; grid-template-columns:repeat(4, minmax(140px,1fr)); gap:1.4rem 2.2rem; justify-items:center; margin-bottom:2rem;">
+        {% for campo in pericias_col1 %}
+          {% with field=form|lookup:campo %}
+            <div class="pericia-campo" style="display:flex; flex-direction:column; align-items:center;">
+              <label style="font-weight:bold; margin-bottom:0.25rem;">{{ field.label }}</label>
               {{ field }}
-              {% if field.errors %}
-                <div style="color:red;">{{ field.errors }}</div>
-              {% endif %}
-            {% endwith %}
-          {% endfor %}
-        </div>
-        <div class="pericias-coluna">
-          {% for campo in pericias_col2 %}
-            {% with field=form|lookup:campo %}
-              <label style="font-weight: bold; margin-bottom: 0.2rem;">{{ field.label }}</label>
+              {% if field.errors %}<div style="color:red;">{{ field.errors }}</div>{% endif %}
+            </div>
+          {% endwith %}
+        {% endfor %}
+        {% for campo in pericias_col2 %}
+          {% with field=form|lookup:campo %}
+            <div class="pericia-campo" style="display:flex; flex-direction:column; align-items:center;">
+              <label style="font-weight:bold; margin-bottom:0.25rem;">{{ field.label }}</label>
               {{ field }}
-              {% if field.errors %}
-                <div style="color:red;">{{ field.errors }}</div>
-              {% endif %}
-            {% endwith %}
-          {% endfor %}
-        </div>
+              {% if field.errors %}<div style="color:red;">{{ field.errors }}</div>{% endif %}
+            </div>
+          {% endwith %}
+        {% endfor %}
       </div>
       <h2>Poderes</h2>
       <!-- Empty form grid para JS clonar (opcional, se usar JS dinâmico igual editar) -->
       <div id="empty-poder-form" style="display:none;">
-        <div class="poder-form poder-form-grid" style="border:1px solid #ccc; margin-bottom:0; padding:1em; width:100%; max-width: 700px; position: relative;">
-          <div style="grid-column: 1; font-weight: bold;">{{ formset.empty_form.nome.label_tag }}</div>
-          <div style="grid-column: 2;">{{ formset.empty_form.nome }}</div>
-          <div style="grid-column: 1; font-weight: bold;">{{ formset.empty_form.tipo.label_tag }}</div>
-          <div style="grid-column: 2;">{{ formset.empty_form.tipo }}</div>
-          <div style="grid-column: 1; font-weight: bold;">{{ formset.empty_form.modo.label_tag }}</div>
-          <div style="grid-column: 2;">{{ formset.empty_form.modo }}</div>
-          <div style="grid-column: 1; font-weight: bold;">{{ formset.empty_form.nivel_efeito.label_tag }}</div>
-          <div style="grid-column: 2;">{{ formset.empty_form.nivel_efeito }}</div>
-          <div style="grid-column: 1; font-weight: bold;">{{ formset.empty_form.bonus_ataque.label_tag }}</div>
-          <div style="grid-column: 2;">{{ formset.empty_form.bonus_ataque }}</div>
-          <div style="grid-column: 1; font-weight: bold;">{{ formset.empty_form.defesa_ativa.label_tag }}</div>
-          <div style="grid-column: 2;">{{ formset.empty_form.defesa_ativa }}</div>
-          <div style="grid-column: 1; font-weight: bold;">{{ formset.empty_form.defesa_passiva.label_tag }}</div>
-          <div style="grid-column: 2;">{{ formset.empty_form.defesa_passiva }}</div>
-          <div style="grid-column: 1; font-weight: bold;">{{ formset.empty_form.casting_ability.label_tag }}</div>
-          <div style="grid-column: 2;">{{ formset.empty_form.casting_ability }}</div>
-          <div style="grid-column: 1; font-weight: bold;">{{ formset.empty_form.de_item.label_tag }}</div>
-          <div style="grid-column: 2;">{{ formset.empty_form.de_item }}</div>
-          <div style="grid-column: 1; font-weight: bold;">{{ formset.empty_form.item_origem.label_tag }}</div>
-          <div style="grid-column: 2;">{{ formset.empty_form.item_origem }}</div>
-          <div style="grid-column: 1; font-weight: bold;">{{ formset.empty_form.de_vantagem.label_tag }}</div>
-          <div style="grid-column: 2;">{{ formset.empty_form.de_vantagem }}</div>
-          <div style="grid-column: 1; font-weight: bold;">{{ formset.empty_form.vantagem_origem.label_tag }}</div>
-          <div style="grid-column: 2;">{{ formset.empty_form.vantagem_origem }}</div>
-          <div style="grid-column: 1 / span 2; margin-top: 1em; text-align: right; display: flex; align-items: center; gap: 0.7rem; justify-content: flex-end;">
+  <div class="poder-form poder-form-grid" style="border:1px solid #444; width:100%; position: relative;">
+          <div class="campo-poder">{{ formset.empty_form.nome.label_tag }}{{ formset.empty_form.nome }}</div>
+          <div class="campo-poder">{{ formset.empty_form.tipo.label_tag }}{{ formset.empty_form.tipo }}</div>
+          <div class="campo-poder">{{ formset.empty_form.modo.label_tag }}{{ formset.empty_form.modo }}</div>
+          <div class="campo-poder">{{ formset.empty_form.casting_ability.label_tag }}{{ formset.empty_form.casting_ability }}</div>
+          <div class="campo-poder">{{ formset.empty_form.nivel_efeito.label_tag }}{{ formset.empty_form.nivel_efeito }}</div>
+          <div class="campo-poder">{{ formset.empty_form.bonus_ataque.label_tag }}{{ formset.empty_form.bonus_ataque }}</div>
+          <div class="campo-poder">{{ formset.empty_form.defesa_ativa.label_tag }}{{ formset.empty_form.defesa_ativa }}</div>
+          <div class="campo-poder">{{ formset.empty_form.defesa_passiva.label_tag }}{{ formset.empty_form.defesa_passiva }}</div>
+          <div class="campo-poder">{{ formset.empty_form.item_origem.label_tag }}{{ formset.empty_form.item_origem }}</div>
+          <div class="campo-poder linha-checkbox">{{ formset.empty_form.de_item }} <label for="{{ formset.empty_form.de_item.id_for_label }}">Poder de Item?</label></div>
+          <div class="campo-poder">{{ formset.empty_form.vantagem_origem.label_tag }}{{ formset.empty_form.vantagem_origem }}</div>
+          <div class="campo-poder linha-checkbox">{{ formset.empty_form.de_vantagem }} <label for="{{ formset.empty_form.de_vantagem.id_for_label }}">Poder de Vantagem?</label></div>
+          <div class="span-2" style="margin-top:0.4rem; text-align:right; display:flex; gap:0.7rem; justify-content:flex-end;">
             <span style="display:none;">{{ formset.empty_form.DELETE }}</span>
             <button type="button" class="btn btn-danger" onclick="removerPoderLinha(this)">Remover</button>
           </div>
@@ -162,33 +130,21 @@
           {{ formset.management_form }}
           <div style="display: flex; flex-direction: column; gap: 1.5rem; align-items: center;">
             {% for form in formset %}
-              <div class="poder-form poder-form-grid" style="border:1px solid #ccc; margin-bottom:0; padding:1em; width:100%; max-width: 700px; position: relative;">
-                <div style="grid-column: 1; font-weight: bold;">{{ form.nome.label_tag }}</div>
-                <div style="grid-column: 2;">{{ form.nome }}</div>
-                <div style="grid-column: 1; font-weight: bold;">{{ form.tipo.label_tag }}</div>
-                <div style="grid-column: 2;">{{ form.tipo }}</div>
-                <div style="grid-column: 1; font-weight: bold;">{{ form.modo.label_tag }}</div>
-                <div style="grid-column: 2;">{{ form.modo }}</div>
-                <div style="grid-column: 1; font-weight: bold;">{{ form.nivel_efeito.label_tag }}</div>
-                <div style="grid-column: 2;">{{ form.nivel_efeito }}</div>
-                <div style="grid-column: 1; font-weight: bold;">{{ form.bonus_ataque.label_tag }}</div>
-                <div style="grid-column: 2;">{{ form.bonus_ataque }}</div>
-                <div style="grid-column: 1; font-weight: bold;">{{ form.defesa_ativa.label_tag }}</div>
-                <div style="grid-column: 2;">{{ form.defesa_ativa }}</div>
-                <div style="grid-column: 1; font-weight: bold;">{{ form.defesa_passiva.label_tag }}</div>
-                <div style="grid-column: 2;">{{ form.defesa_passiva }}</div>
-                <div style="grid-column: 1; font-weight: bold;">{{ form.casting_ability.label_tag }}</div>
-                <div style="grid-column: 2;">{{ form.casting_ability }}</div>
-                <div style="grid-column: 1; font-weight: bold;">{{ form.de_item.label_tag }}</div>
-                <div style="grid-column: 2;">{{ form.de_item }}</div>
-                <div style="grid-column: 1; font-weight: bold;">{{ form.item_origem.label_tag }}</div>
-                <div style="grid-column: 2;">{{ form.item_origem }}</div>
-                <div style="grid-column: 1; font-weight: bold;">{{ form.de_vantagem.label_tag }}</div>
-                <div style="grid-column: 2;">{{ form.de_vantagem }}</div>
-                <div style="grid-column: 1; font-weight: bold;">{{ form.vantagem_origem.label_tag }}</div>
-                <div style="grid-column: 2;">{{ form.vantagem_origem }}</div>
+              <div class="poder-form poder-form-grid" style="border:1px solid #444; width:100%; position: relative;">
+                <div class="campo-poder">{{ form.nome.label_tag }}{{ form.nome }}</div>
+                <div class="campo-poder">{{ form.tipo.label_tag }}{{ form.tipo }}</div>
+                <div class="campo-poder">{{ form.modo.label_tag }}{{ form.modo }}</div>
+                <div class="campo-poder">{{ form.casting_ability.label_tag }}{{ form.casting_ability }}</div>
+                <div class="campo-poder">{{ form.nivel_efeito.label_tag }}{{ form.nivel_efeito }}</div>
+                <div class="campo-poder">{{ form.bonus_ataque.label_tag }}{{ form.bonus_ataque }}</div>
+                <div class="campo-poder">{{ form.defesa_ativa.label_tag }}{{ form.defesa_ativa }}</div>
+                <div class="campo-poder">{{ form.defesa_passiva.label_tag }}{{ form.defesa_passiva }}</div>
+                <div class="campo-poder">{{ form.item_origem.label_tag }}{{ form.item_origem }}</div>
+                <div class="campo-poder linha-checkbox">{{ form.de_item }} <label for="{{ form.de_item.id_for_label }}">Poder de Item?</label></div>
+                <div class="campo-poder">{{ form.vantagem_origem.label_tag }}{{ form.vantagem_origem }}</div>
+                <div class="campo-poder linha-checkbox">{{ form.de_vantagem }} <label for="{{ form.de_vantagem.id_for_label }}">Poder de Vantagem?</label></div>
               {% if form.DELETE %}
-                <div style="grid-column: 1 / span 2; margin-top: 1em; text-align: right; display: flex; align-items: center; gap: 0.7rem; justify-content: flex-end;">
+                <div class="span-2" style="margin-top:0.4rem; text-align: right; display: flex; align-items: center; gap: 0.7rem; justify-content: flex-end;">
                   <span style="display:none;">{{ form.DELETE }}</span>
                   <button type="button" class="btn btn-danger" onclick="removerPoderLinha(this)">Remover</button>
                 </div>
@@ -202,94 +158,96 @@
         <button type="button" class="btn btn-danger" onclick="adicionarPoder()">Adicionar Poder</button>
         <button type="button" class="btn btn-danger" onclick="removerPoder()">Remover Último Poder</button>
       </div>
-      <h2>Inventário</h2>
-      <div>
-        Ouro: {{ inventario_form.ouro }}
-      </div>
-      <div>
-        Dragon shard: {{ inventario_form.dragon_shard }}
-      </div>
-      <input type="text" id="busca-item" placeholder="Buscar por nome...">
-      <select id="filtro-raridade">
-        <option value="">All rarities</option>
-        <option value="Common">Common</option>
-        <option value="Uncommon">Uncommon</option>
-        <option value="Rare">Rare</option>
-        <option value="Very Rare">Very Rare</option>
-        <option value="Legendary">Legendary</option>
-        <option value="Artifact">Artifact</option>
-        <option value="None">None</option>
-        <option value="Unknown">Unknown</option>
-        <option value="Unknown (Magic)">Unknown (Magic)</option>
-        <option value="Varies">Varies</option>
-      </select>
-      <select id="filtro-tipo">
-        <option value="">All types</option>
-        <option value="Melee Weapon">Melee Weapon</option>
-        <option value="Ranged Weapon">Ranged Weapon</option>
-        <option value="Light Armor">Light Armor</option>
-        <option value="Medium Armor">Medium Armor</option>
-        <option value="Heavy Armor">Heavy Armor</option>
-        <option value="Shield">Shield</option>
-        <option value="Ammunition">Ammunition</option>
-        <option value="Rod">Rod</option>
-        <option value="Wondrous Item">Wondrous Item</option>
-        <option value="Trade Good">Trade Good</option>
-        <option value="Adventuring Gear">Adventuring Gear</option>
-        <option value="Generic Variant">Generic Variant</option>
-        <option value="Gaming Set">Gaming Set</option>
-        <option value="Tool">Tool</option>
-        <option value="Artisan's Tools">Artisan's Tools</option>
-        <option value="Instrument">Instrument</option>
-        <option value="Spellcasting Focus">Spellcasting Focus</option>
-        <option value="Scroll">Scroll</option>
-        <option value="Poison">Poison</option>
-        <option value="Food/Drink">Food/Drink</option>
-        <option value="Explosive">Explosive</option>
-        <option value="Ring">Ring</option>
-        <option value="Tack and Harness">Tack and Harness</option>
-        <option value="Mount">Mount</option>
-        <option value="Vehicle">Vehicle</option>
-        <option value="Ship">Ship</option>
-        <option value="Air Vehicle">Air Vehicle</option>
-        <option value="Tinker’s Tool (Bundle)">Tinker’s Tool (Bundle)</option>
-        <option value="Space Vehicle">Space Vehicle</option>
-        <option value="Idol/Relic">Idol/Relic</option>
-        <option value="Other">Other</option>
-      </select>
-      <label>
-        <input type="checkbox" id="filtro-possuido">
-        Mostrar apenas itens já possuídos
-      </label>
-      <div style="max-height: 350px; overflow-y: auto;">
-        <table id="tabela-itens" class="table-scroll" border="1" style="width:100%;">
-          
-          <thead>
-            <tr>
-              <th>Selecionar</th>
-              <th>Nome</th>
-              <th>Tipo</th>
-              <th>Raridade</th>
-              <th>Descrição</th>
-              <th>Preço</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for item in inventario_form.fields.itens.queryset %}
+      <div class="inventario-largo">
+        <h2>Inventário</h2>
+        <div class="inventario-moedas-inline">Ouro: {{ inventario_form.ouro }} &nbsp; Dragon shard: {{ inventario_form.dragon_shard }}</div>
+        <div class="inventario-filtros"> 
+          <input type="text" id="busca-item" placeholder="Buscar por nome ou descrição...">
+          <select id="filtro-raridade" style="min-width:140px;">
+            <option value="">Todas raridades</option>
+            <option>Common</option>
+            <option>Uncommon</option>
+            <option>Rare</option>
+            <option>Very Rare</option>
+            <option>Legendary</option>
+            <option>Artifact</option>
+            <option>None</option>
+            <option>Unknown</option>
+            <option>Unknown (Magic)</option>
+            <option>Varies</option>
+          </select>
+          <select id="filtro-tipo" style="min-width:160px;">
+            <option value="">Todos tipos</option>
+            <option>Melee Weapon</option>
+            <option>Ranged Weapon</option>
+            <option>Light Armor</option>
+            <option>Medium Armor</option>
+            <option>Heavy Armor</option>
+            <option>Shield</option>
+            <option>Ammunition</option>
+            <option>Rod</option>
+            <option>Wondrous Item</option>
+            <option>Trade Good</option>
+            <option>Adventuring Gear</option>
+            <option>Generic Variant</option>
+            <option>Gaming Set</option>
+            <option>Tool</option>
+            <option>Artisan's Tools</option>
+            <option>Instrument</option>
+            <option>Spellcasting Focus</option>
+            <option>Scroll</option>
+            <option>Poison</option>
+            <option>Food/Drink</option>
+            <option>Explosive</option>
+            <option>Ring</option>
+            <option>Tack and Harness</option>
+            <option>Mount</option>
+            <option>Vehicle</option>
+            <option>Ship</option>
+            <option>Air Vehicle</option>
+            <option>Tinker’s Tool (Bundle)</option>
+            <option>Space Vehicle</option>
+            <option>Idol/Relic</option>
+            <option>Other</option>
+            <option>martial Weapon, Melee Weapon</option>
+            <option>martial Weapon, Ranged Weapon</option>
+            <option>simple Weapon, Melee Weapon</option>
+            <option>simple Weapon, Ranged Weapon</option>
+          </select>
+          <label class="check-inline">
+            <input type="checkbox" id="filtro-possuido">
+            Itens Obtidos
+          </label>
+        </div>
+        <div class="inventario-tabela-wrapper">
+          <table id="tabela-itens" class="table-scroll inventario-tabela" border="1">
+            <thead>
               <tr>
-                <td>
-                  <input type="checkbox" name="itens" value="{{ item.id }}"
-                    {% if item in inventario_form.instance.itens.all %}checked{% endif %}>
-                </td>
-                <td class="nome-item">{{ item.nome }}</td>
-                <td>{{ item.tipo }}</td>
-                <td class="raridade-item">{{ item.raridade }}</td>
-                <td>{{ item.descricao }}</td>
-                <td>{{ item.preco }}</td>
+                <th>Sel.</th>
+                <th>Nome</th>
+                <th>Tipo</th>
+                <th>Raridade</th>
+                <th>Descrição</th>
+                <th>Preço</th>
               </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {% for item in inventario_form.fields.itens.queryset %}
+                <tr>
+                  <td>
+                    <input type="checkbox" name="itens" value="{{ item.id }}"
+                      {% if item in inventario_form.instance.itens.all %}checked{% endif %}>
+                  </td>
+                  <td class="nome-item">{{ item.nome }}</td>
+                  <td class="tipo-item">{{ item.tipo }}</td>
+                  <td class="raridade-item">{{ item.raridade }}</td>
+                  <td class="descricao-item" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:260px;" title="{{ item.descricao|striptags }}">{{ item.descricao|truncatechars:80 }}</td>
+                  <td>{{ item.preco }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
       <div style="margin-top:2rem; text-align:center;">
         <input type="submit" value="Salvar" class="btn">
@@ -322,6 +280,49 @@ function adicionarPoder() {
 }
 </script>
 
+<script>
+// Remove uma linha específica (botão dentro do bloco)
+function removerPoderLinha(botao) {
+  const formDiv = botao.closest('.poder-form');
+  if (!formDiv) return;
+  const deleteCheckbox = formDiv.querySelector('input[type="checkbox"][name$="-DELETE"]');
+  const totalFormsInput = document.getElementById('id_poder_set-TOTAL_FORMS');
+  if (!totalFormsInput) return;
+
+  if (deleteCheckbox) {
+    // Form existente: marca para deletar e esconde
+    deleteCheckbox.checked = true;
+    formDiv.style.display = 'none';
+  } else {
+    // Form recém adicionado (sem checkbox DELETE): remove e reindexa
+    formDiv.remove();
+    reindexarPoderes();
+  }
+  function reindexarPoderes() {
+    const forms = document.querySelectorAll('#poderes-formset .poder-form');
+    forms.forEach((div, idx) => {
+      // Atualiza atributos name/id/for que contenham o índice
+      div.querySelectorAll('[name]').forEach(el => {
+        if (el.name.includes('poder_set-')) {
+          el.name = el.name.replace(/poder_set-(\d+)-/, 'poder_set-' + idx + '-');
+        }
+      });
+      div.querySelectorAll('[id]').forEach(el => {
+        if (el.id.includes('poder_set-')) {
+          el.id = el.id.replace(/poder_set-(\d+)-/, 'poder_set-' + idx + '-');
+        }
+      });
+      div.querySelectorAll('label[for]').forEach(label => {
+        if (label.htmlFor && label.htmlFor.includes('poder_set-')) {
+          label.htmlFor = label.htmlFor.replace(/poder_set-(\d+)-/, 'poder_set-' + idx + '-');
+        }
+      });
+    });
+    totalFormsInput.value = forms.length;
+  }
+}
+</script>
+
 <!-- Adicione/ajuste este script no final do seu template criar_personagem.html ou editar_personagem.html -->
 <script>
 function removerPoder() {
@@ -349,69 +350,34 @@ function removerPoder() {
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   const busca = document.getElementById('busca-item');
-  const filtro = document.getElementById('filtro-raridade');
-  const linhas = document.querySelectorAll('#tabela-itens tbody tr');
-
-  function filtrar() {
-    const texto = busca.value.toLowerCase();
-    const raridade = filtro.value.toLowerCase();
-    let mostrados = 0;
-    linhas.forEach(tr => {
-      const nome = tr.querySelector('.nome-item').textContent.toLowerCase();
-      const rar = tr.querySelector('.raridade-item').textContent.toLowerCase();
-      const matchNome = nome.includes(texto);
-      const matchRaridade = !raridade || rar === raridade;
-      if (matchNome && matchRaridade) {
-        tr.style.display = '';
-      } else {
-        tr.style.display = 'none';
-      }
-    });
-  }
-
-  busca.addEventListener('input', filtrar);
-  filtro.addEventListener('change', filtrar);
-  filtrar(); // mostrar só os 10 primeiros ao carregar
-});
-</script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  const busca = document.getElementById('busca-item');
+  const filtroPossuido = document.getElementById('filtro-possuido');
   const filtroRaridade = document.getElementById('filtro-raridade');
   const filtroTipo = document.getElementById('filtro-tipo');
-  const filtroPossuido = document.getElementById('filtro-possuido');
   const linhas = document.querySelectorAll('#tabela-itens tbody tr');
-
   function filtrar() {
     const texto = busca.value.toLowerCase();
-    const raridade = filtroRaridade.value.toLowerCase();
-    const tipo = filtroTipo.value.toLowerCase();
     const soPossuido = filtroPossuido.checked;
-
+    const raridadeSel = (filtroRaridade.value || '').toLowerCase();
+    const tipoSel = (filtroTipo.value || '').toLowerCase();
     linhas.forEach(tr => {
       const nome = tr.querySelector('.nome-item').textContent.toLowerCase();
-      const rar = tr.querySelector('.raridade-item').textContent.toLowerCase();
-      const tipoItem = tr.children[2].textContent.toLowerCase();
+      const desc = (tr.querySelector('.descricao-item')?.textContent || '').toLowerCase();
+      const rar = (tr.querySelector('.raridade-item')?.textContent || '').toLowerCase();
+      const tipo = (tr.querySelector('.tipo-item')?.textContent || '').toLowerCase();
       const checkbox = tr.querySelector('input[type="checkbox"][name="itens"]');
       const possuido = checkbox && checkbox.checked;
-
-      const matchNome = nome.includes(texto);
-      const matchRaridade = !raridade || rar === raridade;
-      const matchTipo = !tipo || tipoItem === tipo;
+      const matchTexto = !texto || nome.includes(texto) || desc.includes(texto);
+      const matchRaridade = !raridadeSel || rar === raridadeSel;
+      const matchTipo = !tipoSel || tipo === tipoSel;
       const matchPossuido = !soPossuido || possuido;
-
-      if (matchNome && matchRaridade && matchTipo && matchPossuido) {
-        tr.style.display = '';
-      } else {
-        tr.style.display = 'none';
-      }
+      const mostrar = matchTexto && matchRaridade && matchTipo && matchPossuido;
+      tr.style.display = mostrar ? '' : 'none';
     });
   }
-
-  busca.addEventListener('input', filtrar);
+  [busca, filtroPossuido, filtroRaridade, filtroTipo].forEach(el => el.addEventListener('input', filtrar));
+  filtroPossuido.addEventListener('change', filtrar);
   filtroRaridade.addEventListener('change', filtrar);
   filtroTipo.addEventListener('change', filtrar);
-  filtroPossuido.addEventListener('change', filtrar);
   filtrar();
 });
 </script>
