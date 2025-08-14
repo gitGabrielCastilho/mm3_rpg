@@ -2,104 +2,223 @@
 
 {% block content %}
 <div id="combate-content" class="combate-detalhes-center">
-  <div id="combate-log" class="combate-log"></div>
-  <h2 class="combate-subtitle">Controle do Combate</h2>
-  {% if not turno_ativo and combate.ativo %}
-    <form method="post" action="{% url 'iniciar_turno' combate.id %}" class="combate-inline-form">
-      {% csrf_token %}
-      <button type="submit" class="btn">Iniciar Turno</button>
-    </form>
-  {% endif %}
-  {% if turno_ativo %}
-    {% if personagens_disponiveis %}
-      <h3 class="combate-section-title">Adicionar Personagem</h3>
-      <form method="post" action="{% url 'adicionar_participante' combate.id %}" class="combate-flex-form">
-        {% csrf_token %}
-        <label for="novo_participante">Personagem:</label>
-        <select name="personagem_id" id="novo_participante" required class="select-md">
-          {% for personagem in personagens_disponiveis %}
-            <option value="{{ personagem.id }}">{{ personagem.nome }} ({{ personagem.usuario.username }})</option>
-          {% endfor %}
-        </select>
-        <button type="submit" class="btn btn-sm">Adicionar</button>
-      </form>
-    {% endif %}
-
-    {% if turno_ativo %}
-      <div class="turno-ativo-banner">
+  <!-- Topo: info de turno + ações globais -->
+  <div class="turno-topbar combate-card">
+    <div class="turno-topbar-row">
+      <div class="turno-topbar-info">
+      {% if turno_ativo %}
         <strong>Turno:</strong> {{ turno_ativo.personagem.nome }}
+      {% else %}
+        <strong>Sem turno ativo</strong>
+      {% endif %}
       </div>
+      <div class="turno-topbar-actions">
+      {% if not turno_ativo and combate.ativo %}
+        <form method="post" action="{% url 'iniciar_turno' combate.id %}" class="inline-form">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm">Iniciar Turno</button>
+        </form>
+      {% endif %}
+      {% if turno_ativo %}
+        <form method="post" action="{% url 'avancar_turno' combate.id %}" class="inline-form">
+          {% csrf_token %}
+          <button type="submit" formnovalidate class="btn btn-sm">Avançar Turno</button>
+        </form>
+      {% endif %}
+      {% if combate.ativo %}
+        <form method="post" action="{% url 'finalizar_combate' combate.id %}" class="inline-form">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-danger" formnovalidate>Finalizar Combate</button>
+        </form>
+      {% endif %}
+      </div>
+    </div>
+    {% if combate.sala.game_master == user %}
+    <div class="mapa-row">
+      <label for="mapa_existente_top">Selecionar mapa:</label>
+      <select id="mapa_existente_top" class="select-md">
+        <option value="">-- Escolha um mapa --</option>
+        {% for mapa in mapas_globais %}
+          <option value="{{ mapa.id }}">{{ mapa.nome }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" id="btn-usar-mapa" class="btn btn-sm">Usar Selecionado</button>
+  <a href="{% url 'adicionar_mapa' combate.id %}" target="_blank" rel="noopener" id="btn-add-mapa-link" class="btn btn-sm">Novo Mapa</a>
+    </div>
     {% endif %}
-    <h3 class="combate-section-title">Ações de
-      <select id="personagem_acao" name="personagem_acao" form="form-ataque" class="select-md">
-        {% if combate.sala.game_master == user %}
+  </div>
+
+  <!-- Grid 1/3 - 2/3 -->
+  <div class="combate-layout-grid">
+    <!-- Coluna esquerda: Ações + Histórico -->
+    <div class="combate-col-left">
+      {% if personagens_disponiveis %}
+        <h3 class="combate-section-title">Adicionar Personagem</h3>
+        <form method="post" action="{% url 'adicionar_participante' combate.id %}" class="combate-flex-form">
+          {% csrf_token %}
+          <label for="novo_participante">Personagem:</label>
+          <select name="personagem_id" id="novo_participante" required class="select-md">
+            {% for personagem in personagens_disponiveis %}
+              <option value="{{ personagem.id }}">{{ personagem.nome }} ({{ personagem.usuario.username }})</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-sm">Adicionar</button>
+        </form>
+      {% endif %}
+
+      <h3 class="combate-section-title">Ações de</h3>
+      <div class="acao-top-row">
+        <select id="personagem_acao" name="personagem_acao" form="form-ataque" class="select-md">
+          {% if combate.sala.game_master == user %}
+            {% for p in participantes %}
+              <option value="{{ p.personagem.id }}">{{ p.personagem.nome }}</option>
+            {% endfor %}
+          {% else %}
+            {% for p in participantes %}
+              {% if p.personagem.usuario == user %}
+                <option value="{{ p.personagem.id }}">{{ p.personagem.nome }}</option>
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+        </select>
+        <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-d20" class="inline-form">
+          {% csrf_token %}
+          <input type="hidden" name="personagem_acao" id="personagem_acao_hidden_d20" value="{{ participantes.0.personagem.id }}">
+          <button type="submit" name="rolar_d20" value="1" class="btn btn-sm">Rolar d20</button>
+        </form>
+      </div>
+
+      <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-ataque" class="combate-card ataque-card">
+        {% csrf_token %}
+  <input type="hidden" name="personagem_acao" id="personagem_acao_hidden" value="{{ participantes.0.personagem.id }}">
+  <!-- Hidden extras para manter sincronização existente -->
+  <input type="hidden" id="personagem_acao_hidden_pericia" value="{{ participantes.0.personagem.id }}">
+  <input type="hidden" id="personagem_acao_hidden_caracteristica" value="{{ participantes.0.personagem.id }}">
+
+        <label for="alvo">Alvo(s):</label>
+        <select id="alvo" name="alvo_id" multiple required size="4" class="multiselect-alvos">
           {% for p in participantes %}
             <option value="{{ p.personagem.id }}">{{ p.personagem.nome }}</option>
           {% endfor %}
-        {% else %}
-          {% for p in participantes %}
-            {% if p.personagem.usuario == user %}
-              <option value="{{ p.personagem.id }}">{{ p.personagem.nome }}</option>
-            {% endif %}
-          {% endfor %}
-        {% endif %}
-      </select>
-    </h3>
+        </select>
 
-    <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-ataque" class="combate-card ataque-card">
-      {% csrf_token %}
-      <input type="hidden" name="personagem_acao" id="personagem_acao_hidden" value="{{ participantes.0.personagem.id }}">
+        <div class="acao-row">
+          <label for="poder">Poder:</label>
+          <select name="poder_id" id="poder" required class="select-md">
+            {% for poder in poderes_disponiveis %}
+              <option value="{{ poder.id }}">{{ poder.nome }}</option>
+            {% empty %}
+              <option disabled>Nenhum poder disponível</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-sm">Rolar</button>
+        </div>
 
-      <label for="alvo">Alvo(s):</label>
-      <select id="alvo" name="alvo_id" multiple required size="4" class="multiselect-alvos">
-        {% for p in participantes %}
-          <option value="{{ p.personagem.id }}">{{ p.personagem.nome }}</option>
-        {% endfor %}
-      </select>
+        <div class="acao-row">
+          <label for="pericia_rolar">Perícia:</label>
+          <select name="pericia" id="pericia_rolar" class="select-md">
+            <option value="">-- Selecione uma perícia --</option>
+            {% for pericia in pericias %}
+              <option value="{{ pericia }}">{{ pericia|capfirst }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" name="rolar_pericia" value="1" class="btn btn-sm" formnovalidate>Rolar</button>
+        </div>
 
-      <label for="poder">Poder:</label>
-      <select name="poder_id" id="poder" required class="select-md">
-        {% for poder in poderes_disponiveis %}
-          <option value="{{ poder.id }}">{{ poder.nome }}</option>
+        <div class="acao-row">
+          <label for="caracteristica_rolar">Característica:</label>
+          <select name="caracteristica" id="caracteristica_rolar" class="select-md">
+            <option value="">-- Selecione uma característica --</option>
+            {% for c in caracteristicas %}
+              <option value="{{ c }}">{{ c|capfirst }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" name="rolar_caracteristica" value="1" class="btn btn-sm" formnovalidate>Rolar</button>
+        </div>
+      </form>
+
+      
+
+  <h3 class="combate-section-title">Histórico de Ataques</h3>
+  <div id="historico-card" class="combate-card">
+  <ul class="turnos-list">
+        {% for turno in turnos %}
+          <li class="turno-item {% if turno.ativo %}ativo{% endif %}">
+            <div class="turno-header">
+              <strong>Rodada {{ turno.ordem }}</strong>
+              <span class="turno-data">{{ turno.criado_em|date:"d/m/Y H:i" }}</span>
+              {% if turno.ativo %}<span class="status-badge atual">Ativo</span>{% endif %}
+            </div>
+            <div class="turno-desc">{{ turno.descricao|safe }}</div>
+          </li>
         {% empty %}
-          <option disabled>Nenhum poder disponível</option>
+          <li class="turno-item vazio"><em>Nenhum ataque registrado ainda.</em></li>
         {% endfor %}
-      </select>
+  </ul>
+  </div>
+    </div>
 
-      <button type="submit" class="btn">Usar Poder</button>
-    </form>
+    <!-- Coluna direita: Mapa + Status participantes -->
+    <div class="combate-col-right">
+      <h3 class="combate-section-title">Mapa do Combate</h3>
+      {% if combate.mapas.all %}
+        {% for mapa in combate.mapas.all %}
+          <div id="mapa-area-{{ mapa.id }}" class="mapa-area">
+            <img src="{{ mapa.imagem.url }}" alt="{{ mapa.nome }}" class="mapa-img">
+            {% for posicao in posicoes %}
+              {% if posicao.mapa.id == mapa.id %}
+                {% if posicao.participante.personagem.foto %}
+                  <img src="{{ posicao.participante.personagem.foto.url }}"
+                       id="token-{{ posicao.id }}"
+                       class="mapa-token"
+                       style="left:{{ posicao.x }}px; top:{{ posicao.y }}px;"
+                       draggable="true"
+                       ondragstart="drag(event, {{ posicao.id }})">
+                {% else %}
+                  <div id="token-{{ posicao.id }}" class="mapa-token token-fallback"
+                       style="left:{{ posicao.x }}px; top:{{ posicao.y }}px;"
+                       draggable="true"
+                       ondragstart="drag(event, {{ posicao.id }})">
+                    {{ posicao.participante.personagem.nome|slice:"0:2"|upper }}
+                  </div>
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+            {% if combate.sala.game_master == user %}
+            <form method="post" action="{% url 'remover_mapa' combate.id mapa.id %}" class="mapa-remover-form">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-danger">Remover Mapa</button>
+            </form>
+            {% endif %}
+          </div>
+        {% endfor %}
+      {% endif %}
 
-  <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-pericia" class="combate-inline-form form-gap">
-    {% csrf_token %}
-    <input type="hidden" name="personagem_acao" id="personagem_acao_hidden_pericia" value="{{ participantes.0.personagem.id }}">
-    <label for="pericia_rolar">Perícia:</label>
-    <select name="pericia" id="pericia_rolar" required class="select-md">
-      <option value="">-- Selecione uma perícia --</option>
-      {% for pericia in pericias %}
-        <option value="{{ pericia }}">{{ pericia|capfirst }}</option>
-      {% endfor %}
-    </select>
-    <button type="submit" name="rolar_pericia" value="1" class="btn btn-sm">Rolar</button>
-  </form>
 
-  <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-caracteristica" class="combate-inline-form form-gap">
-    {% csrf_token %}
-    <input type="hidden" name="personagem_acao" id="personagem_acao_hidden_caracteristica" value="{{ participantes.0.personagem.id }}">
-    <label for="caracteristica_rolar">Característica:</label>
-    <select name="caracteristica" id="caracteristica_rolar" required class="select-md">
-      <option value="">-- Selecione uma característica --</option>
-      {% for c in caracteristicas %}
-        <option value="{{ c }}">{{ c|capfirst }}</option>
-      {% endfor %}
-    </select>
-    <button type="submit" name="rolar_caracteristica" value="1" class="btn btn-sm">Rolar</button>
-  </form>
 
-  <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-d20" class="combate-inline-form form-gap">
-    {% csrf_token %}
-    <input type="hidden" name="personagem_acao" id="personagem_acao_hidden_d20" value="{{ participantes.0.personagem.id }}">
-    <button type="submit" name="rolar_d20" value="1" class="btn btn-sm">Rolar d20</button>
-  </form>
+      {% if combate.sala.game_master == user %}
+        {% if combate.mapas.all|length == 0 %}
+        <form method="post" enctype="multipart/form-data" action="{% url 'adicionar_mapa' combate.id %}" class="combate-card mapa-upload-form" id="form-mapa">
+          {% csrf_token %}
+          <input type="hidden" name="mapa_existente" id="mapa_existente_hidden" value="">
+          <strong>Envie um Mapa:</strong>
+          {{ form.as_p }}
+        </form>
+        {% else %}
+        <!-- Form oculto apenas para permitir a ação "Usar Selecionado" do topo -->
+        <form method="post" action="{% url 'adicionar_mapa' combate.id %}" id="form-mapa" style="display:none">
+          {% csrf_token %}
+          <input type="hidden" name="mapa_existente" id="mapa_existente_hidden" value="">
+        </form>
+        {% endif %}
+      {% endif %}
+
+      <h3 class="combate-section-title">Status dos Participantes</h3>
+      <div id="status-card" class="combate-card">
+        {% include 'combate/_tabela_participantes.html' %}
+      </div>
+    </div>
+  </div>
 
   <script>
   // Sincroniza o personagem selecionado para todos os formulários de ação e recarrega poderes
@@ -140,88 +259,7 @@
   });
   </script>
 
-    <form method="post" action="{% url 'avancar_turno' combate.id %}" class="combate-inline-form">
-      {% csrf_token %}
-      <button type="submit" formnovalidate class="btn">Avançar Turno</button>
-    </form>
-
-    <form method="post" action="{% url 'finalizar_combate' combate.id %}" class="combate-inline-form">
-      {% csrf_token %}
-      <button type="submit" class="btn btn-danger" formnovalidate>Finalizar Combate</button>
-    </form>
-  {% endif %}
-
-  <hr>
-  <h3 class="combate-section-title">Histórico de Ataques</h3>
-  <ul class="turnos-list">
-    {% for turno in turnos %}
-      <li class="turno-item {% if turno.ativo %}ativo{% endif %}">
-        <div class="turno-header">
-          <strong>Rodada {{ turno.ordem }}</strong>
-          <span class="turno-data">{{ turno.criado_em|date:"d/m/Y H:i" }}</span>
-          {% if turno.ativo %}<span class="status-badge atual">Ativo</span>{% endif %}
-        </div>
-        <div class="turno-desc">{{ turno.descricao|safe }}</div>
-      </li>
-    {% empty %}
-      <li class="turno-item vazio"><em>Nenhum ataque registrado ainda.</em></li>
-    {% endfor %}
-  </ul>
-
-  <h3 class="combate-section-title">Status dos Participantes</h3>
-  {% include 'combate/_tabela_participantes.html' %}
-  <h3 class="combate-section-title">Mapa do Combate</h3>
-
-  {% if combate.mapas.all %}
-    {% for mapa in combate.mapas.all %}
-      <div id="mapa-area-{{ mapa.id }}" class="mapa-area">
-        <img src="{{ mapa.imagem.url }}" alt="{{ mapa.nome }}" class="mapa-img">
-        {% for posicao in posicoes %}
-          {% if posicao.mapa.id == mapa.id %}
-            {% if posicao.participante.personagem.foto %}
-              <img src="{{ posicao.participante.personagem.foto.url }}"
-                   id="token-{{ posicao.id }}"
-                   class="mapa-token"
-                   style="left:{{ posicao.x }}px; top:{{ posicao.y }}px;"
-                   draggable="true"
-                   ondragstart="drag(event, {{ posicao.id }})">
-            {% else %}
-              <div id="token-{{ posicao.id }}" class="mapa-token token-fallback"
-                   style="left:{{ posicao.x }}px; top:{{ posicao.y }}px;"
-                   draggable="true"
-                   ondragstart="drag(event, {{ posicao.id }})">
-                {{ posicao.participante.personagem.nome|slice:"0:2"|upper }}
-              </div>
-            {% endif %}
-          {% endif %}
-        {% endfor %}
-        {% if combate.sala.game_master == user %}
-        <form method="post" action="{% url 'remover_mapa' combate.id mapa.id %}" class="mapa-remover-form">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-sm btn-danger">Remover Mapa</button>
-        </form>
-        {% endif %}
-      </div>
-    {% endfor %}
-  {% endif %}
-
-  {% if combate.sala.game_master == user %}
-  <form method="post" enctype="multipart/form-data" action="{% url 'adicionar_mapa' combate.id %}" class="combate-card mapa-upload-form">
-    {% csrf_token %}
-    <label for="mapa_existente">Selecionar mapa existente:</label>
-    <select name="mapa_existente" id="mapa_existente" class="select-md">
-      <option value="">-- Escolha um mapa --</option>
-      {% for mapa in mapas_globais %}
-        <option value="{{ mapa.id }}">{{ mapa.nome }}</option>
-      {% endfor %}
-    </select>
-    <button type="submit" name="usar_existente" value="1" class="btn btn-sm">Usar Selecionado</button>
-    <hr>
-    <strong>Ou envie um novo mapa:</strong>
-    {{ form.as_p }}
-    <button type="submit" class="btn">Adicionar Novo Mapa</button>
-  </form>
-  {% endif %}
+  
 </div>
 
 <script>
@@ -244,6 +282,115 @@
     window.enviarMensagemCombate = function(msg) {
       combateSocket.send(msg);
     };
+
+    // ====== Equalização de alturas (Mapa x Ações) e (Histórico x Status) ======
+    function equalizarAlturas() {
+      const isStacked = window.matchMedia('(max-width: 1000px)').matches;
+      const acoesCard = document.getElementById('form-ataque');
+      const acaoTopRow = document.querySelector('.acao-top-row');
+      const mapaAreas = document.querySelectorAll('.mapa-area');
+      const historicoCard = document.getElementById('historico-card');
+      const statusCard = document.getElementById('status-card');
+
+      const outerH = (el) => {
+        if (!el) return 0;
+        const cs = getComputedStyle(el);
+        return el.offsetHeight + parseFloat(cs.marginTop || 0) + parseFloat(cs.marginBottom || 0);
+      };
+
+      // Reset when stacked
+      if (isStacked) {
+        mapaAreas.forEach(m => m.style.height = '');
+        if (historicoCard) {
+          historicoCard.style.height = '';
+          historicoCard.style.maxHeight = '';
+          historicoCard.style.overflowY = '';
+        }
+        return;
+      }
+
+      // Mapa do Combate = altura do bloco de Ações (linha do topo + card), incluindo margens
+      if (mapaAreas.length) {
+        const alvoAlt = outerH(acaoTopRow) + outerH(acoesCard);
+        mapaAreas.forEach(m => m.style.height = Math.max(360, alvoAlt) + 'px');
+      }
+
+      // Histórico = mesma altura do Status; se maior, aplica scroll
+      if (historicoCard && statusCard) {
+        const statusAlt = statusCard.offsetHeight;
+        historicoCard.style.height = statusAlt + 'px';
+        historicoCard.style.maxHeight = statusAlt + 'px';
+        historicoCard.style.overflowY = 'auto';
+      }
+    }
+
+    // Run on load and resize (debounced)
+    function rafEqualize(){ cancelAnimationFrame(rafEqualize._id||0); rafEqualize._id = requestAnimationFrame(equalizarAlturas); }
+    window.addEventListener('resize', rafEqualize);
+    // Wait a tick for layout
+  setTimeout(equalizarAlturas, 50);
+  setTimeout(equalizarAlturas, 250);
+    // Also after images load
+    document.querySelectorAll('.mapa-img').forEach(img => {
+      if (img.complete) return; img.addEventListener('load', rafEqualize);
+    });
+
+    // ====== Ações do topo: selecionar/usar/adicionar mapa ======
+    const formMapa = document.getElementById('form-mapa');
+    const selectMapaTop = document.getElementById('mapa_existente_top');
+    if (formMapa && selectMapaTop) {
+      // Garante campo hidden no form real
+      let hidden = formMapa.querySelector('#mapa_existente_hidden');
+      if (!hidden) {
+        hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'mapa_existente';
+        hidden.id = 'mapa_existente_hidden';
+        formMapa.prepend(hidden);
+      }
+
+      const btnUsar = document.getElementById('btn-usar-mapa');
+      const btnAdd = document.getElementById('btn-add-mapa');
+
+      function syncSelectToForm() {
+        hidden.value = selectMapaTop.value || '';
+      }
+
+      if (btnUsar) {
+        btnUsar.addEventListener('click', function() {
+          syncSelectToForm();
+          if (!hidden.value) {
+            alert('Selecione um mapa existente.');
+            return;
+          }
+          // adiciona flag usar_existente
+          let flag = formMapa.querySelector('input[name="usar_existente"]');
+          if (!flag) {
+            flag = document.createElement('input');
+            flag.type = 'hidden';
+            flag.name = 'usar_existente';
+            flag.value = '1';
+            formMapa.appendChild(flag);
+          }
+          formMapa.submit();
+        });
+      }
+
+      if (btnAdd) {
+        btnAdd.addEventListener('click', function() {
+          // remove flag se existir para forçar upload
+          const flag = formMapa.querySelector('input[name="usar_existente"]');
+          if (flag) flag.remove();
+          // exige um arquivo: o próprio backend validará; apenas envia o form
+          const fileInput = formMapa.querySelector('input[type="file"]');
+          if (!fileInput || !fileInput.value) {
+            alert('Escolha um arquivo de imagem do mapa antes de enviar.');
+            return;
+          }
+          formMapa.submit();
+        });
+      }
+    }
   });
 
   function drag(event, id) {
