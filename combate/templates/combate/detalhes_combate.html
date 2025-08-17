@@ -39,20 +39,7 @@
   <!-- Grid 1/3 - 2/3 -->
   <div class="combate-layout-grid">
     <!-- Coluna esquerda: Ações + Histórico -->
-    <div class="combate-col-left">
-      {% if personagens_disponiveis %}
-        <h3 class="combate-section-title">Adicionar Personagem</h3>
-        <form method="post" action="{% url 'adicionar_participante' combate.id %}" class="combate-flex-form">
-          {% csrf_token %}
-          <label for="novo_participante">Personagem:</label>
-          <select name="personagem_id" id="novo_participante" required class="select-md">
-            {% for personagem in personagens_disponiveis %}
-              <option value="{{ personagem.id }}">{{ personagem.nome }} ({{ personagem.usuario.username }})</option>
-            {% endfor %}
-          </select>
-          <button type="submit" class="btn btn-sm">Adicionar</button>
-        </form>
-      {% endif %}
+  <div class="combate-col-left">
 
       <h3 class="combate-section-title">Ações de</h3>
       <div class="acao-top-row">
@@ -225,7 +212,21 @@
         {% endif %}
       {% endif %}
 
-      <h3 class="combate-section-title">Status dos Participantes</h3>
+      <div class="mapa-header-row">
+        <h3 class="combate-section-title" style="margin:0">Status dos Participantes</h3>
+        {% if personagens_disponiveis %}
+        <form method="post" action="{% url 'adicionar_participante' combate.id %}" class="combate-inline-form form-add-participante">
+          {% csrf_token %}
+          <label for="novo_participante" class="sr-only">Adicionar personagem</label>
+          <select name="personagem_id" id="novo_participante" required class="select-sm" title="Adicionar personagem">
+            {% for personagem in personagens_disponiveis %}
+              <option value="{{ personagem.id }}">{{ personagem.nome }} ({{ personagem.usuario.username }})</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-sm">Adicionar</button>
+        </form>
+        {% endif %}
+      </div>
       <div id="status-card" class="combate-card">
         {% include 'combate/_tabela_participantes.html' %}
       </div>
@@ -233,42 +234,48 @@
   </div>
 
   <script>
-  // Sincroniza o personagem selecionado para todos os formulários de ação e recarrega poderes
-  document.addEventListener('DOMContentLoaded', function() {
-    var select = document.getElementById('personagem_acao');
-    var poderSelect = document.getElementById('poder');
+  // Função reutilizável para sincronizar selects de personagem e poderes (chamada após partial refresh)
+  function bindPersonagemAcaoSync() {
+    const select = document.getElementById('personagem_acao');
+    const poderSelect = document.getElementById('poder');
+    if (!select) return;
     function syncPersonagemAcao() {
-      var val = select.value;
-      document.getElementById('personagem_acao_hidden').value = val;
-      document.getElementById('personagem_acao_hidden_pericia').value = val;
-      document.getElementById('personagem_acao_hidden_caracteristica').value = val;
-      document.getElementById('personagem_acao_hidden_d20').value = val;
-
-      // AJAX para atualizar poderes
-      fetch('/combate/poderes-personagem-ajax/?personagem_id=' + val)
-        .then(resp => resp.json())
-        .then(data => {
-          if (poderSelect) {
+      const val = select.value;
+      const h1 = document.getElementById('personagem_acao_hidden');
+      const h2 = document.getElementById('personagem_acao_hidden_pericia');
+      const h3 = document.getElementById('personagem_acao_hidden_caracteristica');
+      const h4 = document.getElementById('personagem_acao_hidden_d20');
+      if (h1) h1.value = val; if (h2) h2.value = val; if (h3) h3.value = val; if (h4) h4.value = val;
+      if (poderSelect) {
+        fetch('/combate/poderes-personagem-ajax/?personagem_id=' + val)
+          .then(resp => resp.json())
+          .then(data => {
             poderSelect.innerHTML = '';
             if (data.poderes && data.poderes.length > 0) {
               data.poderes.forEach(function(p) {
-                var opt = document.createElement('option');
+                const opt = document.createElement('option');
                 opt.value = p.id;
                 opt.textContent = p.nome;
                 poderSelect.appendChild(opt);
               });
             } else {
-              var opt = document.createElement('option');
+              const opt = document.createElement('option');
               opt.disabled = true;
               opt.textContent = 'Nenhum poder disponível';
               poderSelect.appendChild(opt);
             }
-          }
-        });
+          });
+      }
     }
-    select.addEventListener('change', syncPersonagemAcao);
+    // Evita listeners duplicados trocando o nó
+    const newSelect = select.cloneNode(true);
+    select.replaceWith(newSelect);
+    newSelect.addEventListener('change', syncPersonagemAcao);
+    // Garante um valor selecionado válido
+    if (newSelect.options.length && newSelect.selectedIndex < 0) newSelect.selectedIndex = 0;
     syncPersonagemAcao();
-  });
+  }
+  document.addEventListener('DOMContentLoaded', bindPersonagemAcaoSync);
   </script>
 
   
@@ -298,7 +305,7 @@
           if (target && fresh) target.replaceWith(fresh);
         });
         // Reaplica comportamentos após substituições
-        rafEqualize();
+    rafEqualize();
         // Scroll historico para o fim
         const historico = document.getElementById('historico-card');
         if (historico && historico.scrollHeight > historico.clientHeight) historico.scrollTop = historico.scrollHeight;
@@ -308,6 +315,8 @@
     setupTopbarMapActions();
   // Rebind dos formulários para evitar navegação
   ajaxifyInteractionForms();
+  // Rebind dos selects de personagem/ataque, para atualizar poderes
+  bindPersonagemAcaoSync();
       } catch (err) {
         console.warn('Refresh parcial falhou, mantendo página:', err);
       }
@@ -447,6 +456,65 @@
           mapaArea.dataset.scrollBound = '1';
         }
 
+        // Panning: Middle mouse or Space + Left drag
+        function clampScrollToBounds() {
+          const canvas = mapaArea.querySelector('.mapa-canvas');
+          const img = canvas ? canvas.querySelector('.mapa-img') : null;
+          if (!img) return;
+          const scale = parseFloat(mapaArea.dataset.scale || '1');
+          const baseW = img.naturalWidth || img.clientWidth || 0;
+          const baseH = img.naturalHeight || img.clientHeight || 0;
+          const maxX = Math.max(0, baseW * scale - mapaArea.clientWidth);
+          const maxY = Math.max(0, baseH * scale - mapaArea.clientHeight);
+          if (mapaArea.scrollLeft > maxX) mapaArea.scrollLeft = maxX;
+          if (mapaArea.scrollTop > maxY) mapaArea.scrollTop = maxY;
+          if (mapaArea.scrollLeft < 0) mapaArea.scrollLeft = 0;
+          if (mapaArea.scrollTop < 0) mapaArea.scrollTop = 0;
+        }
+
+        function bindPan(){
+          if (!window._mapPanKeyBound) {
+            window._mapSpacePressed = false;
+            window.addEventListener('keydown', (ev)=>{ if (ev.code === 'Space') { window._mapSpacePressed = true; ev.preventDefault(); } }, { capture:true });
+            window.addEventListener('keyup', (ev)=>{ if (ev.code === 'Space') { window._mapSpacePressed = false; ev.preventDefault(); } }, { capture:true });
+            window._mapPanKeyBound = true;
+          }
+          if (mapaArea.dataset.panBound) return;
+          let panning = false, startX = 0, startY = 0, startL = 0, startT = 0;
+          function onMove(ev){
+            if (!panning) return;
+            const dx = ev.clientX - startX;
+            const dy = ev.clientY - startY;
+            mapaArea.scrollLeft = startL - dx;
+            mapaArea.scrollTop = startT - dy;
+            clampScrollToBounds();
+          }
+          function endPan(){
+            if (!panning) return;
+            panning = false;
+            mapaArea.classList.remove('panning');
+            window.removeEventListener('mousemove', onMove, true);
+            window.removeEventListener('mouseup', endPan, true);
+          }
+          mapaArea.addEventListener('mousedown', function(ev){
+            const isMiddle = ev.button === 1;
+            const isSpaceDrag = ev.button === 0 && window._mapSpacePressed;
+            if (!isMiddle && !isSpaceDrag) return;
+            ev.preventDefault();
+            ev.stopPropagation();
+            panning = true;
+            startX = ev.clientX; startY = ev.clientY;
+            startL = mapaArea.scrollLeft; startT = mapaArea.scrollTop;
+            mapaArea.classList.add('panning');
+            window.addEventListener('mousemove', onMove, true);
+            window.addEventListener('mouseup', endPan, true);
+          }, { capture:true });
+          // Prevent token drag when holding space
+          mapaArea.addEventListener('dragstart', function(ev){ if (window._mapSpacePressed) { ev.preventDefault(); ev.stopImmediatePropagation(); } }, true);
+          mapaArea.dataset.panBound = '1';
+        }
+        bindPan();
+
         // Ctrl + wheel zoom (once)
         if (!mapaArea.dataset.wheelBound) {
           mapaArea.addEventListener('wheel', function(e){
@@ -488,6 +556,7 @@
       bindAjax(document.getElementById('form-ataque'));
       document.querySelectorAll('.turno-topbar-actions form').forEach(bindAjax);
   document.querySelectorAll('.form-remover-participante').forEach(bindAjax);
+  document.querySelectorAll('.form-add-participante').forEach(bindAjax);
     }
 
     combateSocket.onmessage = async function(e) {
@@ -525,7 +594,7 @@
         }
         case 'adicionar_participante':
         case 'remover_participante': {
-          await refreshSelectors(['#status-card', '#historico-card']);
+          await refreshSelectors(['.combate-col-right', '#form-ataque']);
           break;
         }
         case 'iniciar_turno':
@@ -743,6 +812,38 @@
           });
         });
       }
+      // Panning bind on initial load as well
+      (function bindPanInit(){
+        if (!window._mapPanKeyBound) {
+          window._mapSpacePressed = false;
+          window.addEventListener('keydown', (ev)=>{ if (ev.code === 'Space') { window._mapSpacePressed = true; ev.preventDefault(); } }, { capture:true });
+          window.addEventListener('keyup', (ev)=>{ if (ev.code === 'Space') { window._mapSpacePressed = false; ev.preventDefault(); } }, { capture:true });
+          window._mapPanKeyBound = true;
+        }
+        if (!mapaArea.dataset.panBound) {
+          let panning = false, startX = 0, startY = 0, startL = 0, startT = 0;
+          function clampScrollToBounds() {
+            const canvas = mapaArea.querySelector('.mapa-canvas');
+            const img = canvas ? canvas.querySelector('.mapa-img') : null;
+            if (!img) return;
+            const scale = parseFloat(mapaArea.dataset.scale || '1');
+            const baseW = img.naturalWidth || img.clientWidth || 0;
+            const baseH = img.naturalHeight || img.clientHeight || 0;
+            const maxX = Math.max(0, baseW * scale - mapaArea.clientWidth);
+            const maxY = Math.max(0, baseH * scale - mapaArea.clientHeight);
+            if (mapaArea.scrollLeft > maxX) mapaArea.scrollLeft = maxX;
+            if (mapaArea.scrollTop > maxY) mapaArea.scrollTop = maxY;
+            if (mapaArea.scrollLeft < 0) mapaArea.scrollLeft = 0;
+            if (mapaArea.scrollTop < 0) mapaArea.scrollTop = 0;
+          }
+          function onMove(ev){ if (!panning) return; const dx = ev.clientX - startX; const dy = ev.clientY - startY; mapaArea.scrollLeft = startL - dx; mapaArea.scrollTop = startT - dy; clampScrollToBounds(); }
+          function endPan(){ if (!panning) return; panning = false; mapaArea.classList.remove('panning'); window.removeEventListener('mousemove', onMove, true); window.removeEventListener('mouseup', endPan, true); }
+          mapaArea.addEventListener('mousedown', function(ev){ const isMiddle = ev.button === 1; const isSpaceDrag = ev.button === 0 && window._mapSpacePressed; if (!isMiddle && !isSpaceDrag) return; ev.preventDefault(); ev.stopPropagation(); panning = true; startX = ev.clientX; startY = ev.clientY; startL = mapaArea.scrollLeft; startT = mapaArea.scrollTop; mapaArea.classList.add('panning'); window.addEventListener('mousemove', onMove, true); window.addEventListener('mouseup', endPan, true); }, { capture:true });
+          mapaArea.addEventListener('dragstart', function(ev){ if (window._mapSpacePressed) { ev.preventDefault(); ev.stopImmediatePropagation(); } }, true);
+          mapaArea.dataset.panBound = '1';
+        }
+      })();
+
       // Wheel handler on initial bind as well
       if (!mapaArea.dataset.wheelBound) {
         mapaArea.addEventListener('wheel', function(e){
