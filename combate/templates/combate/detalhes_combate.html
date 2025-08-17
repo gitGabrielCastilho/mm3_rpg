@@ -270,9 +270,129 @@
     const combateSocket = new WebSocket(wsPath);
 
 
-    combateSocket.onmessage = function(e) {
-      // Recarrega toda a página ao receber mensagem WebSocket
-      window.location.reload();
+    // Utilitários para refresh parcial
+    async function fetchPageDOM() {
+      const resp = await fetch(window.location.href, { cache: 'no-store' });
+      const html = await resp.text();
+      const parser = new DOMParser();
+      return parser.parseFromString(html, 'text/html');
+    }
+  async function refreshSelectors(selectors) {
+      try {
+        const doc = await fetchPageDOM();
+        selectors.forEach(sel => {
+          const target = document.querySelector(sel);
+          const fresh = doc.querySelector(sel);
+          if (target && fresh) target.replaceWith(fresh);
+        });
+        // Reaplica comportamentos após substituições
+        rafEqualize();
+        // Scroll historico para o fim
+        const historico = document.getElementById('historico-card');
+        if (historico && historico.scrollHeight > historico.clientHeight) historico.scrollTop = historico.scrollHeight;
+  // Rebind drag & drop após trocas da coluna direita
+        rebindDragDrop();
+  // Rebind ações do topo se a barra de turno foi trocada
+    setupTopbarMapActions();
+  // Rebind dos formulários para evitar navegação
+  ajaxifyInteractionForms();
+      } catch (err) {
+        console.warn('Refresh parcial falhou, mantendo página:', err);
+      }
+    }
+    function rebindDragDrop(){
+      document.querySelectorAll("[id^='mapa-area-']").forEach(function(mapaArea) {
+        mapaArea.addEventListener('dragover', function(e){ e.preventDefault(); });
+        mapaArea.addEventListener('drop', function(e){
+          e.preventDefault();
+          const tokenId = e.dataTransfer.getData('tokenId');
+          const rect = mapaArea.getBoundingClientRect();
+          const x = e.clientX - rect.left - 20;
+          const y = e.clientY - rect.top - 20;
+          fetch(`/combate/atualizar-posicao-token/${tokenId}/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' },
+            body: JSON.stringify({x,y})
+          }).then(() => {
+            const token = document.getElementById('token-' + tokenId);
+            if (token) { token.style.left = x + 'px'; token.style.top = y + 'px'; }
+          });
+        });
+      });
+    }
+
+    // ====== AJAXify de formulários para evitar reload ======
+    function bindAjax(form){
+      if (!form || form.dataset.ajaxified === '1') return;
+      form.addEventListener('submit', function(e){
+        e.preventDefault();
+        const submitter = e.submitter || null;
+        let fd;
+        try { fd = new FormData(form, submitter); }
+        catch(_){ fd = new FormData(form); if (submitter && submitter.name) fd.append(submitter.name, submitter.value || '1'); }
+        const btn = submitter || form.querySelector('button[type="submit"]');
+        if (btn) btn.disabled = true;
+        fetch(form.action, {
+          method: 'POST',
+          body: fd,
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          credentials: 'same-origin'
+        }).finally(() => { if (btn) btn.disabled = false; });
+      });
+      form.dataset.ajaxified = '1';
+    }
+    function ajaxifyInteractionForms(){
+      bindAjax(document.getElementById('form-d20'));
+      bindAjax(document.getElementById('form-ataque'));
+      document.querySelectorAll('.turno-topbar-actions form').forEach(bindAjax);
+    }
+
+    combateSocket.onmessage = async function(e) {
+      let payload = null;
+      try { payload = JSON.parse(e.data); } catch(_) {}
+      if (!payload || !payload.evento) {
+        // Desconhecido: faça refresh leve dos principais blocos
+        await refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']);
+        return;
+      }
+      switch (payload.evento) {
+        case 'rolagem': {
+          // Acrescenta somente ao histórico
+          const ativo = document.querySelector('.turnos-list .turno-item.ativo .turno-desc')
+                        || document.querySelector('.turnos-list .turno-item:last-child .turno-desc');
+          if (ativo) {
+            const extra = document.createElement('div');
+            extra.innerHTML = payload.descricao || '';
+            // Preserva quebras de linha como HTML
+            ativo.innerHTML = (ativo.innerHTML ? ativo.innerHTML + '<br>' : '') + extra.innerHTML;
+            const historico = document.getElementById('historico-card');
+            if (historico && historico.scrollHeight > historico.clientHeight) historico.scrollTop = historico.scrollHeight;
+          } else {
+            await refreshSelectors(['#historico-card']);
+          }
+          break;
+        }
+        case 'adicionar_mapa':
+        case 'remover_mapa':
+        case 'mapa': {
+          await refreshSelectors(['.combate-col-right']);
+          break;
+        }
+        case 'adicionar_participante':
+        case 'remover_participante': {
+          await refreshSelectors(['#status-card', '#historico-card']);
+          break;
+        }
+        case 'iniciar_turno':
+        case 'avancar_turno':
+        case 'finalizar_combate': {
+          await refreshSelectors(['.turno-topbar', '#historico-card', '#status-card']);
+          break;
+        }
+        default: {
+          await refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']);
+        }
+      }
     };
 
     combateSocket.onclose = function(e) {
@@ -321,6 +441,10 @@
         historicoCard.style.height = statusAlt + 'px';
         historicoCard.style.maxHeight = statusAlt + 'px';
         historicoCard.style.overflowY = 'auto';
+        // Mantém o scroll sempre no final para mostrar os eventos mais recentes
+        if (historicoCard.scrollHeight > historicoCard.clientHeight) {
+          historicoCard.scrollTop = historicoCard.scrollHeight;
+        }
       }
     }
 
@@ -330,15 +454,25 @@
     // Wait a tick for layout
   setTimeout(equalizarAlturas, 50);
   setTimeout(equalizarAlturas, 250);
+    // E garante scroll ao fundo mesmo em telas pequenas, se houver overflow
+    const historicoCardInit = document.getElementById('historico-card');
+    if (historicoCardInit) {
+      setTimeout(() => {
+        if (historicoCardInit.scrollHeight > historicoCardInit.clientHeight) {
+          historicoCardInit.scrollTop = historicoCardInit.scrollHeight;
+        }
+      }, 300);
+    }
     // Also after images load
     document.querySelectorAll('.mapa-img').forEach(img => {
       if (img.complete) return; img.addEventListener('load', rafEqualize);
     });
 
     // ====== Ações do topo: selecionar/usar/adicionar mapa ======
-    const formMapa = document.getElementById('form-mapa');
-    const selectMapaTop = document.getElementById('mapa_existente_top');
-    if (formMapa && selectMapaTop) {
+    function setupTopbarMapActions(){
+      const formMapa = document.getElementById('form-mapa');
+      const selectMapaTop = document.getElementById('mapa_existente_top');
+      if (!(formMapa && selectMapaTop)) return;
       // Garante campo hidden no form real
       let hidden = formMapa.querySelector('#mapa_existente_hidden');
       if (!hidden) {
@@ -350,47 +484,23 @@
       }
 
       const btnUsar = document.getElementById('btn-usar-mapa');
-      const btnAdd = document.getElementById('btn-add-mapa');
-
-      function syncSelectToForm() {
-        hidden.value = selectMapaTop.value || '';
-      }
-
+      function syncSelectToForm() { hidden.value = selectMapaTop.value || ''; }
       if (btnUsar) {
-        btnUsar.addEventListener('click', function() {
+        // Remove listeners anteriores clonando o nó
+        const clone = btnUsar.cloneNode(true);
+        btnUsar.parentNode.replaceChild(clone, btnUsar);
+        clone.addEventListener('click', function() {
           syncSelectToForm();
-          if (!hidden.value) {
-            alert('Selecione um mapa existente.');
-            return;
-          }
-          // adiciona flag usar_existente
+          if (!hidden.value) { alert('Selecione um mapa existente.'); return; }
           let flag = formMapa.querySelector('input[name="usar_existente"]');
-          if (!flag) {
-            flag = document.createElement('input');
-            flag.type = 'hidden';
-            flag.name = 'usar_existente';
-            flag.value = '1';
-            formMapa.appendChild(flag);
-          }
-          formMapa.submit();
-        });
-      }
-
-      if (btnAdd) {
-        btnAdd.addEventListener('click', function() {
-          // remove flag se existir para forçar upload
-          const flag = formMapa.querySelector('input[name="usar_existente"]');
-          if (flag) flag.remove();
-          // exige um arquivo: o próprio backend validará; apenas envia o form
-          const fileInput = formMapa.querySelector('input[type="file"]');
-          if (!fileInput || !fileInput.value) {
-            alert('Escolha um arquivo de imagem do mapa antes de enviar.');
-            return;
-          }
+          if (!flag) { flag = document.createElement('input'); flag.type = 'hidden'; flag.name = 'usar_existente'; flag.value = '1'; formMapa.appendChild(flag); }
           formMapa.submit();
         });
       }
     }
+  // Bind inicial
+    setupTopbarMapActions();
+  ajaxifyInteractionForms();
   });
 
   function drag(event, id) {

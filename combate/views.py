@@ -312,6 +312,19 @@ def realizar_ataque(request, combate_id):
     if request.method == 'POST':
         turno_ativo = Turno.objects.filter(combate_id=combate_id, ativo=True).first()
         resultados = []
+        # Helper: append texto ao turno ativo, se existir; caso contrário, avisa e segue sem crash
+        def append_to_turno(texto: str):
+            nonlocal turno_ativo
+            if not texto:
+                return
+            if turno_ativo:
+                if turno_ativo.descricao:
+                    turno_ativo.descricao += "<br>" + texto
+                else:
+                    turno_ativo.descricao = texto
+                turno_ativo.save()
+            else:
+                messages.warning(request, "Ação realizada, mas não há turno ativo. Inicie um turno para registrar no histórico.")
         # Use o personagem_acao do POST, se fornecido, senão caia no turno ativo
         personagem_acao_id = request.POST.get('personagem_acao')
         if personagem_acao_id:
@@ -380,11 +393,7 @@ def realizar_ataque(request, combate_id):
                 resultados.append("Nenhuma perícia selecionada.")
 
             nova_descricao = "<br>".join(resultados)
-            if turno_ativo.descricao:
-                turno_ativo.descricao += "<br>" + nova_descricao
-            else:
-                turno_ativo.descricao = nova_descricao
-            turno_ativo.save()
+            append_to_turno(nova_descricao)
             # Notifica todos os participantes sobre a ação
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(
@@ -422,11 +431,7 @@ def realizar_ataque(request, combate_id):
                 resultados.append("Nenhuma característica selecionada.")
 
             nova_descricao = "<br>".join(resultados)
-            if turno_ativo.descricao:
-                turno_ativo.descricao += "<br>" + nova_descricao
-            else:
-                turno_ativo.descricao = nova_descricao
-            turno_ativo.save()
+            append_to_turno(nova_descricao)
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(
                 f'combate_{combate_id}',
@@ -442,11 +447,7 @@ def realizar_ataque(request, combate_id):
             rolagem_base = random.randint(1, 20)
             resultados.append(f"{atacante.nome} rolou um d20: <b>{rolagem_base}</b>")
             nova_descricao = "<br>".join(resultados)
-            if turno_ativo.descricao:
-                turno_ativo.descricao += "<br>" + nova_descricao
-            else:
-                turno_ativo.descricao = nova_descricao
-            turno_ativo.save()
+            append_to_turno(nova_descricao)
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(
                 f'combate_{combate_id}',
@@ -783,12 +784,8 @@ def realizar_ataque(request, combate_id):
             resultados.append(resultado)
 
         # Salve o histórico no turno
-        nova_descricao = "<br>".join(resultados)
-        if turno_ativo.descricao:
-            turno_ativo.descricao += "<br>" + nova_descricao
-        else:
-            turno_ativo.descricao = nova_descricao
-        turno_ativo.save()
+    nova_descricao = "<br>".join(resultados)
+    append_to_turno(nova_descricao)
 
     # Notifica todos os participantes sobre a ação
     channel_layer = get_channel_layer()
