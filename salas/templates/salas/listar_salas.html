@@ -51,6 +51,7 @@
           <div class="sala-item-info">
             <strong class="sala-nome">{{ sala.nome }}</strong>
             <span class="sala-codigo">({{ sala.codigo }})</span>
+            {% if sala.senha %}<span class="status-badge">🔒 com senha</span>{% endif %}
             <span class="sala-dono">Dono: {{ sala.criador.username|default:'-' }}</span>
             {% if sala_atual and sala_atual.id == sala.id %}
               <span class="status-badge atual">Você está nesta sala</span>
@@ -61,6 +62,7 @@
               <a href="{% url 'entrar_sala' sala.id %}" class="btn btn-sm">Entrar</a>
             {% endif %}
             {% if sala.game_master == user %}
+              <a href="{% url 'editar_senha_sala' sala.id %}" class="btn btn-sm">Editar senha</a>
               <form method="post" action="{% url 'excluir_sala' sala.id %}" onsubmit="return confirm('Excluir esta sala?')" class="inline-form">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-sm btn-danger">Excluir</button>

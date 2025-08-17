@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="sala-form-center">
+  <h2>Entrar na Sala</h2>
+  <p><strong>Sala:</strong> {{ sala.nome }} <span class="sala-codigo">({{ sala.codigo }})</span></p>
+  <form method="post" class="sala-form">
+    {% csrf_token %}
+    <label for="senha">Senha da sala</label>
+    <input type="password" id="senha" name="senha" placeholder="Digite a senha" required>
+    <div class="personagem-form-btns">
+      <button type="submit" class="btn">Entrar</button>
+      <a href="{% url 'listar_salas' %}" class="btn btn-danger" style="margin-left: 0.6rem;">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

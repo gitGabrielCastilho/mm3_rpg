@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import criar_sala, listar_salas, excluir_sala, entrar_sala, sair_sala, detalhes_sala
+from .views import criar_sala, listar_salas, excluir_sala, entrar_sala, sair_sala, detalhes_sala, editar_senha_sala
 from . import views_ajax
 
 urlpatterns = [
@@ -9,5 +9,6 @@ urlpatterns = [
     path('entrar/<int:sala_id>/', entrar_sala, name='entrar_sala'),
     path('sair/', sair_sala, name='sair_sala'),
     path('detalhes/<int:sala_id>/', detalhes_sala, name='detalhes_sala'),
+    path('editar-senha/<int:sala_id>/', editar_senha_sala, name='editar_senha_sala'),
     path('sidebar_participantes/<int:sala_id>/', views_ajax.participantes_sidebar, name='sidebar_participantes'),
 ]

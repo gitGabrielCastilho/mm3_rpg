@@ -12,18 +12,22 @@
         </div>
         <div class="combate-item-acoes">
           <a href="{% url 'detalhes_combate' combate.id %}" class="btn btn-sm">Detalhes</a>
+          {% if sala.game_master == user %}
           <form method="post" action="{% url 'deletar_combate' combate.id %}" class="inline-form" onsubmit="return confirm('Tem certeza que deseja deletar este combate?');">
             {% csrf_token %}
             <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
           </form>
+          {% endif %}
         </div>
       </li>
     {% empty %}
       <li class="combate-item vazio"><em>Nenhum combate criado ainda.</em></li>
     {% endfor %}
   </ul>
+  {% if sala.game_master == user %}
   <div class="combate-novo-wrap">
     <a href="{% url 'criar_combate' sala.id %}" class="btn">Criar novo combate</a>
   </div>
+  {% endif %}
 </div>
 {% endblock %}

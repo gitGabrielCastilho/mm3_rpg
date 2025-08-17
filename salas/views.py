@@ -14,11 +14,34 @@ from .models import Sala
 from django.db.models import Q
 from django import forms
 from personagens.models import PerfilUsuario
+from django.contrib import messages
+from django.contrib.auth.hashers import make_password, check_password
 
 class SalaForm(forms.ModelForm):
     class Meta:
         model = Sala
-        fields = ['nome']
+        fields = ['nome', 'senha']
+        widgets = {
+            'senha': forms.PasswordInput(render_value=False, attrs={'placeholder': 'Opcional'})
+        }
+
+    def save(self, commit=True):
+        sala = super().save(commit=False)
+        senha = self.cleaned_data.get('senha')
+        # Hash only if provided and not already hashed
+        if senha:
+            try:
+                # If it's not a recognized hasher string, make a new hash
+                if '$' not in senha:
+                    sala.senha = make_password(senha)
+                else:
+                    # Likely already encoded (defensive, in case of reuse)
+                    sala.senha = senha
+            except Exception:
+                sala.senha = make_password(senha)
+        if commit:
+            sala.save()
+        return sala
 
 @login_required
 def criar_sala(request):
@@ -66,6 +89,24 @@ def excluir_sala(request, sala_id):
 @login_required
 def entrar_sala(request, sala_id):
     sala = get_object_or_404(Sala, id=sala_id)
+    # Se a sala possui senha e a requisição é GET, exibe o formulário de senha.
+    if request.method == 'GET' and sala.senha:
+        return render(request, 'salas/entrar_sala.html', { 'sala': sala })
+
+    # Se a sala possui senha, valida a senha enviada via POST.
+    if sala.senha:
+        if request.method != 'POST':
+            return redirect('listar_salas')
+        senha_digitada = request.POST.get('senha', '')
+        is_valid = False
+        try:
+            is_valid = check_password(senha_digitada, sala.senha)
+        except Exception:
+            # Backward compatibility: if stored plain, compare directly
+            is_valid = (senha_digitada == sala.senha)
+        if not is_valid:
+            messages.error(request, 'Senha incorreta para entrar na sala.')
+            return render(request, 'salas/entrar_sala.html', { 'sala': sala })
     perfil, _ = PerfilUsuario.objects.get_or_create(user=request.user)
     # Se já está em outra sala, remove
     if perfil.sala_atual and perfil.sala_atual != sala:
@@ -114,5 +155,21 @@ def sair_sala(request):
             )
         transaction.on_commit(send_event)
     return redirect('listar_salas')
+
+
+@login_required
+def editar_senha_sala(request, sala_id):
+    sala = get_object_or_404(Sala, id=sala_id, game_master=request.user)
+    if request.method == 'POST':
+        nova_senha = request.POST.get('senha', '').strip()
+        if nova_senha:
+            sala.senha = make_password(nova_senha)
+            messages.success(request, 'Senha da sala atualizada com sucesso.')
+        else:
+            sala.senha = ''
+            messages.success(request, 'Senha da sala removida (sala sem senha).')
+        sala.save()
+        return redirect('listar_salas')
+    return render(request, 'salas/editar_senha.html', {'sala': sala})
 
 

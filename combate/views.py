@@ -261,6 +261,9 @@ def finalizar_combate(request, combate_id):
 def deletar_combate(request, combate_id):
     combate = get_object_or_404(Combate, id=combate_id)
     sala_id = combate.sala.id
+    # Apenas o GM da sala pode deletar um combate
+    if combate.sala.game_master != request.user:
+        return redirect('listar_combates', sala_id)
     if request.method == 'POST':
         combate.delete()
         return redirect('listar_combates', sala_id)

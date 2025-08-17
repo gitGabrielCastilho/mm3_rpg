@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="salas-center">
+  <h2 class="salas-title">Editar senha da sala: {{ sala.nome }}</h2>
+  <div class="combate-card">
+    <form method="post">
+      {% csrf_token %}
+      <p>
+        <label for="senha">Nova senha (deixe em branco para remover):</label>
+        <input type="password" name="senha" id="senha" class="input" placeholder="Opcional">
+      </p>
+      <div class="combate-form-acoes">
+        <button type="submit" class="btn">Salvar</button>
+        <a href="{% url 'listar_salas' %}" class="btn btn-danger">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

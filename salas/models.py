@@ -10,6 +10,7 @@ class Sala(models.Model):
     codigo = models.CharField(max_length=6, unique=True)
     game_master = models.ForeignKey(User, on_delete=models.CASCADE, related_name='salas_gm')
     jogadores = models.ManyToManyField(User, related_name='salas_jogador', blank=True)
+    senha = models.CharField("Senha (opcional)", max_length=128, blank=True, default='')
     criada_em = models.DateTimeField(auto_now_add=True)
     ativa = models.BooleanField(default=True)
 
