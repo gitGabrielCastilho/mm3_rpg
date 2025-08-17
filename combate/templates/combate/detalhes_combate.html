@@ -166,32 +166,41 @@
       </div>
       {% if combate.mapas.all %}
         {% for mapa in combate.mapas.all %}
-          <div id="mapa-area-{{ mapa.id }}" class="mapa-area">
-            <img src="{{ mapa.imagem.url }}" alt="{{ mapa.nome }}" class="mapa-img">
+          <div class="mapa-wrapper">
+            <div id="mapa-area-{{ mapa.id }}" class="mapa-area" data-scale="1">
+              <div class="mapa-canvas">
+        <img src="{{ mapa.imagem.url }}" alt="{{ mapa.nome }}" class="mapa-img">
             {% for posicao in posicoes %}
               {% if posicao.mapa.id == mapa.id %}
                 {% if posicao.participante.personagem.foto %}
-                  <img src="{{ posicao.participante.personagem.foto.url }}"
-                       id="token-{{ posicao.id }}"
-                       class="mapa-token"
-                       style="left:{{ posicao.x }}px; top:{{ posicao.y }}px;"
-                       draggable="true"
-                       ondragstart="drag(event, {{ posicao.id }})">
+         <img src="{{ posicao.participante.personagem.foto.url }}"
+           id="token-{{ posicao.id }}"
+           class="mapa-token"
+           style="left:{{ posicao.x }}px; top:{{ posicao.y }}px;"
+           draggable="true"
+           ondragstart="drag(event, {{ posicao.id }})">
                 {% else %}
-                  <div id="token-{{ posicao.id }}" class="mapa-token token-fallback"
-                       style="left:{{ posicao.x }}px; top:{{ posicao.y }}px;"
-                       draggable="true"
-                       ondragstart="drag(event, {{ posicao.id }})">
+         <div id="token-{{ posicao.id }}" class="mapa-token token-fallback"
+           style="left:{{ posicao.x }}px; top:{{ posicao.y }}px;"
+           draggable="true"
+           ondragstart="drag(event, {{ posicao.id }})">
                     {{ posicao.participante.personagem.nome|slice:"0:2"|upper }}
                   </div>
                 {% endif %}
               {% endif %}
             {% endfor %}
+              </div>
+            </div>
+            <div class="mapa-zoom">
+              <button type="button" class="btn btn-sm" data-zoom="out">−</button>
+              <button type="button" class="btn btn-sm" data-zoom="reset">Reset</button>
+              <button type="button" class="btn btn-sm" data-zoom="in">+</button>
+            </div>
             {% if combate.sala.game_master == user %}
-            <form method="post" action="{% url 'remover_mapa' combate.id mapa.id %}" class="mapa-remover-form">
-              {% csrf_token %}
-              <button type="submit" class="btn btn-sm btn-danger">Remover Mapa</button>
-            </form>
+              <form method="post" action="{% url 'remover_mapa' combate.id mapa.id %}" class="mapa-remover-form">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-danger">Remover Mapa</button>
+              </form>
             {% endif %}
           </div>
         {% endfor %}
@@ -309,9 +318,22 @@
         mapaArea.addEventListener('drop', function(e){
           e.preventDefault();
           const tokenId = e.dataTransfer.getData('tokenId');
-          const rect = mapaArea.getBoundingClientRect();
-          const x = e.clientX - rect.left - 20;
-          const y = e.clientY - rect.top - 20;
+          const canvas = mapaArea.querySelector('.mapa-canvas') || mapaArea;
+          const rect = canvas.getBoundingClientRect();
+          const scale = parseFloat(mapaArea.dataset.scale || '1');
+          const tokenEl = document.getElementById('token-' + tokenId);
+          const tokenSize = tokenEl ? parseFloat(getComputedStyle(tokenEl).width) || 40 : 40;
+          const half = tokenSize / 2;
+          let x = (e.clientX - rect.left - half) / scale;
+          let y = (e.clientY - rect.top - half) / scale;
+          // Clamp to image bounds (pre-transform coordinates)
+          const img = canvas.querySelector('.mapa-img');
+          const baseW = img ? (img.naturalWidth || img.clientWidth) : 0;
+          const baseH = img ? (img.naturalHeight || img.clientHeight) : 0;
+          if (baseW && baseH) {
+            x = Math.max(0, Math.min(baseW - tokenSize, x));
+            y = Math.max(0, Math.min(baseH - tokenSize, y));
+          }
           fetch(`/combate/atualizar-posicao-token/${tokenId}/`, {
             method: 'POST',
             headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' },
@@ -321,6 +343,123 @@
             if (token) { token.style.left = x + 'px'; token.style.top = y + 'px'; }
           });
         });
+
+        // Per-token resize with Ctrl + wheel over the token
+        function bindTokenWheelResize() {
+          mapaArea.querySelectorAll('.mapa-token').forEach(token => {
+            if (token.dataset.wheelResized) return;
+            token.addEventListener('wheel', function(e){
+              if (!e.ctrlKey) return; // only when holding Ctrl
+              e.preventDefault();
+              e.stopPropagation();
+              e.stopImmediatePropagation();
+              const cs = getComputedStyle(token);
+              const cur = parseFloat(cs.width) || 40;
+              const dir = e.deltaY > 0 ? -1 : 1;
+              const factor = dir > 0 ? 1.1 : 1/1.1;
+              let next = +(cur * factor).toFixed(2);
+              const min = 20, max = 120;
+              next = Math.max(min, Math.min(max, next));
+              token.style.width = next + 'px';
+              token.style.height = next + 'px';
+            }, { passive: false });
+            token.dataset.wheelResized = '1';
+          });
+        }
+        bindTokenWheelResize();
+
+        // Helper to set scale, expand scrollable area, and keep pointer focus (if pivot provided)
+        function setScale(newScale, pivotEvent){
+          const canvas = mapaArea.querySelector('.mapa-canvas');
+          const img = canvas ? canvas.querySelector('.mapa-img') : null;
+          if (!canvas || !img) return;
+          const oldScale = parseFloat(mapaArea.dataset.scale || '1');
+          const rect = canvas.getBoundingClientRect();
+          // Base (natural) size
+          const baseW = img.naturalWidth || img.clientWidth || rect.width;
+          const baseH = img.naturalHeight || img.clientHeight || rect.height;
+          // Container size and dynamic min scale to keep map covering the viewport
+          const areaW = mapaArea.clientWidth || 1;
+          const areaH = mapaArea.clientHeight || 1;
+          const fitW = areaW / (baseW || areaW);
+          const fitH = areaH / (baseH || areaH);
+          const minScale = Math.min(1, Math.max(fitW, fitH));
+          const maxScale = 3;
+          newScale = Math.max(minScale, Math.min(maxScale, newScale));
+          // Apply transform and enlarge scrollable box so scrollbars match zoom
+          mapaArea.dataset.scale = String(newScale);
+          canvas.style.transform = `scale(${newScale})`;
+          canvas.style.minWidth = (baseW * newScale) + 'px';
+          canvas.style.minHeight = (baseH * newScale) + 'px';
+
+          // Preserve focal point under cursor if event provided
+          if (pivotEvent) {
+            const areaRect = mapaArea.getBoundingClientRect();
+            const pointerX = pivotEvent.clientX - areaRect.left;
+            const pointerY = pivotEvent.clientY - areaRect.top;
+            const sx = mapaArea.scrollLeft;
+            const sy = mapaArea.scrollTop;
+            const nx = (sx + pointerX) * (newScale / oldScale) - pointerX;
+            const ny = (sy + pointerY) * (newScale / oldScale) - pointerY;
+            const maxScrollX = Math.max(0, mapaArea.scrollWidth - mapaArea.clientWidth);
+            const maxScrollY = Math.max(0, mapaArea.scrollHeight - mapaArea.clientHeight);
+            mapaArea.scrollLeft = Math.min(maxScrollX, Math.max(0, nx));
+            mapaArea.scrollTop = Math.min(maxScrollY, Math.max(0, ny));
+          }
+        }
+
+        // Zoom controls (bar is outside the scrollable area, in the wrapper)
+        const wrapper = mapaArea.closest('.mapa-wrapper') || mapaArea.parentElement;
+        const zoomBar = wrapper ? wrapper.querySelector('.mapa-zoom') : null;
+        const canvas = mapaArea.querySelector('.mapa-canvas');
+        if (zoomBar && canvas) {
+          zoomBar.querySelectorAll('button[data-zoom]').forEach(btn => {
+            // Remove previous listeners by cloning (in case of rebinds)
+            const cloned = btn.cloneNode(true);
+            btn.replaceWith(cloned);
+            cloned.addEventListener('click', function(){
+              const action = this.getAttribute('data-zoom');
+              let scale = parseFloat(mapaArea.dataset.scale || '1');
+              if (action === 'in') scale = +(scale * 1.1).toFixed(3);
+              else if (action === 'out') scale = +(scale / 1.1).toFixed(3);
+              else scale = 1;
+              setScale(scale);
+            });
+          });
+        }
+
+        // Clamp scroll so it never goes beyond the scaled image area
+        if (!mapaArea.dataset.scrollBound) {
+          mapaArea.addEventListener('scroll', function(){
+            const canvas = mapaArea.querySelector('.mapa-canvas');
+            const img = canvas ? canvas.querySelector('.mapa-img') : null;
+            if (!img) return;
+            const scale = parseFloat(mapaArea.dataset.scale || '1');
+            const baseW = img.naturalWidth || img.clientWidth || 0;
+            const baseH = img.naturalHeight || img.clientHeight || 0;
+            const maxX = Math.max(0, baseW * scale - mapaArea.clientWidth);
+            const maxY = Math.max(0, baseH * scale - mapaArea.clientHeight);
+            if (mapaArea.scrollLeft > maxX) mapaArea.scrollLeft = maxX;
+            if (mapaArea.scrollTop > maxY) mapaArea.scrollTop = maxY;
+            if (mapaArea.scrollLeft < 0) mapaArea.scrollLeft = 0;
+            if (mapaArea.scrollTop < 0) mapaArea.scrollTop = 0;
+          }, { passive: true });
+          mapaArea.dataset.scrollBound = '1';
+        }
+
+        // Ctrl + wheel zoom (once)
+        if (!mapaArea.dataset.wheelBound) {
+          mapaArea.addEventListener('wheel', function(e){
+            if (!e.ctrlKey) return;
+            e.preventDefault();
+            let scale = parseFloat(mapaArea.dataset.scale || '1');
+            const dir = e.deltaY > 0 ? -1 : 1; // up = zoom in
+            const factor = dir > 0 ? 1.1 : 1/1.1;
+            scale = +(scale * factor).toFixed(3);
+            setScale(scale, e);
+          }, { passive: false });
+          mapaArea.dataset.wheelBound = '1';
+        }
       });
     }
 
@@ -519,9 +658,22 @@
       mapaArea.addEventListener("drop", function(e) {
         e.preventDefault();
         const tokenId = e.dataTransfer.getData("tokenId");
-        const rect = mapaArea.getBoundingClientRect();
-        const x = e.clientX - rect.left - 20;
-        const y = e.clientY - rect.top - 20;
+  const canvas = mapaArea.querySelector('.mapa-canvas') || mapaArea;
+  const rect = canvas.getBoundingClientRect();
+        const scale = parseFloat(mapaArea.dataset.scale || '1');
+        const tokenEl = document.getElementById('token-' + tokenId);
+        const tokenSize = tokenEl ? parseFloat(getComputedStyle(tokenEl).width) || 40 : 40;
+        const half = tokenSize / 2;
+        let x = (e.clientX - rect.left - half) / scale;
+        let y = (e.clientY - rect.top - half) / scale;
+        // Clamp to image bounds
+        const img = canvas.querySelector('.mapa-img');
+        const baseW = img ? (img.naturalWidth || img.clientWidth) : 0;
+        const baseH = img ? (img.naturalHeight || img.clientHeight) : 0;
+        if (baseW && baseH) {
+          x = Math.max(0, Math.min(baseW - tokenSize, x));
+          y = Math.max(0, Math.min(baseH - tokenSize, y));
+        }
         fetch(`/combate/atualizar-posicao-token/${tokenId}/`, {
           method: "POST",
           headers: {
@@ -535,6 +687,119 @@
           token.style.top = y + "px";
         });
       });
+      // Bind per-token Ctrl+wheel resize on initial load as well
+      mapaArea.querySelectorAll('.mapa-token').forEach(token => {
+        if (token.dataset.wheelResized) return;
+        token.addEventListener('wheel', function(e){
+          if (!e.ctrlKey) return;
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          const cs = getComputedStyle(token);
+          const cur = parseFloat(cs.width) || 40;
+          const dir = e.deltaY > 0 ? -1 : 1;
+          const factor = dir > 0 ? 1.1 : 1/1.1;
+          let next = +(cur * factor).toFixed(2);
+          const min = 20, max = 120;
+          next = Math.max(min, Math.min(max, next));
+          token.style.width = next + 'px';
+          token.style.height = next + 'px';
+        }, { passive: false });
+        token.dataset.wheelResized = '1';
+      });
+      // Initialize zoom controls on DOMContentLoaded as well (outside scroll area)
+      const wrapper = mapaArea.closest('.mapa-wrapper') || mapaArea.parentElement;
+      const zoomBar = wrapper ? wrapper.querySelector('.mapa-zoom') : null;
+      const canvas = mapaArea.querySelector('.mapa-canvas');
+      if (zoomBar && canvas) {
+        zoomBar.querySelectorAll('button[data-zoom]').forEach(btn => {
+          // Remove previous listeners by cloning (initial load safe too)
+          const cloned = btn.cloneNode(true);
+          btn.replaceWith(cloned);
+          cloned.addEventListener('click', function(){
+            const action = this.getAttribute('data-zoom');
+            let scale = parseFloat(mapaArea.dataset.scale || '1');
+            if (action === 'in') scale = +(scale * 1.1).toFixed(3);
+            else if (action === 'out') scale = +(scale / 1.1).toFixed(3);
+            else scale = 1;
+            // Inline setScale with dynamic min and bounds
+            const setScaleLocal = (newScale)=>{
+              const img = canvas.querySelector('.mapa-img');
+              const baseW = img.naturalWidth || img.clientWidth;
+              const baseH = img.naturalHeight || img.clientHeight;
+              const areaW = mapaArea.clientWidth || 1;
+              const areaH = mapaArea.clientHeight || 1;
+              const fitW = areaW / (baseW || areaW);
+              const fitH = areaH / (baseH || areaH);
+              const minScale = Math.min(1, Math.max(fitW, fitH));
+              const maxScale = 3;
+              newScale = Math.max(minScale, Math.min(maxScale, newScale));
+              mapaArea.dataset.scale = String(newScale);
+              canvas.style.transform = `scale(${newScale})`;
+              canvas.style.minWidth = (baseW * newScale) + 'px';
+              canvas.style.minHeight = (baseH * newScale) + 'px';
+            };
+            setScaleLocal(scale);
+          });
+        });
+      }
+      // Wheel handler on initial bind as well
+      if (!mapaArea.dataset.wheelBound) {
+        mapaArea.addEventListener('wheel', function(e){
+          if (!e.ctrlKey) return;
+          e.preventDefault();
+          let scale = parseFloat(mapaArea.dataset.scale || '1');
+          const dir = e.deltaY > 0 ? -1 : 1;
+          const factor = dir > 0 ? 1.1 : 1/1.1;
+          scale = +(scale * factor).toFixed(3);
+          const img = canvas.querySelector('.mapa-img');
+          const baseW = img.naturalWidth || img.clientWidth;
+          const baseH = img.naturalHeight || img.clientHeight;
+          const areaW = mapaArea.clientWidth || 1;
+          const areaH = mapaArea.clientHeight || 1;
+          const fitW = areaW / (baseW || areaW);
+          const fitH = areaH / (baseH || areaH);
+          const minScale = Math.min(1, Math.max(fitW, fitH));
+          const maxScale = 3;
+          const oldScale = parseFloat(mapaArea.dataset.scale || '1');
+          // Clamp scale to dynamic bounds
+          scale = Math.max(minScale, Math.min(maxScale, scale));
+          const areaRect = mapaArea.getBoundingClientRect();
+          const pointerX = e.clientX - areaRect.left;
+          const pointerY = e.clientY - areaRect.top;
+          canvas.style.transform = `scale(${scale})`;
+          canvas.style.minWidth = (baseW * scale) + 'px';
+          canvas.style.minHeight = (baseH * scale) + 'px';
+          mapaArea.dataset.scale = String(scale);
+          const sx = mapaArea.scrollLeft;
+          const sy = mapaArea.scrollTop;
+          const nx = (sx + pointerX) * (scale / oldScale) - pointerX;
+          const ny = (sy + pointerY) * (scale / oldScale) - pointerY;
+          const maxScrollX = Math.max(0, mapaArea.scrollWidth - mapaArea.clientWidth);
+          const maxScrollY = Math.max(0, mapaArea.scrollHeight - mapaArea.clientHeight);
+          mapaArea.scrollLeft = Math.min(maxScrollX, Math.max(0, nx));
+          mapaArea.scrollTop = Math.min(maxScrollY, Math.max(0, ny));
+        }, { passive: false });
+        mapaArea.dataset.wheelBound = '1';
+      }
+      // Clamp scroll on initial load as well
+      if (!mapaArea.dataset.scrollBound) {
+        mapaArea.addEventListener('scroll', function(){
+          const canvas = mapaArea.querySelector('.mapa-canvas');
+          const img = canvas ? canvas.querySelector('.mapa-img') : null;
+          if (!img) return;
+          const scale = parseFloat(mapaArea.dataset.scale || '1');
+          const baseW = img.naturalWidth || img.clientWidth || 0;
+          const baseH = img.naturalHeight || img.clientHeight || 0;
+          const maxX = Math.max(0, baseW * scale - mapaArea.clientWidth);
+          const maxY = Math.max(0, baseH * scale - mapaArea.clientHeight);
+          if (mapaArea.scrollLeft > maxX) mapaArea.scrollLeft = maxX;
+          if (mapaArea.scrollTop > maxY) mapaArea.scrollTop = maxY;
+          if (mapaArea.scrollLeft < 0) mapaArea.scrollLeft = 0;
+          if (mapaArea.scrollTop < 0) mapaArea.scrollTop = 0;
+        }, { passive: true });
+        mapaArea.dataset.scrollBound = '1';
+      }
     });
   });
 </script>
