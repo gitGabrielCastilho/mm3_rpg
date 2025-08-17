@@ -33,19 +33,7 @@
       {% endif %}
       </div>
     </div>
-    {% if combate.sala.game_master == user %}
-    <div class="mapa-row">
-      <label for="mapa_existente_top">Selecionar mapa:</label>
-      <select id="mapa_existente_top" class="select-md">
-        <option value="">-- Escolha um mapa --</option>
-        {% for mapa in mapas_globais %}
-          <option value="{{ mapa.id }}">{{ mapa.nome }}</option>
-        {% endfor %}
-      </select>
-      <button type="button" id="btn-usar-mapa" class="btn btn-sm">Usar Selecionado</button>
-  <a href="{% url 'adicionar_mapa' combate.id %}" target="_blank" rel="noopener" id="btn-add-mapa-link" class="btn btn-sm">Novo Mapa</a>
-    </div>
-    {% endif %}
+  {# Moved map selection next to the map title in the right column #}
   </div>
 
   <!-- Grid 1/3 - 2/3 -->
@@ -160,7 +148,22 @@
 
     <!-- Coluna direita: Mapa + Status participantes -->
     <div class="combate-col-right">
-      <h3 class="combate-section-title">Mapa do Combate</h3>
+      <div class="mapa-header-row">
+        <h3 class="combate-section-title" style="margin:0">Mapa do Combate</h3>
+        {% if combate.sala.game_master == user %}
+        <div class="mapa-header-actions">
+          <label for="mapa_existente_top" class="sr-only">Selecionar mapa</label>
+          <select id="mapa_existente_top" class="select-sm" title="Selecionar mapa">
+            <option value="">– mapa –</option>
+            {% for mapa in mapas_globais %}
+              <option value="{{ mapa.id }}">{{ mapa.nome }}</option>
+            {% endfor %}
+          </select>
+          <button type="button" id="btn-usar-mapa" class="btn btn-sm">Usar</button>
+          <a href="{% url 'adicionar_mapa' combate.id %}" target="_blank" rel="noopener" id="btn-add-mapa-link" class="btn btn-sm">Novo</a>
+        </div>
+        {% endif %}
+      </div>
       {% if combate.mapas.all %}
         {% for mapa in combate.mapas.all %}
           <div id="mapa-area-{{ mapa.id }}" class="mapa-area">
@@ -345,6 +348,7 @@
       bindAjax(document.getElementById('form-d20'));
       bindAjax(document.getElementById('form-ataque'));
       document.querySelectorAll('.turno-topbar-actions form').forEach(bindAjax);
+  document.querySelectorAll('.form-remover-participante').forEach(bindAjax);
     }
 
     combateSocket.onmessage = async function(e) {
@@ -367,8 +371,10 @@
             ativo.innerHTML = (ativo.innerHTML ? ativo.innerHTML + '<br>' : '') + extra.innerHTML;
             const historico = document.getElementById('historico-card');
             if (historico && historico.scrollHeight > historico.clientHeight) historico.scrollTop = historico.scrollHeight;
+            // Garante atualização do status dos participantes sem recarregar a página inteira
+            await refreshSelectors(['#status-card']);
           } else {
-            await refreshSelectors(['#historico-card']);
+            await refreshSelectors(['#historico-card', '#status-card']);
           }
           break;
         }
