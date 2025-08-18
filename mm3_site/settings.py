@@ -196,3 +196,18 @@ LOGIN_REDIRECT_URL = '/personagens/meus/'
 LOGOUT_REDIRECT_URL = '/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Optional: Use Cloudinary for persistent media in production when CLOUDINARY_URL is set
+_cloudinary_url = os.getenv("CLOUDINARY_URL")
+if _cloudinary_url:
+    INSTALLED_APPS += [
+        'cloudinary',
+        'cloudinary_storage',
+    ]
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+    # Optional: set a folder prefix for organization
+    CLOUDINARY_STORAGE = {
+        'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME'),
+        'API_KEY': os.getenv('CLOUDINARY_API_KEY'),
+        'API_SECRET': os.getenv('CLOUDINARY_API_SECRET'),
+    }

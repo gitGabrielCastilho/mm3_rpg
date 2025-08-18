@@ -32,3 +32,12 @@ services:
         sync: false # set in dashboard with Upstash rediss:// URL
       - key: SEED_ON_START
         value: "false" # set to "true" once to seed vantagens+itens on next deploy, then back to false
+      # Optional: enable persistent media storage with Cloudinary
+      - key: CLOUDINARY_URL
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false

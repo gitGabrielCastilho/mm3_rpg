@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600" role="img" aria-label="Mapa indisponível">
+  <defs>
+    <linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#202020"/>
+      <stop offset="100%" stop-color="#111"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="800" height="600" fill="url(#g)"/>
+  <rect x="30" y="30" width="740" height="540" fill="none" stroke="#2a2a2a" stroke-width="2" stroke-dasharray="6 6"/>
+  <g fill="none" stroke="#333" stroke-width="1">
+    <path d="M0 100 H800"/>
+    <path d="M0 200 H800"/>
+    <path d="M0 300 H800"/>
+    <path d="M0 400 H800"/>
+    <path d="M0 500 H800"/>
+    <path d="M100 0 V600"/>
+    <path d="M200 0 V600"/>
+    <path d="M300 0 V600"/>
+    <path d="M400 0 V600"/>
+    <path d="M500 0 V600"/>
+    <path d="M600 0 V600"/>
+    <path d="M700 0 V600"/>
+  </g>
+  <g font-family="Segoe UI, Roboto, Arial, sans-serif" text-anchor="middle">
+    <text x="400" y="280" font-size="42" fill="#888" font-weight="700">Mapa indisponível</text>
+    <text x="400" y="320" font-size="18" fill="#6e6e6e">A imagem não pôde ser carregada</text>
+  </g>
+</svg>

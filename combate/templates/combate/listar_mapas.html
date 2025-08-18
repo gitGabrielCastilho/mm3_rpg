@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block content %}
 <div class="mapas-center">
@@ -11,9 +12,9 @@
       <li class="mapa-item">
         <div class="mapa-thumb-wrapper">
           {% if mapa.imagem %}
-            <img src="{{ mapa.imagem.url }}" alt="{{ mapa.nome }}" class="mapa-thumb">
+            <img src="{{ mapa.imagem.url }}" alt="{{ mapa.nome }}" class="mapa-thumb" data-fallback="{% static 'img/mapa_placeholder.svg' %}" onerror="this.onerror=null;this.src=this.dataset.fallback;">
           {% else %}
-            <div class="mapa-thumb placeholder">SEM IMAGEM</div>
+            <img src="{% static 'img/mapa_placeholder.svg' %}" alt="Sem imagem" class="mapa-thumb">
           {% endif %}
         </div>
         <div class="mapa-info">
