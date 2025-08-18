@@ -205,9 +205,14 @@ if _cloudinary_url:
         'cloudinary_storage',
     ]
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-    # Optional: set a folder prefix for organization
-    CLOUDINARY_STORAGE = {
-        'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME'),
-        'API_KEY': os.getenv('CLOUDINARY_API_KEY'),
-        'API_SECRET': os.getenv('CLOUDINARY_API_SECRET'),
-    }
+    # If explicit credentials are provided, configure them; otherwise the library
+    # will read the consolidated CLOUDINARY_URL env var automatically.
+    _c_name = os.getenv('CLOUDINARY_CLOUD_NAME')
+    _c_key = os.getenv('CLOUDINARY_API_KEY')
+    _c_secret = os.getenv('CLOUDINARY_API_SECRET')
+    if _c_name and _c_key and _c_secret:
+        CLOUDINARY_STORAGE = {
+            'CLOUD_NAME': _c_name,
+            'API_KEY': _c_key,
+            'API_SECRET': _c_secret,
+        }
