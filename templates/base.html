@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mutantes & Malfeitores</title>
 
-  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
   <style>
     /* Critical layout fallbacks to survive stale external CSS */
     .home-center,
@@ -45,6 +45,10 @@
     }
     .table-responsive { width: 100%; overflow-x: auto; }
     .nav-bar { position: sticky; top: 0; }
+  /* Minimal sidebar fallback */
+  .sidebar { position: fixed; right: 0; top: 64px; width: 300px; max-width: 80vw; background: #262626; color: #f5f5f5; padding: 1rem; border-radius: 12px 0 0 12px; box-shadow: -2px 0 12px rgba(0,0,0,0.18); }
+  .sidebar.closed { width: 40px; padding: 0.25rem; overflow: hidden; }
+  .sidebar-toggle { position: fixed; right: 0; top: 84px; width: 36px; height: 36px; border: 0; border-radius: 18px 0 0 18px; background: #2c2f33; color: #e6c200; cursor: pointer; }
   </style>
  </head>
 <body>
