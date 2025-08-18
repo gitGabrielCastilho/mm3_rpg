@@ -6,10 +6,10 @@
 {% if pode_criar %}
   <div class="item-form-center">
     <h2>Criar Item</h2>
-    <form method="post">
+  <form method="post">
       {% csrf_token %}
       {{ form.as_p }}
-      <button type="submit">Criar</button>
+  <button type="submit" class="btn">Criar</button>
     </form>
   </div>
 {% endif %}
