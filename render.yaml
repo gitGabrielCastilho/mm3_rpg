@@ -3,7 +3,11 @@ services:
     name: mm3-rpg
     env: python
     plan: free
-    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    buildCommand: >-
+      bash -lc 'pip install -r requirements.txt &&
+      mkdir -p static/img &&
+      [ -f dice_fav_icon.png ] && cp dice_fav_icon.png static/img/dice_fav_icon.png || true &&
+      python manage.py collectstatic --noinput'
     startCommand: >-
       bash -lc '
       python manage.py migrate --noinput &&
