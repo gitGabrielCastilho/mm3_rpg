@@ -342,10 +342,6 @@ thead {
   flex-direction: column;
   align-items: center;
   box-sizing: border-box;
-  .caracteristicas-grid {
-    grid-template-columns: 1fr;
-    gap: 0.7rem 0.5rem;
-  }
 }
 .caracteristicas-grid label {
   font-weight: 700;
