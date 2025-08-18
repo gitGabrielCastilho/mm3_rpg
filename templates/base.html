@@ -7,6 +7,45 @@
   <title>Mutantes & Malfeitores</title>
 
   <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  <style>
+    /* Critical layout fallbacks to survive stale external CSS */
+    .home-center,
+    .auth-form-center,
+    .item-form-center,
+    .personagem-form-center,
+    .personagens-center,
+    .salas-center,
+    .combate-detalhes-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 40vh;
+      margin: 0 auto;
+      text-align: center;
+      gap: 0.8rem;
+    }
+    .auth-form,
+    .item-form-center,
+    .personagem-form-fields,
+    .combate-card,
+    .card {
+      width: 100%;
+      max-width: 900px;
+      box-sizing: border-box;
+    }
+    .itens-area-responsive,
+    .salas-center,
+    .combate-detalhes-center {
+      width: 100%;
+      max-width: 1400px;
+      margin-left: auto;
+      margin-right: auto;
+      box-sizing: border-box;
+    }
+    .table-responsive { width: 100%; overflow-x: auto; }
+    .nav-bar { position: sticky; top: 0; }
+  </style>
  </head>
 <body>
 
