@@ -53,6 +53,13 @@ def _split_env_list(value: str | None) -> List[str]:
 ALLOWED_HOSTS = _split_env_list(os.getenv("ALLOWED_HOSTS")) if not DEBUG else ["*"]
 CSRF_TRUSTED_ORIGINS = _split_env_list(os.getenv("CSRF_TRUSTED_ORIGINS"))
 
+# Behind proxy (Render/Heroku/etc.) ensure HTTPS is respected and host headers are forwarded
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+if not DEBUG:
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
+
 
 # Application definition
 

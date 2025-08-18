@@ -3,20 +3,19 @@ services:
     name: mm3-rpg
     env: python
     plan: free
-    buildCommand: |
-      pip install -r requirements.txt
-      python manage.py collectstatic --noinput
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    postDeployCommand: python manage.py migrate --noinput
     startCommand: daphne -b 0.0.0.0 -p $PORT mm3_site.asgi:application
     autoDeploy: true
-    envVars:
+  envVars:
       - key: DEBUG
         value: "False"
       - key: SECRET_KEY
         generateValue: true
       - key: ALLOWED_HOSTS
-        value: mm3-rpg.onrender.com
+    value: .onrender.com,mm3-rpg.onrender.com
       - key: CSRF_TRUSTED_ORIGINS
-        value: https://mm3-rpg.onrender.com
+    value: https://mm3-rpg.onrender.com,http://mm3-rpg.onrender.com
       - key: DATABASE_URL
         sync: false # set in dashboard with Neon/Supabase URL
       - key: REDIS_URL
