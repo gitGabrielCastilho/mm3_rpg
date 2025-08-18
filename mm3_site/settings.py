@@ -12,21 +12,46 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+from typing import List
+
+# Optional import: dj-database-url for DATABASE_URL parsing in production
+try:
+    import dj_database_url  # type: ignore
+except Exception:  # pragma: no cover - only used when not installed
+    dj_database_url = None  # type: ignore
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Optional: load .env in development to ease configuration
+try:
+    from dotenv import load_dotenv  # type: ignore
+    _env_path = Path(BASE_DIR) / ".env"
+    if _env_path.exists():
+        load_dotenv(_env_path)
+except Exception:
+    pass
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-@3+@)&r+*k_qrs8(g05t_$8j3co8d8_(o%(9vjr5qrpl)=$po0'
+SECRET_KEY = os.getenv(
+    'SECRET_KEY',
+    'django-insecure-@3+@)&r+*k_qrs8(g05t_$8j3co8d8_(o%(9vjr5qrpl)=$po0',
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "True").lower() in ("1", "true", "yes")
 
-ALLOWED_HOSTS = []
+def _split_env_list(value: str | None) -> List[str]:
+    if not value:
+        return []
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+ALLOWED_HOSTS = _split_env_list(os.getenv("ALLOWED_HOSTS")) if not DEBUG else ["*"]
+CSRF_TRUSTED_ORIGINS = _split_env_list(os.getenv("CSRF_TRUSTED_ORIGINS"))
 
 
 # Application definition
@@ -81,12 +106,25 @@ WSGI_APPLICATION = 'mm3_site.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+_default_sqlite_url = f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
+_db_url = os.getenv("DATABASE_URL")
+
+if _db_url:
+    if dj_database_url is None:
+        raise ImportError(
+            "DATABASE_URL is set but dj-database-url is not installed. "
+            "Install it with: pip install dj-database-url"
+        )
+    DATABASES = {
+        'default': dj_database_url.parse(_db_url, conn_max_age=600),
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Password validation
@@ -107,11 +145,20 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer"
+_redis_url = os.getenv("REDIS_URL")
+if _redis_url:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {"hosts": [_redis_url]},
+        }
     }
-}
+else:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        }
+    }
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
@@ -141,6 +188,3 @@ LOGIN_REDIRECT_URL = '/personagens/meus/'
 LOGOUT_REDIRECT_URL = '/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
-
-STATICFILES_DIRS = [BASE_DIR / "static"]
-STATIC_ROOT = BASE_DIR / "staticfiles"
