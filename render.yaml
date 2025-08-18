@@ -4,8 +4,14 @@ services:
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
-    postDeployCommand: python manage.py migrate --noinput
-    startCommand: daphne -b 0.0.0.0 -p $PORT mm3_site.asgi:application
+    startCommand: >-
+      bash -lc '
+      python manage.py migrate --noinput &&
+      if [ "${SEED_ON_START}" = "true" ]; then
+        python manage.py load_vantagens &&
+        python manage.py load_itens --path items.json;
+      fi &&
+      daphne -b 0.0.0.0 -p $PORT mm3_site.asgi:application'
     autoDeploy: true
     envVars:
       - key: DEBUG
@@ -20,3 +26,5 @@ services:
         sync: false # set in dashboard with Neon/Supabase URL
       - key: REDIS_URL
         sync: false # set in dashboard with Upstash rediss:// URL
+      - key: SEED_ON_START
+        value: "false" # set to "true" once to seed vantagens+itens on next deploy, then back to false
