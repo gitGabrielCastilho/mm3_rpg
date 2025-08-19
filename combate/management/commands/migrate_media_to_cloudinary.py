@@ -41,7 +41,7 @@ class Command(BaseCommand):
                     continue
                 path = getattr(mapa.imagem, "path", None)
                 url = getattr(mapa.imagem, "url", "")
-                self.stdout.write(f"Mapa #{mapa.id} '{mapa.nome}' -> {url or path}")
+                self.stdout.write(f"Mapa #{mapa.id} '{mapa.nome}' BEFORE -> {url or path}")
                 total_mapas += 1
                 if dry:
                     continue
@@ -52,9 +52,18 @@ class Command(BaseCommand):
                             fname = Path(path).name
                             mapa.imagem.save(fname, content, save=True)
                     else:
-                        mapa.imagem.save(mapa.imagem.name, mapa.imagem.file, save=True)
+                        # No local path; try to re-save using current file handle if available
+                        try:
+                            mapa.imagem.save(mapa.imagem.name, mapa.imagem.file, save=True)
+                        except Exception:
+                            raise FileNotFoundError("Arquivo original não está disponível para reenvio.")
                 except Exception as e:
                     self.stderr.write(self.style.ERROR(f"Falha ao migrar mapa #{mapa.id}: {e}"))
+                else:
+                    try:
+                        self.stdout.write(f"Mapa #{mapa.id} AFTER -> {mapa.imagem.url}")
+                    except Exception:
+                        pass
 
         if only in ("all", "fotos"):
             qs = Personagem.objects.exclude(foto="")
@@ -65,7 +74,7 @@ class Command(BaseCommand):
                     continue
                 path = getattr(p.foto, "path", None)
                 url = getattr(p.foto, "url", "")
-                self.stdout.write(f"Personagem #{p.id} '{p.nome}' -> {url or path}")
+                self.stdout.write(f"Personagem #{p.id} '{p.nome}' BEFORE -> {url or path}")
                 total_fotos += 1
                 if dry:
                     continue
@@ -76,9 +85,17 @@ class Command(BaseCommand):
                             fname = Path(path).name
                             p.foto.save(fname, content, save=True)
                     else:
-                        p.foto.save(p.foto.name, p.foto.file, save=True)
+                        try:
+                            p.foto.save(p.foto.name, p.foto.file, save=True)
+                        except Exception:
+                            raise FileNotFoundError("Arquivo original não está disponível para reenvio.")
                 except Exception as e:
                     self.stderr.write(self.style.ERROR(f"Falha ao migrar foto do personagem #{p.id}: {e}"))
+                else:
+                    try:
+                        self.stdout.write(f"Personagem #{p.id} AFTER -> {p.foto.url}")
+                    except Exception:
+                        pass
 
         self.stdout.write(self.style.SUCCESS(
             f"Concluído. Mapas processados: {total_mapas}; Fotos processadas: {total_fotos}."

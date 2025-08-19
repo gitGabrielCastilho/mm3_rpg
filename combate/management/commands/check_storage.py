@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.conf import settings
+from django.core.files.storage import default_storage
 from combate.models import Mapa
 from personagens.models import Personagem
 
@@ -9,16 +10,23 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         dfs = getattr(settings, 'DEFAULT_FILE_STORAGE', '(padrão de arquivo local)')
         self.stdout.write(f"DEFAULT_FILE_STORAGE: {dfs}")
+        self.stdout.write(f"default_storage class: {default_storage.__class__.__module__}.{default_storage.__class__.__name__}")
         self.stdout.write(f"MEDIA_URL: {getattr(settings, 'MEDIA_URL', '')}")
         self.stdout.write(f"MEDIA_ROOT: {getattr(settings, 'MEDIA_ROOT', '')}")
-        # Mostra 3 exemplos de mapas e fotos
-        for mapa in Mapa.objects.all()[:3]:
+        # Mostra até 5 exemplos mais recentes de mapas e fotos
+        for mapa in Mapa.objects.order_by('-id')[:5]:
             try:
-                self.stdout.write(f"Mapa #{mapa.id} url: {mapa.imagem.url}")
+                storage_cls = getattr(mapa.imagem.storage, '__class__', type(mapa.imagem.storage))
+                self.stdout.write(
+                    f"Mapa #{mapa.id} storage: {storage_cls.__module__}.{storage_cls.__name__} | name: {mapa.imagem.name} | url: {mapa.imagem.url}"
+                )
             except Exception as e:
                 self.stdout.write(f"Mapa #{mapa.id} url ERROR: {e}")
-        for p in Personagem.objects.exclude(foto='')[:3]:
+        for p in Personagem.objects.exclude(foto='').order_by('-id')[:5]:
             try:
-                self.stdout.write(f"Personagem #{p.id} foto url: {p.foto.url}")
+                storage_cls = getattr(p.foto.storage, '__class__', type(p.foto.storage))
+                self.stdout.write(
+                    f"Personagem #{p.id} foto storage: {storage_cls.__module__}.{storage_cls.__name__} | name: {p.foto.name} | url: {p.foto.url}"
+                )
             except Exception as e:
                 self.stdout.write(f"Personagem #{p.id} foto url ERROR: {e}")
