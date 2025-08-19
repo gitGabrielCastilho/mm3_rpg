@@ -62,7 +62,11 @@ def criar_combate(request, sala_id):
 
 def detalhes_combate(request, combate_id):
     combate = get_object_or_404(Combate, id=combate_id)
-    participantes = Participante.objects.filter(combate=combate).order_by('-iniciativa')
+    participantes = (
+        Participante.objects.filter(combate=combate)
+        .select_related('personagem', 'personagem__usuario')
+        .order_by('-iniciativa')
+    )
     turnos = Turno.objects.filter(combate=combate).order_by('criado_em')  # ou por ordem
     turno_ativo = turnos.filter(ativo=True).first()
     mapas_globais = Mapa.objects.filter(combate__isnull=True, criado_por=request.user).order_by('-id')
