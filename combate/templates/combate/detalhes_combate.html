@@ -157,11 +157,14 @@
           <div class="mapa-wrapper">
             <div id="mapa-area-{{ mapa.id }}" class="mapa-area" data-scale="1">
               <div class="mapa-canvas">
-  <img src="{{ mapa.imagem.url }}" alt="{{ mapa.nome }}" class="mapa-img" data-fallback="{% static 'img/mapa_placeholder.svg' %}" onerror="this.onerror=null;this.src=this.dataset.fallback;">
+  <img src="{{ mapa.imagem.url }}" alt="{{ mapa.nome }}" class="mapa-img" title="{{ mapa.imagem.url }}" data-fallback="{% static 'img/mapa_placeholder.svg' %}" onerror="this.onerror=null;this.src=this.dataset.fallback;">
+  {% if combate.sala.game_master == user %}
+    <div class="mapa-debug-url" style="font-size:12px;color:#888;margin-top:4px;word-break:break-all;">URL: {{ mapa.imagem.url }}</div>
+  {% endif %}
             {% for posicao in posicoes %}
               {% if posicao.mapa.id == mapa.id %}
                 {% if posicao.participante.personagem.foto %}
-         <img src="{{ posicao.participante.personagem.foto.url }}"
+         <img src="{{ posicao.participante.personagem.foto.url }}" title="{{ posicao.participante.personagem.foto.url }}"
            id="token-{{ posicao.id }}"
            class="mapa-token"
            style="left:{{ posicao.x }}px; top:{{ posicao.y }}px;"

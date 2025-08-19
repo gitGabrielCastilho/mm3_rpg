@@ -12,7 +12,8 @@
       <li class="mapa-item">
         <div class="mapa-thumb-wrapper">
           {% if mapa.imagem %}
-            <img src="{{ mapa.imagem.url }}" alt="{{ mapa.nome }}" class="mapa-thumb" data-fallback="{% static 'img/mapa_placeholder.svg' %}" onerror="this.onerror=null;this.src=this.dataset.fallback;">
+            <img src="{{ mapa.imagem.url }}" alt="{{ mapa.nome }}" class="mapa-thumb" title="{{ mapa.imagem.url }}" data-fallback="{% static 'img/mapa_placeholder.svg' %}" onerror="this.onerror=null;this.src=this.dataset.fallback;">
+            <div class="mapa-debug-url" style="font-size:11px;color:#888;margin-top:4px;word-break:break-all;">{{ mapa.imagem.url }}</div>
           {% else %}
             <img src="{% static 'img/mapa_placeholder.svg' %}" alt="Sem imagem" class="mapa-thumb">
           {% endif %}

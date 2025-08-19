@@ -65,7 +65,7 @@ def detalhes_combate(request, combate_id):
     participantes = Participante.objects.filter(combate=combate).order_by('-iniciativa')
     turnos = Turno.objects.filter(combate=combate).order_by('criado_em')  # ou por ordem
     turno_ativo = turnos.filter(ativo=True).first()
-    mapas_globais = Mapa.objects.filter(combate__isnull=True, criado_por=request.user)
+    mapas_globais = Mapa.objects.filter(combate__isnull=True, criado_por=request.user).order_by('-id')
     mapa = combate.mapas.first()
     posicoes = PosicaoPersonagem.objects.filter(mapa=mapa) if mapa else []
 
@@ -306,7 +306,7 @@ def remover_mapa_global(request, mapa_id):
 def listar_mapas(request):
     if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
         return redirect('home')
-    mapas = Mapa.objects.filter(combate__isnull=True, criado_por=request.user)
+    mapas = Mapa.objects.filter(combate__isnull=True, criado_por=request.user).order_by('-id')
     return render(request, 'combate/listar_mapas.html', {'mapas': mapas})
 
 @csrf_exempt
@@ -848,7 +848,7 @@ def adicionar_mapa(request, combate_id):
     if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
         return redirect('home')
     combate = get_object_or_404(Combate, id=combate_id)
-    mapas_globais = Mapa.objects.filter(combate__isnull=True, criado_por=request.user)
+    mapas_globais = Mapa.objects.filter(combate__isnull=True, criado_por=request.user).order_by('-id')
     form = MapaForm()
     if request.method == 'POST':
         # Se o usuário clicou em "Usar Mapa Selecionado"
