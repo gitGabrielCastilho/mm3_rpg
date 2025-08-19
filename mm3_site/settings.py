@@ -197,9 +197,17 @@ LOGOUT_REDIRECT_URL = '/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Optional: Use Cloudinary for persistent media in production when CLOUDINARY_URL is set
-_cloudinary_url = os.getenv("CLOUDINARY_URL")
-if _cloudinary_url:
+"""
+Optional: Use Cloudinary for persistent media in production.
+We enable Cloudinary if either the consolidated CLOUDINARY_URL is set
+or if the explicit trio CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET are provided.
+"""
+_c_url = os.getenv("CLOUDINARY_URL")
+_c_name = os.getenv('CLOUDINARY_CLOUD_NAME')
+_c_key = os.getenv('CLOUDINARY_API_KEY')
+_c_secret = os.getenv('CLOUDINARY_API_SECRET')
+_enable_cloudinary = bool(_c_url or (_c_name and _c_key and _c_secret))
+if _enable_cloudinary:
     INSTALLED_APPS += [
         'cloudinary',
         'cloudinary_storage',
@@ -207,9 +215,6 @@ if _cloudinary_url:
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
     # If explicit credentials are provided, configure them; otherwise the library
     # will read the consolidated CLOUDINARY_URL env var automatically.
-    _c_name = os.getenv('CLOUDINARY_CLOUD_NAME')
-    _c_key = os.getenv('CLOUDINARY_API_KEY')
-    _c_secret = os.getenv('CLOUDINARY_API_SECRET')
     if _c_name and _c_key and _c_secret:
         CLOUDINARY_STORAGE = {
             'CLOUD_NAME': _c_name,
