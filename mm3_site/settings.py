@@ -179,6 +179,9 @@ if _redis_url:
             'LOCATION': _redis_url,
             'OPTIONS': {
                 'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                # Avoid hard-failing requests if Redis is briefly unavailable or misconfigured.
+                # This mimics memcached behavior and lets the app fall back gracefully.
+                'IGNORE_EXCEPTIONS': True,
             },
             'KEY_PREFIX': 'mm3',
             'TIMEOUT': 300,
