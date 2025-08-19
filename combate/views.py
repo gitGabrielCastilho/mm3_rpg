@@ -16,6 +16,13 @@ from .forms import MapaForm
 from salas.models import Sala
 import json
 
+# Heurística: cliente espera JSON quando é AJAX/fetch
+def _expects_json(request) -> bool:
+    if request.headers.get('x-requested-with', '').lower() == 'xmlhttprequest':
+        return True
+    accept = request.headers.get('accept', '')
+    return 'application/json' in accept.lower()
+
 # AJAX: retorna poderes de um personagem
 @login_required
 def poderes_personagem_ajax(request):
@@ -54,6 +61,8 @@ def criar_combate(request, sala_id):
                 'message': json.dumps({'evento': 'novo_combate', 'descricao': f'Combate criado na sala {sala.nome}.'})
             }
         )
+        if _expects_json(request):
+            return JsonResponse({'status': 'ok', 'evento': 'novo_combate', 'combate_id': combate.id, 'sala_id': sala.id})
         return redirect('detalhes_combate', combate_id=combate.id)
 
     personagens = Personagem.objects.all()
@@ -158,6 +167,8 @@ def passar_turno(request, combate_id):
             'message': json.dumps({'evento': 'avancar_turno', 'descricao': 'Turno avançado.'})
         }
     )
+    if _expects_json(request):
+        return JsonResponse({'status': 'ok', 'evento': 'avancar_turno', 'combate_id': combate.id})
     return redirect('detalhes_combate', combate_id=combate.id)
 
 
@@ -201,6 +212,17 @@ def iniciar_turno(request, combate_id):
             'message': json.dumps({'evento': 'iniciar_turno', 'descricao': f'Turno iniciado para {primeiro_participante.personagem.nome}.'})
         }
     )
+    if _expects_json(request):
+        return JsonResponse({
+            'status': 'ok',
+            'evento': 'iniciar_turno',
+            'combate_id': combate.id,
+            'turno': {
+                'personagem_id': primeiro_participante.personagem.id,
+                'ordem': 0,
+                'ativo': True,
+            }
+        })
     return redirect('detalhes_combate', combate_id=combate.id)
 
 
@@ -236,6 +258,17 @@ def avancar_turno(request, combate_id):
                 'message': json.dumps({'evento': 'avancar_turno', 'descricao': f'Turno avançado para {personagem_proximo.nome}.'})
             }
         )
+    if _expects_json(request):
+        resp = {'status': 'ok', 'evento': 'avancar_turno', 'combate_id': combate.id}
+        try:
+            resp['turno'] = {
+                'personagem_id': personagem_proximo.id,
+                'ordem': turno_ativo.ordem + 1 if turno_ativo else 0,
+                'ativo': True,
+            }
+        except Exception:
+            pass
+        return JsonResponse(resp)
     return redirect('detalhes_combate', combate_id=combate.id)
 
 
@@ -257,6 +290,8 @@ def finalizar_combate(request, combate_id):
         }
     )
     messages.success(request, "Combate finalizado.")
+    if _expects_json(request):
+        return JsonResponse({'status': 'ok', 'evento': 'finalizar_combate', 'combate_id': combate.id, 'sala_id': combate.sala.id})
     return redirect('listar_combates', sala_id=combate.sala.id)
 
 
@@ -270,6 +305,8 @@ def deletar_combate(request, combate_id):
         return redirect('listar_combates', sala_id)
     if request.method == 'POST':
         combate.delete()
+        if _expects_json(request):
+            return JsonResponse({'status': 'ok', 'deleted': True, 'sala_id': sala_id})
         return redirect('listar_combates', sala_id)
     return render(request, 'combate/deletar_combate.html', {'combate': combate})
 
@@ -410,6 +447,8 @@ def realizar_ataque(request, combate_id):
                     'message': json.dumps({'evento': 'rolagem', 'descricao': nova_descricao})
                 }
             )
+            if _expects_json(request):
+                return JsonResponse({'status': 'ok', 'evento': 'rolagem', 'descricao': nova_descricao})
             return redirect('detalhes_combate', combate_id=combate_id)
 
 
@@ -447,6 +486,8 @@ def realizar_ataque(request, combate_id):
                     'message': json.dumps({'evento': 'rolagem', 'descricao': nova_descricao})
                 }
             )
+            if _expects_json(request):
+                return JsonResponse({'status': 'ok', 'evento': 'rolagem', 'descricao': nova_descricao})
             return redirect('detalhes_combate', combate_id=combate_id)
         
 
@@ -463,6 +504,8 @@ def realizar_ataque(request, combate_id):
                     'message': json.dumps({'evento': 'rolagem', 'descricao': nova_descricao})
                 }
             )
+            if _expects_json(request):
+                return JsonResponse({'status': 'ok', 'evento': 'rolagem', 'descricao': nova_descricao})
             return redirect('detalhes_combate', combate_id=combate_id)
 
 
@@ -803,6 +846,8 @@ def realizar_ataque(request, combate_id):
             'message': json.dumps({'evento': 'rolagem', 'descricao': nova_descricao if 'nova_descricao' in locals() else ''})
         }
     )
+    if _expects_json(request):
+        return JsonResponse({'status': 'ok', 'evento': 'rolagem', 'descricao': nova_descricao})
     return redirect('detalhes_combate', combate_id=combate_id)
 
 def adicionar_participante(request, combate_id):
@@ -829,6 +874,18 @@ def adicionar_participante(request, combate_id):
             'message': json.dumps({'evento': 'adicionar_participante', 'descricao': f'{personagem.nome} entrou no combate.'})
         }
     )
+    if _expects_json(request):
+        return JsonResponse({
+            'status': 'ok',
+            'evento': 'adicionar_participante',
+            'combate_id': combate.id,
+            'participante': {
+                'id': participante.id,
+                'personagem_id': personagem.id,
+                'nome': personagem.nome,
+                'iniciativa': iniciativa,
+            }
+        })
     return redirect('detalhes_combate', combate_id=combate_id)
 
 def remover_participante(request, combate_id, participante_id):
@@ -846,6 +903,8 @@ def remover_participante(request, combate_id, participante_id):
             'message': json.dumps({'evento': 'remover_participante', 'descricao': f'{nome} foi removido do combate.'})
         }
     )
+    if _expects_json(request):
+        return JsonResponse({'status': 'ok', 'evento': 'remover_participante', 'combate_id': combate_id, 'participante_id': participante_id, 'nome': nome})
     return redirect('detalhes_combate', combate_id=combate_id)
 
 def adicionar_mapa(request, combate_id):
@@ -876,6 +935,8 @@ def adicionar_mapa(request, combate_id):
                         'message': json.dumps({'evento': 'adicionar_mapa', 'descricao': f'Mapa {mapa.nome} adicionado ao combate.'})
                     }
                 )
+                if _expects_json(request):
+                    return JsonResponse({'status': 'ok', 'evento': 'adicionar_mapa', 'combate_id': combate.id, 'mapa': {'id': mapa.id, 'nome': mapa.nome, 'url': mapa.imagem.url if getattr(mapa, 'imagem', None) else ''}})
                 return redirect('detalhes_combate', combate_id=combate_id)
         else:
             # Se o usuário enviou um novo mapa
@@ -899,6 +960,8 @@ def adicionar_mapa(request, combate_id):
                         'message': json.dumps({'evento': 'adicionar_mapa', 'descricao': f'Mapa {mapa.nome} adicionado ao combate.'})
                     }
                 )
+                if _expects_json(request):
+                    return JsonResponse({'status': 'ok', 'evento': 'adicionar_mapa', 'combate_id': combate.id, 'mapa': {'id': mapa.id, 'nome': mapa.nome, 'url': mapa.imagem.url if getattr(mapa, 'imagem', None) else ''}})
                 return redirect('detalhes_combate', combate_id=combate_id)
     return render(request, 'combate/adicionar_mapa.html', {
         'form': form,
@@ -922,4 +985,6 @@ def remover_mapa(request, combate_id, mapa_id):
             'message': json.dumps({'evento': 'remover_mapa', 'descricao': f'Mapa {nome} removido do combate.'})
         }
     )
+    if _expects_json(request):
+        return JsonResponse({'status': 'ok', 'evento': 'remover_mapa', 'combate_id': combate_id, 'mapa_id': mapa_id, 'nome': nome})
     return redirect('detalhes_combate', combate_id=combate_id)
