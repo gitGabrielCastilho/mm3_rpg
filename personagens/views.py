@@ -79,6 +79,7 @@ def criar_personagem(request):
         'form': form,
         'inventario_form': inventario_form,
         'formset': formset,
+        'itens_possuido_ids': [],
         'caracteristicas': [
             'forca', 'vigor', 'destreza', 'agilidade', 'luta', 'inteligencia', 'prontidao', 'presenca'
         ],
@@ -129,6 +130,7 @@ def editar_personagem(request, personagem_id):
 
             formset.save_m2m()
             return redirect('listar_personagens')
+    # Se inválido, segue para renderização com dados atuais
     else:
         form = PersonagemForm(instance=personagem)
         inventario_form = InventarioForm(instance=inventario)
@@ -143,10 +145,14 @@ def editar_personagem(request, personagem_id):
     meio = len(pericias) // 2 + len(pericias) % 2
     pericias_col1 = pericias[:meio]
     pericias_col2 = pericias[meio:]
+    # Pré-computa IDs de itens possuídos para evitar checagens caras no template
+    itens_possuido_ids = set(inventario.itens.values_list('id', flat=True))
+
     context = {
         'form': form,
         'inventario_form': inventario_form,
         'formset': formset,
+        'itens_possuido_ids': list(itens_possuido_ids),
         'caracteristicas': [
             'forca', 'vigor', 'destreza', 'agilidade', 'luta', 'inteligencia', 'prontidao', 'presenca'
         ],

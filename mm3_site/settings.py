@@ -81,6 +81,7 @@ ASGI_APPLICATION = "mm3_site.asgi.application"
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'django.middleware.gzip.GZipMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -96,7 +97,7 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [os.path.join(BASE_DIR, 'templates')],
-        'APP_DIRS': True,
+    'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
@@ -166,6 +167,30 @@ else:
             "BACKEND": "channels.layers.InMemoryChannelLayer",
         }
     }
+
+# Caches: prefer Redis if REDIS_URL is present, else LocMem
+if _redis_url:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': _redis_url,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            },
+            'KEY_PREFIX': 'mm3',
+            'TIMEOUT': 300,
+        }
+    }
+    # Use cached DB sessions to reduce DB hits (backed by Redis cache)
+    SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'mm3-locmem-cache',
+            'TIMEOUT': 300,
+        }
+    }
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
@@ -230,3 +255,20 @@ if _enable_cloudinary:
             'API_KEY': _c_key,
             'API_SECRET': _c_secret,
         }
+
+# Speed: cache template loading in production (reduces filesystem hits)
+if not DEBUG:
+    try:
+        # Switch to cached loader
+        TEMPLATES[0]['APP_DIRS'] = False
+        TEMPLATES[0]['OPTIONS']['loaders'] = [
+            (
+                'django.template.loaders.cached.Loader',
+                [
+                    'django.template.loaders.filesystem.Loader',
+                    'django.template.loaders.app_directories.Loader',
+                ],
+            )
+        ]
+    except Exception:
+        pass

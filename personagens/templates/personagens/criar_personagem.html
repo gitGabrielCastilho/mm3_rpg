@@ -236,7 +236,7 @@
                 <tr>
                   <td>
                     <input type="checkbox" name="itens" value="{{ item.id }}"
-                      {% if item in inventario_form.instance.itens.all %}checked{% endif %}>
+                      {% if item.id in itens_possuido_ids %}checked{% endif %}>
                   </td>
                   <td class="nome-item">{{ item.nome }}</td>
                   <td class="tipo-item">{{ item.tipo }}</td>
