@@ -15,8 +15,10 @@ urlpatterns = [
     path('itens/', include('itens.urls')),
 ]
 
-# Quick fix: serve MEDIA files even in production (small apps). For higher traffic, use S3/Cloudinary.
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Serve MEDIA only in DEBUG or when not using Cloudinary storage
+_uses_cloudinary = str(getattr(settings, 'DEFAULT_FILE_STORAGE', '')).endswith('MediaCloudinaryStorage')
+if settings.DEBUG or not _uses_cloudinary:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

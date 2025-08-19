@@ -17,11 +17,15 @@ class Command(BaseCommand):
         parser.add_argument("--dry-run", action="store_true", help="Apenas lista o que seria migrado")
         parser.add_argument("--only", choices=["mapas", "fotos", "all"], default="all", help="Filtrar tipo de mídia")
         parser.add_argument("--limit", type=int, default=0, help="Limitar quantidade de registros processados por tipo")
+        parser.add_argument("--map-ids", type=str, default="", help="IDs de mapas separados por vírgula para migrar apenas estes")
+        parser.add_argument("--foto-ids", type=str, default="", help="IDs de personagens (fotos) separados por vírgula para migrar apenas estes")
 
     def handle(self, *args, **opts):
         dry = opts["dry_run"]
         only = opts["only"]
         limit = opts["limit"]
+        map_ids = [int(x) for x in opts.get("map_ids", "").split(",") if x.strip().isdigit()]
+        foto_ids = [int(x) for x in opts.get("foto_ids", "").split(",") if x.strip().isdigit()]
 
         using_cloudinary = getattr(settings, "DEFAULT_FILE_STORAGE", "").endswith("MediaCloudinaryStorage")
         if not using_cloudinary:
@@ -34,6 +38,8 @@ class Command(BaseCommand):
 
         if only in ("all", "mapas"):
             qs = Mapa.objects.exclude(imagem="")
+            if map_ids:
+                qs = qs.filter(id__in=map_ids)
             if limit:
                 qs = qs[:limit]
             for mapa in qs:
@@ -67,6 +73,8 @@ class Command(BaseCommand):
 
         if only in ("all", "fotos"):
             qs = Personagem.objects.exclude(foto="")
+            if foto_ids:
+                qs = qs.filter(id__in=foto_ids)
             if limit:
                 qs = qs[:limit]
             for p in qs:
