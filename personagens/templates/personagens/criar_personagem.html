@@ -14,9 +14,9 @@
         </div>
         <div class="campo-foto" style="flex:2 1 320px; min-width:260px;">
           {{ form.foto.label_tag }} {{ form.foto }}
-          {% if form.foto.value %}
+          {% if form.instance.foto %}
             <br>
-            <img src="{{ form.foto.value.url }}" alt="Foto atual" style="max-width:100px; margin-top:0.4rem;">
+            <img src="{{ form.instance.foto.url }}" alt="Foto atual" style="max-width:100px; margin-top:0.4rem;">
           {% endif %}
         </div>
         <div class="campo-np" style="flex:1 1 160px; min-width:140px;">
