@@ -155,10 +155,13 @@ AUTH_PASSWORD_VALIDATORS = [
 
 _redis_url = os.getenv("REDIS_URL")
 if _redis_url:
+    _channel_hosts = (
+        [{"address": _redis_url, "ssl": True}] if _redis_url.startswith("rediss://") else [_redis_url]
+    )
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
-            "CONFIG": {"hosts": [_redis_url]},
+            "CONFIG": {"hosts": _channel_hosts},
         }
     }
 else:
