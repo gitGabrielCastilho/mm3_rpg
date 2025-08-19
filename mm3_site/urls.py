@@ -16,7 +16,13 @@ urlpatterns = [
 ]
 
 # Serve MEDIA only in DEBUG or when not using Cloudinary storage
-_uses_cloudinary = str(getattr(settings, 'DEFAULT_FILE_STORAGE', '')).endswith('MediaCloudinaryStorage')
+_dfs = getattr(settings, 'DEFAULT_FILE_STORAGE', '')
+_storages_default = ''
+try:
+    _storages_default = (settings.STORAGES or {}).get('default', {}).get('BACKEND', '')  # type: ignore[attr-defined]
+except Exception:
+    _storages_default = ''
+_uses_cloudinary = (_dfs.endswith('MediaCloudinaryStorage') or _storages_default.endswith('MediaCloudinaryStorage'))
 if settings.DEBUG or not _uses_cloudinary:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

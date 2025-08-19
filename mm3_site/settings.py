@@ -212,7 +212,16 @@ if _enable_cloudinary:
         'cloudinary',
         'cloudinary_storage',
     ]
-    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+    # Django 5+: prefer STORAGES over deprecated DEFAULT_FILE_STORAGE
+    STORAGES = {
+        "default": {
+            "BACKEND": 'cloudinary_storage.storage.MediaCloudinaryStorage',
+        },
+        # Keep Whitenoise for static files (mirrors STATICFILES_STORAGE below)
+        "staticfiles": {
+            "BACKEND": 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+        },
+    }
     # If explicit credentials are provided, configure them; otherwise the library
     # will read the consolidated CLOUDINARY_URL env var automatically.
     if _c_name and _c_key and _c_secret:
