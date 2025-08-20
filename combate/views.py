@@ -129,15 +129,26 @@ def atualizar_posicao_token(request, token_id):
         posicao.x = int(data.get("x", posicao.x))
         posicao.y = int(data.get("y", posicao.y))
         posicao.save()
-        # Notifica todos os participantes sobre a atualização do mapa
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f'combate_{posicao.participante.combate.id}',
-            {
-                'type': 'combate_message',
-                'message': json.dumps({'evento': 'mapa', 'descricao': f'Posição de {posicao.participante.personagem.nome} atualizada.'})
-            }
-        )
+        # Notifica todos os participantes apenas sobre a movimentação do token (sem forçar refresh do mapa)
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'combate_{posicao.participante.combate.id}',
+                {
+                    'type': 'combate_message',
+                    'message': json.dumps({
+                        'evento': 'token_move',
+                        'posicao_id': posicao.id,
+                        'mapa_id': posicao.mapa.id if posicao.mapa_id else None,
+                        'x': posicao.x,
+                        'y': posicao.y,
+                        'nome': posicao.participante.personagem.nome,
+                    })
+                }
+            )
+        except Exception:
+            # Em dev, ignore falha de broadcast para não quebrar o movimento do token
+            pass
         return JsonResponse({"status": "ok"})
 
 @require_POST

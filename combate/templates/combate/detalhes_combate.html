@@ -149,6 +149,15 @@
           </select>
           <button type="button" id="btn-usar-mapa" class="btn btn-sm">Usar</button>
           <a href="{% url 'adicionar_mapa' combate.id %}" target="_blank" rel="noopener" id="btn-add-mapa-link" class="btn btn-sm">Novo</a>
+          <!-- Grade opcional para precisão de movimento -->
+          <label style="margin-left:8px; display:inline-flex; align-items:center; gap:4px;">
+            <input type="checkbox" id="grid-enable"> Grade
+          </label>
+          <select id="grid-size" class="select-sm" title="Tamanho da grade" style="margin-left:4px;">
+            <option value="20">20px</option>
+            <option value="40" selected>40px</option>
+            <option value="60">60px</option>
+          </select>
         </div>
         {% endif %}
       </div>
@@ -292,6 +301,93 @@
     const wsPath = `${wsScheme}://${window.location.host}/ws/combate/${combateId}/`;
     const combateSocket = new WebSocket(wsPath);
 
+    // Persistência de preferências da grade por combate
+    const GRID_ENABLED_KEY = `combate:${combateId}:gridEnabled`;
+    const GRID_SIZE_KEY = `combate:${combateId}:gridSize`;
+    function persistGridState() {
+      const cb = document.getElementById('grid-enable');
+      const sel = document.getElementById('grid-size');
+      if (cb) localStorage.setItem(GRID_ENABLED_KEY, cb.checked ? '1' : '0');
+      if (sel) localStorage.setItem(GRID_SIZE_KEY, sel.value || '40');
+    }
+    function restoreGridStateIfNeeded() {
+      const cb = document.getElementById('grid-enable');
+      const sel = document.getElementById('grid-size');
+      const savedEnabled = localStorage.getItem(GRID_ENABLED_KEY);
+      const savedSize = localStorage.getItem(GRID_SIZE_KEY);
+      if (cb && !cb.dataset.restored && savedEnabled !== null) {
+        cb.checked = savedEnabled === '1';
+        cb.dataset.restored = '1';
+      }
+      if (sel && !sel.dataset.restored && savedSize) {
+        sel.value = savedSize;
+        sel.dataset.restored = '1';
+      }
+    }
+
+
+    // ====== Grade (grid) opcional para melhorar precisão com zoom ======
+  function gridEnabled(){
+      const cb = document.getElementById('grid-enable');
+      return !!(cb && cb.checked);
+    }
+    function getGridSize(){
+      const sel = document.getElementById('grid-size');
+      const v = sel && parseInt(sel.value, 10);
+      return Number.isFinite(v) && v > 4 ? v : 40;
+    }
+    function applyGridSnap(x, y){
+      const cell = getGridSize();
+      x = Math.round(x / cell) * cell;
+      y = Math.round(y / cell) * cell;
+      return {x, y};
+    }
+    function updateGridForArea(mapaArea){
+      const canvas = mapaArea && mapaArea.querySelector('.mapa-canvas');
+      if (!canvas) return;
+      if (!gridEnabled()){
+        canvas.style.backgroundImage = '';
+        canvas.style.backgroundSize = '';
+        canvas.style.backgroundPosition = '';
+        return;
+      }
+      const scale = parseFloat(mapaArea.dataset.scale || '1');
+      const cell = getGridSize();
+      const cellPx = Math.max(4, Math.round(cell * scale));
+      // Linhas de 1px cinza claro; duas grades (x e y)
+      const line = 'rgba(0,0,0,0.12)';
+      canvas.style.backgroundImage = `
+        repeating-linear-gradient(to right, ${line} 0, ${line} 1px, transparent 1px, transparent ${cellPx}px),
+        repeating-linear-gradient(to bottom, ${line} 0, ${line} 1px, transparent 1px, transparent ${cellPx}px)
+      `;
+      canvas.style.backgroundSize = `${cellPx}px ${cellPx}px`;
+      canvas.style.backgroundPosition = '0 0';
+    }
+    function updateAllGrids(){
+      document.querySelectorAll("[id^='mapa-area-']").forEach(updateGridForArea);
+    }
+    function setupGridControls(){
+      const cb = document.getElementById('grid-enable');
+      const sel = document.getElementById('grid-size');
+      // Restaura estado salvo (se houver)
+      restoreGridStateIfNeeded();
+      if (cb && !cb.dataset.bound){
+        cb.addEventListener('change', () => { persistGridState(); updateAllGrids(); });
+        cb.dataset.bound = '1';
+      }
+      if (sel && !sel.dataset.bound){
+        sel.addEventListener('change', () => { persistGridState(); updateAllGrids(); });
+        sel.dataset.bound = '1';
+      }
+    }
+
+  // Torna helpers acessíveis globalmente para outros blocos/scripts
+  window.gridEnabled = gridEnabled;
+  window.getGridSize = getGridSize;
+  window.applyGridSnap = applyGridSnap;
+  window.updateGridForArea = updateGridForArea;
+  window.updateAllGrids = updateAllGrids;
+  window.setupGridControls = setupGridControls;
 
     // Utilitários para refresh parcial
     async function fetchPageDOM() {
@@ -302,6 +398,8 @@
     }
   async function refreshSelectors(selectors) {
       try {
+        // Garante que a preferência atual da grade não se perca durante o refresh
+        persistGridState();
         const doc = await fetchPageDOM();
         selectors.forEach(sel => {
           const target = document.querySelector(sel);
@@ -317,6 +415,9 @@
         rebindDragDrop();
   // Rebind ações do topo se a barra de turno foi trocada
     setupTopbarMapActions();
+  // Rebind e atualizar grade
+  setupGridControls();
+  updateAllGrids();
   // Rebind dos formulários para evitar navegação
   ajaxifyInteractionForms();
   // Rebind dos selects de personagem/ataque, para atualizar poderes
@@ -347,9 +448,12 @@
             x = Math.max(0, Math.min(baseW - tokenSize, x));
             y = Math.max(0, Math.min(baseH - tokenSize, y));
           }
+          // Snap opcional à grade
+          if (gridEnabled()) { const snapped = applyGridSnap(x, y); x = snapped.x; y = snapped.y; }
           fetch(`/combate/atualizar-posicao-token/${tokenId}/`, {
             method: 'POST',
             headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
             body: JSON.stringify({x,y})
           }).then(() => {
             const token = document.getElementById('token-' + tokenId);
@@ -404,6 +508,8 @@
           canvas.style.transform = `scale(${newScale})`;
           canvas.style.minWidth = (baseW * newScale) + 'px';
           canvas.style.minHeight = (baseH * newScale) + 'px';
+          // Atualiza grade com novo zoom
+          updateGridForArea(mapaArea);
 
           // Preserve focal point under cursor if event provided
           if (pivotEvent) {
@@ -572,6 +678,17 @@
         return;
       }
       switch (payload.evento) {
+        case 'token_move': {
+          // Atualiza apenas o token informado, sem refresh de colunas
+          const id = payload.posicao_id;
+          const x = payload.x; const y = payload.y;
+          const token = document.getElementById('token-' + id);
+          if (token && Number.isFinite(x) && Number.isFinite(y)) {
+            token.style.left = x + 'px';
+            token.style.top = y + 'px';
+          }
+          break;
+        }
         case 'rolagem': {
           // Acrescenta somente ao histórico
           const ativo = document.querySelector('.turnos-list .turno-item.ativo .turno-desc')
@@ -590,9 +707,8 @@
           }
           break;
         }
-        case 'adicionar_mapa':
-        case 'remover_mapa':
-        case 'mapa': {
+  case 'adicionar_mapa':
+  case 'remover_mapa': {
           await refreshSelectors(['.combate-col-right']);
           break;
         }
@@ -685,6 +801,9 @@
     document.querySelectorAll('.mapa-img').forEach(img => {
       if (img.complete) return; img.addEventListener('load', rafEqualize);
     });
+  // Inicializa controles e grade
+  setupGridControls();
+  updateAllGrids();
 
     // ====== Ações do topo: selecionar/usar/adicionar mapa ======
     function setupTopbarMapActions(){
@@ -747,12 +866,14 @@
           x = Math.max(0, Math.min(baseW - tokenSize, x));
           y = Math.max(0, Math.min(baseH - tokenSize, y));
         }
+  if (window.gridEnabled && window.gridEnabled()) { const snapped = window.applyGridSnap ? window.applyGridSnap(x, y) : {x, y}; x = snapped.x; y = snapped.y; }
         fetch(`/combate/atualizar-posicao-token/${tokenId}/`, {
           method: "POST",
           headers: {
             "X-CSRFToken": "{{ csrf_token }}",
             "Content-Type": "application/json"
           },
+          credentials: 'same-origin',
           body: JSON.stringify({x, y})
         }).then(() => {
           const token = document.getElementById("token-" + tokenId);
@@ -811,6 +932,7 @@
               canvas.style.transform = `scale(${newScale})`;
               canvas.style.minWidth = (baseW * newScale) + 'px';
               canvas.style.minHeight = (baseH * newScale) + 'px';
+              if (window.updateGridForArea) { window.updateGridForArea(mapaArea); }
             };
             setScaleLocal(scale);
           });
