@@ -15,6 +15,16 @@ from .models import Mapa, PosicaoPersonagem
 from .forms import MapaForm
 from salas.models import Sala
 import json
+import logging
+
+# Logger
+logger = logging.getLogger(__name__)
+
+try:  # Optional import for nicer error handling when using Cloudinary storage
+    from cloudinary.exceptions import Error as CloudinaryError  # type: ignore
+except Exception:  # pragma: no cover
+    class CloudinaryError(Exception):  # fallback
+        pass
 
 # Heurística: cliente espera JSON quando é AJAX/fetch
 def _expects_json(request) -> bool:
@@ -931,21 +941,37 @@ def adicionar_mapa(request, combate_id):
             if mapa_id:
                 mapa = get_object_or_404(Mapa, id=mapa_id, criado_por=request.user, combate__isnull=True)
                 mapa.combate = combate
-                mapa.save()
+                try:
+                    mapa.save()
+                except Exception as e:
+                    logger.exception("Erro ao vincular mapa existente ao combate")
+                    msg = f"Erro ao vincular mapa: {e}"
+                    if _expects_json(request):
+                        return JsonResponse({"status": "error", "error": msg}, status=400)
+                    from django.contrib import messages
+                    messages.error(request, msg)
+                    return render(request, 'combate/adicionar_mapa.html', {
+                        'form': form,
+                        'combate': combate,
+                        'mapas_globais': mapas_globais,
+                    }, status=400)
                 # CRIA OS TOKENS PARA TODOS OS PARTICIPANTES JÁ EXISTENTES
                 participantes = Participante.objects.filter(combate=combate)
                 for participante in participantes:
                     if not PosicaoPersonagem.objects.filter(mapa=mapa, participante=participante).exists():
                         PosicaoPersonagem.objects.create(mapa=mapa, participante=participante, x=10, y=10)
-                # Notifica todos os participantes sobre o novo mapa
-                channel_layer = get_channel_layer()
-                async_to_sync(channel_layer.group_send)(
-                    f'combate_{combate.id}',
-                    {
-                        'type': 'combate_message',
-                        'message': json.dumps({'evento': 'adicionar_mapa', 'descricao': f'Mapa {mapa.nome} adicionado ao combate.'})
-                    }
-                )
+                # Notifica todos os participantes sobre o novo mapa (tolerante a falhas)
+                try:
+                    channel_layer = get_channel_layer()
+                    async_to_sync(channel_layer.group_send)(
+                        f'combate_{combate.id}',
+                        {
+                            'type': 'combate_message',
+                            'message': json.dumps({'evento': 'adicionar_mapa', 'descricao': f'Mapa {mapa.nome} adicionado ao combate.'})
+                        }
+                    )
+                except Exception:
+                    logger.warning("Falha ao enviar evento 'adicionar_mapa' pelo Channels", exc_info=True)
                 if _expects_json(request):
                     return JsonResponse({'status': 'ok', 'evento': 'adicionar_mapa', 'combate_id': combate.id, 'mapa': {'id': mapa.id, 'nome': mapa.nome, 'url': mapa.imagem.url if getattr(mapa, 'imagem', None) else ''}})
                 return redirect('detalhes_combate', combate_id=combate_id)
@@ -956,21 +982,49 @@ def adicionar_mapa(request, combate_id):
                 mapa = form.save(commit=False)
                 mapa.combate = combate
                 mapa.criado_por = request.user
-                mapa.save()
+                try:
+                    mapa.save()
+                except CloudinaryError as ce:
+                    logger.exception("Falha ao enviar imagem do mapa para Cloudinary")
+                    msg = f"Erro ao enviar imagem: {ce}"
+                    if _expects_json(request):
+                        return JsonResponse({"status": "error", "error": msg}, status=400)
+                    from django.contrib import messages
+                    messages.error(request, msg)
+                    return render(request, 'combate/adicionar_mapa.html', {
+                        'form': form,
+                        'combate': combate,
+                        'mapas_globais': mapas_globais,
+                    }, status=400)
+                except Exception as e:
+                    logger.exception("Erro inesperado ao salvar Mapa")
+                    msg = f"Erro inesperado ao salvar o mapa: {e}"
+                    if _expects_json(request):
+                        return JsonResponse({"status": "error", "error": msg}, status=500)
+                    from django.contrib import messages
+                    messages.error(request, msg)
+                    return render(request, 'combate/adicionar_mapa.html', {
+                        'form': form,
+                        'combate': combate,
+                        'mapas_globais': mapas_globais,
+                    }, status=500)
                 # CRIA OS TOKENS PARA TODOS OS PARTICIPANTES JÁ EXISTENTES
                 participantes = Participante.objects.filter(combate=combate)
                 for participante in participantes:
                     if not PosicaoPersonagem.objects.filter(mapa=mapa, participante=participante).exists():
                         PosicaoPersonagem.objects.create(mapa=mapa, participante=participante, x=10, y=10)
-                # Notifica todos os participantes sobre o novo mapa
-                channel_layer = get_channel_layer()
-                async_to_sync(channel_layer.group_send)(
-                    f'combate_{combate.id}',
-                    {
-                        'type': 'combate_message',
-                        'message': json.dumps({'evento': 'adicionar_mapa', 'descricao': f'Mapa {mapa.nome} adicionado ao combate.'})
-                    }
-                )
+                # Notifica todos os participantes sobre o novo mapa (tolerante a falhas)
+                try:
+                    channel_layer = get_channel_layer()
+                    async_to_sync(channel_layer.group_send)(
+                        f'combate_{combate.id}',
+                        {
+                            'type': 'combate_message',
+                            'message': json.dumps({'evento': 'adicionar_mapa', 'descricao': f'Mapa {mapa.nome} adicionado ao combate.'})
+                        }
+                    )
+                except Exception:
+                    logger.warning("Falha ao enviar evento 'adicionar_mapa' pelo Channels", exc_info=True)
                 if _expects_json(request):
                     return JsonResponse({'status': 'ok', 'evento': 'adicionar_mapa', 'combate_id': combate.id, 'mapa': {'id': mapa.id, 'nome': mapa.nome, 'url': mapa.imagem.url if getattr(mapa, 'imagem', None) else ''}})
                 return redirect('detalhes_combate', combate_id=combate_id)
@@ -987,15 +1041,18 @@ def remover_mapa(request, combate_id, mapa_id):
     nome = mapa.nome
     mapa.combate = None  # Apenas desvincula do combate
     mapa.save()
-    # Notifica todos os participantes sobre a remoção do mapa
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        f'combate_{combate_id}',
-        {
-            'type': 'combate_message',
-            'message': json.dumps({'evento': 'remover_mapa', 'descricao': f'Mapa {nome} removido do combate.'})
-        }
-    )
+    # Notifica todos os participantes sobre a remoção do mapa (tolerante a falhas)
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'combate_{combate_id}',
+            {
+                'type': 'combate_message',
+                'message': json.dumps({'evento': 'remover_mapa', 'descricao': f'Mapa {nome} removido do combate.'})
+            }
+        )
+    except Exception:
+        logger.warning("Falha ao enviar evento 'remover_mapa' pelo Channels", exc_info=True)
     if _expects_json(request):
         return JsonResponse({'status': 'ok', 'evento': 'remover_mapa', 'combate_id': combate_id, 'mapa_id': mapa_id, 'nome': nome})
     return redirect('detalhes_combate', combate_id=combate_id)
