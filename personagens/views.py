@@ -96,7 +96,7 @@ def criar_personagem(request):
 
 @login_required
 def listar_personagens(request):
-    personagens = Personagem.objects.filter(usuario=request.user)
+    personagens = Personagem.objects.filter(usuario=request.user, is_npc=False)
     return render(request, 'personagens/listar_personagens.html', {'personagens': personagens})
 
 
