@@ -84,3 +84,43 @@ class InventarioForm(forms.ModelForm):
             'itens': forms.SelectMultiple(attrs={'size': 10}),  # ou CheckboxSelectMultiple
         }
 
+
+# ---- NPC Forms (sem vantagens e sem inventário; poderes sem origens) ----
+class PersonagemNPCForm(forms.ModelForm):
+    class Meta:
+        model = Personagem
+        fields = [
+            'foto',
+            'nome',
+            'nivel_poder',
+            # Características
+            'forca', 'vigor', 'destreza', 'agilidade', 'luta', 'inteligencia', 'prontidao', 'presenca',
+            # Defesas
+            'aparar', 'esquivar', 'fortitude', 'vontade', 'resistencia', 'penalidade_resistencia', 'condicao',
+            # Perícias
+            'acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao', 'especialidade',
+            'furtividade', 'intimidacao', 'intuicao', 'investigacao', 'percepcao', 'persuasao',
+            'prestidigitacao', 'tecnologia', 'tratamento', 'veiculos', 'historia', 'sobrevivencia',
+            # Campo especialidade_casting_ability
+            'especialidade_casting_ability',
+        ]
+        exclude = ['usuario']
+
+
+class PoderNPCForm(forms.ModelForm):
+    class Meta:
+        model = Poder
+        fields = [
+            'nome', 'tipo', 'modo', 'nivel_efeito', 'bonus_ataque',
+            'defesa_ativa', 'defesa_passiva', 'casting_ability',
+        ]
+
+
+PoderNPCFormSet = inlineformset_factory(
+    Personagem,
+    Poder,
+    form=PoderNPCForm,
+    extra=1,
+    can_delete=True
+)
+

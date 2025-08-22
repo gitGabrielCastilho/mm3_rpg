@@ -33,6 +33,15 @@
       </div>
       {% with perfil=user.perfilusuario %}
         {% if perfil.sala_atual %}
+          {% if perfil.tipo == 'game_master' %}
+          <div class="dropdown">
+            <button class="dropbtn">NPCs ▾</button>
+            <div class="dropdown-content">
+              <a href="{% url 'listar_npcs' %}">Meus NPCs</a>
+              <a href="{% url 'criar_npc' perfil.sala_atual.id %}">Criar NPC</a>
+            </div>
+          </div>
+          {% endif %}
           <div class="dropdown">
             <button class="dropbtn">Combate & Mapas ▾</button>
             <div class="dropdown-content">

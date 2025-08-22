@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load filtros %}
+
+{% block content %}
+<div class="personagem-form-center">
+  <h1 class="personagem-form-title">Editar NPC</h1>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="personagem-form-fields">
+      <div class="linha-topo" style="display:flex; gap:2rem; flex-wrap:wrap; align-items:flex-start;">
+        <div class="campo-nome" style="flex:1 1 200px; min-width:180px;">
+          {{ form.nome.label_tag }} {{ form.nome }}
+        </div>
+        <div class="campo-foto" style="flex:2 1 320px; min-width:260px;">
+          {{ form.foto.label_tag }} {{ form.foto }}
+          {% if form.instance.foto %}
+            <br>
+            <img src="{{ form.instance.foto.url }}" alt="Foto atual" style="max-width:100px; margin-top:0.4rem;">
+          {% endif %}
+        </div>
+        <div class="campo-np" style="flex:1 1 160px; min-width:140px;">
+          {{ form.nivel_poder.label_tag }} {{ form.nivel_poder }}
+        </div>
+      </div>
+
+      <h2>Características</h2>
+      <div class="caracteristicas-grid espacamento-campos" style="display:grid; grid-template-columns:repeat(4, minmax(110px,1fr)); gap:1.5rem 2.5rem; justify-items:center;">
+        <div class="campo-carac">{{ form.forca.label_tag }} {{ form.forca }}</div>
+        <div class="campo-carac">{{ form.vigor.label_tag }} {{ form.vigor }}</div>
+        <div class="campo-carac">{{ form.destreza.label_tag }} {{ form.destreza }}</div>
+        <div class="campo-carac">{{ form.prontidao.label_tag }} {{ form.prontidao }}</div>
+        <div class="campo-carac">{{ form.presenca.label_tag }} {{ form.presenca }}</div>
+        <div class="campo-carac">{{ form.inteligencia.label_tag }} {{ form.inteligencia }}</div>
+        <div class="campo-carac">{{ form.luta.label_tag }} {{ form.luta }}</div>
+        <div class="campo-carac">{{ form.agilidade.label_tag }} {{ form.agilidade }}</div>
+      </div>
+
+      <h2>Defesas</h2>
+      <div class="defesas-grid" style="display:grid; grid-template-columns:repeat(3, minmax(140px,1fr)); gap:1.8rem 3rem; justify-items:center; margin-bottom:2rem;">
+        <div class="campo-def">{{ form.aparar.label_tag }} {{ form.aparar }}</div>
+        <div class="campo-def">{{ form.esquivar.label_tag }} {{ form.esquivar }}</div>
+        <div class="campo-def">{{ form.resistencia.label_tag }} {{ form.resistencia }}</div>
+        <div class="campo-def">{{ form.vontade.label_tag }} {{ form.vontade }}</div>
+        <div class="campo-def">{{ form.fortitude.label_tag }} {{ form.fortitude }}</div>
+        <div></div>
+      </div>
+
+      <h2>Perícias</h2>
+      <div>
+        {{ form.especialidade_casting_ability.label_tag }} {{ form.especialidade_casting_ability }}
+      </div>
+      <div class="pericias-grid-4" style="display:grid; grid-template-columns:repeat(4, minmax(140px,1fr)); gap:1.4rem 2.2rem; justify-items:center; margin-bottom:2rem;">
+        {% for campo in pericias_col1 %}
+          {% with field=form|lookup:campo %}
+            <div class="pericia-campo" style="display:flex; flex-direction:column; align-items:center;">
+              <label style="font-weight:bold; margin-bottom:0.25rem;">{{ field.label }}</label>
+              {{ field }}
+            </div>
+          {% endwith %}
+        {% endfor %}
+        {% for campo in pericias_col2 %}
+          {% with field=form|lookup:campo %}
+            <div class="pericia-campo" style="display:flex; flex-direction:column; align-items:center;">
+              <label style="font-weight:bold; margin-bottom:0.25rem;">{{ field.label }}</label>
+              {{ field }}
+            </div>
+          {% endwith %}
+        {% endfor %}
+      </div>
+
+      <h2>Poderes</h2>
+      <div id="empty-poder-form" style="display:none;">
+        <div class="poder-form poder-form-grid" style="border:1px solid #444; width:100%; position: relative;">
+          <div class="campo-poder">{{ formset.empty_form.nome.label_tag }}{{ formset.empty_form.nome }}</div>
+          <div class="campo-poder">{{ formset.empty_form.tipo.label_tag }}{{ formset.empty_form.tipo }}</div>
+          <div class="campo-poder">{{ formset.empty_form.modo.label_tag }}{{ formset.empty_form.modo }}</div>
+          <div class="campo-poder">{{ formset.empty_form.casting_ability.label_tag }}{{ formset.empty_form.casting_ability }}</div>
+          <div class="campo-poder">{{ formset.empty_form.nivel_efeito.label_tag }}{{ formset.empty_form.nivel_efeito }}</div>
+          <div class="campo-poder">{{ formset.empty_form.bonus_ataque.label_tag }}{{ formset.empty_form.bonus_ataque }}</div>
+          <div class="campo-poder">{{ formset.empty_form.defesa_ativa.label_tag }}{{ formset.empty_form.defesa_ativa }}</div>
+          <div class="campo-poder">{{ formset.empty_form.defesa_passiva.label_tag }}{{ formset.empty_form.defesa_passiva }}</div>
+          <div class="span-2" style="margin-top:0.4rem; text-align:right; display:flex; gap:0.7rem; justify-content:flex-end;">
+            <span style="display:none;">{{ formset.empty_form.DELETE }}</span>
+            <button type="button" class="btn btn-danger" onclick="removerPoderLinha(this)">Remover</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="poder-form-outer">
+        <div id="poderes-formset">
+          {{ formset.management_form }}
+          <div style="display: flex; flex-direction: column; gap: 1.5rem; align-items: center;">
+            {% for form in formset %}
+              <div class="poder-form poder-form-grid" style="border:1px solid #444; width:100%; position: relative;">
+                <div class="campo-poder">{{ form.nome.label_tag }}{{ form.nome }}</div>
+                <div class="campo-poder">{{ form.tipo.label_tag }}{{ form.tipo }}</div>
+                <div class="campo-poder">{{ form.modo.label_tag }}{{ form.modo }}</div>
+                <div class="campo-poder">{{ form.casting_ability.label_tag }}{{ form.casting_ability }}</div>
+                <div class="campo-poder">{{ form.nivel_efeito.label_tag }}{{ form.nivel_efeito }}</div>
+                <div class="campo-poder">{{ form.bonus_ataque.label_tag }}{{ form.bonus_ataque }}</div>
+                <div class="campo-poder">{{ form.defesa_ativa.label_tag }}{{ form.defesa_ativa }}</div>
+                <div class="campo-poder">{{ form.defesa_passiva.label_tag }}{{ form.defesa_passiva }}</div>
+                {% if form.DELETE %}
+                  <div class="span-2" style="margin-top:0.4rem; text-align: right; display: flex; align-items: center; gap: 0.7rem; justify-content: flex-end;">
+                    <span style="display:none;">{{ form.DELETE }}</span>
+                    <button type="button" class="btn btn-danger" onclick="removerPoderLinha(this)">Remover</button>
+                  </div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:1.5rem; display:flex; gap:1rem; justify-content:center;">
+        <button type="button" class="btn btn-danger" onclick="adicionarPoder()">Adicionar Poder</button>
+        <button type="button" class="btn btn-danger" onclick="removerPoder()">Remover Último Poder</button>
+      </div>
+
+      <div style="margin-top:2rem; text-align:center;">
+        <input type="submit" value="Salvar NPC" class="btn">
+        <a href="{% url 'listar_npcs' %}" class="btn" style="margin-left:0.6rem;">Voltar</a>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+function adicionarPoder() {
+  const formsetDiv = document.getElementById('poderes-formset');
+  const poderesContainer = formsetDiv.querySelector('div[style*="flex-direction: column"]');
+  const totalFormsInput = document.getElementById('id_poder_set-TOTAL_FORMS');
+  if (!totalFormsInput) return;
+  const formIdx = parseInt(totalFormsInput.value);
+  const emptyDiv = document.getElementById('empty-poder-form').firstElementChild.cloneNode(true);
+  emptyDiv.innerHTML = emptyDiv.innerHTML.replace(/__prefix__/g, formIdx);
+  if (poderesContainer) poderesContainer.appendChild(emptyDiv);
+  else formsetDiv.appendChild(emptyDiv);
+  totalFormsInput.value = formIdx + 1;
+}
+function removerPoderLinha(botao) {
+  const formDiv = botao.closest('.poder-form');
+  if (!formDiv) return;
+  const deleteCheckbox = formDiv.querySelector('input[type="checkbox"][name$="-DELETE"]');
+  const totalFormsInput = document.getElementById('id_poder_set-TOTAL_FORMS');
+  if (!totalFormsInput) return;
+  if (deleteCheckbox) {
+    deleteCheckbox.checked = true;
+    formDiv.style.display = 'none';
+  } else {
+    formDiv.remove();
+    const forms = document.querySelectorAll('#poderes-formset .poder-form');
+    forms.forEach((div, idx) => {
+      div.querySelectorAll('[name]').forEach(el => {
+        if (el.name.includes('poder_set-')) {
+          el.name = el.name.replace(/poder_set-(\d+)-/, 'poder_set-' + idx + '-');
+        }
+      });
+      div.querySelectorAll('[id]').forEach(el => {
+        if (el.id.includes('poder_set-')) {
+          el.id = el.id.replace(/poder_set-(\d+)-/, 'poder_set-' + idx + '-');
+        }
+      });
+      div.querySelectorAll('label[for]').forEach(label => {
+        if (label.htmlFor && label.htmlFor.includes('poder_set-')) {
+          label.htmlFor = label.htmlFor.replace(/poder_set-(\d+)-/, 'poder_set-' + idx + '-');
+        }
+      });
+    });
+    totalFormsInput.value = forms.length;
+  }
+}
+function removerPoder() {
+  const formsetDiv = document.getElementById('poderes-formset');
+  const totalFormsInput = document.getElementById('id_poder_set-TOTAL_FORMS');
+  const poderForms = formsetDiv.querySelectorAll('.poder-form');
+  const formCount = parseInt(totalFormsInput.value);
+  if (formCount > 0) {
+    const lastForm = poderForms[poderForms.length - 1];
+    const deleteCheckbox = lastForm.querySelector('input[type="checkbox"][name$="DELETE"]');
+    if (deleteCheckbox) {
+      deleteCheckbox.checked = true;
+      lastForm.style.display = 'none';
+    } else {
+      formsetDiv.removeChild(lastForm);
+      totalFormsInput.value = formCount - 1;
+    }
+  }
+}
+</script>
+{% endblock %}

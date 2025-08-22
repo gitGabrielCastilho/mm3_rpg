@@ -47,34 +47,34 @@
         <select id="personagem_acao" name="personagem_acao" form="form-ataque" class="select-md">
           {% if combate.sala.game_master == user %}
             {% for p in participantes %}
-              <option value="{{ p.personagem.id }}">{{ p.personagem.nome }}</option>
+              <option value="{{ p.id }}" data-personagem-id="{{ p.personagem.id }}">{{ p.display_nome|default:p.personagem.nome }}</option>
             {% endfor %}
           {% else %}
             {% for p in participantes %}
               {% if p.personagem.usuario == user %}
-                <option value="{{ p.personagem.id }}">{{ p.personagem.nome }}</option>
+                <option value="{{ p.id }}" data-personagem-id="{{ p.personagem.id }}">{{ p.display_nome|default:p.personagem.nome }}</option>
               {% endif %}
             {% endfor %}
           {% endif %}
         </select>
         <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-d20" class="inline-form">
           {% csrf_token %}
-          <input type="hidden" name="personagem_acao" id="personagem_acao_hidden_d20" value="{{ participantes.0.personagem.id }}">
+          <input type="hidden" name="personagem_acao" id="personagem_acao_hidden_d20" value="{{ participantes.0.id }}">
           <button type="submit" name="rolar_d20" value="1" class="btn btn-sm">Rolar d20</button>
         </form>
       </div>
 
       <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-ataque" class="combate-card ataque-card">
         {% csrf_token %}
-  <input type="hidden" name="personagem_acao" id="personagem_acao_hidden" value="{{ participantes.0.personagem.id }}">
+  <input type="hidden" name="personagem_acao" id="personagem_acao_hidden" value="{{ participantes.0.id }}">
   <!-- Hidden extras para manter sincronização existente -->
-  <input type="hidden" id="personagem_acao_hidden_pericia" value="{{ participantes.0.personagem.id }}">
-  <input type="hidden" id="personagem_acao_hidden_caracteristica" value="{{ participantes.0.personagem.id }}">
+  <input type="hidden" id="personagem_acao_hidden_pericia" value="{{ participantes.0.id }}">
+  <input type="hidden" id="personagem_acao_hidden_caracteristica" value="{{ participantes.0.id }}">
 
         <label for="alvo">Alvo(s):</label>
         <select id="alvo" name="alvo_id" multiple required size="4" class="multiselect-alvos">
           {% for p in participantes %}
-            <option value="{{ p.personagem.id }}">{{ p.personagem.nome }}</option>
+            <option value="{{ p.id }}">{{ p.display_nome|default:p.personagem.nome }}</option>
           {% endfor %}
         </select>
 
@@ -239,6 +239,18 @@
           <button type="submit" class="btn btn-sm">Adicionar</button>
         </form>
         {% endif %}
+        {% if combate.sala.game_master == user and npcs_disponiveis %}
+        <form method="post" action="{% url 'adicionar_npc_participante' combate.id %}" class="combate-inline-form form-add-participante">
+          {% csrf_token %}
+          <label for="novo_npc" class="sr-only">Adicionar NPC</label>
+          <select name="npc_id" id="novo_npc" required class="select-sm" title="Adicionar NPC">
+            {% for npc in npcs_disponiveis %}
+              <option value="{{ npc.id }}">{{ npc.nome }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-sm">Adicionar NPC</button>
+        </form>
+        {% endif %}
       </div>
       <div id="status-card" class="combate-card">
         {% include 'combate/_tabela_participantes.html' %}
@@ -253,14 +265,16 @@
     const poderSelect = document.getElementById('poder');
     if (!select) return;
     function syncPersonagemAcao() {
-      const val = select.value;
+      const val = select.value; // participante id
+      const selectedOpt = select.options[select.selectedIndex];
+      const personagemId = selectedOpt ? selectedOpt.getAttribute('data-personagem-id') : '';
       const h1 = document.getElementById('personagem_acao_hidden');
       const h2 = document.getElementById('personagem_acao_hidden_pericia');
       const h3 = document.getElementById('personagem_acao_hidden_caracteristica');
       const h4 = document.getElementById('personagem_acao_hidden_d20');
       if (h1) h1.value = val; if (h2) h2.value = val; if (h3) h3.value = val; if (h4) h4.value = val;
       if (poderSelect) {
-        fetch('/combate/poderes-personagem-ajax/?personagem_id=' + val)
+        fetch('/combate/poderes-personagem-ajax/?personagem_id=' + personagemId)
           .then(resp => resp.json())
           .then(data => {
             poderSelect.innerHTML = '';

@@ -18,4 +18,9 @@
   {% endfor %}
 </ul>
 <a href="{% url 'listar_salas' %}">Voltar para Salas</a>
+{% if request.user == sala.game_master %}
+  <div style="margin-top: 1rem;">
+    <a class="btn" href="{% url 'criar_npc' sala.id %}">Criar NPC nesta sala</a>
+  </div>
+{% endif %}
 {% endblock %}

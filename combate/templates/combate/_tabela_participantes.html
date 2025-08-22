@@ -19,7 +19,7 @@
           <span>—</span>
         {% endif %}
       </td>
-      <td>{{ p.personagem.nome }}</td>
+  <td>{{ p.display_nome|default:p.personagem.nome }}</td>
       <td>{{ p.dano }}</td>
       <td>{{ p.aflicao }}</td>
       <td>

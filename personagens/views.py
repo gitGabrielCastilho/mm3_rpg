@@ -1,9 +1,13 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from .forms import CadastroForm, PersonagemForm, PoderForm, InventarioForm
+from .forms import (
+    CadastroForm, PersonagemForm, PoderForm, InventarioForm,
+    PersonagemNPCForm, PoderNPCFormSet
+)
 from .models import Personagem, Poder, Inventario
 from django.core.exceptions import ValidationError
 from django.forms import inlineformset_factory
+from salas.models import Sala
 
 
 PoderFormSet = inlineformset_factory(
@@ -193,6 +197,107 @@ def ficha_personagem(request, personagem_id):
         'categorias': categorias,
         'poderes_de_item': poderes_de_item
     })
+
+
+# ------- NPC: criação restrita ao GM da sala -------
+@login_required
+def criar_npc(request, sala_id):
+    sala = get_object_or_404(Sala, id=sala_id)
+    if sala.game_master != request.user:
+        return redirect('listar_salas')
+
+    if request.method == 'POST':
+        form = PersonagemNPCForm(request.POST, request.FILES)
+        formset = PoderNPCFormSet(request.POST, request.FILES, prefix='poder_set')
+        if form.is_valid() and formset.is_valid():
+            npc = form.save(commit=False)
+            # Dono será o GM para controle; sem vantagens/inventário
+            npc.usuario = request.user
+            npc.is_npc = True
+            npc.save()
+            poderes = formset.save(commit=False)
+            for poder in poderes:
+                poder.personagem = npc
+                poder.save()
+            formset.save_m2m()
+            return redirect('listar_npcs')
+    else:
+        form = PersonagemNPCForm()
+        formset = PoderNPCFormSet(prefix='poder_set')
+
+    pericias = [
+        'acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao',
+        'especialidade', 'furtividade', 'intimidacao', 'intuicao', 'investigacao',
+        'percepcao', 'persuasao', 'prestidigitacao', 'tecnologia', 'tratamento',
+        'veiculos', 'historia', 'sobrevivencia'
+    ]
+    meio = len(pericias) // 2 + len(pericias) % 2
+    context = {
+        'form': form,
+        'formset': formset,
+        'caracteristicas': [
+            'forca', 'vigor', 'destreza', 'agilidade', 'luta', 'inteligencia', 'prontidao', 'presenca'
+        ],
+        'defesas': ['aparar', 'esquivar', 'fortitude', 'vontade', 'resistencia'],
+        'pericias_col1': pericias[:meio],
+        'pericias_col2': pericias[meio:],
+        'sala': sala,
+    }
+    return render(request, 'personagens/criar_npc.html', context)
+
+
+@login_required
+def listar_npcs(request):
+    # Apenas o GM pode ver seus próprios NPCs
+    npcs = Personagem.objects.filter(usuario=request.user, is_npc=True).order_by('nome')
+    return render(request, 'personagens/listar_npcs.html', {'npcs': npcs})
+
+
+@login_required
+def editar_npc(request, personagem_id):
+    npc = get_object_or_404(Personagem, id=personagem_id, usuario=request.user, is_npc=True)
+    if request.method == 'POST':
+        form = PersonagemNPCForm(request.POST, request.FILES, instance=npc)
+        formset = PoderNPCFormSet(request.POST, request.FILES, instance=npc, prefix='poder_set')
+        if form.is_valid() and formset.is_valid():
+            npc = form.save(commit=False)
+            npc.is_npc = True
+            npc.usuario = request.user
+            npc.save()
+            formset.save()
+            return redirect('listar_npcs')
+    else:
+        form = PersonagemNPCForm(instance=npc)
+        formset = PoderNPCFormSet(instance=npc, prefix='poder_set')
+
+    pericias = [
+        'acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao',
+        'especialidade', 'furtividade', 'intimidacao', 'intuicao', 'investigacao',
+        'percepcao', 'persuasao', 'prestidigitacao', 'tecnologia', 'tratamento',
+        'veiculos', 'historia', 'sobrevivencia'
+    ]
+    meio = len(pericias) // 2 + len(pericias) % 2
+    context = {
+        'form': form,
+        'formset': formset,
+        'caracteristicas': [
+            'forca', 'vigor', 'destreza', 'agilidade', 'luta', 'inteligencia', 'prontidao', 'presenca'
+        ],
+        'defesas': ['aparar', 'esquivar', 'fortitude', 'vontade', 'resistencia'],
+        'pericias_col1': pericias[:meio],
+        'pericias_col2': pericias[meio:],
+        'npc': npc,
+    }
+    return render(request, 'personagens/editar_npc.html', context)
+
+
+@login_required
+def excluir_npc(request, personagem_id):
+    npc = get_object_or_404(Personagem, id=personagem_id, usuario=request.user, is_npc=True)
+    if request.method == 'POST':
+        npc.delete()
+        return redirect('listar_npcs')
+    return render(request, 'personagens/excluir_npc.html', {'npc': npc})
 
 
 

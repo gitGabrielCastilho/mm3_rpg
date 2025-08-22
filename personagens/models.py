@@ -17,6 +17,7 @@ CASTING_ABILITY_CHOICES = [
 
 
 class Personagem(models.Model):
+    is_npc = models.BooleanField(default=False)
 
     especialidade_casting_ability = models.CharField(
         max_length=20,
