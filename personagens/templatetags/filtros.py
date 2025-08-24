@@ -33,3 +33,15 @@ def get_perfil(context):
     except Exception:
         return None
 
+@register.simple_tag
+def get_perfil_de(usuario):
+        """Return PerfilUsuario for the given user or None if missing.
+
+        Use in templates that iterate over users/participants:
+            {% get_perfil_de participante as perfil %}
+        """
+        try:
+                return getattr(usuario, 'perfilusuario', None)
+        except Exception:
+                return None
+

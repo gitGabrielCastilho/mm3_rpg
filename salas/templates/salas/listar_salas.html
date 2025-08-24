@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load filtros %}
 {% block content %}
 <div class="salas-center">
   <h2 class="salas-title">Salas Disponíveis</h2>
@@ -19,10 +20,10 @@
         <strong>Participantes:</strong>
         <ul class="participantes-list">
           {% for participante in sala_atual.participantes.all %}
-            {% with perfil=participante.perfilusuario %}
+            {% get_perfil_de participante as perfil %}
               <li>
                 <span class="participante-nome">{{ participante.username }}</span>
-                {% if perfil.sala_atual and perfil.sala_atual.id == sala_atual.id %}
+                {% if perfil and perfil.sala_atual and perfil.sala_atual.id == sala_atual.id %}
                   <span class="status-badge online">conectado</span>
                 {% else %}
                   <span class="status-badge offline">offline</span>
@@ -31,7 +32,6 @@
                   <span class="status-badge gm">GM</span>
                 {% endif %}
               </li>
-            {% endwith %}
           {% empty %}
             <li><em>Nenhum participante ainda.</em></li>
           {% endfor %}

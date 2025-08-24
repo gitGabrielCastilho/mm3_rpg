@@ -23,7 +23,12 @@ def calcular_valor(rarity):
         return 0
 
 def itens(request):
-    sala_atual = request.user.perfilusuario.sala_atual  # ajuste conforme seu modelo de perfil
+    # Handle users without PerfilUsuario gracefully
+    sala_atual = None
+    try:
+        sala_atual = request.user.perfilusuario.sala_atual  # ajuste conforme seu modelo de perfil
+    except Exception:
+        sala_atual = None
     if not sala_atual:
         # Usuário fora de sala: só pode ver itens base
         itens = Item.objects.filter(sala__isnull=True)
