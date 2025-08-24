@@ -16,6 +16,9 @@ from django import forms
 from personagens.models import PerfilUsuario
 from django.contrib import messages
 from django.contrib.auth.hashers import make_password, check_password
+import logging
+
+logger = logging.getLogger(__name__)
 
 class SalaForm(forms.ModelForm):
     class Meta:
@@ -122,15 +125,18 @@ def entrar_sala(request, sala_id):
     sala.jogadores.add(request.user)
     # Notifica todos os participantes da sala sobre a entrada após commit
     def send_event():
-        print(f"[Channels] Enviando evento ENTRADA para sala_{sala.id} ({request.user.username})")
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f'sala_{sala.id}',
-            {
-                'type': 'sala_message',
-                'message': {'evento': 'entrada', 'usuario': request.user.username}
-            }
-        )
+        try:
+            print(f"[Channels] Enviando evento ENTRADA para sala_{sala.id} ({request.user.username})")
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'sala_{sala.id}',
+                {
+                    'type': 'sala_message',
+                    'message': {'evento': 'entrada', 'usuario': request.user.username}
+                }
+            )
+        except Exception:
+            logger.warning("Falha ao enviar evento 'entrada' via Channels (ignorado)", exc_info=True)
     transaction.on_commit(send_event)
     return redirect('listar_combates', sala_id=sala.id)
 
@@ -144,15 +150,18 @@ def sair_sala(request):
     # Notifica todos os participantes da sala sobre a saída após commit
     if sala:
         def send_event():
-            print(f"[Channels] Enviando evento SAIDA para sala_{sala.id} ({request.user.username})")
-            channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(
-                f'sala_{sala.id}',
-                {
-                    'type': 'sala_message',
-                    'message': {'evento': 'saida', 'usuario': request.user.username}
-                }
-            )
+            try:
+                print(f"[Channels] Enviando evento SAIDA para sala_{sala.id} ({request.user.username})")
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    f'sala_{sala.id}',
+                    {
+                        'type': 'sala_message',
+                        'message': {'evento': 'saida', 'usuario': request.user.username}
+                    }
+                )
+            except Exception:
+                logger.warning("Falha ao enviar evento 'saida' via Channels (ignorado)", exc_info=True)
         transaction.on_commit(send_event)
     return redirect('listar_salas')
 

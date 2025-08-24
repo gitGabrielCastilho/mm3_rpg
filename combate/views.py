@@ -63,14 +63,17 @@ def criar_combate(request, sala_id):
             ordem.append((p, iniciativa))
 
         # Notifica todos os participantes sobre o novo combate
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f'combate_{combate.id}',
-            {
-                'type': 'combate_message',
-                'message': json.dumps({'evento': 'novo_combate', 'descricao': f'Combate criado na sala {sala.nome}.'})
-            }
-        )
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'combate_{combate.id}',
+                {
+                    'type': 'combate_message',
+                    'message': json.dumps({'evento': 'novo_combate', 'descricao': f'Combate criado na sala {sala.nome}.'})
+                }
+            )
+        except Exception:
+            logger.warning("Falha ao enviar evento 'novo_combate' via Channels (ignorado)", exc_info=True)
         if _expects_json(request):
             return JsonResponse({'status': 'ok', 'evento': 'novo_combate', 'combate_id': combate.id, 'sala_id': sala.id})
         return redirect('detalhes_combate', combate_id=combate.id)
@@ -193,14 +196,17 @@ def passar_turno(request, combate_id):
         proximo.save()
 
     # Notifica todos os participantes sobre o avanço de turno
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        f'combate_{combate.id}',
-        {
-            'type': 'combate_message',
-            'message': json.dumps({'evento': 'avancar_turno', 'descricao': 'Turno avançado.'})
-        }
-    )
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'combate_{combate.id}',
+            {
+                'type': 'combate_message',
+                'message': json.dumps({'evento': 'avancar_turno', 'descricao': 'Turno avançado.'})
+            }
+        )
+    except Exception:
+        logger.warning("Falha ao enviar evento 'avancar_turno' via Channels (ignorado)", exc_info=True)
     if _expects_json(request):
         return JsonResponse({'status': 'ok', 'evento': 'avancar_turno', 'combate_id': combate.id})
     return redirect('detalhes_combate', combate_id=combate.id)
@@ -238,14 +244,17 @@ def iniciar_turno(request, combate_id):
     )
     messages.success(request, f"Turno iniciado para {primeiro_participante.personagem.nome}.")
     # Notifica todos os participantes sobre o início do turno
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        f'combate_{combate.id}',
-        {
-            'type': 'combate_message',
-            'message': json.dumps({'evento': 'iniciar_turno', 'descricao': f'Turno iniciado para {primeiro_participante.personagem.nome}.'})
-        }
-    )
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'combate_{combate.id}',
+            {
+                'type': 'combate_message',
+                'message': json.dumps({'evento': 'iniciar_turno', 'descricao': f'Turno iniciado para {primeiro_participante.personagem.nome}.'})
+            }
+        )
+    except Exception:
+        logger.warning("Falha ao enviar evento 'iniciar_turno' via Channels (ignorado)", exc_info=True)
     if _expects_json(request):
         return JsonResponse({
             'status': 'ok',
@@ -315,14 +324,17 @@ def finalizar_combate(request, combate_id):
     combate.save()
     Turno.objects.filter(combate=combate, ativo=True).update(ativo=False)
     # Notifica todos os participantes sobre o fim do combate
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        f'combate_{combate.id}',
-        {
-            'type': 'combate_message',
-            'message': json.dumps({'evento': 'finalizar_combate', 'descricao': 'Combate finalizado.'})
-        }
-    )
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'combate_{combate.id}',
+            {
+                'type': 'combate_message',
+                'message': json.dumps({'evento': 'finalizar_combate', 'descricao': 'Combate finalizado.'})
+            }
+        )
+    except Exception:
+        logger.warning("Falha ao enviar evento 'finalizar_combate' via Channels (ignorado)", exc_info=True)
     messages.success(request, "Combate finalizado.")
     if _expects_json(request):
         return JsonResponse({'status': 'ok', 'evento': 'finalizar_combate', 'combate_id': combate.id, 'sala_id': combate.sala.id})
@@ -898,14 +910,17 @@ def adicionar_participante(request, combate_id):
     if mapa:
         PosicaoPersonagem.objects.create(mapa=mapa, participante=participante, x=10, y=10)
     # Notifica todos os participantes sobre a adição
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        f'combate_{combate.id}',
-        {
-            'type': 'combate_message',
-            'message': json.dumps({'evento': 'adicionar_participante', 'descricao': f'{personagem.nome} entrou no combate.'})
-        }
-    )
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'combate_{combate.id}',
+            {
+                'type': 'combate_message',
+                'message': json.dumps({'evento': 'adicionar_participante', 'descricao': f'{personagem.nome} entrou no combate.'})
+            }
+        )
+    except Exception:
+        logger.warning("Falha ao enviar evento 'adicionar_participante' via Channels (ignorado)", exc_info=True)
     if _expects_json(request):
         return JsonResponse({
             'status': 'ok',
@@ -927,14 +942,17 @@ def remover_participante(request, combate_id, participante_id):
     nome = participante.personagem.nome
     participante.delete()
     # Notifica todos os participantes sobre a remoção
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        f'combate_{combate_id}',
-        {
-            'type': 'combate_message',
-            'message': json.dumps({'evento': 'remover_participante', 'descricao': f'{nome} foi removido do combate.'})
-        }
-    )
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'combate_{combate_id}',
+            {
+                'type': 'combate_message',
+                'message': json.dumps({'evento': 'remover_participante', 'descricao': f'{nome} foi removido do combate.'})
+            }
+        )
+    except Exception:
+        logger.warning("Falha ao enviar evento 'remover_participante' via Channels (ignorado)", exc_info=True)
     if _expects_json(request):
         return JsonResponse({'status': 'ok', 'evento': 'remover_participante', 'combate_id': combate_id, 'participante_id': participante_id, 'nome': nome})
     return redirect('detalhes_combate', combate_id=combate_id)
@@ -1084,14 +1102,17 @@ def adicionar_npc_participante(request, combate_id):
     if mapa:
         PosicaoPersonagem.objects.create(mapa=mapa, participante=participante, x=10, y=10)
     # Notifica todos
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        f'combate_{combate.id}',
-        {
-            'type': 'combate_message',
-            'message': json.dumps({'evento': 'adicionar_participante', 'descricao': f'{npc.nome} (NPC) entrou no combate.'})
-        }
-    )
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'combate_{combate.id}',
+            {
+                'type': 'combate_message',
+                'message': json.dumps({'evento': 'adicionar_participante', 'descricao': f'{npc.nome} (NPC) entrou no combate.'})
+            }
+        )
+    except Exception:
+        logger.warning("Falha ao enviar evento 'adicionar_participante' (NPC) via Channels (ignorado)", exc_info=True)
     if _expects_json(request):
         return JsonResponse({
             'status': 'ok',

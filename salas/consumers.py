@@ -1,16 +1,22 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
+import logging
 from channels.db import database_sync_to_async
 from django.core.cache import cache
 
 from personagens.models import PerfilUsuario
 
 
+logger = logging.getLogger(__name__)
+
 class SalaConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.sala_id = self.scope['url_route']['kwargs']['sala_id']
         self.sala_group_name = f'sala_{self.sala_id}'
-        await self.channel_layer.group_add(self.sala_group_name, self.channel_name)
+        try:
+            await self.channel_layer.group_add(self.sala_group_name, self.channel_name)
+        except Exception:
+            logger.warning("Falha ao group_add no Channels (ignorado)", exc_info=True)
         await self.accept()
         # Marca presença ao conectar
         await self._mark_presence(connected=True)
@@ -18,7 +24,10 @@ class SalaConsumer(AsyncWebsocketConsumer):
         await self._broadcast_presence()
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(self.sala_group_name, self.channel_name)
+        try:
+            await self.channel_layer.group_discard(self.sala_group_name, self.channel_name)
+        except Exception:
+            logger.warning("Falha ao group_discard no Channels (ignorado)", exc_info=True)
         # Marca ausência ao desconectar
         await self._mark_presence(connected=False)
         # Notifica clientes para atualizarem a sidebar
@@ -35,13 +44,16 @@ class SalaConsumer(AsyncWebsocketConsumer):
         return f"presence:sala:{self.sala_id}:user:{user_id}"
 
     async def _broadcast_presence(self):
-        await self.channel_layer.group_send(
-            self.sala_group_name,
-            {
-                'type': 'sala_message',
-                'message': {'tipo': 'presence', 'sala_id': int(self.sala_id)}
-            }
-        )
+        try:
+            await self.channel_layer.group_send(
+                self.sala_group_name,
+                {
+                    'type': 'sala_message',
+                    'message': {'tipo': 'presence', 'sala_id': int(self.sala_id)}
+                }
+            )
+        except Exception:
+            logger.warning("Falha ao group_send no Channels (ignorado)", exc_info=True)
 
     async def _mark_presence(self, connected: bool):
         user = self.scope.get('user')
