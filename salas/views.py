@@ -55,7 +55,7 @@ def criar_sala(request):
             sala.jogadores.add(request.user)
             sala.participantes.add(request.user)
             # Atualiza perfil do usuário
-            perfil, _ = PerfilUsuario.objects.get_or_create(user=request.user)
+            perfil, _ = PerfilUsuario.objects.get_or_create(user=request.user, defaults={'tipo': 'jogador'})
             perfil.sala_atual = sala
             perfil.tipo = 'game_master'
             perfil.save()
@@ -74,7 +74,7 @@ def listar_salas(request):
             Q(codigo__icontains=query) |
             Q(criador__username__icontains=query)
         )
-    perfil, _ = PerfilUsuario.objects.get_or_create(user=request.user)
+    perfil, _ = PerfilUsuario.objects.get_or_create(user=request.user, defaults={'tipo': 'jogador'})
     sala_atual = getattr(perfil, 'sala_atual', None)
     return render(request, 'salas/listar_salas.html', {'salas': salas, 'sala_atual': sala_atual, 'query': query})
 
@@ -107,7 +107,7 @@ def entrar_sala(request, sala_id):
         if not is_valid:
             messages.error(request, 'Senha incorreta para entrar na sala.')
             return render(request, 'salas/entrar_sala.html', { 'sala': sala })
-    perfil, _ = PerfilUsuario.objects.get_or_create(user=request.user)
+    perfil, _ = PerfilUsuario.objects.get_or_create(user=request.user, defaults={'tipo': 'jogador'})
     # Se já está em outra sala, remove
     if perfil.sala_atual and perfil.sala_atual != sala:
         # Opcional: pode remover o usuário da lista de participantes da sala antiga, se necessário
@@ -136,7 +136,7 @@ def entrar_sala(request, sala_id):
 
 @login_required
 def sair_sala(request):
-    perfil, _ = PerfilUsuario.objects.get_or_create(user=request.user)
+    perfil, _ = PerfilUsuario.objects.get_or_create(user=request.user, defaults={'tipo': 'jogador'})
     sala = perfil.sala_atual
     perfil.sala_atual = None
     perfil.tipo = 'jogador'
