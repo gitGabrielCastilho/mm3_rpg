@@ -31,7 +31,9 @@
           <a href="{% url 'listar_salas' %}">Minhas Salas</a>
         </div>
       </div>
-      {% with perfil=user.perfilusuario %}
+      {% load filtros %}
+      {% get_perfil as perfil %}
+      {% if perfil %}
         {% if perfil.sala_atual %}
           {% if perfil.tipo == 'game_master' %}
           <div class="dropdown">
@@ -56,7 +58,7 @@
             </div>
           </div>
         {% endif %}
-      {% endwith %}
+      {% endif %}
     {% else %}
       <a href="{% url 'login' %}">Login</a>
       <a href="{% url 'cadastrar_usuario' %}">Cadastro</a>
@@ -100,17 +102,19 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-{% if user.is_authenticated and user.perfilusuario.sala_atual %}
+{% if user.is_authenticated %}
+{% get_perfil as perfil %}
+{% if perfil and perfil.sala_atual %}
 <aside class="sidebar closed" id="sidebar">
   <button id="sidebar-toggle" class="sidebar-toggle" onclick="toggleSidebar()" title="Abrir/Fechar participantes">
     <span id="sidebar-toggle-icon">⮜</span>
   </button>
-  <h3 style="margin-top:0;">{{ user.perfilusuario.sala_atual.nome|default:'Sala' }}</h3>
+  <h3 style="margin-top:0;">{{ perfil.sala_atual.nome|default:'Sala' }}</h3>
   <div style="margin-bottom: 8px;">
-    <strong>Game Master:</strong> {{ user.perfilusuario.sala_atual.game_master.username }}
+    <strong>Game Master:</strong> {{ perfil.sala_atual.game_master.username }}
   </div>
   <div id="sidebar-participantes">
-    {% include 'salas/_sidebar_participantes.html' with sala=user.perfilusuario.sala_atual user=user %}
+    {% include 'salas/_sidebar_participantes.html' with sala=perfil.sala_atual user=user %}
   </div>
 </aside>
 <script>
@@ -137,11 +141,13 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% block sidebar_ws %}
-{% if user.is_authenticated and user.perfilusuario.sala_atual %}
+{% if user.is_authenticated %}
+{% get_perfil as perfil %}
+{% if perfil and perfil.sala_atual %}
 <script>
   console.log('Sidebar script carregado');
   document.addEventListener('DOMContentLoaded', function() {
-    const salaId = '{{ user.perfilusuario.sala_atual.id }}';
+  const salaId = '{{ perfil.sala_atual.id }}';
     const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const wsPath = `${wsScheme}://${window.location.host}/ws/sala/${salaId}/`;
     const salaSocket = new WebSocket(wsPath);

@@ -18,3 +18,18 @@ def dict_get(d, key):
 def lookup(form, campo):
     return form[campo]
 
+@register.simple_tag(takes_context=True)
+def get_perfil(context):
+    """Return PerfilUsuario for the authenticated user or None if missing.
+
+    Using this tag avoids RelatedObjectDoesNotExist errors when templates
+    access user.perfilusuario before a PerfilUsuario row exists.
+    """
+    request = context.get('request')
+    if not request or not getattr(request, 'user', None) or not request.user.is_authenticated:
+        return None
+    try:
+        return request.user.perfilusuario
+    except Exception:
+        return None
+

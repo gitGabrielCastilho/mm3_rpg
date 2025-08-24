@@ -1,4 +1,5 @@
 {# Template parcial para a tabela de participantes, reutilizável para AJAX #}
+{% load filtros %}
 <table id="tabela-participantes">
   <tr>
     <th>Foto</th>
@@ -6,7 +7,8 @@
     <th>Dano</th>
     <th>Aflição</th>
     <th>Ficha</th>
-      {% if user.perfilusuario.sala_atual.game_master == user %}
+  {% get_perfil as perfil %}
+  {% if perfil and perfil.sala_atual and perfil.sala_atual.game_master == user %}
         <th>Remover</th>
       {% endif %}
   </tr>
@@ -27,7 +29,7 @@
           <a href="{% url 'ficha_personagem' p.personagem.id %}" target="_blank" class="btn-link-ficha">Ver Ficha</a>
         {% endif %}
       </td>
-        {% if user.perfilusuario.sala_atual.game_master == user %}
+  {% if perfil and perfil.sala_atual and perfil.sala_atual.game_master == user %}
           <td>
             <form method="post" action="{% url 'remover_participante' combate.id p.id %}" class="form-remover-participante">
               {% csrf_token %}
