@@ -140,6 +140,8 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 </script>
+{% endif %}
+{% endif %}
 {% block sidebar_ws %}
 {% if user.is_authenticated %}
 {% get_perfil as perfil %}
@@ -172,7 +174,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 {% endif %}
 {% endblock %}
-{% endif %}
 
 <hr>
   {% if messages %}
