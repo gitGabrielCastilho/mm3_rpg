@@ -341,6 +341,31 @@ def finalizar_combate(request, combate_id):
     return redirect('listar_combates', sala_id=combate.sala.id)
 
 
+@require_POST
+def limpar_historico(request, combate_id):
+    """GM-only: remove all Turno records for a combate, effectively clearing the attack log."""
+    combate = get_object_or_404(Combate, id=combate_id)
+    # Apenas o GM da sala pode limpar o histórico
+    if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or combate.sala.game_master != request.user:
+        return redirect('home')
+    # Apaga todos os turnos deste combate
+    Turno.objects.filter(combate=combate).delete()
+    # Notifica clientes para atualizarem o histórico (tolerante a falhas)
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'combate_{combate.id}',
+            {
+                'type': 'combate_message',
+                'message': json.dumps({'evento': 'limpar_historico', 'descricao': 'Histórico limpo pelo GM.'})
+            }
+        )
+    except Exception:
+        logger.warning("Falha ao enviar evento 'limpar_historico' via Channels (ignorado)", exc_info=True)
+    if _expects_json(request):
+        return JsonResponse({'status': 'ok', 'evento': 'limpar_historico', 'combate_id': combate.id})
+    return redirect('detalhes_combate', combate_id=combate.id)
+
 
 @login_required
 def deletar_combate(request, combate_id):

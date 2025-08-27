@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .views import atualizar_posicao_token, remover_mapa_global, adicionar_mapa_global, listar_mapas, adicionar_mapa, remover_mapa, remover_participante, adicionar_participante, realizar_ataque ,criar_combate, detalhes_combate, passar_turno, listar_combates, iniciar_turno, avancar_turno, deletar_combate,finalizar_combate, adicionar_npc_participante
+from .views import atualizar_posicao_token, remover_mapa_global, adicionar_mapa_global, listar_mapas, adicionar_mapa, remover_mapa, remover_participante, adicionar_participante, realizar_ataque ,criar_combate, detalhes_combate, passar_turno, listar_combates, iniciar_turno, avancar_turno, deletar_combate,finalizar_combate, adicionar_npc_participante, limpar_historico
 from . import views_ajax
 
 urlpatterns = [
@@ -13,6 +13,7 @@ urlpatterns = [
     path('<int:combate_id>/iniciar-turno/', iniciar_turno, name='iniciar_turno'),
     path('<int:combate_id>/avancar-turno/', avancar_turno, name='avancar_turno'),
     path('<int:combate_id>/finalizar/', finalizar_combate, name='finalizar_combate'),
+    path('<int:combate_id>/limpar-historico/', limpar_historico, name='limpar_historico'),
     path('<int:combate_id>/deletar/', deletar_combate, name='deletar_combate'),
     path('<int:combate_id>/adicionar-participante/', adicionar_participante, name='adicionar_participante'),
     path('<int:combate_id>/adicionar-npc/', adicionar_npc_participante, name='adicionar_npc_participante'),

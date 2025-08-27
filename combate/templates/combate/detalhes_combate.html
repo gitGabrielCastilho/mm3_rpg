@@ -31,6 +31,12 @@
           {% csrf_token %}
           <button type="submit" class="btn btn-sm btn-danger" formnovalidate>Finalizar Combate</button>
         </form>
+        {% if combate.sala.game_master == user %}
+        <form method="post" action="{% url 'limpar_historico' combate.id %}" class="inline-form" onsubmit="return confirm('Limpar todo o histórico de ataques? Esta ação não pode ser desfeita.');">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm" formnovalidate>Limpar Histórico</button>
+        </form>
+        {% endif %}
       {% endif %}
       </div>
     </div>
@@ -722,6 +728,10 @@
           } else {
             await refreshSelectors(['#historico-card', '#status-card']);
           }
+          break;
+        }
+        case 'limpar_historico': {
+          await refreshSelectors(['.turno-topbar', '#historico-card', '#form-ataque']);
           break;
         }
   case 'adicionar_mapa':
