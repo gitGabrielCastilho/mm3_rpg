@@ -12,6 +12,10 @@ def participantes_sidebar(request, sala_id):
         key = f"presence:sala:{sala_id}:user:{u.id}"
         if cache.get(key, 0):
             online_ids.append(u.id)
+    # Otimismo: se este cliente está pedindo o sidebar, considere-o online
+    if request.user.is_authenticated and request.user in sala.participantes.all():
+        if request.user.id not in online_ids:
+            online_ids.append(request.user.id)
     return render(
         request,
         'salas/_sidebar_participantes.html',

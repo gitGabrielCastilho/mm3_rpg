@@ -83,11 +83,15 @@ class SalaConsumer(AsyncWebsocketConsumer):
             if count == 1:
                 await self._set_user_sala_atual(user.id, int(self.sala_id))
         else:
+            # Desconexão: não marque offline imediatamente para evitar flicker
+            # em reconexões rápidas. Mantém a presença até o TTL expirar.
+            # Se houver múltiplas conexões, podemos diminuir o contador, mas
+            # nunca deletar imediatamente; a limpeza final ocorre por TTL.
             if count > 1:
                 cache.set(key, count - 1, timeout=TTL)
             else:
-                cache.delete(key)
-                await self._clear_user_sala_if_matches(user.id, int(self.sala_id))
+                # Mantém 1 até o TTL vencer; heartbeat não renovará após desconectar
+                cache.set(key, 1, timeout=TTL)
 
     async def _presence_heartbeat(self):
         """Renova o TTL da presença sem alterar o contador."""

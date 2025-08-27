@@ -157,7 +157,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let pollTimer = null;
   let reconnectTimer = null;
   let refreshWhileOpenTimer = null;
-    let reconnectDelayMs = 5000; // backoff base
+  let reconnectDelayMs = 5000; // backoff base
+  let pingTimer = null;
 
     function refreshSidebar() {
       const url = `/salas/sidebar_participantes/${salaId}/?t=` + Date.now();
@@ -210,6 +211,15 @@ document.addEventListener('DOMContentLoaded', function() {
         // E mantém uma atualização leve periódica enquanto aberto, caso não cheguem mensagens de presença
         if (refreshWhileOpenTimer) { clearInterval(refreshWhileOpenTimer); }
         refreshWhileOpenTimer = setInterval(refreshSidebar, 15000);
+        // Keepalive ping para proxies que encerram conexões ociosas
+        if (pingTimer) { clearInterval(pingTimer); }
+        pingTimer = setInterval(() => {
+          try {
+            if (salaSocket && salaSocket.readyState === 1) {
+              salaSocket.send(JSON.stringify({ tipo: 'ping', t: Date.now() }));
+            }
+          } catch(_) {}
+        }, 20000);
       };
       salaSocket.onmessage = function(e) {
         // pequeno delay para garantir consistência
@@ -218,8 +228,14 @@ document.addEventListener('DOMContentLoaded', function() {
       salaSocket.onclose = function(e) {
         console.warn('[Sidebar WS] Fechado. Ativando polling e tentando reconectar...');
         if (refreshWhileOpenTimer) { clearInterval(refreshWhileOpenTimer); refreshWhileOpenTimer = null; }
+        if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
         startPolling();
         scheduleReconnect();
+      };
+      salaSocket.onerror = function(e) {
+        console.warn('[Sidebar WS] Erro:', e);
+        if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
+        try { salaSocket.close(); } catch(_) {}
       };
       salaSocket.onerror = function(e) {
         console.warn('[Sidebar WS] Erro:', e);
