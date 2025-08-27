@@ -72,7 +72,10 @@
   <input type="hidden" id="personagem_acao_hidden_caracteristica" value="{{ participantes.0.id }}">
 
         <label for="alvo">Alvo(s):</label>
-        <select id="alvo" name="alvo_id" multiple required size="4" class="multiselect-alvos">
+        <small id="alvo_hint" class="form-hint" style="display:block; margin:-4px 0 6px; color:#666; font-size:12px;">
+          Segure Ctrl (Windows/Linux) ou Cmd (macOS) para selecionar múltiplos; use Shift para selecionar intervalos.
+        </small>
+        <select id="alvo" name="alvo_id" multiple required size="4" class="multiselect-alvos" aria-describedby="alvo_hint" title="Segure Ctrl (Windows/Linux) ou Cmd (macOS) para seleção múltipla; Shift para intervalos.">
           {% for p in participantes %}
             <option value="{{ p.id }}">{{ p.display_nome|default:p.personagem.nome }}</option>
           {% endfor %}
