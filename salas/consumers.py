@@ -10,6 +10,7 @@ from personagens.models import PerfilUsuario
 logger = logging.getLogger(__name__)
 
 class SalaConsumer(AsyncWebsocketConsumer):
+    PRESENCE_TTL = 90  # seconds
     async def connect(self):
         self.sala_id = self.scope['url_route']['kwargs']['sala_id']
         self.sala_group_name = f'sala_{self.sala_id}'
@@ -36,6 +37,17 @@ class SalaConsumer(AsyncWebsocketConsumer):
     async def sala_message(self, event):
         message = event['message']
         await self.send(text_data=json.dumps(message))
+
+    async def receive(self, text_data=None, bytes_data=None):
+        """Handle client pings to keep presence fresh with a short TTL."""
+        try:
+            if text_data:
+                data = json.loads(text_data)
+                if isinstance(data, dict) and data.get('tipo') == 'ping':
+                    await self._refresh_presence_ttl()
+        except Exception:
+            # ignore malformed payloads
+            pass
 
     # ======== Helpers ========
     def _presence_key(self):
@@ -64,16 +76,26 @@ class SalaConsumer(AsyncWebsocketConsumer):
         count = cache.get(key, 0)
         if connected:
             count += 1
-            cache.set(key, count, timeout=24 * 60 * 60)
+            cache.set(key, count, timeout=self.PRESENCE_TTL)
             if count == 1:
                 await self._set_user_sala_atual(user.id, int(self.sala_id))
         else:
             if count > 1:
-                cache.set(key, count - 1, timeout=24 * 60 * 60)
+                cache.set(key, count - 1, timeout=self.PRESENCE_TTL)
             else:
                 cache.delete(key)
                 # Só limpa se ainda estiver apontando para esta sala
                 await self._clear_user_sala_if_matches(user.id, int(self.sala_id))
+
+    async def _refresh_presence_ttl(self):
+        """Refresh the presence TTL to keep user online while the socket is open."""
+        user = self.scope.get('user')
+        if not user or not getattr(user, 'is_authenticated', False):
+            return
+        key = self._presence_key()
+        count = cache.get(key, 0)
+        if count:
+            cache.set(key, count, timeout=self.PRESENCE_TTL)
 
     @database_sync_to_async
     def _set_user_sala_atual(self, user_id: int, sala_id: int):

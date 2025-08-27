@@ -153,7 +153,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const wsPath = `${wsScheme}://${window.location.host}/ws/sala/${salaId}/`;
     const salaSocket = new WebSocket(wsPath);
-    salaSocket.onmessage = function(e) {
+  let salaPingTimer = null;
+  function startPing(){ if (salaPingTimer) return; salaPingTimer = setInterval(() => { try { salaSocket.send(JSON.stringify({tipo:'ping'})); } catch(_) {} }, 30000); }
+  function stopPing(){ if (salaPingTimer) { clearInterval(salaPingTimer); salaPingTimer = null; } }
+  salaSocket.onopen = function(){ startPing(); };
+  salaSocket.onmessage = function(e) {
       console.log('[Sidebar WS] Mensagem recebida:', e.data);
       // Pequeno delay para garantir que o banco já atualizou
       setTimeout(function() {
@@ -169,6 +173,13 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     salaSocket.onclose = function(e) {
       console.warn('WebSocket da sala fechado.');
+      stopPing();
+      // Fallback: tenta um refresh para refletir desconexões após o fechamento
+      setTimeout(function(){
+        const salaId = '{{ perfil.sala_atual.id }}';
+        fetch(`/salas/sidebar_participantes/${salaId}/?t=` + Date.now())
+          .then(r=>r.text()).then(html => { const node = document.getElementById('sidebar-participantes'); if (node) node.innerHTML = html; });
+      }, 500);
     };
   });
 </script>

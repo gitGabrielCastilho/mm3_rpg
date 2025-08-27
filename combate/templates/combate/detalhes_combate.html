@@ -31,12 +31,6 @@
           {% csrf_token %}
           <button type="submit" class="btn btn-sm btn-danger" formnovalidate>Finalizar Combate</button>
         </form>
-        {% if combate.sala.game_master == user %}
-        <form method="post" action="{% url 'limpar_historico' combate.id %}" class="inline-form" onsubmit="return confirm('Limpar todo o histórico de ataques? Esta ação não pode ser desfeita.');">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-sm" formnovalidate>Limpar Histórico</button>
-        </form>
-        {% endif %}
       {% endif %}
       </div>
     </div>
@@ -124,7 +118,17 @@
 
       
 
-  <h3 class="combate-section-title">Histórico de Ataques</h3>
+  <div class="mapa-header-row">
+    <h3 class="combate-section-title" style="margin:0">Histórico de Ataques</h3>
+    {% if combate.sala.game_master == user %}
+    <div class="mapa-header-actions">
+      <form method="post" action="{% url 'limpar_historico' combate.id %}" class="combate-inline-form form-limpar-historico" onsubmit="return confirm('Limpar todo o histórico de ataques? Esta ação não pode ser desfeita.');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm" formnovalidate>Limpar Histórico</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
   <div id="historico-card" class="combate-card">
   <ul class="turnos-list">
         {% for turno in turnos %}
@@ -736,6 +740,7 @@
       document.querySelectorAll('.turno-topbar-actions form').forEach(bindAjax);
   document.querySelectorAll('.form-remover-participante').forEach(bindAjax);
   document.querySelectorAll('.form-add-participante').forEach(bindAjax);
+    document.querySelectorAll('.form-limpar-historico').forEach(bindAjax);
     }
 
     combateSocket.onmessage = async function(e) {

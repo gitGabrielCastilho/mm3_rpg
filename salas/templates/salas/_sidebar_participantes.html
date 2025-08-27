@@ -1,11 +1,9 @@
 {# Template parcial para a lista de participantes da sidebar #}
-{% load filtros %}
 <ul>
   {% for participante in sala.participantes.all %}
-    {% get_perfil_de participante as perfil %}
     <li>
       {{ participante.username }}
-      {% if perfil and perfil.sala_atual and perfil.sala_atual.id == sala.id %}
+      {% if participante.id in conectados %}
         <span style="color: green; font-size: 0.9em;">(conectado)</span>
       {% else %}
         <span style="color: #a00; font-size: 0.9em;">(não conectado)</span>
