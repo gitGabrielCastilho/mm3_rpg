@@ -235,7 +235,7 @@ document.addEventListener('DOMContentLoaded', function() {
       salaSocket.onerror = function(e) {
         console.warn('[Sidebar WS] Erro:', e);
         if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
-        try { salaSocket.close(); } catch(_) {}
+        // Não force close aqui; deixe o servidor decidir. Se fechar, onclose tratará reconexão.
       };
       salaSocket.onerror = function(e) {
         console.warn('[Sidebar WS] Erro:', e);
@@ -245,12 +245,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function scheduleReconnect() {
       if (reconnectTimer) return;
+      // Pequena aleatoriedade para evitar sincronizar reconexões de múltiplas abas
+      const jitter = Math.floor(Math.random() * 500);
       reconnectTimer = setTimeout(() => {
         reconnectTimer = null;
         // backoff exponencial com teto ~60s
         reconnectDelayMs = Math.min(reconnectDelayMs * 1.6, 60000);
         connectWS();
-      }, reconnectDelayMs);
+      }, reconnectDelayMs + jitter);
     }
 
     connectWS();

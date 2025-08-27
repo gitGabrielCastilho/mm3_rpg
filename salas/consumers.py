@@ -52,6 +52,20 @@ class SalaConsumer(AsyncWebsocketConsumer):
         message = event["message"]
         await self.send(text_data=json.dumps(message))
 
+    async def receive(self, text_data=None, bytes_data=None):
+        """Handle optional keepalive pings or ignore client messages.
+        Prevents unexpected disconnects when clients send JSON pings.
+        """
+        try:
+            if text_data:
+                payload = json.loads(text_data)
+                if isinstance(payload, dict) and payload.get("tipo") == "ping":
+                    # Optional pong to keep intermediaries happy
+                    await self.send(text_data=json.dumps({"tipo": "pong", "t": payload.get("t")}))
+        except Exception:
+            # Never crash on malformed input; just ignore
+            logger.debug("Ignoring malformed WS message", exc_info=True)
+
     # ======== Helpers ========
     def _presence_key(self):
         user = self.scope.get("user")
