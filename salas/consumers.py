@@ -1,56 +1,61 @@
 import json
-from channels.generic.websocket import AsyncWebsocketConsumer
 import asyncio
 import logging
+
+from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.core.cache import cache
 
 from personagens.models import PerfilUsuario
 
-
 logger = logging.getLogger(__name__)
+
 
 class SalaConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.sala_id = self.scope['url_route']['kwargs']['sala_id']
-        self.sala_group_name = f'sala_{self.sala_id}'
-    self._hb_task = None
+        self.sala_id = self.scope["url_route"]["kwargs"]["sala_id"]
+        self.sala_group_name = f"sala_{self.sala_id}"
+        self._hb_task = None
+
         try:
             await self.channel_layer.group_add(self.sala_group_name, self.channel_name)
         except Exception:
             logger.warning("Falha ao group_add no Channels (ignorado)", exc_info=True)
+
         await self.accept()
-        # Marca presença ao conectar
+
+        # Marca presença e notifica
         await self._mark_presence(connected=True)
-        # Notifica clientes para atualizarem a sidebar
         await self._broadcast_presence()
-    # Inicia heartbeat periódico para manter TTL e disparar atualizações
-    self._hb_task = asyncio.create_task(self._heartbeat_loop())
+
+        # Inicia heartbeat periódico para manter TTL e disparar atualizações
+        self._hb_task = asyncio.create_task(self._heartbeat_loop())
 
     async def disconnect(self, close_code):
         # Para o heartbeat
         try:
-            if getattr(self, '_hb_task', None):
+            if getattr(self, "_hb_task", None):
                 self._hb_task.cancel()
         except Exception:
             pass
+
         try:
             await self.channel_layer.group_discard(self.sala_group_name, self.channel_name)
         except Exception:
             logger.warning("Falha ao group_discard no Channels (ignorado)", exc_info=True)
-        # Marca ausência ao desconectar
+
+        # Marca ausência e notifica
         await self._mark_presence(connected=False)
-        # Notifica clientes para atualizarem a sidebar
         await self._broadcast_presence()
 
     async def sala_message(self, event):
-        message = event['message']
+        message = event["message"]
         await self.send(text_data=json.dumps(message))
 
     # ======== Helpers ========
     def _presence_key(self):
-        user = self.scope.get('user')
-        user_id = getattr(user, 'id', None)
+        user = self.scope.get("user")
+        user_id = getattr(user, "id", None)
         return f"presence:sala:{self.sala_id}:user:{user_id}"
 
     async def _broadcast_presence(self):
@@ -58,19 +63,18 @@ class SalaConsumer(AsyncWebsocketConsumer):
             await self.channel_layer.group_send(
                 self.sala_group_name,
                 {
-                    'type': 'sala_message',
-                    'message': {'tipo': 'presence', 'sala_id': int(self.sala_id)}
-                }
+                    "type": "sala_message",
+                    "message": {"tipo": "presence", "sala_id": int(self.sala_id)},
+                },
             )
         except Exception:
             logger.warning("Falha ao group_send no Channels (ignorado)", exc_info=True)
 
     async def _mark_presence(self, connected: bool):
-        user = self.scope.get('user')
-        if not user or not getattr(user, 'is_authenticated', False):
+        user = self.scope.get("user")
+        if not user or not getattr(user, "is_authenticated", False):
             return
         key = self._presence_key()
-        # Atualiza contador de conexões por usuário/sala para lidar com múltiplas abas
         count = cache.get(key, 0)
         TTL = 60  # segundos
         if connected:
@@ -83,13 +87,12 @@ class SalaConsumer(AsyncWebsocketConsumer):
                 cache.set(key, count - 1, timeout=TTL)
             else:
                 cache.delete(key)
-                # Só limpa se ainda estiver apontando para esta sala
                 await self._clear_user_sala_if_matches(user.id, int(self.sala_id))
 
     async def _presence_heartbeat(self):
         """Renova o TTL da presença sem alterar o contador."""
-        user = self.scope.get('user')
-        if not user or not getattr(user, 'is_authenticated', False):
+        user = self.scope.get("user")
+        if not user or not getattr(user, "is_authenticated", False):
             return
         key = self._presence_key()
         TTL = 60
@@ -102,7 +105,6 @@ class SalaConsumer(AsyncWebsocketConsumer):
             while True:
                 await asyncio.sleep(20)
                 await self._presence_heartbeat()
-                # Dispara atualização para todos na sala
                 await self._broadcast_presence()
         except asyncio.CancelledError:
             return
@@ -113,7 +115,7 @@ class SalaConsumer(AsyncWebsocketConsumer):
             perfil = PerfilUsuario.objects.get(user_id=user_id)
             if perfil.sala_atual_id != sala_id:
                 perfil.sala_atual_id = sala_id
-                perfil.save(update_fields=['sala_atual'])
+                perfil.save(update_fields=["sala_atual"])
         except PerfilUsuario.DoesNotExist:
             pass
 
@@ -123,6 +125,6 @@ class SalaConsumer(AsyncWebsocketConsumer):
             perfil = PerfilUsuario.objects.get(user_id=user_id)
             if perfil.sala_atual_id == sala_id:
                 perfil.sala_atual = None
-                perfil.save(update_fields=['sala_atual'])
+                perfil.save(update_fields=["sala_atual"])
         except PerfilUsuario.DoesNotExist:
             pass
