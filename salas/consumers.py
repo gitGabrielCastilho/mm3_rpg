@@ -56,7 +56,9 @@ class SalaConsumer(AsyncWebsocketConsumer):
     def _presence_key(self):
         user = self.scope.get("user")
         user_id = getattr(user, "id", None)
-        return f"presence:sala:{self.sala_id}:user:{user_id}"
+        # Diferencie por canal para suportar múltiplas conexões simultâneas do mesmo usuário
+        channel = getattr(self, "channel_name", "")
+        return f"presence:sala:{self.sala_id}:user:{user_id}:chan:{channel}"
 
     async def _broadcast_presence(self):
         try:
@@ -75,23 +77,17 @@ class SalaConsumer(AsyncWebsocketConsumer):
         if not user or not getattr(user, "is_authenticated", False):
             return
         key = self._presence_key()
-        count = cache.get(key, 0)
         TTL = 30  # segundos
         if connected:
-            count += 1
-            cache.set(key, count, timeout=TTL)
-            if count == 1:
-                await self._set_user_sala_atual(user.id, int(self.sala_id))
+            cache.set(key, 1, timeout=TTL)
+            # Assegure que o perfil aponte para a sala atual
+            await self._set_user_sala_atual(user.id, int(self.sala_id))
         else:
             # Desconexão: não marque offline imediatamente para evitar flicker
             # em reconexões rápidas. Mantém a presença até o TTL expirar.
             # Se houver múltiplas conexões, podemos diminuir o contador, mas
             # nunca deletar imediatamente; a limpeza final ocorre por TTL.
-            if count > 1:
-                cache.set(key, count - 1, timeout=TTL)
-            else:
-                # Mantém 1 até o TTL vencer; heartbeat não renovará após desconectar
-                cache.set(key, 1, timeout=TTL)
+            cache.set(key, 1, timeout=TTL)
 
     async def _presence_heartbeat(self):
         """Renova o TTL da presença sem alterar o contador."""
@@ -100,9 +96,8 @@ class SalaConsumer(AsyncWebsocketConsumer):
             return
         key = self._presence_key()
         TTL = 30  # segundos
-        count = cache.get(key, 0)
-        if count:
-            cache.set(key, count, timeout=TTL)
+        if cache.get(key, 0):
+            cache.set(key, 1, timeout=TTL)
 
     async def _heartbeat_loop(self):
         try:
