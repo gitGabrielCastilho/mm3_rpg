@@ -67,7 +67,6 @@ def criar_sala(request):
         form = SalaForm()
     return render(request, 'salas/criar_sala.html', {'form': form})
 
-@login_required
 def listar_salas(request):
     query = request.GET.get('q', '').strip()
     salas = Sala.objects.all()
@@ -77,8 +76,10 @@ def listar_salas(request):
             Q(codigo__icontains=query) |
             Q(criador__username__icontains=query)
         )
-    perfil, _ = PerfilUsuario.objects.get_or_create(user=request.user, defaults={'tipo': 'jogador'})
-    sala_atual = getattr(perfil, 'sala_atual', None)
+    sala_atual = None
+    if request.user.is_authenticated:
+        perfil, _ = PerfilUsuario.objects.get_or_create(user=request.user, defaults={'tipo': 'jogador'})
+        sala_atual = getattr(perfil, 'sala_atual', None)
     return render(request, 'salas/listar_salas.html', {'salas': salas, 'sala_atual': sala_atual, 'query': query})
 
 @login_required

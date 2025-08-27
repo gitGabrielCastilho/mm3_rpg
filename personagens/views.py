@@ -19,7 +19,8 @@ PoderFormSet = inlineformset_factory(
 )
 
 def home(request):
-    return render(request, 'home.html')
+    # Nova home: lista de salas
+    return redirect('listar_salas')
 
 def cadastrar_usuario(request):
     if request.method == 'POST':
@@ -34,6 +35,14 @@ def cadastrar_usuario(request):
 
 @login_required
 def criar_personagem(request):
+    # Exige estar em uma sala
+    sala_atual = None
+    try:
+        sala_atual = request.user.perfilusuario.sala_atual
+    except Exception:
+        sala_atual = None
+    if not sala_atual:
+        return redirect('listar_salas')
     if request.method == 'POST':
         form = PersonagemForm(request.POST, request.FILES)
         inventario_form = InventarioForm(request.POST)
@@ -41,6 +50,7 @@ def criar_personagem(request):
         if form.is_valid() and inventario_form.is_valid() and formset.is_valid():
             personagem = form.save(commit=False)
             personagem.usuario = request.user
+            personagem.sala = sala_atual
             personagem.save()
             inventario = inventario_form.save(commit=False)
             inventario.personagem = personagem
@@ -96,20 +106,38 @@ def criar_personagem(request):
 
 @login_required
 def listar_personagens(request):
-    personagens = Personagem.objects.filter(usuario=request.user, is_npc=False)
-    return render(request, 'personagens/listar_personagens.html', {'personagens': personagens})
+    # Lista só personagens do usuário na sala atual
+    sala_atual = None
+    try:
+        sala_atual = request.user.perfilusuario.sala_atual
+    except Exception:
+        sala_atual = None
+    if not sala_atual:
+        return redirect('listar_salas')
+    personagens = Personagem.objects.filter(usuario=request.user, is_npc=False, sala=sala_atual)
+    return render(request, 'personagens/listar_personagens.html', {'personagens': personagens, 'sala': sala_atual})
 
 
 @login_required
 def editar_personagem(request, personagem_id):
     personagem = get_object_or_404(Personagem, id=personagem_id, usuario=request.user)
+    # Exige estar na sala do personagem
+    sala_atual = None
+    try:
+        sala_atual = request.user.perfilusuario.sala_atual
+    except Exception:
+        sala_atual = None
+    if not sala_atual or personagem.sala_id != sala_atual.id:
+        return redirect('listar_salas')
     inventario, created = Inventario.objects.get_or_create(personagem=personagem)
     if request.method == 'POST':
         form = PersonagemForm(request.POST, request.FILES, instance=personagem)
         inventario_form = InventarioForm(request.POST, instance=inventario)
         formset = PoderFormSet(request.POST, request.FILES, instance=personagem, prefix='poder_set')
         if form.is_valid() and inventario_form.is_valid() and formset.is_valid():
-            personagem = form.save()
+            personagem = form.save(commit=False)
+            personagem.sala = sala_atual
+            personagem.save()
             inventario = inventario_form.save()
             poderes = formset.save(commit=False)
 
@@ -170,6 +198,14 @@ def editar_personagem(request, personagem_id):
 @login_required
 def excluir_personagem(request, personagem_id):
     personagem = get_object_or_404(Personagem, id=personagem_id, usuario=request.user)
+    # Permite excluir somente dentro da sala do personagem
+    sala_atual = None
+    try:
+        sala_atual = request.user.perfilusuario.sala_atual
+    except Exception:
+        sala_atual = None
+    if not sala_atual or personagem.sala_id != sala_atual.id:
+        return redirect('listar_salas')
     if request.method == 'POST':
         personagem.delete()
         return redirect('listar_personagens')
@@ -178,11 +214,25 @@ def excluir_personagem(request, personagem_id):
 @login_required
 def visualizar_personagem(request, personagem_id):
     personagem = get_object_or_404(Personagem, id=personagem_id, usuario=request.user)
+    sala_atual = None
+    try:
+        sala_atual = request.user.perfilusuario.sala_atual
+    except Exception:
+        sala_atual = None
+    if not sala_atual or personagem.sala_id != sala_atual.id:
+        return redirect('listar_salas')
     return render(request, 'personagens/visualizar_personagem.html', {'personagem': personagem})
 
 @login_required
 def ficha_personagem(request, personagem_id):
     personagem = get_object_or_404(Personagem, pk=personagem_id, usuario=request.user)
+    sala_atual = None
+    try:
+        sala_atual = request.user.perfilusuario.sala_atual
+    except Exception:
+        sala_atual = None
+    if not sala_atual or personagem.sala_id != sala_atual.id:
+        return redirect('listar_salas')
     poderes_de_item = poderes_de_item = personagem.poderes.filter(de_item=True)
     categorias = {
         'caracteristicas': ['forca', 'destreza', 'agilidade', 'luta', 'vigor', 'inteligencia', 'prontidao', 'presenca'],
@@ -214,6 +264,7 @@ def criar_npc(request, sala_id):
             # Dono será o GM para controle; sem vantagens/inventário
             npc.usuario = request.user
             npc.is_npc = True
+            npc.sala = sala
             npc.save()
             poderes = formset.save(commit=False)
             for poder in poderes:
@@ -248,14 +299,28 @@ def criar_npc(request, sala_id):
 
 @login_required
 def listar_npcs(request):
-    # Apenas o GM pode ver seus próprios NPCs
-    npcs = Personagem.objects.filter(usuario=request.user, is_npc=True).order_by('nome')
-    return render(request, 'personagens/listar_npcs.html', {'npcs': npcs})
+    # Apenas o GM pode ver seus próprios NPCs da sala atual
+    sala_atual = None
+    try:
+        sala_atual = request.user.perfilusuario.sala_atual
+    except Exception:
+        sala_atual = None
+    if not sala_atual:
+        return redirect('listar_salas')
+    npcs = Personagem.objects.filter(usuario=request.user, is_npc=True, sala=sala_atual).order_by('nome')
+    return render(request, 'personagens/listar_npcs.html', {'npcs': npcs, 'sala': sala_atual})
 
 
 @login_required
 def editar_npc(request, personagem_id):
     npc = get_object_or_404(Personagem, id=personagem_id, usuario=request.user, is_npc=True)
+    sala_atual = None
+    try:
+        sala_atual = request.user.perfilusuario.sala_atual
+    except Exception:
+        sala_atual = None
+    if not sala_atual or npc.sala_id != sala_atual.id:
+        return redirect('listar_salas')
     if request.method == 'POST':
         form = PersonagemNPCForm(request.POST, request.FILES, instance=npc)
         formset = PoderNPCFormSet(request.POST, request.FILES, instance=npc, prefix='poder_set')
@@ -263,6 +328,7 @@ def editar_npc(request, personagem_id):
             npc = form.save(commit=False)
             npc.is_npc = True
             npc.usuario = request.user
+            npc.sala = sala_atual
             npc.save()
             formset.save()
             return redirect('listar_npcs')
@@ -294,6 +360,13 @@ def editar_npc(request, personagem_id):
 @login_required
 def excluir_npc(request, personagem_id):
     npc = get_object_or_404(Personagem, id=personagem_id, usuario=request.user, is_npc=True)
+    sala_atual = None
+    try:
+        sala_atual = request.user.perfilusuario.sala_atual
+    except Exception:
+        sala_atual = None
+    if not sala_atual or npc.sala_id != sala_atual.id:
+        return redirect('listar_salas')
     if request.method == 'POST':
         npc.delete()
         return redirect('listar_npcs')

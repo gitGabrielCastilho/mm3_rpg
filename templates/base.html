@@ -14,16 +14,9 @@
 
 <nav class="nav-bar">
   <div class="nav-group">
-    <a href="/">Home</a>
-    {% if user.is_authenticated %}
-      <a href="{% url 'itens' %}">Itens</a>
-      <div class="dropdown">
-        <button class="dropbtn">Personagens ▾</button>
-        <div class="dropdown-content">
-          <a href="{% url 'listar_personagens' %}">Meus Personagens</a>
-          <a href="{% url 'criar_personagem' %}">Criar Personagem</a>
-        </div>
-      </div>
+  {% if user.is_authenticated %}
+      {% load filtros %}
+      {% get_perfil as perfil %}
       <div class="dropdown">
         <button class="dropbtn">Salas ▾</button>
         <div class="dropdown-content">
@@ -31,35 +24,40 @@
           <a href="{% url 'listar_salas' %}">Minhas Salas</a>
         </div>
       </div>
-      {% load filtros %}
-      {% get_perfil as perfil %}
-      {% if perfil %}
-        {% if perfil.sala_atual %}
-          {% if perfil.tipo == 'game_master' %}
-          <div class="dropdown">
-            <button class="dropbtn">NPCs ▾</button>
-            <div class="dropdown-content">
-              <a href="{% url 'listar_npcs' %}">Meus NPCs</a>
-              <a href="{% url 'criar_npc' perfil.sala_atual.id %}">Criar NPC</a>
-            </div>
+      {% if perfil and perfil.sala_atual %}
+        <a href="{% url 'itens' %}">Itens</a>
+        <div class="dropdown">
+          <button class="dropbtn">Personagens ▾</button>
+          <div class="dropdown-content">
+            <a href="{% url 'listar_personagens' %}">Meus Personagens (da sala)</a>
+            <a href="{% url 'criar_personagem' %}">Criar Personagem (nesta sala)</a>
           </div>
-          {% endif %}
-          <div class="dropdown">
-            <button class="dropbtn">Combate & Mapas ▾</button>
-            <div class="dropdown-content">
-              {% if perfil.tipo == 'game_master' %}
-                <a href="{% url 'criar_combate' perfil.sala_atual.id %}">Novo Combate</a>
-                <a href="{% url 'listar_combates' perfil.sala_atual.id %}">Combates</a>
-                <a href="{% url 'listar_mapas' %}">Meus Mapas</a>
-                <a href="{% url 'adicionar_mapa_global' %}">Adicionar Mapa</a>
-              {% else %}
-                <a href="{% url 'listar_combates' perfil.sala_atual.id %}">Combates</a>
-              {% endif %}
-            </div>
+        </div>
+        {% if perfil.tipo == 'game_master' %}
+        <div class="dropdown">
+          <button class="dropbtn">NPCs ▾</button>
+          <div class="dropdown-content">
+            <a href="{% url 'listar_npcs' %}">Meus NPCs</a>
+            <a href="{% url 'criar_npc' perfil.sala_atual.id %}">Criar NPC</a>
           </div>
+        </div>
         {% endif %}
+        <div class="dropdown">
+          <button class="dropbtn">Combate & Mapas ▾</button>
+          <div class="dropdown-content">
+            {% if perfil.tipo == 'game_master' %}
+              <a href="{% url 'criar_combate' perfil.sala_atual.id %}">Novo Combate</a>
+              <a href="{% url 'listar_combates' perfil.sala_atual.id %}">Combates</a>
+              <a href="{% url 'listar_mapas' %}">Meus Mapas</a>
+              <a href="{% url 'adicionar_mapa_global' %}">Adicionar Mapa</a>
+            {% else %}
+              <a href="{% url 'listar_combates' perfil.sala_atual.id %}">Combates</a>
+            {% endif %}
+          </div>
+        </div>
       {% endif %}
     {% else %}
+      <a href="{% url 'listar_salas' %}">Salas</a>
       <a href="{% url 'login' %}">Login</a>
       <a href="{% url 'cadastrar_usuario' %}">Cadastro</a>
     {% endif %}
@@ -116,6 +114,9 @@ document.addEventListener('DOMContentLoaded', function() {
   <div id="sidebar-participantes">
     {% include 'salas/_sidebar_participantes.html' with sala=perfil.sala_atual user=user %}
   </div>
+  <div id="sidebar-personagens" style="margin-top:10px;">
+    {% include 'salas/_sidebar_personagens.html' with sala=perfil.sala_atual user=user %}
+  </div>
 </aside>
 <script>
 function toggleSidebar() {
@@ -165,8 +166,15 @@ document.addEventListener('DOMContentLoaded', function() {
       fetch(url, { cache: 'reload' })
         .then(r => r.text())
         .then(html => {
-          const el = document.getElementById('sidebar-participantes');
-          if (el) el.innerHTML = html;
+          // Espera dois blocos marcados
+          const tmp = document.createElement('div');
+          tmp.innerHTML = html;
+          const fragP = tmp.querySelector('div[data-fragment="participantes"]');
+          const fragC = tmp.querySelector('div[data-fragment="personagens"]');
+          const elP = document.getElementById('sidebar-participantes');
+          const elC = document.getElementById('sidebar-personagens');
+          if (elP && fragP) elP.innerHTML = fragP.innerHTML;
+          if (elC && fragC) elC.innerHTML = fragC.innerHTML;
         })
         .catch(err => console.warn('[Sidebar AJAX] Falha ao atualizar:', err));
     }

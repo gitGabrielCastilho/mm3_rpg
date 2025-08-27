@@ -58,12 +58,21 @@ def participantes_sidebar(request, sala_id):
         for u in sala.participantes.all():
             if u.id in found:
                 online_ids.append(u.id)
-    return render(
+    # Renderiza ambos os blocos (participantes e personagens) em um único HTML
+    html_participantes = render(
         request,
         'salas/_sidebar_participantes.html',
-        {
-            'sala': sala,
-            'user': request.user,
-            'online_ids': online_ids,
-        },
+        {'sala': sala, 'user': request.user, 'online_ids': online_ids},
+    ).content.decode('utf-8')
+    html_personagens = render(
+        request,
+        'salas/_sidebar_personagens.html',
+        {'sala': sala, 'user': request.user, 'online_ids': online_ids},
+    ).content.decode('utf-8')
+    # Combina com marcadores para o cliente substituir ambos
+    combined = (
+        '<div data-fragment="participantes">' + html_participantes + '</div>' +
+        '<div data-fragment="personagens">' + html_personagens + '</div>'
     )
+    from django.http import HttpResponse
+    return HttpResponse(combined)

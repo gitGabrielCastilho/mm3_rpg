@@ -30,7 +30,7 @@ def itens(request):
     except Exception:
         sala_atual = None
     if not sala_atual:
-        # Usuário fora de sala: só pode ver itens base
+        # Usuário fora de sala: só pode ver itens base; sem criar
         itens = Item.objects.filter(sala__isnull=True)
         pode_criar = False
     else:

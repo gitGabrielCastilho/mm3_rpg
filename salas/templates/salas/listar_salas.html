@@ -8,7 +8,7 @@
     <button type="submit" class="btn">Buscar</button>
   </form>
 
-  {% if sala_atual %}
+  {% if user.is_authenticated and sala_atual %}
     <div class="sala-atual-card">
       <div class="sala-atual-header">
         <span class="badge badge-atual">Sala Atual</span>
@@ -57,18 +57,20 @@
               <span class="status-badge atual">Você está nesta sala</span>
             {% endif %}
           </div>
-          <div class="sala-item-acoes">
-            {% if not sala_atual %}
-              <a href="{% url 'entrar_sala' sala.id %}" class="btn btn-sm">Entrar</a>
-            {% endif %}
-            {% if sala.game_master == user %}
-              <a href="{% url 'editar_senha_sala' sala.id %}" class="btn btn-sm">Editar senha</a>
-              <form method="post" action="{% url 'excluir_sala' sala.id %}" onsubmit="return confirm('Excluir esta sala?')" class="inline-form">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
-              </form>
-            {% endif %}
-          </div>
+          {% if user.is_authenticated %}
+            <div class="sala-item-acoes">
+              {% if not sala_atual %}
+                <a href="{% url 'entrar_sala' sala.id %}" class="btn btn-sm">Entrar</a>
+              {% endif %}
+              {% if sala.game_master == user %}
+                <a href="{% url 'editar_senha_sala' sala.id %}" class="btn btn-sm">Editar senha</a>
+                <form method="post" action="{% url 'excluir_sala' sala.id %}" onsubmit="return confirm('Excluir esta sala?')" class="inline-form">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
+                </form>
+              {% endif %}
+            </div>
+          {% endif %}
         </div>
       </li>
     {% empty %}

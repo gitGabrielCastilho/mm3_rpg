@@ -18,6 +18,7 @@ CASTING_ABILITY_CHOICES = [
 
 class Personagem(models.Model):
     is_npc = models.BooleanField(default=False)
+    sala = models.ForeignKey(Sala, on_delete=models.CASCADE, null=True, blank=True, related_name='personagens')
 
     especialidade_casting_ability = models.CharField(
         max_length=20,
