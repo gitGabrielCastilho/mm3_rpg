@@ -1,5 +1,6 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
+import asyncio
 import logging
 from channels.db import database_sync_to_async
 from django.core.cache import cache
@@ -10,10 +11,10 @@ from personagens.models import PerfilUsuario
 logger = logging.getLogger(__name__)
 
 class SalaConsumer(AsyncWebsocketConsumer):
-    PRESENCE_TTL = 90  # seconds
     async def connect(self):
         self.sala_id = self.scope['url_route']['kwargs']['sala_id']
         self.sala_group_name = f'sala_{self.sala_id}'
+    self._hb_task = None
         try:
             await self.channel_layer.group_add(self.sala_group_name, self.channel_name)
         except Exception:
@@ -23,8 +24,16 @@ class SalaConsumer(AsyncWebsocketConsumer):
         await self._mark_presence(connected=True)
         # Notifica clientes para atualizarem a sidebar
         await self._broadcast_presence()
+    # Inicia heartbeat periódico para manter TTL e disparar atualizações
+    self._hb_task = asyncio.create_task(self._heartbeat_loop())
 
     async def disconnect(self, close_code):
+        # Para o heartbeat
+        try:
+            if getattr(self, '_hb_task', None):
+                self._hb_task.cancel()
+        except Exception:
+            pass
         try:
             await self.channel_layer.group_discard(self.sala_group_name, self.channel_name)
         except Exception:
@@ -37,17 +46,6 @@ class SalaConsumer(AsyncWebsocketConsumer):
     async def sala_message(self, event):
         message = event['message']
         await self.send(text_data=json.dumps(message))
-
-    async def receive(self, text_data=None, bytes_data=None):
-        """Handle client pings to keep presence fresh with a short TTL."""
-        try:
-            if text_data:
-                data = json.loads(text_data)
-                if isinstance(data, dict) and data.get('tipo') == 'ping':
-                    await self._refresh_presence_ttl()
-        except Exception:
-            # ignore malformed payloads
-            pass
 
     # ======== Helpers ========
     def _presence_key(self):
@@ -74,28 +72,40 @@ class SalaConsumer(AsyncWebsocketConsumer):
         key = self._presence_key()
         # Atualiza contador de conexões por usuário/sala para lidar com múltiplas abas
         count = cache.get(key, 0)
+        TTL = 60  # segundos
         if connected:
             count += 1
-            cache.set(key, count, timeout=self.PRESENCE_TTL)
+            cache.set(key, count, timeout=TTL)
             if count == 1:
                 await self._set_user_sala_atual(user.id, int(self.sala_id))
         else:
             if count > 1:
-                cache.set(key, count - 1, timeout=self.PRESENCE_TTL)
+                cache.set(key, count - 1, timeout=TTL)
             else:
                 cache.delete(key)
                 # Só limpa se ainda estiver apontando para esta sala
                 await self._clear_user_sala_if_matches(user.id, int(self.sala_id))
 
-    async def _refresh_presence_ttl(self):
-        """Refresh the presence TTL to keep user online while the socket is open."""
+    async def _presence_heartbeat(self):
+        """Renova o TTL da presença sem alterar o contador."""
         user = self.scope.get('user')
         if not user or not getattr(user, 'is_authenticated', False):
             return
         key = self._presence_key()
+        TTL = 60
         count = cache.get(key, 0)
         if count:
-            cache.set(key, count, timeout=self.PRESENCE_TTL)
+            cache.set(key, count, timeout=TTL)
+
+    async def _heartbeat_loop(self):
+        try:
+            while True:
+                await asyncio.sleep(20)
+                await self._presence_heartbeat()
+                # Dispara atualização para todos na sala
+                await self._broadcast_presence()
+        except asyncio.CancelledError:
+            return
 
     @database_sync_to_async
     def _set_user_sala_atual(self, user_id: int, sala_id: int):
