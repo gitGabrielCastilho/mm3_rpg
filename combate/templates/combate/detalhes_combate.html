@@ -330,10 +330,11 @@
 
     // Fallback: polling quando WS não estiver disponível
     let _combatePollTimer = null;
-    function startCombatePolling(){
+  function startCombatePolling(){
       if (_combatePollTimer) return;
       _combatePollTimer = setInterval(() => {
-        refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']).catch(()=>{});
+    // Evita refazer a coluna direita (mapa) para não resetar posição/zoom
+    refreshSelectors(['.turno-topbar', '#historico-card', '#status-card']).catch(()=>{});
       }, 6000);
     }
     function stopCombatePolling(){ if (_combatePollTimer) { clearInterval(_combatePollTimer); _combatePollTimer = null; } }
@@ -426,6 +427,50 @@
   window.updateAllGrids = updateAllGrids;
   window.setupGridControls = setupGridControls;
 
+    // ====== Persistência de estado do mapa (zoom/scroll) ======
+    function saveMapStates(){
+      const states = {};
+      document.querySelectorAll("[id^='mapa-area-']").forEach(area => {
+        const id = (area.id || '').replace('mapa-area-','');
+        states[id] = {
+          scale: parseFloat(area.dataset.scale || '1') || 1,
+          scrollLeft: area.scrollLeft || 0,
+          scrollTop: area.scrollTop || 0,
+        };
+      });
+      window._mapStates = states;
+    }
+    function restoreMapStates(){
+      const states = window._mapStates || {};
+      document.querySelectorAll("[id^='mapa-area-']").forEach(area => {
+        const id = (area.id || '').replace('mapa-area-','');
+        const st = states[id];
+        const canvas = area.querySelector('.mapa-canvas');
+        const img = canvas ? canvas.querySelector('.mapa-img') : null;
+        if (!st || !canvas || !img) return;
+        let scale = parseFloat(st.scale || 1) || 1;
+        // Recalcula limites dinâmicos e aplica transform
+        const rect = canvas.getBoundingClientRect();
+        const baseW = img.naturalWidth || img.clientWidth || rect.width || 1;
+        const baseH = img.naturalHeight || img.clientHeight || rect.height || 1;
+        const areaW = area.clientWidth || 1;
+        const areaH = area.clientHeight || 1;
+        const fitW = areaW / (baseW || areaW);
+        const fitH = areaH / (baseH || areaH);
+        const minScale = Math.min(1, Math.max(fitW, fitH));
+        const maxScale = 3;
+        scale = Math.max(minScale, Math.min(maxScale, scale));
+        area.dataset.scale = String(scale);
+        canvas.style.transform = `scale(${scale})`;
+        canvas.style.minWidth = (baseW * scale) + 'px';
+        canvas.style.minHeight = (baseH * scale) + 'px';
+        // Restaura scroll (com clamp natural pelos bounds atuais)
+        area.scrollLeft = st.scrollLeft || 0;
+        area.scrollTop = st.scrollTop || 0;
+        if (typeof updateGridForArea === 'function') updateGridForArea(area);
+      });
+    }
+
     // Utilitários para refresh parcial
     async function fetchPageDOM() {
       const resp = await fetch(window.location.href, { cache: 'no-store' });
@@ -437,6 +482,8 @@
       try {
         // Garante que a preferência atual da grade não se perca durante o refresh
         persistGridState();
+        // Salva estados atuais do mapa (zoom/scroll) para restaurar após troca
+        saveMapStates();
         const doc = await fetchPageDOM();
         selectors.forEach(sel => {
           const target = document.querySelector(sel);
@@ -445,6 +492,8 @@
         });
         // Reaplica comportamentos após substituições
     rafEqualize();
+        // Restaura estados do mapa após substituição
+        restoreMapStates();
         // Scroll historico para o fim
         const historico = document.getElementById('historico-card');
         if (historico && historico.scrollHeight > historico.clientHeight) historico.scrollTop = historico.scrollHeight;
@@ -748,7 +797,7 @@
       try { payload = JSON.parse(e.data); } catch(_) {}
       if (!payload || !payload.evento) {
         // Desconhecido: faça refresh leve dos principais blocos
-        await refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']);
+  await refreshSelectors(['.turno-topbar', '#historico-card', '#status-card']);
         return;
       }
       switch (payload.evento) {
@@ -802,7 +851,8 @@
           break;
         }
         default: {
-          await refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']);
+          // Evento desconhecido: evita recarregar o mapa; atualiza cabeçalho, histórico e status
+          await refreshSelectors(['.turno-topbar', '#historico-card', '#status-card']);
         }
       }
     };

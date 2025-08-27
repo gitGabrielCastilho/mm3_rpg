@@ -5,7 +5,9 @@
     {% get_perfil_de participante as perfil %}
     <li>
       {{ participante.username }}
-      {% if perfil and perfil.sala_atual and perfil.sala_atual.id == sala.id %}
+      {% if online_ids and participante.id in online_ids %}
+        <span style="color: green; font-size: 0.9em;">(conectado)</span>
+      {% elif perfil and perfil.sala_atual and perfil.sala_atual.id == sala.id %}
         <span style="color: green; font-size: 0.9em;">(conectado)</span>
       {% else %}
         <span style="color: #a00; font-size: 0.9em;">(não conectado)</span>
@@ -17,4 +19,4 @@
   {% empty %}
     <li>Nenhum participante ainda.</li>
   {% endfor %}
-</ul>
+  </ul>

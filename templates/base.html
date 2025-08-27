@@ -152,24 +152,79 @@ document.addEventListener('DOMContentLoaded', function() {
   const salaId = '{{ perfil.sala_atual.id }}';
     const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const wsPath = `${wsScheme}://${window.location.host}/ws/sala/${salaId}/`;
-    const salaSocket = new WebSocket(wsPath);
-    salaSocket.onmessage = function(e) {
-      console.log('[Sidebar WS] Mensagem recebida:', e.data);
-      // Pequeno delay para garantir que o banco já atualizou
-      setTimeout(function() {
-        const url = `/salas/sidebar_participantes/${salaId}/?t=` + Date.now();
-        console.log('[Sidebar AJAX] Buscando:', url);
-        fetch(url, {cache: 'reload'})
-          .then(response => response.text())
-          .then(html => {
-            document.getElementById('sidebar-participantes').innerHTML = html;
-            console.log('[Sidebar AJAX] Atualizado!');
-          });
-      }, 300);
-    };
-    salaSocket.onclose = function(e) {
-      console.warn('WebSocket da sala fechado.');
-    };
+    let salaSocket = null;
+    let pollTimer = null;
+    let reconnectTimer = null;
+    let reconnectDelayMs = 5000; // backoff base
+
+    function refreshSidebar() {
+      const url = `/salas/sidebar_participantes/${salaId}/?t=` + Date.now();
+      fetch(url, { cache: 'reload' })
+        .then(r => r.text())
+        .then(html => {
+          const el = document.getElementById('sidebar-participantes');
+          if (el) el.innerHTML = html;
+        })
+        .catch(err => console.warn('[Sidebar AJAX] Falha ao atualizar:', err));
+    }
+
+    function startPolling() {
+      if (pollTimer) return; // já está ativo
+      console.warn('[Sidebar] Iniciando polling por fallback');
+      pollTimer = setInterval(refreshSidebar, 12000); // ~12s
+      // também faz uma atualização imediata
+      refreshSidebar();
+    }
+
+    function stopPolling() {
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+        console.log('[Sidebar] Polling parado');
+      }
+    }
+
+    function connectWS() {
+      try {
+        salaSocket = new WebSocket(wsPath);
+      } catch (e) {
+        console.warn('[Sidebar WS] Erro ao conectar WS, ativando polling:', e);
+        startPolling();
+        scheduleReconnect();
+        return;
+      }
+      salaSocket.onopen = function() {
+        console.log('[Sidebar WS] Conectado');
+        stopPolling();
+        if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+        reconnectDelayMs = 5000; // reset backoff
+      };
+      salaSocket.onmessage = function(e) {
+        // pequeno delay para garantir consistência
+        setTimeout(refreshSidebar, 300);
+      };
+      salaSocket.onclose = function(e) {
+        console.warn('[Sidebar WS] Fechado. Ativando polling e tentando reconectar...');
+        startPolling();
+        scheduleReconnect();
+      };
+      salaSocket.onerror = function(e) {
+        console.warn('[Sidebar WS] Erro:', e);
+        try { salaSocket.close(); } catch(_) {}
+      };
+    }
+
+    function scheduleReconnect() {
+      if (reconnectTimer) return;
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        // backoff exponencial com teto ~60s
+        reconnectDelayMs = Math.min(reconnectDelayMs * 1.6, 60000);
+        connectWS();
+      }, reconnectDelayMs);
+    }
+
+    connectWS();
   });
 </script>
 {% endif %}

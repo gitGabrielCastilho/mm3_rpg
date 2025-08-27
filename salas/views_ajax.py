@@ -1,8 +1,23 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
+from django.core.cache import cache
 from .models import Sala
 
 @login_required
 def participantes_sidebar(request, sala_id):
     sala = Sala.objects.get(id=sala_id)
-    return render(request, 'salas/_sidebar_participantes.html', {'sala': sala, 'user': request.user})
+    # Presence baseada em cache com TTL (setada pelo consumer via heartbeat)
+    online_ids = []
+    for u in sala.participantes.all():
+        key = f"presence:sala:{sala_id}:user:{u.id}"
+        if cache.get(key, 0):
+            online_ids.append(u.id)
+    return render(
+        request,
+        'salas/_sidebar_participantes.html',
+        {
+            'sala': sala,
+            'user': request.user,
+            'online_ids': online_ids,
+        },
+    )
