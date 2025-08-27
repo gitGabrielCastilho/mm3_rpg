@@ -16,20 +16,22 @@ def participantes_sidebar(request, sala_id):
     try:
         # django-redis
         r = get_redis_connection('default')
-        # Prefira a chave agregada por usuário
+        # Prefira a chave agregada por usuário (sem sufixo ":chan:")
         pattern_user = f"*presence:sala:{sala_id}:user:*"
         for raw in r.scan_iter(pattern_user):
             try:
                 key = raw.decode('utf-8') if isinstance(raw, (bytes, bytearray)) else str(raw)
+                # Ignore chaves por canal aqui; usamos apenas a agregada
+                if ':chan:' in key:
+                    continue
                 # Extrai user_id
                 parts = key.split(':')
                 # [..., 'sala', sala_id, 'user', <id>, 'chan', <name>]
                 idx = parts.index('user') if 'user' in parts else -1
                 if idx != -1 and idx + 1 < len(parts):
                     uid = int(parts[idx + 1])
-                    # Se a chave agregada existe e tem valor truthy, considere online
-                    if cache.get(key, 0):
-                        found.add(uid)
+                    # Se a chave agregada está presente no Redis, considere online
+                    found.add(uid)
             except Exception:
                 continue
     except Exception:
