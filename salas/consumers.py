@@ -74,6 +74,11 @@ class SalaConsumer(AsyncWebsocketConsumer):
         channel = getattr(self, "channel_name", "")
         return f"presence:sala:{self.sala_id}:user:{user_id}:chan:{channel}"
 
+    def _presence_user_key(self):
+        user = self.scope.get("user")
+        user_id = getattr(user, "id", None)
+        return f"presence:sala:{self.sala_id}:user:{user_id}"
+
     async def _broadcast_presence(self):
         try:
             await self.channel_layer.group_send(
@@ -90,10 +95,20 @@ class SalaConsumer(AsyncWebsocketConsumer):
         user = self.scope.get("user")
         if not user or not getattr(user, "is_authenticated", False):
             return
-        key = self._presence_key()
+        key_chan = self._presence_key()
+        key_user = self._presence_user_key()
         TTL = 30  # segundos
         if connected:
-            cache.set(key, 1, timeout=TTL)
+            # Atualiza chave por canal
+            cache.set(key_chan, 1, timeout=TTL)
+            # Atualiza contador agregado por usuário
+            count = cache.get(key_user, 0)
+            try:
+                count = int(count)
+            except Exception:
+                count = 0
+            count += 1
+            cache.set(key_user, count, timeout=TTL)
             # Assegure que o perfil aponte para a sala atual
             await self._set_user_sala_atual(user.id, int(self.sala_id))
         else:
@@ -101,17 +116,33 @@ class SalaConsumer(AsyncWebsocketConsumer):
             # em reconexões rápidas. Mantém a presença até o TTL expirar.
             # Se houver múltiplas conexões, podemos diminuir o contador, mas
             # nunca deletar imediatamente; a limpeza final ocorre por TTL.
-            cache.set(key, 1, timeout=TTL)
+            # Canal: mantém até expirar naturalmente
+            cache.set(key_chan, 1, timeout=TTL)
+            # Usuário: decrementa, mas mantém pelo menos 1 até TTL
+            count = cache.get(key_user, 0)
+            try:
+                count = int(count)
+            except Exception:
+                count = 0
+            if count > 1:
+                cache.set(key_user, count - 1, timeout=TTL)
+            else:
+                cache.set(key_user, 1, timeout=TTL)
 
     async def _presence_heartbeat(self):
         """Renova o TTL da presença sem alterar o contador."""
         user = self.scope.get("user")
         if not user or not getattr(user, "is_authenticated", False):
             return
-        key = self._presence_key()
+        key_chan = self._presence_key()
+        key_user = self._presence_user_key()
         TTL = 30  # segundos
-        if cache.get(key, 0):
-            cache.set(key, 1, timeout=TTL)
+        if cache.get(key_chan, 0):
+            cache.set(key_chan, 1, timeout=TTL)
+        # Renova também a chave agregada do usuário sem alterar o valor
+        val = cache.get(key_user, 0)
+        if val:
+            cache.set(key_user, val, timeout=TTL)
 
     async def _heartbeat_loop(self):
         try:

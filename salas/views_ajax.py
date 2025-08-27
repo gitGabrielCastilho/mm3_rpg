@@ -16,8 +16,9 @@ def participantes_sidebar(request, sala_id):
     try:
         # django-redis
         r = get_redis_connection('default')
-        pattern = f"*presence:sala:{sala_id}:user:*:chan:*"
-        for raw in r.scan_iter(pattern):
+        # Prefira a chave agregada por usuário
+        pattern_user = f"*presence:sala:{sala_id}:user:*"
+        for raw in r.scan_iter(pattern_user):
             try:
                 key = raw.decode('utf-8') if isinstance(raw, (bytes, bytearray)) else str(raw)
                 # Extrai user_id
@@ -26,13 +27,15 @@ def participantes_sidebar(request, sala_id):
                 idx = parts.index('user') if 'user' in parts else -1
                 if idx != -1 and idx + 1 < len(parts):
                     uid = int(parts[idx + 1])
-                    found.add(uid)
+                    # Se a chave agregada existe e tem valor truthy, considere online
+                    if cache.get(key, 0):
+                        found.add(uid)
             except Exception:
                 continue
     except Exception:
         # Fallback: sem Redis, verifica por participante (LocMem não dá scan eficiente)
         for u in sala.participantes.all():
-            # Mantemos compat com antiga chave sem canal, caso exista
+            # Usando chave agregada por usuário
             legacy = f"presence:sala:{sala_id}:user:{u.id}"
             any_chan = False
             if cache.get(legacy, 0):
