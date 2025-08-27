@@ -76,7 +76,7 @@ class SalaConsumer(AsyncWebsocketConsumer):
             return
         key = self._presence_key()
         count = cache.get(key, 0)
-        TTL = 60  # segundos
+        TTL = 30  # segundos
         if connected:
             count += 1
             cache.set(key, count, timeout=TTL)
@@ -95,7 +95,7 @@ class SalaConsumer(AsyncWebsocketConsumer):
         if not user or not getattr(user, "is_authenticated", False):
             return
         key = self._presence_key()
-        TTL = 60
+        TTL = 30  # segundos
         count = cache.get(key, 0)
         if count:
             cache.set(key, count, timeout=TTL)
@@ -103,7 +103,7 @@ class SalaConsumer(AsyncWebsocketConsumer):
     async def _heartbeat_loop(self):
         try:
             while True:
-                await asyncio.sleep(20)
+                await asyncio.sleep(10)
                 await self._presence_heartbeat()
                 await self._broadcast_presence()
         except asyncio.CancelledError:

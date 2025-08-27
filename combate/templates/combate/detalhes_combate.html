@@ -277,6 +277,19 @@
     const select = document.getElementById('personagem_acao');
     const poderSelect = document.getElementById('poder');
     if (!select) return;
+    const combateId = '{{ combate.id }}';
+    const powerKey = (personagemId) => `combate:${combateId}:power:${personagemId||''}`;
+    function bindPoderStorageListener(){
+      if (!poderSelect || poderSelect.dataset.boundStorage) return;
+      poderSelect.addEventListener('change', function(){
+        const opt = select ? select.options[select.selectedIndex] : null;
+        const personagemId = opt ? opt.getAttribute('data-personagem-id') : '';
+        if (personagemId) {
+          try { localStorage.setItem(powerKey(personagemId), String(poderSelect.value||'')); } catch(_) {}
+        }
+      });
+      poderSelect.dataset.boundStorage = '1';
+    }
     function syncPersonagemAcao() {
       const val = select.value; // participante id
       const selectedOpt = select.options[select.selectedIndex];
@@ -287,15 +300,26 @@
       const h4 = document.getElementById('personagem_acao_hidden_d20');
       if (h1) h1.value = val; if (h2) h2.value = val; if (h3) h3.value = val; if (h4) h4.value = val;
       if (poderSelect) {
+        // Evita reconstruir quando já está carregado para o mesmo personagem
+        const lastFor = poderSelect.dataset.forPersonagemId || '';
+        if (personagemId && lastFor === String(personagemId)) return;
+        // Preferência salva por personagem (se existir)
+        let savedValue = '';
+        try { savedValue = localStorage.getItem(powerKey(personagemId)) || ''; } catch(_) {}
+        const prevValue = poderSelect.value; // fallback: preserva seleção atual
         fetch('/combate/poderes-personagem-ajax/?personagem_id=' + personagemId)
           .then(resp => resp.json())
           .then(data => {
             poderSelect.innerHTML = '';
+            let restored = false;
             if (data.poderes && data.poderes.length > 0) {
               data.poderes.forEach(function(p) {
                 const opt = document.createElement('option');
                 opt.value = p.id;
                 opt.textContent = p.nome;
+                // Prefer savedValue; depois tenta prevValue
+                if (!restored && savedValue && String(p.id) === String(savedValue)) { opt.selected = true; restored = true; }
+                else if (!restored && String(p.id) === String(prevValue)) { opt.selected = true; restored = true; }
                 poderSelect.appendChild(opt);
               });
             } else {
@@ -304,7 +328,13 @@
               opt.textContent = 'Nenhum poder disponível';
               poderSelect.appendChild(opt);
             }
-          });
+            // Se não restaurou, mantém o primeiro como seleção padrão
+            if (!restored && poderSelect.options.length) poderSelect.selectedIndex = 0;
+            poderSelect.dataset.forPersonagemId = String(personagemId || '');
+            // Garante que o listener de storage esteja ativo
+            bindPoderStorageListener();
+          })
+          .catch(() => {/* silencia para evitar reset visual em falhas */});
       }
     }
     // Evita listeners duplicados trocando o nó
@@ -313,7 +343,12 @@
     newSelect.addEventListener('change', syncPersonagemAcao);
     // Garante um valor selecionado válido
     if (newSelect.options.length && newSelect.selectedIndex < 0) newSelect.selectedIndex = 0;
-    syncPersonagemAcao();
+    // Bind inicial: só sincroniza se ainda não houver cache para este personagem
+    if (poderSelect && (!poderSelect.dataset.forPersonagemId)) {
+      syncPersonagemAcao();
+    }
+    // Assegura listener para salvar seleção
+    bindPoderStorageListener();
   }
   document.addEventListener('DOMContentLoaded', bindPersonagemAcaoSync);
   </script>
