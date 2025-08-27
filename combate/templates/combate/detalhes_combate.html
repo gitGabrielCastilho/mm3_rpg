@@ -322,7 +322,17 @@
     const combateId = '{{ combate.id }}';
     const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const wsPath = `${wsScheme}://${window.location.host}/ws/combate/${combateId}/`;
-    const combateSocket = new WebSocket(wsPath);
+    let combateSocket = new WebSocket(wsPath);
+
+    // Fallback: polling quando WS não estiver disponível
+    let _combatePollTimer = null;
+    function startCombatePolling(){
+      if (_combatePollTimer) return;
+      _combatePollTimer = setInterval(() => {
+        refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']).catch(()=>{});
+      }, 6000);
+    }
+    function stopCombatePolling(){ if (_combatePollTimer) { clearInterval(_combatePollTimer); _combatePollTimer = null; } }
 
     // Persistência de preferências da grade por combate
     const GRID_ENABLED_KEY = `combate:${combateId}:gridEnabled`;
@@ -678,8 +688,44 @@
         fetch(form.action, {
           method: 'POST',
           body: fd,
-          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
           credentials: 'same-origin'
+        }).then(async (resp) => {
+          const ct = (resp.headers.get('content-type') || '').toLowerCase();
+          let data = null;
+          if (ct.includes('application/json')) { try { data = await resp.json(); } catch(_) {} }
+          if (!resp.ok) throw new Error('request_failed');
+          // Prefer targeted updates when possible; otherwise, generic refresh
+          if (data && data.evento) {
+            switch (data.evento) {
+              case 'rolagem':
+                await refreshSelectors(['#historico-card', '#status-card']);
+                break;
+              case 'adicionar_participante':
+              case 'remover_participante':
+                await refreshSelectors(['.combate-col-right', '#form-ataque']);
+                break;
+              case 'iniciar_turno':
+              case 'avancar_turno':
+              case 'finalizar_combate':
+                await refreshSelectors(['.turno-topbar', '#historico-card', '#status-card']);
+                break;
+              case 'adicionar_mapa':
+              case 'remover_mapa':
+                await refreshSelectors(['.combate-col-right']);
+                break;
+              case 'limpar_historico':
+                await refreshSelectors(['.turno-topbar', '#historico-card', '#form-ataque']);
+                break;
+              default:
+                await refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']);
+            }
+          } else {
+            await refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']);
+          }
+        }).catch(async () => {
+          // Generic fallback on error
+          try { await refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']); } catch(_) {}
         }).finally(() => { if (btn) btn.disabled = false; });
       });
       form.dataset.ajaxified = '1';
@@ -756,8 +802,10 @@
       }
     };
 
+    combateSocket.onopen = function(){ stopCombatePolling(); };
     combateSocket.onclose = function(e) {
-      console.warn('WebSocket fechado.');
+      console.warn('WebSocket fechado. Atualização por polling ativada.');
+      startCombatePolling();
     };
 
     window.enviarMensagemCombate = function(msg) {
