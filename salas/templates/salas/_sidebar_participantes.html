@@ -3,12 +3,12 @@
 <ul>
   {% for participante in sala.participantes.all %}
     {% get_perfil_de participante as perfil %}
-    <li>
+    <li data-user-id="{{ participante.id }}">
       {{ participante.username }}
       {% if online_ids and participante.id in online_ids %}
-        <span style="color: green; font-size: 0.9em;">(conectado)</span>
+        <span class="status status-online" id="status-user-{{ participante.id }}" style="color: green; font-size: 0.9em;">(conectado)</span>
       {% else %}
-        <span style="color: #a00; font-size: 0.9em;">(não conectado)</span>
+        <span class="status status-offline" id="status-user-{{ participante.id }}" style="color: #a00; font-size: 0.9em;">(não conectado)</span>
       {% endif %}
       {% if sala.game_master == participante %}
         <span style="color: #0077cc; font-size: 0.9em; font-weight: bold;">[GM]</span>
