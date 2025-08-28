@@ -7,6 +7,18 @@
   <h1 class="personagem-form-title">Editar NPC</h1>
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
+    {% if form.non_field_errors or form.errors or formset.non_form_errors %}
+      <div style="background:#2b1b1b; border:1px solid #a33; color:#f5cccc; padding:10px; margin-bottom:12px;">
+        <strong>Erros no formulário:</strong>
+        <ul style="margin:6px 0 0 18px;">
+          {% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}
+          {% for e in formset.non_form_errors %}<li>{{ e }}</li>{% endfor %}
+          {% for name, errs in form.errors.items %}
+            {% for e in errs %}<li>{{ name }}: {{ e }}</li>{% endfor %}
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
     <div class="personagem-form-fields">
       <div class="linha-topo" style="display:flex; gap:2rem; flex-wrap:wrap; align-items:flex-start;">
         <div class="campo-nome" style="flex:1 1 200px; min-width:180px;">
@@ -93,6 +105,10 @@
           <div style="display: flex; flex-direction: column; gap: 1.5rem; align-items: center;">
             {% for form in formset %}
               <div class="poder-form poder-form-grid" style="border:1px solid #444; width:100%; position: relative;">
+                <div style="display:none;">
+                  {% for h in form.hidden_fields %}{{ h }}{% endfor %}
+                  {{ form.DELETE }}
+                </div>
                 <div class="campo-poder">{{ form.nome.label_tag }}{{ form.nome }}</div>
                 <div class="campo-poder">{{ form.tipo.label_tag }}{{ form.tipo }}</div>
                 <div class="campo-poder">{{ form.modo.label_tag }}{{ form.modo }}</div>
@@ -103,7 +119,6 @@
                 <div class="campo-poder">{{ form.defesa_passiva.label_tag }}{{ form.defesa_passiva }}</div>
                 {% if form.DELETE %}
                   <div class="span-2" style="margin-top:0.4rem; text-align: right; display: flex; align-items: center; gap: 0.7rem; justify-content: flex-end;">
-                    <span style="display:none;">{{ form.DELETE }}</span>
                     <button type="button" class="btn btn-danger" onclick="removerPoderLinha(this)">Remover</button>
                   </div>
                 {% endif %}

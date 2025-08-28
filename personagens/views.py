@@ -492,6 +492,37 @@ def criar_npc(request, sala_id):
                 poder.save()
             formset.save_m2m()
             return redirect('listar_npcs')
+        else:
+            # Notifica o usuário sobre erros ao salvar NPC
+            from django.forms.utils import ErrorDict
+            def _count_errors(f):
+                if hasattr(f, 'errors') and isinstance(f.errors, ErrorDict):
+                    return sum(len(v) for v in f.errors.values()) + len(getattr(f, 'non_field_errors', lambda: [])())
+                return 0
+            total_err = _count_errors(form)
+            fs_non = len(getattr(formset, 'non_form_errors', lambda: [])())
+            fs_forms = sum(_count_errors(f) for f in formset.forms)
+            total_err += fs_non + fs_forms
+            # Log resumido e mensagem ao usuário
+            details = []
+            for e in form.non_field_errors():
+                details.append(f"form: {e}")
+            for name, errs in form.errors.items():
+                for e in errs:
+                    details.append(f"form.{name}: {e}")
+            for e in formset.non_form_errors():
+                details.append(f"formset: {e}")
+            for idx, f in enumerate(formset.forms):
+                for name, errs in f.errors.items():
+                    for e in errs:
+                        details.append(f"poder[{idx}].{name}: {e}")
+            if details:
+                logger.warning("[criar_npc] Falha de validação (%d):\n%s", total_err, "\n".join(details))
+            preview = "; ".join(details[:3]) if details else ""
+            if preview:
+                messages.error(request, f'Erros ao salvar NPC: {total_err}. Ex.: {preview}')
+            else:
+                messages.error(request, f'Erros ao salvar NPC: {total_err}. Verifique os destaques no formulário.')
     else:
         form = PersonagemNPCForm()
         formset = PoderNPCFormSet(prefix='poder_set')
@@ -552,6 +583,35 @@ def editar_npc(request, personagem_id):
             npc.save()
             formset.save()
             return redirect('listar_npcs')
+        else:
+            from django.forms.utils import ErrorDict
+            def _count_errors(f):
+                if hasattr(f, 'errors') and isinstance(f.errors, ErrorDict):
+                    return sum(len(v) for v in f.errors.values()) + len(getattr(f, 'non_field_errors', lambda: [])())
+                return 0
+            total_err = _count_errors(form)
+            fs_non = len(getattr(formset, 'non_form_errors', lambda: [])())
+            fs_forms = sum(_count_errors(f) for f in formset.forms)
+            total_err += fs_non + fs_forms
+            details = []
+            for e in form.non_field_errors():
+                details.append(f"form: {e}")
+            for name, errs in form.errors.items():
+                for e in errs:
+                    details.append(f"form.{name}: {e}")
+            for e in formset.non_form_errors():
+                details.append(f"formset: {e}")
+            for idx, f in enumerate(formset.forms):
+                for name, errs in f.errors.items():
+                    for e in errs:
+                        details.append(f"poder[{idx}].{name}: {e}")
+            if details:
+                logger.warning("[editar_npc] Falha de validação (%d):\n%s", total_err, "\n".join(details))
+            preview = "; ".join(details[:3]) if details else ""
+            if preview:
+                messages.error(request, f'Erros ao salvar NPC: {total_err}. Ex.: {preview}')
+            else:
+                messages.error(request, f'Erros ao salvar NPC: {total_err}. Verifique os destaques no formulário.')
     else:
         form = PersonagemNPCForm(instance=npc)
         formset = PoderNPCFormSet(instance=npc, prefix='poder_set')

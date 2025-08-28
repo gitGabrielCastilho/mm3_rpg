@@ -7,6 +7,18 @@
   <h1 class="personagem-form-title">Criar NPC (Sala: {{ sala.nome }})</h1>
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
+    {% if form.non_field_errors or form.errors or formset.non_form_errors %}
+      <div style="background:#2b1b1b; border:1px solid #a33; color:#f5cccc; padding:10px; margin-bottom:12px;">
+        <strong>Erros no formulário:</strong>
+        <ul style="margin:6px 0 0 18px;">
+          {% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}
+          {% for e in formset.non_form_errors %}<li>{{ e }}</li>{% endfor %}
+          {% for name, errs in form.errors.items %}
+            {% for e in errs %}<li>{{ name }}: {{ e }}</li>{% endfor %}
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
     <div class="personagem-form-fields">
       <div class="linha-topo" style="display:flex; gap:2rem; flex-wrap:wrap; align-items:flex-start;">
         <div class="campo-nome" style="flex:1 1 200px; min-width:180px;">
