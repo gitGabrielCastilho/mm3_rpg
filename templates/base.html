@@ -117,6 +117,9 @@ document.addEventListener('DOMContentLoaded', function() {
   <div id="sidebar-personagens" style="margin-top:10px;">
     {% include 'salas/_sidebar_personagens.html' with sala=perfil.sala_atual user=user %}
   </div>
+  <div id="sidebar-npcs" style="margin-top:10px;">
+    {% include 'salas/_sidebar_npcs.html' with sala=perfil.sala_atual user=user %}
+  </div>
 </aside>
 <script>
 function toggleSidebar() {

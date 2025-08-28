@@ -1,0 +1,19 @@
+{# Lista NPCs do GM na sala atual #}
+{% if user.id == sala.game_master_id %}
+  <h4 style="margin:10px 0 6px;">NPCs</h4>
+  <ul>
+    {% for npc in sala.personagens.all %}
+      {% if npc.is_npc and npc.usuario_id == user.id %}
+        <li>
+          <a href="{% url 'editar_npc' npc.id %}">🤖 {{ npc.nome }}</a>
+        </li>
+      {% endif %}
+    {% empty %}
+      <li><em>Nenhum NPC.</em></li>
+    {% endfor %}
+  </ul>
+  <div style="margin-top:6px;">
+    <a class="btn btn-small" href="{% url 'criar_npc' sala.id %}">+ Criar NPC</a>
+    <a class="btn btn-small" href="{% url 'listar_npcs' %}" style="margin-left:6px;">Listar NPCs</a>
+  </div>
+{% endif %}
