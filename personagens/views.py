@@ -573,8 +573,20 @@ def editar_npc(request, personagem_id):
     if not sala_atual or npc.sala_id != sala_atual.id:
         return redirect('listar_salas')
     if request.method == 'POST':
-        form = PersonagemNPCForm(request.POST, request.FILES, instance=npc)
-        formset = PoderNPCFormSet(request.POST, request.FILES, instance=npc, prefix='poder_set')
+        # Preenche ids dos poderes existentes se ausentes no POST
+        data = request.POST.copy()
+        try:
+            initial_forms = int(data.get('poder_set-INITIAL_FORMS', '0'))
+        except Exception:
+            initial_forms = 0
+        existing_pks = list(npc.poderes.order_by('pk').values_list('pk', flat=True))
+        for i in range(min(initial_forms, len(existing_pks))):
+            key = f'poder_set-{i}-id'
+            if not data.get(key):
+                data[key] = str(existing_pks[i])
+
+        form = PersonagemNPCForm(data, request.FILES, instance=npc)
+        formset = PoderNPCFormSet(data, request.FILES, instance=npc, prefix='poder_set')
         if form.is_valid() and formset.is_valid():
             npc = form.save(commit=False)
             npc.is_npc = True
@@ -607,6 +619,15 @@ def editar_npc(request, personagem_id):
                         details.append(f"poder[{idx}].{name}: {e}")
             if details:
                 logger.warning("[editar_npc] Falha de validação (%d):\n%s", total_err, "\n".join(details))
+            # Log básico dos ids postados
+            try:
+                if 'poder_set-INITIAL_FORMS' in request.POST:
+                    logger.warning("[editar_npc] POST poder_set-INITIAL_FORMS=%s", request.POST.get('poder_set-INITIAL_FORMS'))
+                for f in formset.forms:
+                    pid = request.POST.get(f"{f.prefix}-id")
+                    logger.warning("[editar_npc] POST %s-id=%s", f.prefix, pid)
+            except Exception:
+                pass
             preview = "; ".join(details[:3]) if details else ""
             if preview:
                 messages.error(request, f'Erros ao salvar NPC: {total_err}. Ex.: {preview}')

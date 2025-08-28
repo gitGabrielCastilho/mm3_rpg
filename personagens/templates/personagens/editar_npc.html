@@ -107,6 +107,7 @@
               <div class="poder-form poder-form-grid" style="border:1px solid #444; width:100%; position: relative;">
                 <div style="display:none;">
                   {% for h in form.hidden_fields %}{{ h }}{% endfor %}
+                  {% if form.instance.pk %}<input type="hidden" name="{{ form.prefix }}-id" value="{{ form.instance.pk }}">{% endif %}
                   {{ form.DELETE }}
                 </div>
                 <div class="campo-poder">{{ form.nome.label_tag }}{{ form.nome }}</div>
