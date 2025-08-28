@@ -1,22 +1,13 @@
-{# Lista personagens dos usuários atualmente conectados à sala #}
+{# Lista todos os personagens da sala (sem filtrar por online) #}
 {% load filtros %}
 <ul>
-  {% with online_ids=online_ids|default:'' %}
-  {% for participante in sala.participantes.all %}
-    {% if online_ids and participante.id in online_ids %}
-      {# Personagens do participante nesta sala #}
-      {% for p in sala.personagens.all %}
-        {% if p.usuario_id == participante.id and not p.is_npc %}
-          <li title="{{ participante.username }}">
-            👤 {{ p.nome }}
-          </li>
-        {% endif %}
-      {% empty %}
-      {% endfor %}
+  {% for p in sala.personagens.all %}
+    {% if not p.is_npc %}
+      <li title="{{ p.usuario.username }}">
+        <a href="{% url 'ficha_personagem' p.id %}" class="sidebar-personagem-link">👤 {{ p.nome }}</a>
+      </li>
     {% endif %}
-  {% endfor %}
-  {% endwith %}
-  {% if sala.personagens.count == 0 %}
+  {% empty %}
     <li><em>Nenhum personagem ainda.</em></li>
-  {% endif %}
+  {% endfor %}
 </ul>

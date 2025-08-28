@@ -134,6 +134,18 @@ else:
         }
     }
 
+# If using PostgreSQL (e.g., via DATABASE_URL), disable server-side cursors by default to
+# avoid InvalidCursorName with PgBouncer transaction pooling. Can be re-enabled via env var.
+try:
+    default_db = DATABASES.get('default', {})
+    engine = default_db.get('ENGINE', '')
+    if engine.endswith('postgresql') or engine.endswith('postgresql_psycopg2'):
+        enable_ssc = os.getenv('ENABLE_SERVER_SIDE_CURSORS', '').lower() in ("1", "true", "yes")
+        default_db['DISABLE_SERVER_SIDE_CURSORS'] = not enable_ssc
+        DATABASES['default'] = default_db
+except Exception:
+    pass
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

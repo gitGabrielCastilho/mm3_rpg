@@ -1,15 +1,9 @@
-{# Template parcial para a lista de participantes da sidebar #}
+{# Template parcial para a lista de participantes da sidebar (sem status online/offline) #}
 {% load filtros %}
 <ul>
   {% for participante in sala.participantes.all %}
-    {% get_perfil_de participante as perfil %}
     <li data-user-id="{{ participante.id }}">
       {{ participante.username }}
-      {% if online_ids and participante.id in online_ids %}
-        <span class="status status-online" id="status-user-{{ participante.id }}" style="color: green; font-size: 0.9em;">(conectado)</span>
-      {% else %}
-        <span class="status status-offline" id="status-user-{{ participante.id }}" style="color: #a00; font-size: 0.9em;">(não conectado)</span>
-      {% endif %}
       {% if sala.game_master == participante %}
         <span style="color: #0077cc; font-size: 0.9em; font-weight: bold;">[GM]</span>
       {% endif %}
@@ -17,4 +11,4 @@
   {% empty %}
     <li>Nenhum participante ainda.</li>
   {% endfor %}
-  </ul>
+</ul>

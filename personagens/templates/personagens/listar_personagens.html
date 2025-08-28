@@ -3,6 +3,9 @@
 {% load filtros %}
 <div class="personagens-center">
   <h1 class="personagens-title">Meus Personagens</h1>
+  <div style="margin-bottom: 12px;">
+    <a href="{% url 'importar_personagem_lista' %}" class="btn">Importar de outra sala</a>
+  </div>
   <ul class="personagens-list">
     {% for personagem in personagens %}
       <li>

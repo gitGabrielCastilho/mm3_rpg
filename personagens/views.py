@@ -6,8 +6,14 @@ from .forms import (
 )
 from .models import Personagem, Poder, Inventario
 from django.core.exceptions import ValidationError
+from django.http import QueryDict
 from django.forms import inlineformset_factory
 from salas.models import Sala
+from django.contrib import messages
+from django.db import transaction
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 PoderFormSet = inlineformset_factory(
@@ -119,6 +125,125 @@ def listar_personagens(request):
 
 
 @login_required
+def importar_personagem_lista(request):
+    """Lista personagens do usuário em outras salas para importar (copiar) para a sala atual."""
+    sala_atual = getattr(getattr(request.user, 'perfilusuario', None), 'sala_atual', None)
+    if not sala_atual:
+        return redirect('listar_salas')
+    personagens = Personagem.objects.filter(usuario=request.user, is_npc=False).exclude(sala=sala_atual)
+    return render(request, 'personagens/importar_personagem.html', {
+        'personagens_outras_salas': personagens,
+        'sala': sala_atual,
+    })
+
+
+def _clonar_personagem(orig: Personagem, sala_destino: Sala, dono):
+    """Clona o personagem (e poderes/inventário/vantagens) para a sala_destino, mantendo o mesmo dono."""
+    # Clona campos simples
+    campos_simples = {
+        'is_npc': orig.is_npc,
+        'especialidade_casting_ability': orig.especialidade_casting_ability,
+        'nome': orig.nome,
+        'nivel_poder': orig.nivel_poder,
+        'foto': orig.foto,
+        # Características
+        'forca': orig.forca,
+        'vigor': orig.vigor,
+        'destreza': orig.destreza,
+        'agilidade': orig.agilidade,
+        'luta': orig.luta,
+        'inteligencia': orig.inteligencia,
+        'prontidao': orig.prontidao,
+        'presenca': orig.presenca,
+        # Defesas
+        'aparar': orig.aparar,
+        'esquivar': orig.esquivar,
+        'fortitude': orig.fortitude,
+        'vontade': orig.vontade,
+        'resistencia': orig.resistencia,
+        'penalidade_resistencia': orig.penalidade_resistencia,
+        'condicao': orig.condicao,
+        # Perícias
+        'acrobacias': orig.acrobacias,
+        'atletismo': orig.atletismo,
+        'combate_distancia': orig.combate_distancia,
+        'combate_corpo': orig.combate_corpo,
+        'enganacao': orig.enganacao,
+        'especialidade': orig.especialidade,
+        'furtividade': orig.furtividade,
+        'intimidacao': orig.intimidacao,
+        'intuicao': orig.intuicao,
+        'investigacao': orig.investigacao,
+        'percepcao': orig.percepcao,
+        'persuasao': orig.persuasao,
+        'prestidigitacao': orig.prestidigitacao,
+        'tecnologia': orig.tecnologia,
+        'tratamento': orig.tratamento,
+        'veiculos': orig.veiculos,
+        'historia': orig.historia,
+        'sobrevivencia': orig.sobrevivencia,
+    }
+    novo = Personagem(**campos_simples)
+    novo.usuario = dono
+    novo.sala = sala_destino
+    novo.is_npc = False  # Segurança: importação apenas de jogadores
+    novo.full_clean(exclude=['usuario', 'sala'])
+    novo.save()
+
+    # Vantagens (M2M)
+    novo.vantagens.set(orig.vantagens.all())
+
+    # Inventário
+    inv_orig = getattr(orig, 'inventario', None)
+    inv_novo = Inventario.objects.create(personagem=novo)
+    if inv_orig:
+        inv_novo.ouro = inv_orig.ouro
+        inv_novo.dragon_shard = inv_orig.dragon_shard
+        inv_novo.save()
+        inv_novo.itens.set(inv_orig.itens.all())
+
+    # Poderes
+    poderes_orig = list(orig.poderes.all())
+    novos_poderes = []
+    for p in poderes_orig:
+        novos_poderes.append(Poder(
+            personagem=novo,
+            casting_ability=p.casting_ability,
+            nome=p.nome,
+            tipo=p.tipo,
+            modo=p.modo,
+            nivel_efeito=p.nivel_efeito,
+            bonus_ataque=p.bonus_ataque,
+            defesa_ativa=p.defesa_ativa,
+            defesa_passiva=p.defesa_passiva,
+            de_item=p.de_item,
+            item_origem=p.item_origem,
+            de_vantagem=p.de_vantagem,
+            vantagem_origem=p.vantagem_origem,
+        ))
+    Poder.objects.bulk_create(novos_poderes)
+    return novo
+
+
+@login_required
+@transaction.atomic
+def importar_personagem(request, personagem_id):
+    """Copia um personagem do usuário de outra sala para a sala atual."""
+    if request.method != 'POST':
+        return redirect('importar_personagem_lista')
+    sala_atual = getattr(getattr(request.user, 'perfilusuario', None), 'sala_atual', None)
+    if not sala_atual:
+        return redirect('listar_salas')
+    orig = get_object_or_404(Personagem, id=personagem_id, usuario=request.user, is_npc=False)
+    if orig.sala_id == sala_atual.id:
+        messages.info(request, 'Este personagem já está na sala atual.')
+        return redirect('importar_personagem_lista')
+    novo = _clonar_personagem(orig, sala_atual, request.user)
+    messages.success(request, f'Personagem "{novo.nome}" importado para a sala {sala_atual.nome}.')
+    return redirect('listar_personagens')
+
+
+@login_required
 def editar_personagem(request, personagem_id):
     personagem = get_object_or_404(Personagem, id=personagem_id, usuario=request.user)
     # Exige estar na sala do personagem
@@ -131,18 +256,38 @@ def editar_personagem(request, personagem_id):
         return redirect('listar_salas')
     inventario, created = Inventario.objects.get_or_create(personagem=personagem)
     if request.method == 'POST':
-        form = PersonagemForm(request.POST, request.FILES, instance=personagem)
-        inventario_form = InventarioForm(request.POST, instance=inventario)
-        formset = PoderFormSet(request.POST, request.FILES, instance=personagem, prefix='poder_set')
+        # Garante que ids dos poderes existentes estejam presentes no POST (workaround de template/JS)
+        data = request.POST.copy() if not isinstance(request.POST, QueryDict) else request.POST.copy()
+        try:
+            initial_forms = int(data.get('poder_set-INITIAL_FORMS', '0'))
+        except Exception:
+            initial_forms = 0
+        # Usa ordem determinística por pk
+        existing_pks = list(personagem.poderes.order_by('pk').values_list('pk', flat=True))
+        for i in range(min(initial_forms, len(existing_pks))):
+            key = f'poder_set-{i}-id'
+            if not data.get(key):
+                data[key] = str(existing_pks[i])
+
+        form = PersonagemForm(data, request.FILES, instance=personagem)
+        inventario_form = InventarioForm(data, instance=inventario)
+        formset = PoderFormSet(data, request.FILES, instance=personagem, prefix='poder_set')
         if form.is_valid() and inventario_form.is_valid() and formset.is_valid():
             personagem = form.save(commit=False)
             personagem.sala = sala_atual
             personagem.save()
-            inventario = inventario_form.save()
-            poderes = formset.save(commit=False)
 
-            # Limpa itens de origem antes de atualizar
-            inventario.itens.clear()
+            # Inventário: preservar itens selecionados no formulário E itens de poderes
+            inv = inventario_form.save(commit=False)
+            inv.personagem = personagem
+            inv.save()
+            # Limpa e remonta o conjunto de itens
+            inv.itens.clear()
+            itens_selecionados = list(inventario_form.cleaned_data.get('itens') or [])
+            if itens_selecionados:
+                inv.itens.add(*itens_selecionados)
+
+            poderes = formset.save(commit=False)
 
             # Coleta vantagens selecionadas manualmente
             vantagens_ids = set(request.POST.getlist('vantagens'))
@@ -155,15 +300,86 @@ def editar_personagem(request, personagem_id):
                     vantagens_ids.add(str(poder.vantagem_origem.id))
                 # Adiciona item ao inventário se for poder de item
                 if getattr(poder, 'de_item', False) and getattr(poder, 'item_origem', None):
-                    inventario.itens.add(poder.item_origem)
+                    inv.itens.add(poder.item_origem)
+
+            # Processa exclusões do formset
+            for obj in formset.deleted_objects:
+                obj.delete()
 
             # Salva todas as vantagens (sem duplicidade)
             personagem.vantagens.set(vantagens_ids)
 
+            # InlineFormSet não tem M2M, mas chamamos para consistência
             formset.save_m2m()
             return redirect('listar_personagens')
-    # Se inválido, segue para renderização com dados atuais
+        else:
+            # Surface concise error indicators via messages
+            from django.forms.utils import ErrorDict
+            def _count_errors(f):
+                if hasattr(f, 'errors') and isinstance(f.errors, ErrorDict):
+                    return sum(len(v) for v in f.errors.values()) + len(getattr(f, 'non_field_errors', lambda: [])())
+                return 0
+            total_err = _count_errors(form) + _count_errors(inventario_form)
+            # formset errors: per-form + non-form
+            fs_non = len(getattr(formset, 'non_form_errors', lambda: [])())
+            fs_forms = sum(_count_errors(f) for f in formset.forms)
+            total_err += fs_non + fs_forms
+            # Collect detailed errors for logging and optional short preview
+            details = []
+            for e in form.non_field_errors():
+                details.append(f"form: {e}")
+            for name, errs in form.errors.items():
+                for e in errs:
+                    details.append(f"form.{name}: {e}")
+            for e in inventario_form.non_field_errors():
+                details.append(f"inventario: {e}")
+            for name, errs in inventario_form.errors.items():
+                for e in errs:
+                    details.append(f"inventario.{name}: {e}")
+            for e in formset.non_form_errors():
+                details.append(f"formset: {e}")
+            for idx, f in enumerate(formset.forms):
+                for e in f.non_field_errors():
+                    details.append(f"poder[{idx}]: {e}")
+                for name, errs in f.errors.items():
+                    for e in errs:
+                        details.append(f"poder[{idx}].{name}: {e}")
+            if details:
+                logger.warning("[editar_personagem] Falha de validação (%d):\n%s", total_err, "\n".join(details))
+            # Debug: log IDs enviados pelo cliente para cada form do formset
+            try:
+                # Log management form values
+                for k in [
+                    'poder_set-TOTAL_FORMS',
+                    'poder_set-INITIAL_FORMS',
+                    'poder_set-MIN_NUM_FORMS',
+                    'poder_set-MAX_NUM_FORMS',
+                ]:
+                    if k in request.POST:
+                        logger.warning("[editar_personagem] POST %s=%s", k, request.POST.get(k))
+                for f in formset.forms:
+                    pid = request.POST.get(f"{f.prefix}-id")
+                    pid_list = request.POST.getlist(f"{f.prefix}-id")
+                    logger.warning("[editar_personagem] POST %s-id=%s", f.prefix, pid)
+                    if pid_list and (len(pid_list) > 1 or (pid_list and pid_list[0] != pid)):
+                        logger.warning("[editar_personagem] POST %s-id getlist=%s", f.prefix, pid_list)
+                # Dump all poder_set-* fields for debugging names/values
+                keys = sorted([k for k in request.POST.keys() if k.startswith('poder_set-')])
+                for k in keys:
+                    # Don't spam with large textareas; log only short values
+                    v = request.POST.getlist(k)
+                    vs = v if len(v) > 1 else (v[0] if v else '')
+                    logger.warning("[editar_personagem] POST %s => %s", k, vs)
+            except Exception:
+                pass
+            if total_err:
+                preview = "; ".join(details[:3]) if details else ""
+                if preview:
+                    messages.error(request, f'Erros ao salvar: {total_err}. Ex.: {preview}')
+                else:
+                    messages.error(request, f'Erros ao salvar: {total_err}. Verifique os destaques no formulário abaixo.')
     else:
+        # GET: prepara formulários preenchidos
         form = PersonagemForm(instance=personagem)
         inventario_form = InventarioForm(instance=inventario)
         formset = PoderFormSet(instance=personagem, prefix='poder_set')
@@ -225,13 +441,16 @@ def visualizar_personagem(request, personagem_id):
 
 @login_required
 def ficha_personagem(request, personagem_id):
-    personagem = get_object_or_404(Personagem, pk=personagem_id, usuario=request.user)
+    personagem = get_object_or_404(Personagem, pk=personagem_id)
     sala_atual = None
     try:
         sala_atual = request.user.perfilusuario.sala_atual
     except Exception:
         sala_atual = None
-    if not sala_atual or personagem.sala_id != sala_atual.id:
+    # Permissões: dono do personagem na sala atual OU GM da sala do personagem estando na sala
+    is_dono = personagem.usuario_id == request.user.id
+    is_gm_da_sala = sala_atual and personagem.sala_id == sala_atual.id and sala_atual.game_master_id == request.user.id
+    if not sala_atual or personagem.sala_id != sala_atual.id or (not is_dono and not is_gm_da_sala):
         return redirect('listar_salas')
     poderes_de_item = poderes_de_item = personagem.poderes.filter(de_item=True)
     categorias = {
@@ -245,7 +464,8 @@ def ficha_personagem(request, personagem_id):
     return render(request, 'personagens/ficha_personagem.html', {
         'personagem': personagem,
         'categorias': categorias,
-        'poderes_de_item': poderes_de_item
+        'poderes_de_item': poderes_de_item,
+        'pode_editar': is_dono,
     })
 
 

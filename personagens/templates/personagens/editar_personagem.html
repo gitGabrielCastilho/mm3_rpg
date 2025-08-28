@@ -7,6 +7,22 @@
   <h1 class="personagem-form-title">Editar Personagem</h1>
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
+    {# Bloco de erros gerais para facilitar depuração #}
+    {% if form.non_field_errors or inventario_form.non_field_errors or form.errors or inventario_form.errors or formset.non_form_errors %}
+      <div style="background:#2b1b1b; border:1px solid #a33; color:#f5cccc; padding:10px; margin-bottom:12px;">
+        <strong>Erros no formulário:</strong>
+        <ul style="margin:6px 0 0 18px;">
+          {% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}
+          {% for e in formset.non_form_errors %}<li>{{ e }}</li>{% endfor %}
+          {% for name, errs in form.errors.items %}
+            {% for e in errs %}<li>{{ name }}: {{ e }}</li>{% endfor %}
+          {% endfor %}
+          {% for name, errs in inventario_form.errors.items %}
+            {% for e in errs %}<li>inventário.{{ name }}: {{ e }}</li>{% endfor %}
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
     <div class="personagem-form-fields">
       <div class="linha-topo" style="display:flex; gap:2rem; flex-wrap:wrap; align-items:flex-start;">
         <div class="campo-nome" style="flex:1 1 200px; min-width:180px;">
@@ -109,6 +125,10 @@
       <!-- Empty form grid para JS clonar (novo layout) -->
       <div id="empty-poder-form" style="display:none;">
         <div class="poder-form poder-form-grid" style="border:1px solid #444; width:100%; position: relative;">
+          <div style="display:none;">
+            {% for h in formset.empty_form.hidden_fields %}{{ h }}{% endfor %}
+            {{ formset.empty_form.DELETE }}
+          </div>
           <div class="campo-poder">{{ formset.empty_form.nome.label_tag }}{{ formset.empty_form.nome }}</div>
           <div class="campo-poder">{{ formset.empty_form.tipo.label_tag }}{{ formset.empty_form.tipo }}</div>
           <div class="campo-poder">{{ formset.empty_form.modo.label_tag }}{{ formset.empty_form.modo }}</div>
@@ -122,32 +142,39 @@
           <div class="campo-poder">{{ formset.empty_form.vantagem_origem.label_tag }}{{ formset.empty_form.vantagem_origem }}</div>
           <div class="campo-poder linha-checkbox">{{ formset.empty_form.de_vantagem }} <label for="{{ formset.empty_form.de_vantagem.id_for_label }}">Poder de Vantagem?</label></div>
           <div class="span-2" style="margin-top:0.4rem; text-align:right; display:flex; gap:0.7rem; justify-content:flex-end;">
-            <span style="display:none;">{{ formset.empty_form.DELETE }}</span>
             <button type="button" class="btn btn-danger" onclick="removerPoderLinha(this)">Remover</button>
           </div>
         </div>
       </div>
       <div class="poder-form-outer">
         <div id="poderes-formset">
-          {{ formset.management_form }}
+      {{ formset.management_form }}
           <div style="display: flex; flex-direction: column; gap: 1.5rem; align-items: center;">
             {% for form in formset %}
               <div class="poder-form poder-form-grid" style="border:1px solid #444; width:100%; position: relative;">
-                <div class="campo-poder">{{ form.nome.label_tag }}{{ form.nome }}</div>
-                <div class="campo-poder">{{ form.tipo.label_tag }}{{ form.tipo }}</div>
-                <div class="campo-poder">{{ form.modo.label_tag }}{{ form.modo }}</div>
-                <div class="campo-poder">{{ form.casting_ability.label_tag }}{{ form.casting_ability }}</div>
-                <div class="campo-poder">{{ form.nivel_efeito.label_tag }}{{ form.nivel_efeito }}</div>
-                <div class="campo-poder">{{ form.bonus_ataque.label_tag }}{{ form.bonus_ataque }}</div>
-                <div class="campo-poder">{{ form.defesa_ativa.label_tag }}{{ form.defesa_ativa }}</div>
-                <div class="campo-poder">{{ form.defesa_passiva.label_tag }}{{ form.defesa_passiva }}</div>
-                <div class="campo-poder">{{ form.item_origem.label_tag }}{{ form.item_origem }}</div>
-                <div class="campo-poder linha-checkbox">{{ form.de_item }} <label for="{{ form.de_item.id_for_label }}">Poder de Item?</label></div>
-                <div class="campo-poder">{{ form.vantagem_origem.label_tag }}{{ form.vantagem_origem }}</div>
-                <div class="campo-poder linha-checkbox">{{ form.de_vantagem }} <label for="{{ form.de_vantagem.id_for_label }}">Poder de Vantagem?</label></div>
+        <div style="display:none;">
+          {% for h in form.hidden_fields %}{{ h }}{% endfor %}
+          {# Força o envio do id correto do poder, evitando valores em branco #}
+          {% if form.instance.pk %}<input type="hidden" name="{{ form.prefix }}-id" value="{{ form.instance.pk }}">{% endif %}
+          {{ form.DELETE }}
+        </div>
+                <div class="campo-poder">{{ form.nome.label_tag }}{{ form.nome }}{% if form.nome.errors %}<div style="color:#f88;">{{ form.nome.errors }}</div>{% endif %}</div>
+                      <div class="campo-poder">{{ form.tipo.label_tag }}{{ form.tipo }}{% if form.tipo.errors %}<div style="color:#f88;">{{ form.tipo.errors }}</div>{% endif %}</div>
+                      <div class="campo-poder">{{ form.modo.label_tag }}{{ form.modo }}{% if form.modo.errors %}<div style="color:#f88;">{{ form.modo.errors }}</div>{% endif %}</div>
+                      <div class="campo-poder">{{ form.casting_ability.label_tag }}{{ form.casting_ability }}{% if form.casting_ability.errors %}<div style="color:#f88;">{{ form.casting_ability.errors }}</div>{% endif %}</div>
+                      <div class="campo-poder">{{ form.nivel_efeito.label_tag }}{{ form.nivel_efeito }}{% if form.nivel_efeito.errors %}<div style="color:#f88;">{{ form.nivel_efeito.errors }}</div>{% endif %}</div>
+                      <div class="campo-poder">{{ form.bonus_ataque.label_tag }}{{ form.bonus_ataque }}{% if form.bonus_ataque.errors %}<div style="color:#f88;">{{ form.bonus_ataque.errors }}</div>{% endif %}</div>
+                      <div class="campo-poder">{{ form.defesa_ativa.label_tag }}{{ form.defesa_ativa }}{% if form.defesa_ativa.errors %}<div style="color:#f88;">{{ form.defesa_ativa.errors }}</div>{% endif %}</div>
+                      <div class="campo-poder">{{ form.defesa_passiva.label_tag }}{{ form.defesa_passiva }}{% if form.defesa_passiva.errors %}<div style="color:#f88;">{{ form.defesa_passiva.errors }}</div>{% endif %}</div>
+                      <div class="campo-poder">{{ form.item_origem.label_tag }}{{ form.item_origem }}{% if form.item_origem.errors %}<div style="color:#f88;">{{ form.item_origem.errors }}</div>{% endif %}</div>
+                      <div class="campo-poder linha-checkbox">{{ form.de_item }} <label for="{{ form.de_item.id_for_label }}">Poder de Item?</label>{% if form.de_item.errors %}<div style="color:#f88;">{{ form.de_item.errors }}</div>{% endif %}</div>
+                      <div class="campo-poder">{{ form.vantagem_origem.label_tag }}{{ form.vantagem_origem }}{% if form.vantagem_origem.errors %}<div style="color:#f88;">{{ form.vantagem_origem.errors }}</div>{% endif %}</div>
+                      <div class="campo-poder linha-checkbox">{{ form.de_vantagem }} <label for="{{ form.de_vantagem.id_for_label }}">Poder de Vantagem?</label>{% if form.de_vantagem.errors %}<div style="color:#f88;">{{ form.de_vantagem.errors }}</div>{% endif %}</div>
+                    {% if form.non_field_errors %}
+                      <div class="span-2" style="color:#f88;">{{ form.non_field_errors }}</div>
+                    {% endif %}
               {% if form.DELETE %}
                 <div class="span-2" style="margin-top:0.4rem; text-align: right; display: flex; align-items: center; gap: 0.7rem; justify-content: flex-end;">
-                  <span style="display:none;">{{ form.DELETE }}</span>
                   <button type="button" class="btn btn-danger" onclick="removerPoderLinha(this)">Remover</button>
                 </div>
               {% endif %}
@@ -292,6 +319,12 @@ function removerPoderLinha(botao) {
           label.htmlFor = label.htmlFor.replace(/poder_set-(\d+)-/, 'poder_set-' + idx + '-');
         }
       });
+      // Atualiza também o input hidden id (name like poder_set-0-id)
+      const hiddenId = div.querySelector('input[type="hidden"][name$="-id"]');
+      if (hiddenId && hiddenId.name.includes('poder_set-')) {
+        hiddenId.name = hiddenId.name.replace(/poder_set-(\d+)-/, 'poder_set-' + idx + '-');
+        if (!hiddenId.value) hiddenId.value = ''; // novo form
+      }
     });
     totalFormsInput.value = forms.length;
   }
@@ -315,6 +348,9 @@ function adicionarPoder() {
   const emptyDiv = document.getElementById('empty-poder-form').firstElementChild.cloneNode(true);
   // Substitui todos os __prefix__ pelo novo índice
   emptyDiv.innerHTML = emptyDiv.innerHTML.replace(/__prefix__/g, formIdx);
+  // Garante que o hidden id esteja vazio para novo registro
+  const hId = emptyDiv.querySelector('input[type="hidden"][name$="-id"]');
+  if (hId) hId.value = '';
   if (poderesContainer) {
     poderesContainer.appendChild(emptyDiv);
   } else {

@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% load filtros %}
+{% block content %}
+<div class="personagens-center">
+  <h1 class="personagens-title">Importar Personagem para {{ sala.nome }}</h1>
+  <p>Selecione um personagem que você possui em outra sala para copiar para a sala atual.</p>
+  <ul class="personagens-list">
+    {% for p in personagens_outras_salas %}
+      <li>
+        <span class="personagem-link">{{ p.nome }}</span>
+        <span class="personagem-np">(De: {{ p.sala.nome }} / NP {{ p.nivel_poder|default:"?" }})</span>
+        <form action="{% url 'importar_personagem' p.id %}" method="post" style="display:inline">
+          {% csrf_token %}
+          <button type="submit" class="btn">Importar</button>
+        </form>
+      </li>
+    {% empty %}
+      <p>Não há personagens em outras salas para importar.</p>
+    {% endfor %}
+  </ul>
+  <div class="ficha-acoes">
+    <a href="{% url 'listar_personagens' %}" class="btn btn-secondary">Voltar</a>
+  </div>
+</div>
+{% endblock %}

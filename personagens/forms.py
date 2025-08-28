@@ -42,10 +42,14 @@ class PoderForm(forms.ModelForm):
     class Meta:
         model = Poder
         fields = [
+            'id',
             'nome', 'tipo', 'modo', 'nivel_efeito', 'bonus_ataque',
             'defesa_ativa', 'defesa_passiva', 'casting_ability',
             'de_item', 'item_origem', 'de_vantagem', 'vantagem_origem'
         ]
+        widgets = {
+            'id': forms.HiddenInput(),
+        }
 
     def clean(self):
         cleaned_data = super().clean()

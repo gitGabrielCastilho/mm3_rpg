@@ -113,7 +113,9 @@
   </div>
 
   <div class="ficha-acoes">
-    <a href="{% url 'editar_personagem' personagem.id %}" class="btn">Editar</a>
+    {% if pode_editar %}
+      <a href="{% url 'editar_personagem' personagem.id %}" class="btn">Editar</a>
+    {% endif %}
     <a href="{% url 'listar_personagens' %}" class="btn btn-secondary">Voltar</a>
   </div>
 </div>
