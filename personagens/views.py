@@ -482,8 +482,8 @@ def criar_npc(request, sala_id):
         if form.is_valid() and formset.is_valid():
             npc = form.save(commit=False)
             # Dono será o GM para controle; sem vantagens/inventário
+            npc.is_npc = True  # garante bypass de validações do modelo
             npc.usuario = request.user
-            npc.is_npc = True
             npc.sala = sala
             npc.save()
             poderes = formset.save(commit=False)
@@ -589,7 +589,7 @@ def editar_npc(request, personagem_id):
         formset = PoderNPCFormSet(data, request.FILES, instance=npc, prefix='poder_set')
         if form.is_valid() and formset.is_valid():
             npc = form.save(commit=False)
-            npc.is_npc = True
+            npc.is_npc = True  # garante bypass de validações do modelo
             npc.usuario = request.user
             npc.sala = sala_atual
             npc.save()

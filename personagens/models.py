@@ -74,6 +74,9 @@ class Personagem(models.Model):
 
 
     def clean(self):
+        # NPCs não sofrem limitações gerais (atributos/defesas/perícias)
+        if getattr(self, 'is_npc', False):
+            return
         np = self.nivel_poder
         atributos = [
             self.forca, self.vigor, self.destreza, self.agilidade,
