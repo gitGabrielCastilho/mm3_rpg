@@ -81,7 +81,7 @@
           {% endfor %}
         </select>
 
-        <div class="acao-row">
+        <div class="acao-row poder-row">
           <label for="poder">Poder:</label>
           <select name="poder_id" id="poder" required class="select-md" data-tipos="{}" aria-describedby="poder_hint">
             {% for poder in poderes_disponiveis %}
@@ -90,9 +90,9 @@
               <option disabled>Nenhum poder disponível</option>
             {% endfor %}
           </select>
-          <small id="poder_hint" class="form-hint" style="display:block; margin:-4px 0 6px; color:#666; font-size:12px;"></small>
           <button type="submit" class="btn btn-sm" id="btn-rolar-poder">Rolar</button>
         </div>
+        <small id="poder_hint" class="form-hint" style="display:block; margin:-4px 0 6px; color:#666; font-size:12px;"></small>
 
         <div class="acao-row">
           <label for="pericia_rolar">Perícia:</label>
