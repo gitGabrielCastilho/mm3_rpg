@@ -71,11 +71,11 @@
   <input type="hidden" id="personagem_acao_hidden_pericia" value="{{ participantes.0.id }}">
   <input type="hidden" id="personagem_acao_hidden_caracteristica" value="{{ participantes.0.id }}">
 
-        <label for="alvo">Alvo(s):</label>
+  <label for="alvo">Alvo(s):</label>
         <small id="alvo_hint" class="form-hint" style="display:block; margin:-4px 0 6px; color:#666; font-size:12px;">
           Segure Ctrl (Windows/Linux) ou Cmd (macOS) para selecionar múltiplos; use Shift para selecionar intervalos.
         </small>
-        <select id="alvo" name="alvo_id" multiple required size="4" class="multiselect-alvos" aria-describedby="alvo_hint" title="Segure Ctrl (Windows/Linux) ou Cmd (macOS) para seleção múltipla; Shift para intervalos.">
+  <select id="alvo" name="alvo_id" multiple size="4" class="multiselect-alvos" aria-describedby="alvo_hint" title="Segure Ctrl (Windows/Linux) ou Cmd (macOS) para seleção múltipla; Shift para intervalos.">
           {% for p in participantes %}
             <option value="{{ p.id }}">{{ p.display_nome|default:p.personagem.nome }}</option>
           {% endfor %}
@@ -83,13 +83,14 @@
 
         <div class="acao-row">
           <label for="poder">Poder:</label>
-          <select name="poder_id" id="poder" required class="select-md">
+          <select name="poder_id" id="poder" required class="select-md" data-tipos="{}" aria-describedby="poder_hint">
             {% for poder in poderes_disponiveis %}
-              <option value="{{ poder.id }}">{{ poder.nome }}</option>
+              <option value="{{ poder.id }}" data-tipo="{{ poder.tipo }}">{{ poder.nome }}</option>
             {% empty %}
               <option disabled>Nenhum poder disponível</option>
             {% endfor %}
           </select>
+          <small id="poder_hint" class="form-hint" style="display:block; margin:-4px 0 6px; color:#666; font-size:12px;"></small>
           <button type="submit" class="btn btn-sm">Rolar</button>
         </div>
 
@@ -279,6 +280,22 @@
     if (!select) return;
     const combateId = '{{ combate.id }}';
     const powerKey = (personagemId) => `combate:${combateId}:power:${personagemId||''}`;
+    function applyPoderTipoUI(){
+      const alvoSelect = document.getElementById('alvo');
+      const hint = document.getElementById('alvo_hint');
+      if (!poderSelect || !alvoSelect) return;
+      const opt = poderSelect.options[poderSelect.selectedIndex];
+      const tipo = opt ? (opt.dataset.tipo || '') : '';
+      if (tipo === 'descritivo') {
+        alvoSelect.disabled = true;
+        alvoSelect.required = false;
+        if (hint) hint.textContent = 'Poder descritivo: não requer alvos.';
+      } else {
+        alvoSelect.disabled = false;
+        alvoSelect.required = true;
+        if (hint) hint.textContent = 'Segure Ctrl (Windows/Linux) ou Cmd (macOS) para selecionar múltiplos; use Shift para selecionar intervalos.';
+      }
+    }
     function bindPoderStorageListener(){
       if (!poderSelect || poderSelect.dataset.boundStorage) return;
       poderSelect.addEventListener('change', function(){
@@ -287,6 +304,8 @@
         if (personagemId) {
           try { localStorage.setItem(powerKey(personagemId), String(poderSelect.value||'')); } catch(_) {}
         }
+        // Atualiza UI de alvos conforme tipo do poder
+        applyPoderTipoUI();
       });
       poderSelect.dataset.boundStorage = '1';
     }
@@ -307,7 +326,7 @@
         let savedValue = '';
         try { savedValue = localStorage.getItem(powerKey(personagemId)) || ''; } catch(_) {}
         const prevValue = poderSelect.value; // fallback: preserva seleção atual
-        fetch('/combate/poderes-personagem-ajax/?personagem_id=' + personagemId)
+  fetch('/combate/poderes-personagem-ajax/?personagem_id=' + personagemId)
           .then(resp => resp.json())
           .then(data => {
             poderSelect.innerHTML = '';
@@ -317,6 +336,7 @@
                 const opt = document.createElement('option');
                 opt.value = p.id;
                 opt.textContent = p.nome;
+    if (p.tipo) opt.dataset.tipo = p.tipo;
                 // Prefer savedValue; depois tenta prevValue
                 if (!restored && savedValue && String(p.id) === String(savedValue)) { opt.selected = true; restored = true; }
                 else if (!restored && String(p.id) === String(prevValue)) { opt.selected = true; restored = true; }
@@ -333,6 +353,8 @@
             poderSelect.dataset.forPersonagemId = String(personagemId || '');
             // Garante que o listener de storage esteja ativo
             bindPoderStorageListener();
+      // Ajusta UI de alvos conforme tipo do poder selecionado
+      applyPoderTipoUI();
           })
           .catch(() => {/* silencia para evitar reset visual em falhas */});
       }
@@ -349,6 +371,8 @@
     }
     // Assegura listener para salvar seleção
     bindPoderStorageListener();
+  // Ajuste inicial do tipo do poder (caso já haja conteudo)
+  try { applyPoderTipoUI(); } catch(_) {}
   }
   document.addEventListener('DOMContentLoaded', bindPersonagemAcaoSync);
   </script>

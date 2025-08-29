@@ -43,7 +43,7 @@ def poderes_personagem_ajax(request):
         personagem = Personagem.objects.get(id=personagem_id)
     except Personagem.DoesNotExist:
         return JsonResponse({'poderes': []})
-    poderes = list(Poder.objects.filter(personagem=personagem).values('id', 'nome'))
+    poderes = list(Poder.objects.filter(personagem=personagem).values('id', 'nome', 'tipo'))
     return JsonResponse({'poderes': poderes})
 
 def criar_combate(request, sala_id):
@@ -587,8 +587,46 @@ def realizar_ataque(request, combate_id):
     # Poder com alvos (Participante IDs)
     alvo_ids = request.POST.getlist('alvo_id')
     poder_id = request.POST.get('poder_id')
-    if poder_id and alvo_ids:
+    if poder_id:
         poder = get_object_or_404(Poder, id=poder_id)
+        # Novo tipo: Descritivo — apenas gera rolagem/descrição, sem exigir alvos e sem efeitos
+        if getattr(poder, 'tipo', '') == 'descritivo':
+            # Base: rolar d20 + habilidade de conjuração do poder (se existir)
+            buff_atacante = participante_atacante.bonus_temporario
+            debuff_atacante = participante_atacante.penalidade_temporaria
+            rolagem_base = random.randint(1, 20)
+            casting_attr = getattr(poder, 'casting_ability', '') or ''
+            bonus_casting = getattr(atacante, casting_attr, 0) if casting_attr else 0
+            total = rolagem_base + bonus_casting + buff_atacante - debuff_atacante
+            participante_atacante.bonus_temporario = 0
+            participante_atacante.penalidade_temporaria = 0
+            participante_atacante.save()
+
+            detalhe_buff = f" + {buff_atacante}" if buff_atacante else ''
+            detalhe_debuff = f" - {debuff_atacante}" if debuff_atacante else ''
+            detalhe_cast = f" + {bonus_casting} ({casting_attr.replace('_',' ').capitalize()})" if bonus_casting else ''
+            resultados.append(
+                f"{atacante.nome} usou {poder.nome} (Descritivo): {rolagem_base}{detalhe_cast}{detalhe_buff}{detalhe_debuff} = <b>{total}</b>"
+            )
+
+            nova_descricao = "<br>".join(resultados)
+            append_to_turno(nova_descricao)
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'combate_{combate_id}',
+                {
+                    'type': 'combate_message',
+                    'message': json.dumps({'evento': 'rolagem', 'descricao': nova_descricao})
+                }
+            )
+            if _expects_json(request):
+                return JsonResponse({'status': 'ok', 'evento': 'rolagem', 'descricao': nova_descricao})
+            return redirect('detalhes_combate', combate_id=combate_id)
+
+        # Demais tipos exigem alvos
+        if not alvo_ids:
+            # Sem alvos e não-descritivo: ignora esta ação
+            return redirect('detalhes_combate', combate_id=combate_id)
         for alvo_id in alvo_ids:
             participante_alvo = get_object_or_404(Participante, id=alvo_id, combate_id=combate_id)
             alvo = participante_alvo.personagem

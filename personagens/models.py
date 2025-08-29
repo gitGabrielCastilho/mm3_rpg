@@ -144,6 +144,7 @@ class Personagem(models.Model):
     
 class Poder(models.Model):
     TIPO_CHOICES = [
+    ('descritivo', 'Descritivo'),
         ('aflicao', 'Aflição'),
         ('dano', 'Dano'),
         ('cura', 'Cura'),
