@@ -591,22 +591,11 @@ def realizar_ataque(request, combate_id):
         poder = get_object_or_404(Poder, id=poder_id)
         # Novo tipo: Descritivo — apenas gera rolagem/descrição, sem exigir alvos e sem efeitos
         if getattr(poder, 'tipo', '') == 'descritivo':
-            # Base: rolar d20 + habilidade de conjuração do poder (se existir)
-            buff_atacante = participante_atacante.bonus_temporario
-            debuff_atacante = participante_atacante.penalidade_temporaria
+            # Apenas d20 + nível do poder descritivo (sem buffs/debuffs, sem alvo)
             rolagem_base = random.randint(1, 20)
-            casting_attr = getattr(poder, 'casting_ability', '') or ''
-            bonus_casting = getattr(atacante, casting_attr, 0) if casting_attr else 0
-            total = rolagem_base + bonus_casting + buff_atacante - debuff_atacante
-            participante_atacante.bonus_temporario = 0
-            participante_atacante.penalidade_temporaria = 0
-            participante_atacante.save()
-
-            detalhe_buff = f" + {buff_atacante}" if buff_atacante else ''
-            detalhe_debuff = f" - {debuff_atacante}" if debuff_atacante else ''
-            detalhe_cast = f" + {bonus_casting} ({casting_attr.replace('_',' ').capitalize()})" if bonus_casting else ''
+            total = rolagem_base + int(getattr(poder, 'nivel_efeito', 0) or 0)
             resultados.append(
-                f"{atacante.nome} usou {poder.nome} (Descritivo): {rolagem_base}{detalhe_cast}{detalhe_buff}{detalhe_debuff} = <b>{total}</b>"
+                f"{atacante.nome} usou {poder.nome} (Descritivo): {rolagem_base} + {poder.nivel_efeito} = <b>{total}</b>"
             )
 
             nova_descricao = "<br>".join(resultados)
