@@ -1016,28 +1016,39 @@
           break;
         }
         case 'adicionar_participante': {
-          // Update targets list immediately
-          try {
-            const sel = document.getElementById('alvo');
-            if (sel && payload.participante) {
-              const opt = document.createElement('option');
-              opt.value = String(payload.participante.id);
-              opt.textContent = payload.participante.nome || `#${payload.participante.id}`;
-              sel.appendChild(opt);
-            }
-          } catch(_) {}
+          // Helper to ensure alvo select contains the new participant
+          function ensureAlvoHasParticipant(part){
+            try {
+              const sel = document.getElementById('alvo');
+              if (!sel || !part) return;
+              const idStr = String(part.id);
+              const exists = Array.from(sel.options).some(o => String(o.value) === idStr);
+              if (!exists) {
+                const opt = document.createElement('option');
+                opt.value = idStr;
+                opt.textContent = part.nome || `#${idStr}`;
+                sel.appendChild(opt);
+              }
+            } catch(_) {}
+          }
+          ensureAlvoHasParticipant(payload && payload.participante);
           await refreshSelectors(['.combate-col-right', '#form-ataque', '.acao-top-row']);
+          ensureAlvoHasParticipant(payload && payload.participante);
           break;
         }
         case 'remover_participante': {
-          // Remove from targets immediately
-          try {
-            const sel = document.getElementById('alvo');
-            if (sel && payload.participante_id) {
-              Array.from(sel.options).forEach(o => { if (String(o.value) === String(payload.participante_id)) o.remove(); });
-            }
-          } catch(_) {}
+          // Remove from targets immediately and after refresh
+          function removeFromAlvo(id){
+            try {
+              const sel = document.getElementById('alvo');
+              if (sel && id) {
+                Array.from(sel.options).forEach(o => { if (String(o.value) === String(id)) o.remove(); });
+              }
+            } catch(_) {}
+          }
+          removeFromAlvo(payload && payload.participante_id);
           await refreshSelectors(['.combate-col-right', '#form-ataque', '.acao-top-row']);
+          removeFromAlvo(payload && payload.participante_id);
           break;
         }
         case 'iniciar_turno':
