@@ -441,8 +441,12 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', function() {
-  const combateId = '{{ combate.id }}';
-  const IS_GM = (document.getElementById('combate-content')?.dataset.isGm === 'true');
+    const combateId = '{{ combate.id }}';
+    (function(){
+      var rootEl = document.getElementById('combate-content');
+      window._IS_GM = !!(rootEl && rootEl.dataset && rootEl.dataset.isGm === 'true');
+    })();
+    const IS_GM = window._IS_GM;
     const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const wsPath = `${wsScheme}://${window.location.host}/ws/combate/${combateId}/`;
     let combateSocket = new WebSocket(wsPath);
@@ -642,6 +646,16 @@
         persistGridState();
         // Salva estados atuais do mapa (zoom/scroll) para restaurar após troca
         saveMapStates();
+        // Preserva seleção de alvos quando o formulário de ataque for atualizado
+        let savedAlvos = null;
+        try {
+          if ((selectors || []).some(s => s === '#form-ataque')) {
+            const alvoSel = document.getElementById('alvo');
+            if (alvoSel) {
+              savedAlvos = Array.from(alvoSel.selectedOptions || []).map(o => String(o.value));
+            }
+          }
+        } catch(_) {}
         const doc = await fetchPageDOM();
         // Prepare nodes once to avoid parent/child conflicts
         const items = [];
@@ -693,6 +707,13 @@
     persistSelectById('mapa_existente_top', `combate:${combateId}:mapa_existente_top`);
     persistSelectById('novo_participante', `combate:${combateId}:novo_participante`);
     persistSelectById('novo_npc', `combate:${combateId}:novo_npc`);
+    // Restaura seleção de alvos após recarregar o form de ataque
+    if (savedAlvos && savedAlvos.length) {
+      const alvoSel2 = document.getElementById('alvo');
+      if (alvoSel2) {
+        Array.from(alvoSel2.options).forEach(o => { o.selected = savedAlvos.indexOf(String(o.value)) !== -1; });
+      }
+    }
   } catch(_) {}
       } catch (err) {
         console.warn('Refresh parcial falhou, mantendo página:', err);
@@ -1012,13 +1033,22 @@
                   ensureAlvoHasParticipant(data.participante);
                   maybeAddToAcoesDe(data.participante);
                 }
+                // Fallback: se ainda não existir no select após refresh, recarrega o form da esquerda
+                await refreshSelectors(['.combate-col-right', '#status-card']);
+                try {
+                  const idStr = String(data.participante && data.participante.id);
+                  const alvoSel = document.getElementById('alvo');
+                  const has = alvoSel && Array.from(alvoSel.options).some(o => String(o.value) === idStr);
+                  if (!has && idStr) { await refreshSelectors(['#form-ataque']); }
+                } catch(_) {}
+                break;
               case 'remover_participante':
                 if (data.participante_id) {
                   removeFromAlvo(data.participante_id);
                   removeFromAcoesDe(data.participante_id);
                 }
         // Evita trocar elementos da coluna esquerda para não resetar selects
-        await refreshSelectors(['.combate-col-right', '#status-card']);
+                await refreshSelectors(['.combate-col-right', '#status-card']);
                 break;
               case 'iniciar_turno':
               case 'avancar_turno':
@@ -1114,6 +1144,15 @@
           // Atualiza apenas a coluna direita (mapa + status)
           await refreshSelectors(['.combate-col-right', '#status-card']);
           ensureAlvoHasParticipant(payload && payload.participante);
+          // Fallback WS: se ainda não estiver presente no select, recarrega apenas o form da esquerda
+          try {
+            const idStr = String(payload && payload.participante && payload.participante.id);
+            const alvoSel = document.getElementById('alvo');
+            const has = alvoSel && Array.from(alvoSel.options).some(o => String(o.value) === idStr);
+            if (!has && idStr) {
+              await refreshSelectors(['#form-ataque', '.acao-top-row']);
+            }
+          } catch(_) {}
           break;
         }
         case 'remover_participante': {
