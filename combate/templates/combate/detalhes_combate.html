@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block content %}
-<div id="combate-content" class="combate-detalhes-center">
+<div id="combate-content" class="combate-detalhes-center" data-is-gm="{% if combate.sala.game_master == user %}true{% else %}false{% endif %}">
   <!-- Topo: info de turno + ações globais -->
   <div class="turno-topbar combate-card">
     <div class="turno-topbar-row">
@@ -441,8 +441,8 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', function() {
-    const combateId = '{{ combate.id }}';
-  const IS_GM = '{{ combate.sala.game_master == user|yesno:"true,false" }}' === 'true';
+  const combateId = '{{ combate.id }}';
+  const IS_GM = (document.getElementById('combate-content')?.dataset.isGm === 'true');
     const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const wsPath = `${wsScheme}://${window.location.host}/ws/combate/${combateId}/`;
     let combateSocket = new WebSocket(wsPath);
