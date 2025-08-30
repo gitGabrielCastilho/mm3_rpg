@@ -462,6 +462,9 @@
         if (tick === 0) {
           // Atualiza a coluna direita com pouca frequência para evitar reset de selects
           refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']).catch(()=>{});
+        } else if (tick === 6) {
+          // Atualiza levemente a esquerda para clientes sem WS (preserva seleções)
+          refreshSelectors(['#status-card', '#form-ataque', '.acao-top-row']).catch(()=>{});
         } else {
           // Atualizações leves frequentes
           refreshSelectors(['.turno-topbar', '#historico-card', '#status-card']).catch(()=>{});
@@ -477,7 +480,11 @@
         const idleMs = Date.now() - lastEventAt;
         if (idleMs > 12000) { // >12s sem eventos: garante refresh e polling ligado
           startCombatePolling();
+          // Atualiza direita e também um refresh pontual da esquerda
           refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']).catch(()=>{});
+          setTimeout(() => {
+            refreshSelectors(['#status-card', '#form-ataque', '.acao-top-row']).catch(()=>{});
+          }, 500);
         }
       }, 8000);
     }
@@ -1150,6 +1157,10 @@
             const alvoSel = document.getElementById('alvo');
             const has = alvoSel && Array.from(alvoSel.options).some(o => String(o.value) === idStr);
             if (!has && idStr) {
+              await refreshSelectors(['#form-ataque', '.acao-top-row']);
+            }
+            // Para jogadores (não GM), garantir atualização rápida do formulário de ações
+            if (!IS_GM) {
               await refreshSelectors(['#form-ataque', '.acao-top-row']);
             }
           } catch(_) {}
