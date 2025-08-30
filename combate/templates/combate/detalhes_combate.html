@@ -913,6 +913,55 @@
       });
     }
 
+    // ====== Helpers globais para atualizar selects (Alvos e Ações de) ======
+    function ensureAlvoHasParticipant(part){
+      try {
+        const sel = document.getElementById('alvo');
+        if (!sel || !part) return;
+        const idStr = String(part.id);
+        const exists = Array.from(sel.options).some(o => String(o.value) === idStr);
+        if (!exists) {
+          const opt = document.createElement('option');
+          opt.value = idStr;
+          opt.textContent = part.nome || `#${idStr}`;
+          sel.appendChild(opt);
+        }
+      } catch(_) {}
+    }
+    function maybeAddToAcoesDe(part){
+      if (!IS_GM || !part) return;
+      try {
+        const sel = document.getElementById('personagem_acao');
+        if (!sel) return;
+        const idStr = String(part.id);
+        const exists = Array.from(sel.options).some(o => String(o.value) === idStr);
+        if (!exists) {
+          const opt = document.createElement('option');
+          opt.value = idStr;
+          opt.dataset.personagemId = String(part.personagem_id || '');
+          opt.setAttribute('data-personagem-id', String(part.personagem_id || ''));
+          opt.textContent = part.nome || `#${idStr}`;
+          sel.appendChild(opt);
+        }
+      } catch(_) {}
+    }
+    function removeFromAlvo(id){
+      try {
+        const sel = document.getElementById('alvo');
+        if (sel && id) {
+          Array.from(sel.options).forEach(o => { if (String(o.value) === String(id)) o.remove(); });
+        }
+      } catch(_) {}
+    }
+    function removeFromAcoesDe(id){
+      if (!IS_GM || !id) return;
+      try {
+        const sel = document.getElementById('personagem_acao');
+        if (!sel) return;
+        Array.from(sel.options).forEach(o => { if (String(o.value) === String(id)) o.remove(); });
+      } catch(_) {}
+    }
+
     // ====== AJAXify de formulários para evitar reload ======
     function bindAjax(form){
       if (!form || form.dataset.ajaxified === '1') return;
@@ -952,13 +1001,22 @@
           if (ct.includes('application/json')) { try { data = await resp.json(); } catch(_) {} }
           if (!resp.ok) throw new Error('request_failed');
           // Prefer targeted updates when possible; otherwise, generic refresh
-      if (data && data.evento) {
+          if (data && data.evento) {
             switch (data.evento) {
               case 'rolagem':
                 await refreshSelectors(['#historico-card', '#status-card']);
                 break;
               case 'adicionar_participante':
+                // Atualiza selects localmente de imediato
+                if (data.participante) {
+                  ensureAlvoHasParticipant(data.participante);
+                  maybeAddToAcoesDe(data.participante);
+                }
               case 'remover_participante':
+                if (data.participante_id) {
+                  removeFromAlvo(data.participante_id);
+                  removeFromAcoesDe(data.participante_id);
+                }
         // Evita trocar elementos da coluna esquerda para não resetar selects
         await refreshSelectors(['.combate-col-right', '#status-card']);
                 break;
@@ -1051,39 +1109,6 @@
           break;
         }
         case 'adicionar_participante': {
-          // Helper to ensure alvo select contains the new participant
-          function ensureAlvoHasParticipant(part){
-            try {
-              const sel = document.getElementById('alvo');
-              if (!sel || !part) return;
-              const idStr = String(part.id);
-              const exists = Array.from(sel.options).some(o => String(o.value) === idStr);
-              if (!exists) {
-                const opt = document.createElement('option');
-                opt.value = idStr;
-                opt.textContent = part.nome || `#${idStr}`;
-                sel.appendChild(opt);
-              }
-            } catch(_) {}
-          }
-          // GM: opcionalmente, adiciona também no select "Ações de" sem trocar seleção atual
-          function maybeAddToAcoesDe(part){
-            if (!IS_GM || !part) return;
-            try {
-              const sel = document.getElementById('personagem_acao');
-              if (!sel) return;
-              const idStr = String(part.id);
-              const exists = Array.from(sel.options).some(o => String(o.value) === idStr);
-              if (!exists) {
-                const opt = document.createElement('option');
-                opt.value = idStr;
-                opt.dataset.personagemId = String(part.personagem_id || '');
-                opt.setAttribute('data-personagem-id', String(part.personagem_id || ''));
-                opt.textContent = part.nome || `#${idStr}`;
-                sel.appendChild(opt);
-              }
-            } catch(_) {}
-          }
           ensureAlvoHasParticipant(payload && payload.participante);
           maybeAddToAcoesDe(payload && payload.participante);
           // Atualiza apenas a coluna direita (mapa + status)
@@ -1092,23 +1117,6 @@
           break;
         }
         case 'remover_participante': {
-          // Remove from targets immediately and after refresh
-          function removeFromAlvo(id){
-            try {
-              const sel = document.getElementById('alvo');
-              if (sel && id) {
-                Array.from(sel.options).forEach(o => { if (String(o.value) === String(id)) o.remove(); });
-              }
-            } catch(_) {}
-          }
-          function removeFromAcoesDe(id){
-            if (!IS_GM || !id) return;
-            try {
-              const sel = document.getElementById('personagem_acao');
-              if (!sel) return;
-              Array.from(sel.options).forEach(o => { if (String(o.value) === String(id)) o.remove(); });
-            } catch(_) {}
-          }
           removeFromAlvo(payload && payload.participante_id);
           removeFromAcoesDe(payload && payload.participante_id);
           // Atualiza apenas a coluna direita (mapa + status)
