@@ -26,7 +26,7 @@
           <button type="submit" formnovalidate class="btn btn-sm">Avançar Turno</button>
         </form>
       {% endif %}
-      {% if combate.ativo %}
+      {% if combate.ativo and combate.sala.game_master == user %}
         <form method="post" action="{% url 'finalizar_combate' combate.id %}" class="inline-form">
           {% csrf_token %}
           <button type="submit" class="btn btn-sm btn-danger" formnovalidate>Finalizar Combate</button>
@@ -874,7 +874,7 @@
                 break;
               case 'adicionar_participante':
               case 'remover_participante':
-                await refreshSelectors(['.combate-col-right', '#form-ataque']);
+                await refreshSelectors(['.combate-col-right', '#form-ataque', '.acao-top-row']);
                 break;
               case 'iniciar_turno':
               case 'avancar_turno':
@@ -908,6 +908,7 @@
     function ajaxifyInteractionForms(){
       bindAjax(document.getElementById('form-d20'));
       bindAjax(document.getElementById('form-ataque'));
+  bindAjax(document.getElementById('form-mapa'));
       document.querySelectorAll('.turno-topbar-actions form').forEach(bindAjax);
   document.querySelectorAll('.form-remover-participante').forEach(bindAjax);
   document.querySelectorAll('.form-add-participante').forEach(bindAjax);
@@ -963,7 +964,7 @@
         }
         case 'adicionar_participante':
         case 'remover_participante': {
-          await refreshSelectors(['.combate-col-right', '#form-ataque']);
+          await refreshSelectors(['.combate-col-right', '#form-ataque', '.acao-top-row']);
           break;
         }
         case 'iniciar_turno':

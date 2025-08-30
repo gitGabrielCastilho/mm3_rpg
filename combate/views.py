@@ -320,6 +320,9 @@ def finalizar_combate(request, combate_id):
     if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
         return redirect('home')
     combate = get_object_or_404(Combate, id=combate_id)
+    # Apenas o GM da sala deste combate pode finalizar
+    if combate.sala.game_master != request.user:
+        return redirect('home')
     combate.ativo = False
     combate.save()
     Turno.objects.filter(combate=combate, ativo=True).update(ativo=False)
