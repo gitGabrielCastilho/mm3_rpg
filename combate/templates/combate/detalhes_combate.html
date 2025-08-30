@@ -455,9 +455,14 @@
     let _combatePollTimer = null;
   function startCombatePolling(){
       if (_combatePollTimer) return;
+      let tick = 0;
       _combatePollTimer = setInterval(() => {
-  // Atualiza também a coluna direita (mapa/status); estados de zoom/scroll são preservados
-  refreshSelectors(['.turno-topbar', '#historico-card', '#status-card', '.combate-col-right']).catch(()=>{});
+        tick = (tick + 1) % 5; // a cada 5 ticks, faz refresh completo da coluna direita
+        if (tick === 0) {
+          refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']).catch(()=>{});
+        } else {
+          refreshSelectors(['.turno-topbar', '#historico-card', '#status-card']).catch(()=>{});
+        }
       }, 6000);
     }
     function stopCombatePolling(){ if (_combatePollTimer) { clearInterval(_combatePollTimer); _combatePollTimer = null; } }
@@ -608,11 +613,33 @@
         // Salva estados atuais do mapa (zoom/scroll) para restaurar após troca
         saveMapStates();
         const doc = await fetchPageDOM();
-        selectors.forEach(sel => {
-          const target = document.querySelector(sel);
+        // Prepare nodes once to avoid parent/child conflicts
+        const items = [];
+        const uniq = Array.from(new Set(selectors || []));
+        for (const sel of uniq) {
           const fresh = doc.querySelector(sel);
-          if (target && fresh) target.replaceWith(fresh);
-        });
+          if (fresh) {
+            // Compute depth for ordering (parents first)
+            let d = 0, n = fresh;
+            while (n && n.parentElement) { d++; n = n.parentElement; }
+            items.push({ sel, fresh, depth: d });
+          }
+        }
+        // Remove descendants when their ancestor is already scheduled
+        items.sort((a,b)=>a.depth-b.depth);
+        const filtered = [];
+        for (let i=0;i<items.length;i++){
+          let isDescendant = false;
+          for (let j=0;j<filtered.length && !isDescendant;j++){
+            if (filtered[j].fresh.contains(items[i].fresh)) isDescendant = true;
+          }
+          if (!isDescendant) filtered.push(items[i]);
+        }
+        // Replace in DOM using the pre-collected fresh nodes
+        for (const it of filtered) {
+          const target = document.querySelector(it.sel);
+          if (target && it.fresh) target.replaceWith(it.fresh);
+        }
         // Reaplica comportamentos após substituições
     rafEqualize();
         // Restaura estados do mapa após substituição
