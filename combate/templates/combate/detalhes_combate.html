@@ -450,22 +450,31 @@
     const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const wsPath = `${wsScheme}://${window.location.host}/ws/combate/${combateId}/`;
     let combateSocket = new WebSocket(wsPath);
+  let lastEventAt = Date.now();
 
-    // Fallback: polling quando WS não estiver disponível
+  // Fallback: polling quando WS não estiver disponível ou WS ficar ocioso
     let _combatePollTimer = null;
   function startCombatePolling(){
       if (_combatePollTimer) return;
-      let tick = 0;
       _combatePollTimer = setInterval(() => {
-        tick = (tick + 1) % 5; // a cada 5 ticks, faz refresh completo da coluna direita
-        if (tick === 0) {
-          refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']).catch(()=>{});
-        } else {
-          refreshSelectors(['.turno-topbar', '#historico-card', '#status-card']).catch(()=>{});
-        }
-      }, 6000);
+        // WS falhando: priorize manter mapa/status atualizados para todos
+        refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']).catch(()=>{});
+      }, 5000);
     }
     function stopCombatePolling(){ if (_combatePollTimer) { clearInterval(_combatePollTimer); _combatePollTimer = null; } }
+    // Heartbeat: se não chegar nenhuma mensagem por um tempo, ativa polling auxiliar
+    let _hbTimer = null;
+    function startHeartbeat(){
+      if (_hbTimer) return;
+      _hbTimer = setInterval(() => {
+        const idleMs = Date.now() - lastEventAt;
+        if (idleMs > 12000) { // >12s sem eventos: garante refresh e polling ligado
+          startCombatePolling();
+          refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']).catch(()=>{});
+        }
+      }, 8000);
+    }
+    function stopHeartbeat(){ if (_hbTimer) { clearInterval(_hbTimer); _hbTimer = null; } }
 
     // Persistência de preferências da grade por combate
     const GRID_ENABLED_KEY = `combate:${combateId}:gridEnabled`;
@@ -959,6 +968,7 @@
     }
 
     combateSocket.onmessage = async function(e) {
+  lastEventAt = Date.now();
       let payload = null;
       try { payload = JSON.parse(e.data); } catch(_) {}
       if (!payload || !payload.evento) {
@@ -1005,8 +1015,28 @@
           await refreshSelectors(['.combate-col-right']);
           break;
         }
-        case 'adicionar_participante':
+        case 'adicionar_participante': {
+          // Update targets list immediately
+          try {
+            const sel = document.getElementById('alvo');
+            if (sel && payload.participante) {
+              const opt = document.createElement('option');
+              opt.value = String(payload.participante.id);
+              opt.textContent = payload.participante.nome || `#${payload.participante.id}`;
+              sel.appendChild(opt);
+            }
+          } catch(_) {}
+          await refreshSelectors(['.combate-col-right', '#form-ataque', '.acao-top-row']);
+          break;
+        }
         case 'remover_participante': {
+          // Remove from targets immediately
+          try {
+            const sel = document.getElementById('alvo');
+            if (sel && payload.participante_id) {
+              Array.from(sel.options).forEach(o => { if (String(o.value) === String(payload.participante_id)) o.remove(); });
+            }
+          } catch(_) {}
           await refreshSelectors(['.combate-col-right', '#form-ataque', '.acao-top-row']);
           break;
         }
@@ -1028,6 +1058,7 @@
       console.warn('WebSocket fechado. Atualização por polling ativada.');
       startCombatePolling();
     };
+  startHeartbeat();
 
     window.enviarMensagemCombate = function(msg) {
       combateSocket.send(msg);

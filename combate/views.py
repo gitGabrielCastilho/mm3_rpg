@@ -971,7 +971,17 @@ def adicionar_participante(request, combate_id):
             f'combate_{combate.id}',
             {
                 'type': 'combate_message',
-                'message': json.dumps({'evento': 'adicionar_participante', 'descricao': f'{personagem.nome} entrou no combate.'})
+                'message': json.dumps({
+                    'evento': 'adicionar_participante',
+                    'descricao': f'{personagem.nome} entrou no combate.',
+                    'participante': {
+                        'id': participante.id,
+                        'personagem_id': personagem.id,
+                        'nome': personagem.nome,
+                        'usuario_id': personagem.usuario_id,
+                        'is_npc': bool(getattr(personagem, 'is_npc', False)),
+                    }
+                })
             }
         )
     except Exception:
@@ -1003,7 +1013,11 @@ def remover_participante(request, combate_id, participante_id):
             f'combate_{combate_id}',
             {
                 'type': 'combate_message',
-                'message': json.dumps({'evento': 'remover_participante', 'descricao': f'{nome} foi removido do combate.'})
+                'message': json.dumps({
+                    'evento': 'remover_participante',
+                    'descricao': f'{nome} foi removido do combate.',
+                    'participante_id': participante_id
+                })
             }
         )
     except Exception:
@@ -1163,7 +1177,17 @@ def adicionar_npc_participante(request, combate_id):
             f'combate_{combate.id}',
             {
                 'type': 'combate_message',
-                'message': json.dumps({'evento': 'adicionar_participante', 'descricao': f'{npc.nome} (NPC) entrou no combate.'})
+                'message': json.dumps({
+                    'evento': 'adicionar_participante',
+                    'descricao': f'{npc.nome} (NPC) entrou no combate.',
+                    'participante': {
+                        'id': participante.id,
+                        'personagem_id': npc.id,
+                        'nome': npc.nome,
+                        'usuario_id': npc.usuario_id,
+                        'is_npc': True,
+                    }
+                })
             }
         )
     except Exception:
