@@ -321,7 +321,7 @@
       });
       poderSelect.dataset.boundStorage = '1';
     }
-    function syncPersonagemAcao() {
+  function syncPersonagemAcao() {
       const val = select.value; // participante id
       const selectedOpt = select.options[select.selectedIndex];
       const personagemId = selectedOpt ? selectedOpt.getAttribute('data-personagem-id') : '';
@@ -331,9 +331,6 @@
       const h4 = document.getElementById('personagem_acao_hidden_d20');
       if (h1) h1.value = val; if (h2) h2.value = val; if (h3) h3.value = val; if (h4) h4.value = val;
       if (poderSelect) {
-        // Evita reconstruir quando já está carregado para o mesmo personagem
-        const lastFor = poderSelect.dataset.forPersonagemId || '';
-        if (personagemId && lastFor === String(personagemId)) return;
         // Preferência salva por personagem (se existir)
         let savedValue = '';
         try { savedValue = localStorage.getItem(powerKey(personagemId)) || ''; } catch(_) {}
@@ -410,10 +407,8 @@
     if (newSelect.options.length && newSelect.selectedIndex < 0) newSelect.selectedIndex = 0;
     // Força sincronização inicial com a escolha restaurada
     try { if (newSelect.value) localStorage.setItem(SEL_PARTICIPANTE_KEY, String(newSelect.value)); } catch(_) {}
-    // Bind inicial: só sincroniza se ainda não houver cache para este personagem
-    if (poderSelect && (!poderSelect.dataset.forPersonagemId)) {
-      syncPersonagemAcao();
-    }
+  // Bind inicial: sempre sincroniza para refletir o selecionado
+  syncPersonagemAcao();
     // Assegura listener para salvar seleção
     bindPoderStorageListener();
   // Ajuste inicial do tipo do poder (caso já haja conteudo)
@@ -456,9 +451,14 @@
     let _combatePollTimer = null;
   function startCombatePolling(){
       if (_combatePollTimer) return;
+      let tick = 0;
       _combatePollTimer = setInterval(() => {
-        // WS falhando: priorize manter mapa/status atualizados para todos
-        refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']).catch(()=>{});
+        tick = (tick + 1) % 2;
+        if (tick === 0) {
+          refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']).catch(()=>{});
+        } else {
+          refreshSelectors(['.turno-topbar', '#historico-card', '#status-card']).catch(()=>{});
+        }
       }, 5000);
     }
     function stopCombatePolling(){ if (_combatePollTimer) { clearInterval(_combatePollTimer); _combatePollTimer = null; } }
@@ -540,6 +540,24 @@
     }
     function updateAllGrids(){
       document.querySelectorAll("[id^='mapa-area-']").forEach(updateGridForArea);
+    }
+    // ====== Persistência de selects sujeitos a refresh (mapa/add participante/NPC) ======
+    function persistSelectById(id, key){
+      const el = document.getElementById(id);
+      if (!el) return;
+      // Restore saved value
+      try {
+        const saved = localStorage.getItem(key);
+        if (saved) {
+          for (let i=0;i<el.options.length;i++) {
+            if (String(el.options[i].value) === String(saved)) { el.selectedIndex = i; break; }
+          }
+        }
+      } catch(_) {}
+      if (!el.dataset.persistBound) {
+        el.addEventListener('change', () => { try { localStorage.setItem(key, String(el.value||'')); } catch(_) {} });
+        el.dataset.persistBound = '1';
+      }
     }
     function setupGridControls(){
       const cb = document.getElementById('grid-enable');
@@ -667,6 +685,12 @@
   ajaxifyInteractionForms();
   // Rebind dos selects de personagem/ataque, para atualizar poderes
   bindPersonagemAcaoSync();
+  // Restaura selects persistidos
+  try {
+    persistSelectById('mapa_existente_top', `combate:${combateId}:mapa_existente_top`);
+    persistSelectById('novo_participante', `combate:${combateId}:novo_participante`);
+    persistSelectById('novo_npc', `combate:${combateId}:novo_npc`);
+  } catch(_) {}
       } catch (err) {
         console.warn('Refresh parcial falhou, mantendo página:', err);
       }
