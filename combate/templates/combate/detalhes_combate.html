@@ -279,6 +279,7 @@
     const poderSelect = document.getElementById('poder');
     if (!select) return;
     const combateId = '{{ combate.id }}';
+  const SEL_PARTICIPANTE_KEY = `combate:${combateId}:participante_sel`;
     const powerKey = (personagemId) => `combate:${combateId}:power:${personagemId||''}`;
     function applyPoderTipoUI(){
       const alvoSelect = document.getElementById('alvo');
@@ -391,10 +392,24 @@
     }
     // Evita listeners duplicados trocando o nó
     const newSelect = select.cloneNode(true);
+    // Restaura escolha persistida do participante (se existir)
+    try {
+      const savedPart = localStorage.getItem(SEL_PARTICIPANTE_KEY) || '';
+      if (savedPart) {
+        for (let i = 0; i < newSelect.options.length; i++) {
+          if (String(newSelect.options[i].value) === String(savedPart)) { newSelect.selectedIndex = i; break; }
+        }
+      }
+    } catch(_) {}
     select.replaceWith(newSelect);
-    newSelect.addEventListener('change', syncPersonagemAcao);
+    newSelect.addEventListener('change', function(){
+      try { localStorage.setItem(SEL_PARTICIPANTE_KEY, String(newSelect.value||'')); } catch(_) {}
+      syncPersonagemAcao();
+    });
     // Garante um valor selecionado válido
     if (newSelect.options.length && newSelect.selectedIndex < 0) newSelect.selectedIndex = 0;
+    // Força sincronização inicial com a escolha restaurada
+    try { if (newSelect.value) localStorage.setItem(SEL_PARTICIPANTE_KEY, String(newSelect.value)); } catch(_) {}
     // Bind inicial: só sincroniza se ainda não houver cache para este personagem
     if (poderSelect && (!poderSelect.dataset.forPersonagemId)) {
       syncPersonagemAcao();
@@ -441,8 +456,8 @@
   function startCombatePolling(){
       if (_combatePollTimer) return;
       _combatePollTimer = setInterval(() => {
-    // Evita refazer a coluna direita (mapa) para não resetar posição/zoom
-    refreshSelectors(['.turno-topbar', '#historico-card', '#status-card']).catch(()=>{});
+  // Atualiza também a coluna direita (mapa/status); estados de zoom/scroll são preservados
+  refreshSelectors(['.turno-topbar', '#historico-card', '#status-card', '.combate-col-right']).catch(()=>{});
       }, 6000);
     }
     function stopCombatePolling(){ if (_combatePollTimer) { clearInterval(_combatePollTimer); _combatePollTimer = null; } }
@@ -913,6 +928,7 @@
   document.querySelectorAll('.form-remover-participante').forEach(bindAjax);
   document.querySelectorAll('.form-add-participante').forEach(bindAjax);
     document.querySelectorAll('.form-limpar-historico').forEach(bindAjax);
+  document.querySelectorAll('.mapa-remover-form').forEach(bindAjax);
     }
 
     combateSocket.onmessage = async function(e) {
