@@ -442,6 +442,7 @@
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     const combateId = '{{ combate.id }}';
+  const IS_GM = '{{ combate.sala.game_master == user|yesno:"true,false" }}' === 'true';
     const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const wsPath = `${wsScheme}://${window.location.host}/ws/combate/${combateId}/`;
     let combateSocket = new WebSocket(wsPath);
@@ -453,10 +454,12 @@
       if (_combatePollTimer) return;
       let tick = 0;
       _combatePollTimer = setInterval(() => {
-        tick = (tick + 1) % 2;
+        tick = (tick + 1) % 12; // 12 * 5s = 60s
         if (tick === 0) {
+          // Atualiza a coluna direita com pouca frequência para evitar reset de selects
           refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']).catch(()=>{});
         } else {
+          // Atualizações leves frequentes
           refreshSelectors(['.turno-topbar', '#historico-card', '#status-card']).catch(()=>{});
         }
       }, 5000);
@@ -913,9 +916,16 @@
     // ====== AJAXify de formulários para evitar reload ======
     function bindAjax(form){
       if (!form || form.dataset.ajaxified === '1') return;
-  form.addEventListener('submit', function(e){
+      form.addEventListener('submit', function(e){
         e.preventDefault();
         const submitter = e.submitter || null;
+        // Garante que os campos hidden do atacante reflitam o valor atual de "Ações de"
+        try {
+          const selAtacante = document.getElementById('personagem_acao');
+          const val = selAtacante ? selAtacante.value : '';
+          ['personagem_acao_hidden','personagem_acao_hidden_pericia','personagem_acao_hidden_caracteristica','personagem_acao_hidden_d20']
+            .forEach(id => { const h = document.getElementById(id); if (h) h.value = val; });
+        } catch(_) {}
         let fd;
         try { fd = new FormData(form, submitter); }
         catch(_){ fd = new FormData(form); if (submitter && submitter.name) fd.append(submitter.name, submitter.value || '1'); }
@@ -942,14 +952,15 @@
           if (ct.includes('application/json')) { try { data = await resp.json(); } catch(_) {} }
           if (!resp.ok) throw new Error('request_failed');
           // Prefer targeted updates when possible; otherwise, generic refresh
-          if (data && data.evento) {
+      if (data && data.evento) {
             switch (data.evento) {
               case 'rolagem':
                 await refreshSelectors(['#historico-card', '#status-card']);
                 break;
               case 'adicionar_participante':
               case 'remover_participante':
-                await refreshSelectors(['.combate-col-right', '#form-ataque', '.acao-top-row']);
+        // Evita trocar elementos da coluna esquerda para não resetar selects
+        await refreshSelectors(['.combate-col-right', '#status-card']);
                 break;
               case 'iniciar_turno':
               case 'avancar_turno':
@@ -1055,8 +1066,28 @@
               }
             } catch(_) {}
           }
+          // GM: opcionalmente, adiciona também no select "Ações de" sem trocar seleção atual
+          function maybeAddToAcoesDe(part){
+            if (!IS_GM || !part) return;
+            try {
+              const sel = document.getElementById('personagem_acao');
+              if (!sel) return;
+              const idStr = String(part.id);
+              const exists = Array.from(sel.options).some(o => String(o.value) === idStr);
+              if (!exists) {
+                const opt = document.createElement('option');
+                opt.value = idStr;
+                opt.dataset.personagemId = String(part.personagem_id || '');
+                opt.setAttribute('data-personagem-id', String(part.personagem_id || ''));
+                opt.textContent = part.nome || `#${idStr}`;
+                sel.appendChild(opt);
+              }
+            } catch(_) {}
+          }
           ensureAlvoHasParticipant(payload && payload.participante);
-          await refreshSelectors(['.combate-col-right', '#form-ataque', '.acao-top-row']);
+          maybeAddToAcoesDe(payload && payload.participante);
+          // Atualiza apenas a coluna direita (mapa + status)
+          await refreshSelectors(['.combate-col-right', '#status-card']);
           ensureAlvoHasParticipant(payload && payload.participante);
           break;
         }
@@ -1070,8 +1101,18 @@
               }
             } catch(_) {}
           }
+          function removeFromAcoesDe(id){
+            if (!IS_GM || !id) return;
+            try {
+              const sel = document.getElementById('personagem_acao');
+              if (!sel) return;
+              Array.from(sel.options).forEach(o => { if (String(o.value) === String(id)) o.remove(); });
+            } catch(_) {}
+          }
           removeFromAlvo(payload && payload.participante_id);
-          await refreshSelectors(['.combate-col-right', '#form-ataque', '.acao-top-row']);
+          removeFromAcoesDe(payload && payload.participante_id);
+          // Atualiza apenas a coluna direita (mapa + status)
+          await refreshSelectors(['.combate-col-right', '#status-card']);
           removeFromAlvo(payload && payload.participante_id);
           break;
         }
