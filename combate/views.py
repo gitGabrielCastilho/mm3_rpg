@@ -104,7 +104,9 @@ def detalhes_combate(request, combate_id):
     mapa = combate.mapas.first()
     posicoes = PosicaoPersonagem.objects.filter(mapa=mapa) if mapa else []
 
-    poderes_disponiveis = Poder.objects.filter(personagem=turno_ativo.personagem) if turno_ativo else []
+    # Não pré-carrega poderes do turno_ativo para evitar alternância no formulário.
+    # O frontend busca via AJAX conforme o participante selecionado em "Ações de".
+    poderes_disponiveis = []
 
     defesas_disponiveis = ["vontade", "fortitude", "resistencia", "aparar", "esquivar"]
 

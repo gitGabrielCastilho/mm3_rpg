@@ -540,8 +540,8 @@
           // Atualiza a coluna direita com pouca frequência para evitar reset de selects
           refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']).catch(()=>{});
         } else if (tick === 6) {
-          // Atualiza levemente a esquerda para clientes sem WS (preserva seleções)
-          refreshSelectors(['#status-card', '#form-ataque', '.acao-top-row']).catch(()=>{});
+          // Evita atualizar a coluna esquerda automaticamente para não trocar seleções de Ações/Poder
+          refreshSelectors(['#status-card']).catch(()=>{});
         } else {
           // Atualizações leves frequentes
           refreshSelectors(['.turno-topbar', '#historico-card', '#status-card']).catch(()=>{});
@@ -557,11 +557,8 @@
         const idleMs = Date.now() - lastEventAt;
         if (idleMs > 12000) { // >12s sem eventos: garante refresh e polling ligado
           startCombatePolling();
-          // Atualiza direita e também um refresh pontual da esquerda
-          refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']).catch(()=>{});
-          setTimeout(() => {
-            refreshSelectors(['#status-card', '#form-ataque', '.acao-top-row']).catch(()=>{});
-          }, 500);
+          // Atualiza direita sem tocar no formulário de ações
+          refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right', '#status-card']).catch(()=>{});
         }
       }, 8000);
     }
@@ -1117,7 +1114,7 @@
                   ensureAlvoHasParticipant(data.participante);
                   maybeAddToAcoesDe(data.participante);
                 }
-                // Fallback: se ainda não existir no select após refresh, recarrega o form da esquerda
+                // Atualize apenas direita e status
                 await refreshSelectors(['.combate-col-right', '#status-card']);
                 try {
                   const idStr = String(data.participante && data.participante.id);
@@ -1131,7 +1128,7 @@
                   removeFromAlvo(data.participante_id);
                   removeFromAcoesDe(data.participante_id);
                 }
-        // Evita trocar elementos da coluna esquerda para não resetar selects
+                // Evita trocar elementos da coluna esquerda para não resetar selects
                 await refreshSelectors(['.combate-col-right', '#status-card']);
                 break;
               case 'iniciar_turno':
@@ -1144,7 +1141,8 @@
                 await refreshSelectors(['.combate-col-right']);
                 break;
               case 'limpar_historico':
-                await refreshSelectors(['.turno-topbar', '#historico-card', '#form-ataque']);
+                // Não toque no form de ataque; só limpa topbar e histórico
+                await refreshSelectors(['.turno-topbar', '#historico-card']);
                 break;
               default:
                 await refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']);
@@ -1225,20 +1223,15 @@
         case 'adicionar_participante': {
           ensureAlvoHasParticipant(payload && payload.participante);
           maybeAddToAcoesDe(payload && payload.participante);
-          // Atualiza apenas a coluna direita (mapa + status)
+          // Atualiza apenas a coluna direita (mapa + status) — não toque no form da esquerda
           await refreshSelectors(['.combate-col-right', '#status-card']);
-          ensureAlvoHasParticipant(payload && payload.participante);
-          // Fallback WS: se ainda não estiver presente no select, recarrega apenas o form da esquerda
+          // Fallback mínimo: apenas se o alvo não existir no select, atualize o form de ataque
           try {
             const idStr = String(payload && payload.participante && payload.participante.id);
             const alvoSel = document.getElementById('alvo');
             const has = alvoSel && Array.from(alvoSel.options).some(o => String(o.value) === idStr);
             if (!has && idStr) {
-              await refreshSelectors(['#form-ataque', '.acao-top-row']);
-            }
-            // Para jogadores (não GM), garantir atualização rápida do formulário de ações
-            if (!IS_GM) {
-              await refreshSelectors(['#form-ataque', '.acao-top-row']);
+              await refreshSelectors(['#form-ataque']);
             }
           } catch(_) {}
           break;
@@ -1246,7 +1239,7 @@
         case 'remover_participante': {
           removeFromAlvo(payload && payload.participante_id);
           removeFromAcoesDe(payload && payload.participante_id);
-          // Atualiza apenas a coluna direita (mapa + status)
+          // Atualiza apenas a coluna direita (mapa + status) — não toque no form da esquerda
           await refreshSelectors(['.combate-col-right', '#status-card']);
           removeFromAlvo(payload && payload.participante_id);
           break;
