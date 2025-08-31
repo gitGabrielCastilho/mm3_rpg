@@ -33,7 +33,9 @@ def _expects_json(request) -> bool:
     accept = request.headers.get('accept', '')
     return 'application/json' in accept.lower()
 
-# AJAX: retorna poderes de um personagem
+"""Endpoints e views do combate."""
+
+# AJAX: retorna poderes de um personagem (com verificação de permissão)
 @login_required
 def poderes_personagem_ajax(request):
     personagem_id = request.GET.get('personagem_id')
@@ -43,6 +45,13 @@ def poderes_personagem_ajax(request):
         personagem = Personagem.objects.get(id=personagem_id)
     except Personagem.DoesNotExist:
         return JsonResponse({'poderes': []})
+
+    # Restringe o acesso: somente o dono do personagem ou GM podem ver os poderes
+    is_gm = bool(getattr(getattr(request.user, 'perfilusuario', None), 'tipo', '') == 'game_master')
+    if not is_gm and personagem.usuario_id != request.user.id:
+        # Não revelar poderes de outros personagens para jogadores
+        return JsonResponse({'poderes': []})
+
     poderes = list(Poder.objects.filter(personagem=personagem).values('id', 'nome', 'tipo'))
     return JsonResponse({'poderes': poderes})
 
@@ -425,6 +434,7 @@ def listar_mapas(request):
     return render(request, 'combate/listar_mapas.html', {'mapas': mapas})
 
 @csrf_exempt
+@login_required
 def realizar_ataque(request, combate_id):
     if request.method != 'POST':
         return redirect('detalhes_combate', combate_id=combate_id)
@@ -465,6 +475,14 @@ def realizar_ataque(request, combate_id):
         ).order_by('-iniciativa').first()
 
     if not atacante or not participante_atacante:
+        return redirect('detalhes_combate', combate_id=combate_id)
+
+    # Segurança: somente o GM da sala ou o dono do personagem pode agir por ele
+    combate = get_object_or_404(Combate, id=combate_id)
+    is_gm = combate.sala.game_master == request.user
+    if not is_gm and participante_atacante.personagem.usuario_id != request.user.id:
+        if _expects_json(request):
+            return JsonResponse({'status': 'error', 'error': 'Sem permissão para agir por este personagem.'}, status=403)
         return redirect('detalhes_combate', combate_id=combate_id)
 
     PERICIA_CARACTERISTICA = {
@@ -591,7 +609,8 @@ def realizar_ataque(request, combate_id):
     alvo_ids = request.POST.getlist('alvo_id')
     poder_id = request.POST.get('poder_id')
     if poder_id:
-        poder = get_object_or_404(Poder, id=poder_id)
+        # Garante que o poder pertence ao atacante
+        poder = get_object_or_404(Poder, id=poder_id, personagem=atacante)
         # Novo tipo: Descritivo — apenas gera rolagem/descrição, sem exigir alvos e sem efeitos
         if getattr(poder, 'tipo', '') == 'descritivo':
             # Apenas d20 + nível do poder descritivo (sem buffs/debuffs, sem alvo)

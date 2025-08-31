@@ -279,8 +279,14 @@
     const poderSelect = document.getElementById('poder');
     if (!select) return;
     const combateId = '{{ combate.id }}';
-  const SEL_PARTICIPANTE_KEY = `combate:${combateId}:participante_sel`;
+    const SEL_PARTICIPANTE_KEY = `combate:${combateId}:participante_sel`;
     const powerKey = (personagemId) => `combate:${combateId}:power:${personagemId||''}`;
+    const skillKey = (personagemId) => `combate:${combateId}:skill:${personagemId||''}`;
+    const traitKey = (personagemId) => `combate:${combateId}:trait:${personagemId||''}`;
+    const targetsKey = (personagemId) => `combate:${combateId}:targets:${personagemId||''}`;
+
+    // Sequenciador de requests para evitar race conditions sobrescrevendo selects
+    let _poderReqSeq = 0;
     function applyPoderTipoUI(){
       const alvoSelect = document.getElementById('alvo');
       const hint = document.getElementById('alvo_hint');
@@ -321,7 +327,66 @@
       });
       poderSelect.dataset.boundStorage = '1';
     }
-  function syncPersonagemAcao() {
+    function restoreSkillAndTrait(personagemId){
+      try {
+        const perSel = document.getElementById('pericia_rolar');
+        const carSel = document.getElementById('caracteristica_rolar');
+        const svPer = localStorage.getItem(skillKey(personagemId)) || '';
+        const svCar = localStorage.getItem(traitKey(personagemId)) || '';
+        if (perSel && svPer) perSel.value = svPer;
+        if (carSel && svCar) carSel.value = svCar;
+      } catch(_) {}
+    }
+    function persistSkillAndTraitBind(){
+      const perSel = document.getElementById('pericia_rolar');
+      const carSel = document.getElementById('caracteristica_rolar');
+      if (perSel && !perSel.dataset.persist){
+        perSel.addEventListener('change', function(){
+          const opt = select ? select.options[select.selectedIndex] : null;
+          const personagemId = opt ? opt.getAttribute('data-personagem-id') : '';
+          if (personagemId) try { localStorage.setItem(skillKey(personagemId), String(perSel.value||'')); } catch(_) {}
+        });
+        perSel.dataset.persist = '1';
+      }
+      if (carSel && !carSel.dataset.persist){
+        carSel.addEventListener('change', function(){
+          const opt = select ? select.options[select.selectedIndex] : null;
+          const personagemId = opt ? opt.getAttribute('data-personagem-id') : '';
+          if (personagemId) try { localStorage.setItem(traitKey(personagemId), String(carSel.value||'')); } catch(_) {}
+        });
+        carSel.dataset.persist = '1';
+      }
+    }
+    function restoreTargets(personagemId){
+      try {
+        const alvoSel = document.getElementById('alvo');
+        if (!alvoSel) return;
+        const saved = localStorage.getItem(targetsKey(personagemId));
+        if (!saved) return;
+        const ids = JSON.parse(saved);
+        if (Array.isArray(ids)) {
+          Array.from(alvoSel.options).forEach(o => { o.selected = ids.includes(String(o.value)); });
+        }
+      } catch(_) {}
+    }
+    function persistTargetsBind(){
+      const alvoSel = document.getElementById('alvo');
+      if (alvoSel && !alvoSel.dataset.persist){
+        alvoSel.addEventListener('change', function(){
+          const opt = select ? select.options[select.selectedIndex] : null;
+          const personagemId = opt ? opt.getAttribute('data-personagem-id') : '';
+          if (personagemId) {
+            try {
+              const ids = Array.from(alvoSel.selectedOptions || []).map(o => String(o.value));
+              localStorage.setItem(targetsKey(personagemId), JSON.stringify(ids));
+            } catch(_) {}
+          }
+        });
+        alvoSel.dataset.persist = '1';
+      }
+    }
+
+    function syncPersonagemAcao() {
       const val = select.value; // participante id
       const selectedOpt = select.options[select.selectedIndex];
       const personagemId = selectedOpt ? selectedOpt.getAttribute('data-personagem-id') : '';
@@ -330,14 +395,20 @@
       const h3 = document.getElementById('personagem_acao_hidden_caracteristica');
       const h4 = document.getElementById('personagem_acao_hidden_d20');
       if (h1) h1.value = val; if (h2) h2.value = val; if (h3) h3.value = val; if (h4) h4.value = val;
+      // Restaura perícia/traço/alvos persistidos
+      restoreSkillAndTrait(personagemId);
+      restoreTargets(personagemId);
       if (poderSelect) {
         // Preferência salva por personagem (se existir)
         let savedValue = '';
         try { savedValue = localStorage.getItem(powerKey(personagemId)) || ''; } catch(_) {}
         const prevValue = poderSelect.value; // fallback: preserva seleção atual
-  fetch('/combate/poderes-personagem-ajax/?personagem_id=' + personagemId)
+        const mySeq = ++_poderReqSeq;
+        fetch('/combate/poderes-personagem-ajax/?personagem_id=' + personagemId)
           .then(resp => resp.json())
           .then(data => {
+            // Ignora respostas atrasadas
+            if (mySeq !== _poderReqSeq) return;
             poderSelect.innerHTML = '';
             let restored = false;
             if (data.poderes && data.poderes.length > 0) {
@@ -345,7 +416,7 @@
                 const opt = document.createElement('option');
                 opt.value = p.id;
                 opt.textContent = p.nome;
-    if (p.tipo) opt.dataset.tipo = p.tipo;
+                if (p.tipo) opt.dataset.tipo = p.tipo;
                 // Prefer savedValue; depois tenta prevValue
                 if (!restored && savedValue && String(p.id) === String(savedValue)) { opt.selected = true; restored = true; }
                 else if (!restored && String(p.id) === String(prevValue)) { opt.selected = true; restored = true; }
@@ -362,8 +433,8 @@
             poderSelect.dataset.forPersonagemId = String(personagemId || '');
             // Garante que o listener de storage esteja ativo
             bindPoderStorageListener();
-      // Ajusta UI de alvos conforme tipo do poder selecionado
-      applyPoderTipoUI();
+            // Ajusta UI de alvos conforme tipo do poder selecionado
+            applyPoderTipoUI();
             // Garante que o clique no botão de poder não dispare validação quando for descritivo
             const btn = document.getElementById('btn-rolar-poder');
             if (btn && !btn.dataset.boundDescritivo) {
@@ -383,6 +454,9 @@
               });
               btn.dataset.boundDescritivo = '1';
             }
+            // Após popular poderes, também reanexar binds de persistência e restaurar escolhas
+            persistSkillAndTraitBind();
+            persistTargetsBind();
           })
           .catch(() => {/* silencia para evitar reset visual em falhas */});
       }
@@ -405,7 +479,7 @@
     });
     // Garante um valor selecionado válido
     if (newSelect.options.length && newSelect.selectedIndex < 0) newSelect.selectedIndex = 0;
-    // Força sincronização inicial com a escolha restaurada
+  // Força sincronização inicial com a escolha restaurada
     try { if (newSelect.value) localStorage.setItem(SEL_PARTICIPANTE_KEY, String(newSelect.value)); } catch(_) {}
   // Bind inicial: sempre sincroniza para refletir o selecionado
   syncPersonagemAcao();
@@ -413,6 +487,9 @@
     bindPoderStorageListener();
   // Ajuste inicial do tipo do poder (caso já haja conteudo)
   try { applyPoderTipoUI(); } catch(_) {}
+  // Binds de persistência para perícia/traço/alvos
+  persistSkillAndTraitBind();
+  persistTargetsBind();
     // Bind inicial do botão rolar poder (descritivo no primeiro carregamento)
     const _btnInit = document.getElementById('btn-rolar-poder');
     if (_btnInit && !_btnInit.dataset.boundDescritivo) {
