@@ -264,61 +264,100 @@ def iniciar_turno(request, combate_id):
         mensagens_tick = []
         for ef in efeitos:
             poder = ef.poder
-            if poder.tipo not in ('dano', 'aflicao'):
-                continue
             alvo_part = ef.alvo_participante
             alvo = alvo_part.personagem
-            # Teste de defesa passiva (como Percepção)
-            cd = (15 + poder.nivel_efeito) if poder.tipo == 'dano' else (10 + poder.nivel_efeito)
-            defesa_attr = getattr(poder, 'defesa_passiva', 'resistencia') or 'resistencia'
-            defesa_valor = getattr(alvo, defesa_attr, 0)
-            buff = alvo_part.bonus_temporario
-            debuff = alvo_part.penalidade_temporaria
-            rolagem_base = random.randint(1, 20)
-            total_def = rolagem_base + defesa_valor + buff - debuff
-            # Consome buff/debuff do alvo
-            alvo_part.bonus_temporario = 0
-            alvo_part.penalidade_temporaria = 0
-            alvo_part.save()
-            defesa_msg = (
-                f"{rolagem_base} + {defesa_valor}"
-                f"{' + ' + str(buff) if buff else ''}"
-                f"{' - ' + str(debuff) if debuff else ''} = {total_def}"
-            )
-            if total_def < cd:
-                if poder.tipo == 'dano':
-                    alvo_part.dano += 1
-                    alvo_part.save()
-                    mensagens_tick.append(
-                        f"[Concentração] {poder.nome} afeta {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — <b>Sofreu 1 de dano!</b>"
-                    )
-                else:
-                    alvo_part.aflicao += 1
-                    alvo_part.save()
-                    mensagens_tick.append(
-                        f"[Concentração] {poder.nome} afeta {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — <b>Sofreu 1 de aflição!</b>"
-                    )
-                # Teste de Vigor CD 15 para manter concentrações sobre este alvo
-                vigor = getattr(alvo, 'vigor', 0)
-                rolagem_vigor = random.randint(1, 20)
-                total_vigor = rolagem_vigor + vigor
-                if total_vigor < 15:
-                    encerrados = EfeitoConcentracao.objects.filter(
-                        combate=combate, ativo=True, alvo_participante=alvo_part
-                    )
-                    if encerrados.exists():
-                        encerrados.update(ativo=False)
-                        nomes = ", ".join(set(e.poder.nome for e in encerrados))
+            # Tipos ofensivos: aplicar teste de defesa similar ao turno inicial
+            if poder.tipo in ('dano', 'aflicao'):
+                cd = (15 + poder.nivel_efeito) if poder.tipo == 'dano' else (10 + poder.nivel_efeito)
+                defesa_attr = getattr(poder, 'defesa_passiva', 'resistencia') or 'resistencia'
+                defesa_valor = getattr(alvo, defesa_attr, 0)
+                buff = alvo_part.bonus_temporario
+                debuff = alvo_part.penalidade_temporaria
+                rolagem_base = random.randint(1, 20)
+                total_def = rolagem_base + defesa_valor + buff - debuff
+                # Consome buff/debuff do alvo
+                alvo_part.bonus_temporario = 0
+                alvo_part.penalidade_temporaria = 0
+                alvo_part.save()
+                defesa_msg = (
+                    f"{rolagem_base} + {defesa_valor}"
+                    f"{' + ' + str(buff) if buff else ''}"
+                    f"{' - ' + str(debuff) if debuff else ''} = {total_def}"
+                )
+                if total_def < cd:
+                    if poder.tipo == 'dano':
+                        alvo_part.dano += 1
+                        alvo_part.save()
                         mensagens_tick.append(
-                            f"[Concentração] {alvo.nome} falhou Vigor ({rolagem_vigor} + {vigor} = {total_vigor}) vs CD 15 — efeitos encerrados: {nomes}."
+                            f"[Concentração] {poder.nome} afeta {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — <b>Sofreu 1 de dano!</b>"
+                        )
+                    else:
+                        alvo_part.aflicao += 1
+                        alvo_part.save()
+                        mensagens_tick.append(
+                            f"[Concentração] {poder.nome} afeta {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — <b>Sofreu 1 de aflição!</b>"
+                        )
+                    # Teste de Vigor CD 15 para manter concentrações sobre este alvo
+                    vigor = getattr(alvo, 'vigor', 0)
+                    rolagem_vigor = random.randint(1, 20)
+                    total_vigor = rolagem_vigor + vigor
+                    if total_vigor < 15:
+                        encerrados = EfeitoConcentracao.objects.filter(
+                            combate=combate, ativo=True, alvo_participante=alvo_part
+                        )
+                        if encerrados.exists():
+                            encerrados.update(ativo=False)
+                            nomes = ", ".join(set(e.poder.nome for e in encerrados))
+                            mensagens_tick.append(
+                                f"[Concentração] {alvo.nome} falhou Vigor ({rolagem_vigor} + {vigor} = {total_vigor}) vs CD 15 — efeitos encerrados: {nomes}."
+                            )
+                    else:
+                        mensagens_tick.append(
+                            f"[Concentração] {alvo.nome} manteve a concentração (Vigor {rolagem_vigor} + {vigor} = {total_vigor} vs 15)."
                         )
                 else:
                     mensagens_tick.append(
-                        f"[Concentração] {alvo.nome} manteve a concentração (Vigor {rolagem_vigor} + {vigor} = {total_vigor} vs 15)."
+                        f"[Concentração] {poder.nome} em {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — sem efeito."
                     )
-            else:
+            # Cura: repete a rolagem de cura do conjurador para o mesmo alvo
+            elif poder.tipo == 'cura':
+                casting_ability = getattr(poder, 'casting_ability', '')
+                bonus_caster = getattr(ef.aplicador, casting_ability, 0) if casting_ability else 0
+                rolagem = random.randint(1, 20) + bonus_caster
+                cd = 10 - poder.nivel_efeito
+                if rolagem >= cd:
+                    if alvo_part.dano >= alvo_part.aflicao and alvo_part.dano > 0:
+                        alvo_part.dano -= 1
+                        alvo_part.save()
+                        mensagens_tick.append(
+                            f"[Concentração] {poder.nome} cura {alvo.nome} (Rolagem {rolagem} vs CD {cd}): Dano reduzido em 1."
+                        )
+                    elif alvo_part.aflicao > alvo_part.dano and alvo_part.aflicao > 0:
+                        alvo_part.aflicao -= 1
+                        alvo_part.save()
+                        mensagens_tick.append(
+                            f"[Concentração] {poder.nome} cura {alvo.nome} (Rolagem {rolagem} vs CD {cd}): Aflição reduzida em 1."
+                        )
+                    else:
+                        mensagens_tick.append(
+                            f"[Concentração] {poder.nome} cura {alvo.nome} (Rolagem {rolagem} vs CD {cd}): nada para curar."
+                        )
+                else:
+                    mensagens_tick.append(
+                        f"[Concentração] {poder.nome} tentou curar {alvo.nome} (Rolagem {rolagem} vs CD {cd}): falhou."
+                    )
+            # Buff/Debuff: reaplica o modificador temporário
+            elif poder.tipo == 'buff':
+                alvo_part.bonus_temporario += poder.nivel_efeito
+                alvo_part.save()
                 mensagens_tick.append(
-                    f"[Concentração] {poder.nome} em {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — sem efeito."
+                    f"[Concentração] {poder.nome} concede novamente +{poder.nivel_efeito} para {alvo.nome} na próxima rolagem."
+                )
+            elif poder.tipo == 'debuff':
+                alvo_part.penalidade_temporaria += poder.nivel_efeito
+                alvo_part.save()
+                mensagens_tick.append(
+                    f"[Concentração] {poder.nome} impõe novamente -{poder.nivel_efeito} a {alvo.nome} na próxima rolagem."
                 )
         if mensagens_tick:
             texto = "<br>".join(mensagens_tick)
@@ -397,58 +436,95 @@ def avancar_turno(request, combate_id):
             mensagens_tick = []
             for ef in efeitos:
                 poder = ef.poder
-                if poder.tipo not in ('dano', 'aflicao'):
-                    continue
                 alvo_part = ef.alvo_participante
                 alvo = alvo_part.personagem
-                cd = (15 + poder.nivel_efeito) if poder.tipo == 'dano' else (10 + poder.nivel_efeito)
-                defesa_attr = getattr(poder, 'defesa_passiva', 'resistencia') or 'resistencia'
-                defesa_valor = getattr(alvo, defesa_attr, 0)
-                buff = alvo_part.bonus_temporario
-                debuff = alvo_part.penalidade_temporaria
-                rolagem_base = random.randint(1, 20)
-                total_def = rolagem_base + defesa_valor + buff - debuff
-                alvo_part.bonus_temporario = 0
-                alvo_part.penalidade_temporaria = 0
-                alvo_part.save()
-                defesa_msg = (
-                    f"{rolagem_base} + {defesa_valor}"
-                    f"{' + ' + str(buff) if buff else ''}"
-                    f"{' - ' + str(debuff) if debuff else ''} = {total_def}"
-                )
-                if total_def < cd:
-                    if poder.tipo == 'dano':
-                        alvo_part.dano += 1
-                        alvo_part.save()
-                        mensagens_tick.append(
-                            f"[Concentração] {poder.nome} afeta {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — <b>Sofreu 1 de dano!</b>"
-                        )
-                    else:
-                        alvo_part.aflicao += 1
-                        alvo_part.save()
-                        mensagens_tick.append(
-                            f"[Concentração] {poder.nome} afeta {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — <b>Sofreu 1 de aflição!</b>"
-                        )
-                    vigor = getattr(alvo, 'vigor', 0)
-                    rolagem_vigor = random.randint(1, 20)
-                    total_vigor = rolagem_vigor + vigor
-                    if total_vigor < 15:
-                        encerrados = EfeitoConcentracao.objects.filter(
-                            combate=combate, ativo=True, alvo_participante=alvo_part
-                        )
-                        if encerrados.exists():
-                            encerrados.update(ativo=False)
-                            nomes = ", ".join(set(e.poder.nome for e in encerrados))
+                if poder.tipo in ('dano', 'aflicao'):
+                    cd = (15 + poder.nivel_efeito) if poder.tipo == 'dano' else (10 + poder.nivel_efeito)
+                    defesa_attr = getattr(poder, 'defesa_passiva', 'resistencia') or 'resistencia'
+                    defesa_valor = getattr(alvo, defesa_attr, 0)
+                    buff = alvo_part.bonus_temporario
+                    debuff = alvo_part.penalidade_temporaria
+                    rolagem_base = random.randint(1, 20)
+                    total_def = rolagem_base + defesa_valor + buff - debuff
+                    alvo_part.bonus_temporario = 0
+                    alvo_part.penalidade_temporaria = 0
+                    alvo_part.save()
+                    defesa_msg = (
+                        f"{rolagem_base} + {defesa_valor}"
+                        f"{' + ' + str(buff) if buff else ''}"
+                        f"{' - ' + str(debuff) if debuff else ''} = {total_def}"
+                    )
+                    if total_def < cd:
+                        if poder.tipo == 'dano':
+                            alvo_part.dano += 1
+                            alvo_part.save()
                             mensagens_tick.append(
-                                f"[Concentração] {alvo.nome} falhou Vigor ({rolagem_vigor} + {vigor} = {total_vigor}) vs CD 15 — efeitos encerrados: {nomes}."
+                                f"[Concentração] {poder.nome} afeta {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — <b>Sofreu 1 de dano!</b>"
+                            )
+                        else:
+                            alvo_part.aflicao += 1
+                            alvo_part.save()
+                            mensagens_tick.append(
+                                f"[Concentração] {poder.nome} afeta {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — <b>Sofreu 1 de aflição!</b>"
+                            )
+                        vigor = getattr(alvo, 'vigor', 0)
+                        rolagem_vigor = random.randint(1, 20)
+                        total_vigor = rolagem_vigor + vigor
+                        if total_vigor < 15:
+                            encerrados = EfeitoConcentracao.objects.filter(
+                                combate=combate, ativo=True, alvo_participante=alvo_part
+                            )
+                            if encerrados.exists():
+                                encerrados.update(ativo=False)
+                                nomes = ", ".join(set(e.poder.nome for e in encerrados))
+                                mensagens_tick.append(
+                                    f"[Concentração] {alvo.nome} falhou Vigor ({rolagem_vigor} + {vigor} = {total_vigor}) vs CD 15 — efeitos encerrados: {nomes}."
+                                )
+                        else:
+                            mensagens_tick.append(
+                                f"[Concentração] {alvo.nome} manteve a concentração (Vigor {rolagem_vigor} + {vigor} = {total_vigor} vs 15)."
                             )
                     else:
                         mensagens_tick.append(
-                            f"[Concentração] {alvo.nome} manteve a concentração (Vigor {rolagem_vigor} + {vigor} = {total_vigor} vs 15)."
+                            f"[Concentração] {poder.nome} em {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — sem efeito."
                         )
-                else:
+                elif poder.tipo == 'cura':
+                    casting_ability = getattr(poder, 'casting_ability', '')
+                    bonus_caster = getattr(personagem_proximo, casting_ability, 0) if casting_ability else 0
+                    rolagem = random.randint(1, 20) + bonus_caster
+                    cd = 10 - poder.nivel_efeito
+                    if rolagem >= cd:
+                        if alvo_part.dano >= alvo_part.aflicao and alvo_part.dano > 0:
+                            alvo_part.dano -= 1
+                            alvo_part.save()
+                            mensagens_tick.append(
+                                f"[Concentração] {poder.nome} cura {alvo.nome} (Rolagem {rolagem} vs CD {cd}): Dano reduzido em 1."
+                            )
+                        elif alvo_part.aflicao > alvo_part.dano and alvo_part.aflicao > 0:
+                            alvo_part.aflicao -= 1
+                            alvo_part.save()
+                            mensagens_tick.append(
+                                f"[Concentração] {poder.nome} cura {alvo.nome} (Rolagem {rolagem} vs CD {cd}): Aflição reduzida em 1."
+                            )
+                        else:
+                            mensagens_tick.append(
+                                f"[Concentração] {poder.nome} cura {alvo.nome} (Rolagem {rolagem} vs CD {cd}): nada para curar."
+                            )
+                    else:
+                        mensagens_tick.append(
+                            f"[Concentração] {poder.nome} tentou curar {alvo.nome} (Rolagem {rolagem} vs CD {cd}): falhou."
+                        )
+                elif poder.tipo == 'buff':
+                    alvo_part.bonus_temporario += poder.nivel_efeito
+                    alvo_part.save()
                     mensagens_tick.append(
-                        f"[Concentração] {poder.nome} em {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — sem efeito."
+                        f"[Concentração] {poder.nome} concede novamente +{poder.nivel_efeito} para {alvo.nome} na próxima rolagem."
+                    )
+                elif poder.tipo == 'debuff':
+                    alvo_part.penalidade_temporaria += poder.nivel_efeito
+                    alvo_part.save()
+                    mensagens_tick.append(
+                        f"[Concentração] {poder.nome} impõe novamente -{poder.nivel_efeito} a {alvo.nome} na próxima rolagem."
                     )
             if mensagens_tick:
                 texto = "<br>".join(mensagens_tick)
@@ -847,6 +923,12 @@ def realizar_ataque(request, combate_id):
                     else:
                         resultado = f"{atacante.nome} curou {alvo.nome} (Rolagem {rolagem} vs CD {cd}): sucesso! Nada para curar."
                     participante_alvo.save()
+                    # Cria efeito de concentração para cura contínua, se aplicável
+                    if getattr(poder, 'duracao', 'instantaneo') == 'concentracao':
+                        EfeitoConcentracao.objects.create(
+                            combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
+                            poder=poder, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                        )
                 else:
                     resultado = f"{atacante.nome} tentou curar {alvo.nome} (Rolagem {rolagem} vs CD {cd}): falhou."
 
@@ -855,12 +937,22 @@ def realizar_ataque(request, combate_id):
                 participante_alvo.bonus_temporario += poder.nivel_efeito
                 participante_alvo.save()
                 resultado = f"{alvo.nome} recebe um bônus de +{poder.nivel_efeito} na próxima rolagem."
+                if getattr(poder, 'duracao', 'instantaneo') == 'concentracao':
+                    EfeitoConcentracao.objects.create(
+                        combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
+                        poder=poder, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                    )
 
             # DEBUFF
             elif poder.tipo == 'debuff':
                 participante_alvo.penalidade_temporaria += poder.nivel_efeito
                 participante_alvo.save()
                 resultado = f"{alvo.nome} recebe uma penalidade de -{poder.nivel_efeito} na próxima rolagem."
+                if getattr(poder, 'duracao', 'instantaneo') == 'concentracao':
+                    EfeitoConcentracao.objects.create(
+                        combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
+                        poder=poder, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                    )
 
             # ÁREA
             elif getattr(poder, 'modo', '') == 'area':
