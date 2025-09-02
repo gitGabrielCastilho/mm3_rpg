@@ -627,6 +627,20 @@ def realizar_ataque(request, combate_id):
         else:
             messages.warning(request, "Ação realizada, mas não há turno ativo. Inicie um turno para registrar no histórico.")
 
+    # Helper para enviar evento via Channels (tolerante a falhas)
+    def send_event(evento: str, descricao: str):
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'combate_{combate_id}',
+                {
+                    'type': 'combate_message',
+                    'message': json.dumps({'evento': evento, 'descricao': descricao})
+                }
+            )
+        except Exception:
+            logger.warning("Falha ao enviar evento '%s' via Channels (ignorado)", evento, exc_info=True)
+
     # Resolve atacante a partir de Participante.id (preferido) ou do turno ativo
     participante_atacante = None
     atacante = None
@@ -710,14 +724,7 @@ def realizar_ataque(request, combate_id):
 
         nova_descricao = "<br>".join(resultados)
         append_to_turno(nova_descricao)
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f'combate_{combate_id}',
-            {
-                'type': 'combate_message',
-                'message': json.dumps({'evento': 'rolagem', 'descricao': nova_descricao})
-            }
-        )
+        send_event('rolagem', nova_descricao)
         if _expects_json(request):
             return JsonResponse({'status': 'ok', 'evento': 'rolagem', 'descricao': nova_descricao})
         return redirect('detalhes_combate', combate_id=combate_id)
@@ -747,14 +754,7 @@ def realizar_ataque(request, combate_id):
 
         nova_descricao = "<br>".join(resultados)
         append_to_turno(nova_descricao)
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f'combate_{combate_id}',
-            {
-                'type': 'combate_message',
-                'message': json.dumps({'evento': 'rolagem', 'descricao': nova_descricao})
-            }
-        )
+        send_event('rolagem', nova_descricao)
         if _expects_json(request):
             return JsonResponse({'status': 'ok', 'evento': 'rolagem', 'descricao': nova_descricao})
         return redirect('detalhes_combate', combate_id=combate_id)
@@ -764,14 +764,7 @@ def realizar_ataque(request, combate_id):
         resultados.append(f"{atacante.nome} rolou um d20: <b>{rolagem_base}</b>")
         nova_descricao = "<br>".join(resultados)
         append_to_turno(nova_descricao)
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f'combate_{combate_id}',
-            {
-                'type': 'combate_message',
-                'message': json.dumps({'evento': 'rolagem', 'descricao': nova_descricao})
-            }
-        )
+        send_event('rolagem', nova_descricao)
         if _expects_json(request):
             return JsonResponse({'status': 'ok', 'evento': 'rolagem', 'descricao': nova_descricao})
         return redirect('detalhes_combate', combate_id=combate_id)
@@ -782,6 +775,8 @@ def realizar_ataque(request, combate_id):
     if poder_id:
         # Garante que o poder pertence ao atacante
         poder = get_object_or_404(Poder, id=poder_id, personagem=atacante)
+        # Etiqueta de duração para histórico
+        duracao_label = 'Concentração' if getattr(poder, 'duracao', 'instantaneo') == 'concentracao' else 'Instantâneo'
         # Se for concentração e o conjurador reutilizar o mesmo poder, encerra a anterior
         if getattr(poder, 'duracao', 'instantaneo') == 'concentracao':
             anteriores = EfeitoConcentracao.objects.filter(
@@ -795,20 +790,14 @@ def realizar_ataque(request, combate_id):
             # Apenas d20 + nível do poder descritivo (sem buffs/debuffs, sem alvo)
             rolagem_base = random.randint(1, 20)
             total = rolagem_base + int(getattr(poder, 'nivel_efeito', 0) or 0)
+            resultados.append(f"{atacante.nome} usou {poder.nome} — Duração: {duracao_label}")
             resultados.append(
-                f"{atacante.nome} usou {poder.nome} (Descritivo): {rolagem_base} + {poder.nivel_efeito} = <b>{total}</b>"
+                f"{poder.nome} (Descritivo): {rolagem_base} + {poder.nivel_efeito} = <b>{total}</b>"
             )
 
             nova_descricao = "<br>".join(resultados)
             append_to_turno(nova_descricao)
-            channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(
-                f'combate_{combate_id}',
-                {
-                    'type': 'combate_message',
-                    'message': json.dumps({'evento': 'rolagem', 'descricao': nova_descricao})
-                }
-            )
+            send_event('rolagem', nova_descricao)
             if _expects_json(request):
                 return JsonResponse({'status': 'ok', 'evento': 'rolagem', 'descricao': nova_descricao})
             return redirect('detalhes_combate', combate_id=combate_id)
@@ -838,6 +827,8 @@ def realizar_ataque(request, combate_id):
                     f"[Concentração] {alvo_part.personagem.nome} manteve a concentração (Vigor {rolagem} + {vigor} = {total} vs 15)."
                 )
 
+        # Cabeçalho com duração do efeito usado
+        resultados.append(f"{atacante.nome} usou {poder.nome} — Duração: {duracao_label}")
         for alvo_id in alvo_ids:
             participante_alvo = get_object_or_404(Participante, id=alvo_id, combate_id=combate_id)
             alvo = participante_alvo.personagem
@@ -1215,14 +1206,7 @@ def realizar_ataque(request, combate_id):
 
         nova_descricao = "<br>".join(resultados)
         append_to_turno(nova_descricao)
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f'combate_{combate_id}',
-            {
-                'type': 'combate_message',
-                'message': json.dumps({'evento': 'rolagem', 'descricao': nova_descricao})
-            }
-        )
+        send_event('rolagem', nova_descricao)
         if _expects_json(request):
             return JsonResponse({'status': 'ok', 'evento': 'rolagem', 'descricao': nova_descricao})
         return redirect('detalhes_combate', combate_id=combate_id)
