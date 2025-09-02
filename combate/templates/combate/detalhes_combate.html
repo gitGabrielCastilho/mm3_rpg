@@ -409,7 +409,7 @@
           .then(data => {
             // Ignora respostas atrasadas
             if (mySeq !== _poderReqSeq) return;
-            poderSelect.innerHTML = '';
+      poderSelect.innerHTML = '';
             let restored = false;
             if (data.poderes && data.poderes.length > 0) {
               data.poderes.forEach(function(p) {
@@ -417,6 +417,7 @@
                 opt.value = p.id;
                 opt.textContent = p.nome;
                 if (p.tipo) opt.dataset.tipo = p.tipo;
+        if (p.duracao) opt.dataset.duracao = p.duracao;
                 // Prefer savedValue; depois tenta prevValue
                 if (!restored && savedValue && String(p.id) === String(savedValue)) { opt.selected = true; restored = true; }
                 else if (!restored && String(p.id) === String(prevValue)) { opt.selected = true; restored = true; }

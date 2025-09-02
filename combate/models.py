@@ -1,5 +1,6 @@
 from django.db import models
 from personagens.models import Personagem
+from personagens.models import Poder
 
 class Combate(models.Model):
     sala = models.ForeignKey('salas.Sala', on_delete=models.CASCADE, related_name='combates', null=True, blank=True)
@@ -45,3 +46,24 @@ class PosicaoPersonagem(models.Model):
     participante = models.ForeignKey('Participante', on_delete=models.CASCADE)
     x = models.IntegerField(default=0)
     y = models.IntegerField(default=0)
+
+class EfeitoConcentracao(models.Model):
+    """Efeito de concentração ativo sobre um alvo específico.
+    - criado_em: quando foi aplicado
+    - ativo: se ainda está valendo
+    - aplicador: personagem que usou o poder
+    - alvo_participante: participante alvo do efeito
+    - poder: referência ao poder usado
+    - combate: combate onde está ativo (facilita consultas)
+    - rodada_inicio: ordem do turno em que foi criado
+    """
+    combate = models.ForeignKey(Combate, on_delete=models.CASCADE, related_name='efeitos_concentracao')
+    aplicador = models.ForeignKey(Personagem, on_delete=models.CASCADE, related_name='concentracoes_aplicadas')
+    alvo_participante = models.ForeignKey('Participante', on_delete=models.CASCADE, related_name='concentracoes_recebidas')
+    poder = models.ForeignKey(Poder, on_delete=models.CASCADE)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    ativo = models.BooleanField(default=True)
+    rodada_inicio = models.IntegerField(default=0)
+
+    def __str__(self):
+        return f"Concentração: {self.poder.nome} por {self.aplicador.nome} em {self.alvo_participante.personagem.nome} ({'Ativo' if self.ativo else 'Encerrado'})"

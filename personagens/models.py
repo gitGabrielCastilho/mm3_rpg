@@ -154,6 +154,10 @@ class Poder(models.Model):
         ('buff', 'Buff'),
         ('debuff', 'Debuff'),
     ]
+    DURACAO_CHOICES = [
+        ('instantaneo', 'Instantâneo'),
+        ('concentracao', 'Concentração'),
+    ]
     MODO_CHOICES = [
         ('area', 'Área'),
         ('percepcao', 'Percepção'),
@@ -181,6 +185,7 @@ class Poder(models.Model):
     nome = models.CharField(max_length=100)
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='dano')
     modo = models.CharField(max_length=20, choices=MODO_CHOICES, default='melee')
+    duracao = models.CharField(max_length=20, choices=DURACAO_CHOICES, default='instantaneo')
     nivel_efeito = models.IntegerField(default=0)
     bonus_ataque = models.IntegerField(default=0)
     defesa_ativa = models.CharField(max_length=20, choices=DEFESA_ATIVA_CHOICES, default='aparar')
