@@ -190,12 +190,12 @@
          <img src="{{ posicao.participante.personagem.foto.url }}" title="{{ posicao.participante.personagem.foto.url }}"
            id="token-{{ posicao.id }}"
            class="mapa-token"
-           style="left:{{ posicao.x }}px; top:{{ posicao.y }}px;"
+           style="left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:{{ posicao.token_size|default:40 }}px; height:{{ posicao.token_size|default:40 }}px;"
            draggable="true"
            ondragstart="drag(event, {{ posicao.id }})">
                 {% else %}
          <div id="token-{{ posicao.id }}" class="mapa-token token-fallback"
-           style="left:{{ posicao.x }}px; top:{{ posicao.y }}px;"
+           style="left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:{{ posicao.token_size|default:40 }}px; height:{{ posicao.token_size|default:40 }}px;"
            draggable="true"
            ondragstart="drag(event, {{ posicao.id }})">
                     {{ posicao.participante.personagem.nome|slice:"0:2"|upper }}
@@ -667,6 +667,30 @@
     function ensureAllAreasMinScale(){
       document.querySelectorAll("[id^='mapa-area-']").forEach(ensureMinScaleForArea);
     }
+    // ====== Persistência do tamanho dos tokens (Ctrl + Scroll) ======
+    function tokenSizeKey(posicaoId){ return `combate:${combateId}:token:${posicaoId}:size`; }
+    function persistTokenSize(tokenEl){
+      if (!tokenEl || !tokenEl.id) return;
+      const id = (tokenEl.id || '').replace('token-','');
+      try {
+        const w = parseFloat(getComputedStyle(tokenEl).width) || 40;
+        localStorage.setItem(tokenSizeKey(id), String(Math.round(w)));
+      } catch(_) {}
+    }
+    function restoreTokenSize(tokenEl){
+      if (!tokenEl || !tokenEl.id) return;
+      const id = (tokenEl.id || '').replace('token-','');
+      try {
+        const saved = parseFloat(localStorage.getItem(tokenSizeKey(id)) || '');
+        if (Number.isFinite(saved) && saved > 0) {
+          tokenEl.style.width = saved + 'px';
+          tokenEl.style.height = saved + 'px';
+        }
+      } catch(_) {}
+    }
+    function restoreTokenSizes(scope){
+      (scope || document).querySelectorAll('.mapa-token').forEach(restoreTokenSize);
+    }
     // ====== Persistência de selects sujeitos a refresh (mapa/add participante/NPC) ======
     function persistSelectById(id, key){
       const el = document.getElementById(id);
@@ -820,6 +844,8 @@
   // Rebind e atualizar grade
   setupGridControls();
   updateAllGrids();
+  // Após re-render, restaura tamanhos salvos dos tokens
+  try { restoreTokenSizes(document); } catch(_) {}
   // Rebind dos formulários para evitar navegação
   ajaxifyInteractionForms();
   // Rebind dos selects de personagem/ataque, para atualizar poderes
@@ -894,8 +920,20 @@
               next = Math.max(min, Math.min(max, next));
               token.style.width = next + 'px';
               token.style.height = next + 'px';
+              try { persistTokenSize(token); } catch(_) {}
+              // Persiste no servidor também
+              try {
+                const id = (token.id || '').replace('token-','');
+                fetch(`/combate/atualizar-posicao-token/${id}/`, {
+                  method: 'POST',
+                  headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' },
+                  credentials: 'same-origin',
+                  body: JSON.stringify({ size: next })
+                }).catch(()=>{});
+              } catch(_) {}
             }, { passive: false });
             token.dataset.wheelResized = '1';
+            try { restoreTokenSize(token); } catch(_) {}
           });
         }
         bindTokenWheelResize();
@@ -1235,6 +1273,17 @@
           }
           break;
         }
+        case 'token_resize': {
+          const id = payload.posicao_id;
+          const size = payload.size;
+          const token = document.getElementById('token-' + id);
+          if (token && Number.isFinite(size)) {
+            token.style.width = size + 'px';
+            token.style.height = size + 'px';
+            try { persistTokenSize(token); } catch(_) {}
+          }
+          break;
+        }
         case 'rolagem': {
           // Acrescenta somente ao histórico
           const ativo = document.querySelector('.turnos-list .turno-item.ativo .turno-desc')
@@ -1384,6 +1433,7 @@
   setupGridControls();
   updateAllGrids();
   ensureAllAreasMinScale();
+  try { restoreTokenSizes(document); } catch(_) {}
 
     // ====== Ações do topo: selecionar/usar/adicionar mapa ======
     function setupTopbarMapActions(){
@@ -1478,8 +1528,19 @@
           next = Math.max(min, Math.min(max, next));
           token.style.width = next + 'px';
           token.style.height = next + 'px';
+          try { persistTokenSize(token); } catch(_) {}
+          try {
+            const id = (token.id || '').replace('token-','');
+            fetch(`/combate/atualizar-posicao-token/${id}/`, {
+              method: 'POST',
+              headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' },
+              credentials: 'same-origin',
+              body: JSON.stringify({ size: next })
+            }).catch(()=>{});
+          } catch(_) {}
         }, { passive: false });
         token.dataset.wheelResized = '1';
+        try { restoreTokenSize(token); } catch(_) {}
       });
       // Initialize zoom controls on DOMContentLoaded as well (outside scroll area)
       const wrapper = mapaArea.closest('.mapa-wrapper') || mapaArea.parentElement;

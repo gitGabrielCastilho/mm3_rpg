@@ -46,6 +46,7 @@ class PosicaoPersonagem(models.Model):
     participante = models.ForeignKey('Participante', on_delete=models.CASCADE)
     x = models.IntegerField(default=0)
     y = models.IntegerField(default=0)
+    token_size = models.PositiveIntegerField(default=40)
 
 class EfeitoConcentracao(models.Model):
     """Efeito de concentração ativo sobre um alvo específico.

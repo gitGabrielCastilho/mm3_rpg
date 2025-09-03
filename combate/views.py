@@ -171,6 +171,12 @@ def atualizar_posicao_token(request, token_id):
         data = json.loads(request.body)
         posicao.x = int(data.get("x", posicao.x))
         posicao.y = int(data.get("y", posicao.y))
+        size = data.get("size")
+        if isinstance(size, (int, float)):
+            try:
+                posicao.token_size = max(10, min(200, int(size)))
+            except Exception:
+                pass
         posicao.save()
         # Notifica todos os participantes apenas sobre a movimentação do token (sem forçar refresh do mapa)
         try:
@@ -189,6 +195,19 @@ def atualizar_posicao_token(request, token_id):
                     })
                 }
             )
+            # Se tamanho foi atualizado, envie um evento específico
+            if isinstance(size, (int, float)):
+                async_to_sync(channel_layer.group_send)(
+                    f'combate_{posicao.participante.combate.id}',
+                    {
+                        'type': 'combate_message',
+                        'message': json.dumps({
+                            'evento': 'token_resize',
+                            'posicao_id': posicao.id,
+                            'size': posicao.token_size,
+                        })
+                    }
+                )
         except Exception:
             # Em dev, ignore falha de broadcast para não quebrar o movimento do token
             pass
