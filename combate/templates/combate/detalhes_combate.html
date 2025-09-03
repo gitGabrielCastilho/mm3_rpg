@@ -399,6 +399,17 @@
       restoreSkillAndTrait(personagemId);
       restoreTargets(personagemId);
       if (poderSelect) {
+        // Se não houver um personagem válido selecionado, limpa o select de poderes e sai
+        if (!personagemId) {
+          try {
+            poderSelect.innerHTML = '';
+            const opt = document.createElement('option');
+            opt.disabled = true;
+            opt.textContent = 'Selecione um participante';
+            poderSelect.appendChild(opt);
+          } catch(_) {}
+          return;
+        }
         // Preferência salva por personagem (se existir)
         let savedValue = '';
         try { savedValue = localStorage.getItem(powerKey(personagemId)) || ''; } catch(_) {}
@@ -630,6 +641,32 @@
     function updateAllGrids(){
       document.querySelectorAll("[id^='mapa-area-']").forEach(updateGridForArea);
     }
+    // Garante que imagens pequenas sejam ampliadas para cobrir a área visível
+    function ensureMinScaleForArea(mapaArea){
+      if (!mapaArea) return;
+      const canvas = mapaArea.querySelector('.mapa-canvas');
+      const img = canvas ? canvas.querySelector('.mapa-img') : null;
+      if (!canvas || !img) return;
+      const areaW = mapaArea.clientWidth || 1;
+      const areaH = mapaArea.clientHeight || 1;
+      const baseW = img.naturalWidth || img.clientWidth || 1;
+      const baseH = img.naturalHeight || img.clientHeight || 1;
+      const fitW = areaW / (baseW || areaW);
+      const fitH = areaH / (baseH || areaH);
+      const minScale = Math.max(fitW, fitH); // permite upscaling
+      let cur = parseFloat(mapaArea.dataset.scale || '1') || 1;
+      if (cur < minScale || !isFinite(cur)) {
+        cur = minScale;
+        mapaArea.dataset.scale = String(cur);
+        canvas.style.transform = `scale(${cur})`;
+        canvas.style.minWidth = (baseW * cur) + 'px';
+        canvas.style.minHeight = (baseH * cur) + 'px';
+        updateGridForArea(mapaArea);
+      }
+    }
+    function ensureAllAreasMinScale(){
+      document.querySelectorAll("[id^='mapa-area-']").forEach(ensureMinScaleForArea);
+    }
     // ====== Persistência de selects sujeitos a refresh (mapa/add participante/NPC) ======
     function persistSelectById(id, key){
       const el = document.getElementById(id);
@@ -701,7 +738,8 @@
         const areaH = area.clientHeight || 1;
         const fitW = areaW / (baseW || areaW);
         const fitH = areaH / (baseH || areaH);
-        const minScale = Math.min(1, Math.max(fitW, fitH));
+  // Permite upscaling quando a imagem é menor que a área visível
+  const minScale = Math.max(fitW, fitH);
         const maxScale = 3;
         scale = Math.max(minScale, Math.min(maxScale, scale));
         area.dataset.scale = String(scale);
@@ -768,8 +806,10 @@
         }
         // Reaplica comportamentos após substituições
     rafEqualize();
-        // Restaura estados do mapa após substituição
+  // Restaura estados do mapa após substituição
         restoreMapStates();
+  // Se não houver estado salvo (primeira vez), garanta cobertura
+  ensureAllAreasMinScale();
         // Scroll historico para o fim
         const historico = document.getElementById('historico-card');
         if (historico && historico.scrollHeight > historico.clientHeight) historico.scrollTop = historico.scrollHeight;
@@ -875,7 +915,8 @@
           const areaH = mapaArea.clientHeight || 1;
           const fitW = areaW / (baseW || areaW);
           const fitH = areaH / (baseH || areaH);
-          const minScale = Math.min(1, Math.max(fitW, fitH));
+          // Permite upscaling para cobrir a viewport quando a imagem for pequena
+          const minScale = Math.max(fitW, fitH);
           const maxScale = 3;
           newScale = Math.max(minScale, Math.min(maxScale, newScale));
           // Apply transform and enlarge scrollable box so scrollbars match zoom
@@ -1320,6 +1361,8 @@
     // Wait a tick for layout
   setTimeout(equalizarAlturas, 50);
   setTimeout(equalizarAlturas, 250);
+  // Após equalizar, garanta que a imagem cubra a área
+  setTimeout(ensureAllAreasMinScale, 260);
     // E garante scroll ao fundo mesmo em telas pequenas, se houver overflow
     const historicoCardInit = document.getElementById('historico-card');
     if (historicoCardInit) {
@@ -1331,11 +1374,16 @@
     }
     // Also after images load
     document.querySelectorAll('.mapa-img').forEach(img => {
-      if (img.complete) return; img.addEventListener('load', rafEqualize);
+      if (img.complete) {
+        ensureAllAreasMinScale();
+        return;
+      }
+      img.addEventListener('load', function(){ rafEqualize(); ensureAllAreasMinScale(); });
     });
   // Inicializa controles e grade
   setupGridControls();
   updateAllGrids();
+  ensureAllAreasMinScale();
 
     // ====== Ações do topo: selecionar/usar/adicionar mapa ======
     function setupTopbarMapActions(){
@@ -1457,7 +1505,8 @@
               const areaH = mapaArea.clientHeight || 1;
               const fitW = areaW / (baseW || areaW);
               const fitH = areaH / (baseH || areaH);
-              const minScale = Math.min(1, Math.max(fitW, fitH));
+              // Permite upscaling no cálculo de escala mínima
+              const minScale = Math.max(fitW, fitH);
               const maxScale = 3;
               newScale = Math.max(minScale, Math.min(maxScale, newScale));
               mapaArea.dataset.scale = String(newScale);
@@ -1518,7 +1567,8 @@
           const areaH = mapaArea.clientHeight || 1;
           const fitW = areaW / (baseW || areaW);
           const fitH = areaH / (baseH || areaH);
-          const minScale = Math.min(1, Math.max(fitW, fitH));
+          // Ao fazer zoom com a roda, mantenha a escala mínima permitindo upscaling
+          const minScale = Math.max(fitW, fitH);
           const maxScale = 3;
           const oldScale = parseFloat(mapaArea.dataset.scale || '1');
           // Clamp scale to dynamic bounds

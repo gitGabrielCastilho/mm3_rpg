@@ -40,10 +40,15 @@ def _expects_json(request) -> bool:
 @login_required
 def poderes_personagem_ajax(request):
     personagem_id = request.GET.get('personagem_id')
+    # Seja tolerante com chamadas incompletas: devolve vazio em vez de 400
     if not personagem_id:
-        return HttpResponseBadRequest('personagem_id obrigatório')
+        return JsonResponse({'poderes': []})
     try:
-        personagem = Personagem.objects.get(id=personagem_id)
+        pid = int(personagem_id)
+    except (TypeError, ValueError):
+        return JsonResponse({'poderes': []})
+    try:
+        personagem = Personagem.objects.get(id=pid)
     except Personagem.DoesNotExist:
         return JsonResponse({'poderes': []})
 
