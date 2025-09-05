@@ -280,21 +280,28 @@ def iniciar_turno(request, combate_id):
     )
     # Tique de Concentração/Sustentado: no início do turno do conjurador, efeitos ativos reaplicam
     try:
-        # Loga poderes sustentados ativos no início do turno
-        sust_ativos = (
-            EfeitoConcentracao.objects
-            .filter(combate=combate, aplicador=primeiro_participante.personagem, ativo=True, poder__duracao='sustentado')
-            .select_related('alvo_participante', 'alvo_participante__personagem', 'poder')
-        )
+        # Resumo de efeitos ativos (Sustentado e Concentração) no início do turno
         mensagens_tick = []
-        if sust_ativos.exists():
-            resumo = ", ".join(f"{ef.poder.nome} em {ef.alvo_participante.personagem.nome}" for ef in sust_ativos)
-            mensagens_tick.append(f"[Sustentado] Ativos no início do turno: {resumo}.")
-        efeitos = (
+        ativos_qs = (
             EfeitoConcentracao.objects
             .filter(combate=combate, aplicador=primeiro_participante.personagem, ativo=True)
             .select_related('alvo_participante', 'alvo_participante__personagem', 'poder')
         )
+        sust_ativos = [
+            f"• <b>{ef.poder.nome}</b> em {ef.alvo_participante.personagem.nome}"
+            for ef in ativos_qs if getattr(ef.poder, 'duracao', '') == 'sustentado'
+        ]
+        conc_ativos = [
+            f"• <b>{ef.poder.nome}</b> em {ef.alvo_participante.personagem.nome}"
+            for ef in ativos_qs if getattr(ef.poder, 'duracao', '') == 'concentracao'
+        ]
+        if sust_ativos:
+            mensagens_tick.append("[Sustentado] Ativos no início do turno:")
+            mensagens_tick.extend(sust_ativos)
+        if conc_ativos:
+            mensagens_tick.append("[Concentração] Ativos no início do turno:")
+            mensagens_tick.extend(conc_ativos)
+        efeitos = ativos_qs
         for ef in efeitos:
             poder = ef.poder
             alvo_part = ef.alvo_participante
@@ -462,21 +469,28 @@ def avancar_turno(request, combate_id):
         )
         # Tique de Concentração/Sustentado: reaplica efeitos no início do turno do conjurador
         try:
-            # Loga poderes sustentados ativos no início do turno
-            sust_ativos = (
-                EfeitoConcentracao.objects
-                .filter(combate=combate, aplicador=personagem_proximo, ativo=True, poder__duracao='sustentado')
-                .select_related('alvo_participante', 'alvo_participante__personagem', 'poder')
-            )
+            # Resumo de efeitos ativos (Sustentado e Concentração) no início do turno
             mensagens_tick = []
-            if sust_ativos.exists():
-                resumo = ", ".join(f"{ef.poder.nome} em {ef.alvo_participante.personagem.nome}" for ef in sust_ativos)
-                mensagens_tick.append(f"[Sustentado] Ativos no início do turno: {resumo}.")
-            efeitos = (
+            ativos_qs = (
                 EfeitoConcentracao.objects
                 .filter(combate=combate, aplicador=personagem_proximo, ativo=True)
                 .select_related('alvo_participante', 'alvo_participante__personagem', 'poder')
             )
+            sust_ativos = [
+                f"• <b>{ef.poder.nome}</b> em {ef.alvo_participante.personagem.nome}"
+                for ef in ativos_qs if getattr(ef.poder, 'duracao', '') == 'sustentado'
+            ]
+            conc_ativos = [
+                f"• <b>{ef.poder.nome}</b> em {ef.alvo_participante.personagem.nome}"
+                for ef in ativos_qs if getattr(ef.poder, 'duracao', '') == 'concentracao'
+            ]
+            if sust_ativos:
+                mensagens_tick.append("[Sustentado] Ativos no início do turno:")
+                mensagens_tick.extend(sust_ativos)
+            if conc_ativos:
+                mensagens_tick.append("[Concentração] Ativos no início do turno:")
+                mensagens_tick.extend(conc_ativos)
+            efeitos = ativos_qs
             for ef in efeitos:
                 poder = ef.poder
                 alvo_part = ef.alvo_participante
