@@ -692,6 +692,82 @@ def deletar_combate(request, combate_id):
 
 
 
+@require_POST
+def encerrar_efeito(request, combate_id, efeito_id):
+    """Encerra manualmente um único efeito de concentração/sustentado.
+    Permissão: GM da sala do combate OU dono do personagem que é o aplicador do efeito.
+    """
+    combate = get_object_or_404(Combate, id=combate_id)
+    efeito = get_object_or_404(EfeitoConcentracao, id=efeito_id, combate=combate)
+    # Permissões
+    is_gm = combate.sala.game_master == request.user
+    is_owner = getattr(efeito.aplicador, 'usuario_id', None) == request.user.id
+    if not (is_gm or is_owner):
+        return redirect('detalhes_combate', combate_id=combate.id)
+    if efeito.ativo:
+        efeito.ativo = False
+        efeito.save()
+        # Log no turno ativo (se existir)
+        turno_ativo = Turno.objects.filter(combate=combate, ativo=True).first()
+        texto = f"[Concentração] {efeito.aplicador.nome} encerrou {efeito.poder.nome} em {efeito.alvo_participante.personagem.nome}."
+        if turno_ativo:
+            turno_ativo.descricao = (turno_ativo.descricao + "<br>" if turno_ativo.descricao else "") + texto
+            turno_ativo.save()
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'combate_{combate.id}',
+                {
+                    'type': 'combate_message',
+                    'message': json.dumps({'evento': 'rolagem', 'descricao': texto})
+                }
+            )
+        except Exception:
+            logger.warning("Falha ao enviar evento 'rolagem' (encerrar_efeito)", exc_info=True)
+    if _expects_json(request):
+        return JsonResponse({'status': 'ok', 'evento': 'rolagem'})
+    return redirect('detalhes_combate', combate_id=combate.id)
+
+
+@require_POST
+def encerrar_meus_efeitos(request, combate_id):
+    """Encerra todos os efeitos mantidos pelo personagem selecionado em 'Ações de'."""
+    combate = get_object_or_404(Combate, id=combate_id)
+    participante_id = request.POST.get('personagem_acao')
+    if not participante_id:
+        return redirect('detalhes_combate', combate_id=combate.id)
+    participante = get_object_or_404(Participante.objects.select_related('personagem'), id=participante_id, combate=combate)
+    # Permissões
+    is_gm = combate.sala.game_master == request.user
+    is_owner = participante.personagem.usuario_id == request.user.id
+    if not (is_gm or is_owner):
+        return redirect('detalhes_combate', combate_id=combate.id)
+    ativos = EfeitoConcentracao.objects.filter(combate=combate, aplicador=participante.personagem, ativo=True)
+    nomes = []
+    if ativos.exists():
+        nomes = list({e.poder.nome for e in ativos})
+        ativos.update(ativo=False)
+    texto = ("[Concentração] " + participante.personagem.nome +
+             (" encerrou todos os seus efeitos ativos: " + ", ".join(nomes) if nomes else " não possuía efeitos ativos para encerrar."))
+    # Log
+    turno_ativo = Turno.objects.filter(combate=combate, ativo=True).first()
+    if turno_ativo:
+        turno_ativo.descricao = (turno_ativo.descricao + "<br>" if turno_ativo.descricao else "") + texto
+        turno_ativo.save()
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'combate_{combate.id}',
+            {
+                'type': 'combate_message',
+                'message': json.dumps({'evento': 'rolagem', 'descricao': texto})
+            }
+        )
+    except Exception:
+        logger.warning("Falha ao enviar evento 'rolagem' (encerrar_meus_efeitos)", exc_info=True)
+    if _expects_json(request):
+        return JsonResponse({'status': 'ok', 'evento': 'rolagem'})
+    return redirect('detalhes_combate', combate_id=combate.id)
 
 
 

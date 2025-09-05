@@ -62,6 +62,11 @@
           <input type="hidden" name="personagem_acao" id="personagem_acao_hidden_d20" value="{{ participantes.0.id }}">
           <button type="submit" name="rolar_d20" value="1" class="btn btn-sm">Rolar d20</button>
         </form>
+        <form method="post" action="{% url 'encerrar_meus_efeitos' combate.id %}" class="inline-form" id="form-encerrar-meus">
+          {% csrf_token %}
+          <input type="hidden" name="personagem_acao" id="personagem_acao_hidden_end" value="{{ participantes.0.id }}">
+          <button type="submit" class="btn btn-sm" formnovalidate title="Encerrar todos os efeitos que este personagem está mantendo">Encerrar meus efeitos</button>
+        </form>
       </div>
 
       <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-ataque" class="combate-card ataque-card">
@@ -394,7 +399,8 @@
       const h2 = document.getElementById('personagem_acao_hidden_pericia');
       const h3 = document.getElementById('personagem_acao_hidden_caracteristica');
       const h4 = document.getElementById('personagem_acao_hidden_d20');
-      if (h1) h1.value = val; if (h2) h2.value = val; if (h3) h3.value = val; if (h4) h4.value = val;
+      const h5 = document.getElementById('personagem_acao_hidden_end');
+      if (h1) h1.value = val; if (h2) h2.value = val; if (h3) h3.value = val; if (h4) h4.value = val; if (h5) h5.value = val;
       // Restaura perícia/traço/alvos persistidos
       restoreSkillAndTrait(personagemId);
       restoreTargets(personagemId);
@@ -1256,13 +1262,14 @@
     }
     function ajaxifyInteractionForms(){
       bindAjax(document.getElementById('form-d20'));
-      bindAjax(document.getElementById('form-ataque'));
+  bindAjax(document.getElementById('form-ataque'));
   bindAjax(document.getElementById('form-mapa'));
       document.querySelectorAll('.turno-topbar-actions form').forEach(bindAjax);
   document.querySelectorAll('.form-remover-participante').forEach(bindAjax);
   document.querySelectorAll('.form-add-participante').forEach(bindAjax);
     document.querySelectorAll('.form-limpar-historico').forEach(bindAjax);
   document.querySelectorAll('.mapa-remover-form').forEach(bindAjax);
+  bindAjax(document.getElementById('form-encerrar-meus'));
     }
 
     combateSocket.onmessage = async function(e) {
