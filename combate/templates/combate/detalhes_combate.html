@@ -65,7 +65,7 @@
         <form method="post" action="{% url 'encerrar_meus_efeitos' combate.id %}" class="inline-form" id="form-encerrar-meus">
           {% csrf_token %}
           <input type="hidden" name="personagem_acao" id="personagem_acao_hidden_end" value="{{ participantes.0.id }}">
-          <button type="submit" class="btn btn-sm" formnovalidate title="Encerrar todos os efeitos que este personagem está mantendo">Encerrar meus efeitos</button>
+          <button type="submit" class="btn btn-sm" formnovalidate title="Encerrar todos os efeitos que este personagem está mantendo">Encerrar Efeitos</button>
         </form>
       </div>
 
