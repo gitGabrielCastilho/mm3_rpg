@@ -12,7 +12,7 @@ import random
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from .models import Mapa, PosicaoPersonagem, EfeitoConcentracao
-from django.db.models import Q
+from django.db.models import Q, F
 from .forms import MapaForm
 from salas.models import Sala
 import json
@@ -327,14 +327,12 @@ def iniciar_turno(request, combate_id):
                 )
                 if total_def < cd:
                     if poder.tipo == 'dano':
-                        alvo_part.dano += 1
-                        alvo_part.save()
+                        Participante.objects.filter(pk=alvo_part.pk).update(dano=F('dano') + 1)
                         mensagens_tick.append(
                             f"{tick_label} {poder.nome} afeta {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — <b>Sofreu 1 de dano!</b>"
                         )
                     else:
-                        alvo_part.aflicao += 1
-                        alvo_part.save()
+                        Participante.objects.filter(pk=alvo_part.pk).update(aflicao=F('aflicao') + 1)
                         mensagens_tick.append(
                             f"{tick_label} {poder.nome} afeta {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — <b>Sofreu 1 de aflição!</b>"
                         )
@@ -369,14 +367,12 @@ def iniciar_turno(request, combate_id):
                 cd = 10 - poder.nivel_efeito
                 if rolagem >= cd:
                     if alvo_part.dano >= alvo_part.aflicao and alvo_part.dano > 0:
-                        alvo_part.dano -= 1
-                        alvo_part.save()
+                        Participante.objects.filter(pk=alvo_part.pk).update(dano=F('dano') - 1)
                         mensagens_tick.append(
                             f"{tick_label} {poder.nome} cura {alvo.nome} (Rolagem {rolagem} vs CD {cd}): Dano reduzido em 1."
                         )
                     elif alvo_part.aflicao > alvo_part.dano and alvo_part.aflicao > 0:
-                        alvo_part.aflicao -= 1
-                        alvo_part.save()
+                        Participante.objects.filter(pk=alvo_part.pk).update(aflicao=F('aflicao') - 1)
                         mensagens_tick.append(
                             f"{tick_label} {poder.nome} cura {alvo.nome} (Rolagem {rolagem} vs CD {cd}): Aflição reduzida em 1."
                         )
@@ -515,14 +511,12 @@ def avancar_turno(request, combate_id):
                     )
                     if total_def < cd:
                         if poder.tipo == 'dano':
-                            alvo_part.dano += 1
-                            alvo_part.save()
+                            Participante.objects.filter(pk=alvo_part.pk).update(dano=F('dano') + 1)
                             mensagens_tick.append(
                                 f"{tick_label} {poder.nome} afeta {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — <b>Sofreu 1 de dano!</b>"
                             )
                         else:
-                            alvo_part.aflicao += 1
-                            alvo_part.save()
+                            Participante.objects.filter(pk=alvo_part.pk).update(aflicao=F('aflicao') + 1)
                             mensagens_tick.append(
                                 f"{tick_label} {poder.nome} afeta {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — <b>Sofreu 1 de aflição!</b>"
                             )
@@ -556,14 +550,12 @@ def avancar_turno(request, combate_id):
                     cd = 10 - poder.nivel_efeito
                     if rolagem >= cd:
                         if alvo_part.dano >= alvo_part.aflicao and alvo_part.dano > 0:
-                            alvo_part.dano -= 1
-                            alvo_part.save()
+                            Participante.objects.filter(pk=alvo_part.pk).update(dano=F('dano') - 1)
                             mensagens_tick.append(
                                 f"{tick_label} {poder.nome} cura {alvo.nome} (Rolagem {rolagem} vs CD {cd}): Dano reduzido em 1."
                             )
                         elif alvo_part.aflicao > alvo_part.dano and alvo_part.aflicao > 0:
-                            alvo_part.aflicao -= 1
-                            alvo_part.save()
+                            Participante.objects.filter(pk=alvo_part.pk).update(aflicao=F('aflicao') - 1)
                             mensagens_tick.append(
                                 f"{tick_label} {poder.nome} cura {alvo.nome} (Rolagem {rolagem} vs CD {cd}): Aflição reduzida em 1."
                             )

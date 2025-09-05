@@ -790,6 +790,12 @@
         persistGridState();
         // Salva estados atuais do mapa (zoom/scroll) para restaurar após troca
         saveMapStates();
+        // Hist: detecta se o usuário está perto do fim para preservar leitura
+        let historicoWasNearBottom = false;
+        try {
+          const hc = document.getElementById('historico-card');
+          if (hc) historicoWasNearBottom = (hc.scrollHeight - hc.scrollTop - hc.clientHeight) < 24;
+        } catch(_) {}
         // Preserva seleção de alvos quando o formulário de ataque for atualizado
         let savedAlvos = null;
         try {
@@ -834,9 +840,11 @@
         restoreMapStates();
   // Se não houver estado salvo (primeira vez), garanta cobertura
   ensureAllAreasMinScale();
-        // Scroll historico para o fim
+        // Autoscroll apenas se antes já estava perto do fim
         const historico = document.getElementById('historico-card');
-        if (historico && historico.scrollHeight > historico.clientHeight) historico.scrollTop = historico.scrollHeight;
+        if (historicoWasNearBottom && historico && historico.scrollHeight > historico.clientHeight) {
+          historico.scrollTop = historico.scrollHeight;
+        }
   // Rebind drag & drop após trocas da coluna direita
         rebindDragDrop();
   // Rebind ações do topo se a barra de turno foi trocada
