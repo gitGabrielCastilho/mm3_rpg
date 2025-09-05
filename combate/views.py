@@ -316,10 +316,8 @@ def iniciar_turno(request, combate_id):
                 debuff = alvo_part.penalidade_temporaria
                 rolagem_base = random.randint(1, 20)
                 total_def = rolagem_base + defesa_valor + buff - debuff
-                # Consome buff/debuff do alvo
-                alvo_part.bonus_temporario = 0
-                alvo_part.penalidade_temporaria = 0
-                alvo_part.save()
+                # Consome buff/debuff do alvo sem sobrescrever outros campos atualizados por F()
+                Participante.objects.filter(pk=alvo_part.pk).update(bonus_temporario=0, penalidade_temporaria=0)
                 defesa_msg = (
                     f"{rolagem_base} + {defesa_valor}"
                     f"{' + ' + str(buff) if buff else ''}"
@@ -501,9 +499,7 @@ def avancar_turno(request, combate_id):
                     debuff = alvo_part.penalidade_temporaria
                     rolagem_base = random.randint(1, 20)
                     total_def = rolagem_base + defesa_valor + buff - debuff
-                    alvo_part.bonus_temporario = 0
-                    alvo_part.penalidade_temporaria = 0
-                    alvo_part.save()
+                    Participante.objects.filter(pk=alvo_part.pk).update(bonus_temporario=0, penalidade_temporaria=0)
                     defesa_msg = (
                         f"{rolagem_base} + {defesa_valor}"
                         f"{' + ' + str(buff) if buff else ''}"

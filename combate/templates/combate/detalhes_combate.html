@@ -546,17 +546,17 @@
   function startCombatePolling(){
       if (_combatePollTimer) return;
       let tick = 0;
-      _combatePollTimer = setInterval(() => {
+    _combatePollTimer = setInterval(() => {
         tick = (tick + 1) % 12; // 12 * 5s = 60s
         if (tick === 0) {
           // Atualiza a coluna direita com pouca frequência para evitar reset de selects
-          refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']).catch(()=>{});
+      refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']).catch(()=>{});
         } else if (tick === 6) {
           // Evita atualizar a coluna esquerda automaticamente para não trocar seleções de Ações/Poder
-          refreshSelectors(['#status-card']).catch(()=>{});
+      refreshSelectors(['#status-card']).catch(()=>{});
         } else {
           // Atualizações leves frequentes
-          refreshSelectors(['.turno-topbar', '#historico-card', '#status-card']).catch(()=>{});
+      refreshSelectors(['.turno-topbar', '#historico-card', '#status-card']).catch(()=>{});
         }
       }, 5000);
     }
@@ -1224,6 +1224,11 @@
               case 'finalizar_combate':
                 await refreshSelectors(['.turno-topbar', '#historico-card', '#status-card']);
                 break;
+              case 'concentracao_tick': {
+                // Após ticks de efeitos, sempre forçar atualização do status pois dano/aflição podem mudar múltiplas vezes
+                await refreshSelectors(['#historico-card', '#status-card']);
+                break;
+              }
               case 'adicionar_mapa':
               case 'remover_mapa':
                 await refreshSelectors(['.combate-col-right']);
@@ -1401,12 +1406,14 @@
 
       // Histórico = mesma altura do Status; se maior, aplica scroll
       if (historicoCard && statusCard) {
+        // Preserve current scroll position when resizing unless already at bottom
+        const nearBottom = (historicoCard.scrollHeight - historicoCard.scrollTop - historicoCard.clientHeight) < 24;
         const statusAlt = statusCard.offsetHeight;
         historicoCard.style.height = statusAlt + 'px';
         historicoCard.style.maxHeight = statusAlt + 'px';
         historicoCard.style.overflowY = 'auto';
         // Mantém o scroll sempre no final para mostrar os eventos mais recentes
-        if (historicoCard.scrollHeight > historicoCard.clientHeight) {
+        if (nearBottom && historicoCard.scrollHeight > historicoCard.clientHeight) {
           historicoCard.scrollTop = historicoCard.scrollHeight;
         }
       }
