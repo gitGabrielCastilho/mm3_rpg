@@ -338,24 +338,25 @@ def iniciar_turno(request, combate_id):
                         mensagens_tick.append(
                             f"{tick_label} {poder.nome} afeta {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — <b>Sofreu 1 de aflição!</b>"
                         )
-                    # Teste de Vigor CD 15 para manter concentrações sobre este alvo
-                    vigor = getattr(alvo, 'vigor', 0)
-                    rolagem_vigor = random.randint(1, 20)
-                    total_vigor = rolagem_vigor + vigor
-                    if total_vigor < 15:
-                        encerrados = EfeitoConcentracao.objects.filter(
-                            combate=combate, ativo=True, alvo_participante=alvo_part
-                        )
-                        if encerrados.exists():
-                            encerrados.update(ativo=False)
-                            nomes = ", ".join(set(e.poder.nome for e in encerrados))
-                            mensagens_tick.append(
+                    # Teste de Vigor CD 15: apenas se o alvo mantém efeitos próprios (como conjurador)
+                    if EfeitoConcentracao.objects.filter(combate=combate, ativo=True, aplicador=alvo).exists():
+                        vigor = getattr(alvo, 'vigor', 0)
+                        rolagem_vigor = random.randint(1, 20)
+                        total_vigor = rolagem_vigor + vigor
+                        if total_vigor < 15:
+                            encerrados = EfeitoConcentracao.objects.filter(
+                                combate=combate, ativo=True, aplicador=alvo
+                            )
+                            if encerrados.exists():
+                                encerrados.update(ativo=False)
+                                nomes = ", ".join(set(e.poder.nome for e in encerrados))
+                                mensagens_tick.append(
                                     f"[Concentração] {alvo.nome} falhou Vigor ({rolagem_vigor} + {vigor} = {total_vigor}) vs CD 15 — efeitos encerrados: {nomes}."
                                 )
-                    else:
-                        mensagens_tick.append(
-                            f"[Concentração] {alvo.nome} manteve a concentração (Vigor {rolagem_vigor} + {vigor} = {total_vigor} vs 15)."
-                        )
+                        else:
+                            mensagens_tick.append(
+                                f"[Concentração] {alvo.nome} manteve a concentração (Vigor {rolagem_vigor} + {vigor} = {total_vigor} vs 15)."
+                            )
                 else:
                     mensagens_tick.append(
                         f"{tick_label} {poder.nome} em {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — sem efeito."
@@ -525,23 +526,25 @@ def avancar_turno(request, combate_id):
                             mensagens_tick.append(
                                 f"{tick_label} {poder.nome} afeta {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — <b>Sofreu 1 de aflição!</b>"
                             )
-                        vigor = getattr(alvo, 'vigor', 0)
-                        rolagem_vigor = random.randint(1, 20)
-                        total_vigor = rolagem_vigor + vigor
-                        if total_vigor < 15:
-                            encerrados = EfeitoConcentracao.objects.filter(
-                                combate=combate, ativo=True, alvo_participante=alvo_part
-                            )
-                            if encerrados.exists():
-                                encerrados.update(ativo=False)
-                                nomes = ", ".join(set(e.poder.nome for e in encerrados))
-                                mensagens_tick.append(
-                                    f"[Concentração] {alvo.nome} falhou Vigor ({rolagem_vigor} + {vigor} = {total_vigor}) vs CD 15 — efeitos encerrados: {nomes}."
+                        # Teste de Vigor CD 15: apenas se o alvo mantém efeitos próprios
+                        if EfeitoConcentracao.objects.filter(combate=combate, ativo=True, aplicador=alvo).exists():
+                            vigor = getattr(alvo, 'vigor', 0)
+                            rolagem_vigor = random.randint(1, 20)
+                            total_vigor = rolagem_vigor + vigor
+                            if total_vigor < 15:
+                                encerrados = EfeitoConcentracao.objects.filter(
+                                    combate=combate, ativo=True, aplicador=alvo
                                 )
-                        else:
-                            mensagens_tick.append(
-                                f"[Concentração] {alvo.nome} manteve a concentração (Vigor {rolagem_vigor} + {vigor} = {total_vigor} vs 15)."
-                            )
+                                if encerrados.exists():
+                                    encerrados.update(ativo=False)
+                                    nomes = ", ".join(set(e.poder.nome for e in encerrados))
+                                    mensagens_tick.append(
+                                        f"[Concentração] {alvo.nome} falhou Vigor ({rolagem_vigor} + {vigor} = {total_vigor}) vs CD 15 — efeitos encerrados: {nomes}."
+                                    )
+                            else:
+                                mensagens_tick.append(
+                                    f"[Concentração] {alvo.nome} manteve a concentração (Vigor {rolagem_vigor} + {vigor} = {total_vigor} vs 15)."
+                                )
                     else:
                         mensagens_tick.append(
                             f"{tick_label} {poder.nome} em {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — sem efeito."
@@ -944,17 +947,18 @@ def realizar_ataque(request, combate_id):
             return redirect('detalhes_combate', combate_id=combate_id)
         # Helper: teste de Vigor CD 15 se o alvo possui concentrações ativas
     def manter_concentracao_apos_sofrer(alvo_part):
-            efeitos = EfeitoConcentracao.objects.filter(
-                combate_id=combate_id, ativo=True, alvo_participante=alvo_part
+            # O teste de Vigor é para o personagem alvejado, mas afeta os efeitos que ELE mantém como conjurador
+            efeitos_mantidos = EfeitoConcentracao.objects.filter(
+                combate_id=combate_id, ativo=True, aplicador=alvo_part.personagem
             )
-            if not efeitos.exists():
+            if not efeitos_mantidos.exists():
                 return
             vigor = getattr(alvo_part.personagem, 'vigor', 0)
             rolagem = random.randint(1, 20)
             total = rolagem + vigor
             if total < 15:
-                nomes = ", ".join(set(e.poder.nome for e in efeitos))
-                efeitos.update(ativo=False)
+                nomes = ", ".join(set(e.poder.nome for e in efeitos_mantidos))
+                efeitos_mantidos.update(ativo=False)
                 resultados.append(
                     f"[Concentração] {alvo_part.personagem.nome} falhou Vigor ({rolagem} + {vigor} = {total}) vs CD 15 — efeitos encerrados: {nomes}."
                 )
