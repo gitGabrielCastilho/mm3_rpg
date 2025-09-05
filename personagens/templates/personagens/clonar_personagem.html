@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="centered">
+  <h1>Clonar Personagem para Jogador</h1>
+  <p>Origem: <strong>{{ personagem.nome }}</strong> (Sala: {{ sala.nome }})</p>
+  <form method="post">
+    {% csrf_token %}
+    <div style="margin: 8px 0;">
+      <label for="jogador_id">Jogador da sala:</label>
+      <select name="jogador_id" id="jogador_id" required>
+        <option value="">-- Selecione --</option>
+        {% for u in jogadores %}
+          <option value="{{ u.id }}">{{ u.username }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="margin: 8px 0;">
+      <label for="nome">Nome da cópia (opcional):</label>
+      <input type="text" name="nome" id="nome" placeholder="{{ nome_sugerido }}"/>
+    </div>
+    <div style="margin-top: 12px;">
+      <button type="submit" class="btn">Clonar</button>
+      <a href="{% url 'listar_personagens' %}" class="btn">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
