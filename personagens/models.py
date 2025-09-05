@@ -156,7 +156,8 @@ class Poder(models.Model):
     ]
     DURACAO_CHOICES = [
         ('instantaneo', 'Instantâneo'),
-        ('concentracao', 'Concentração'),
+    ('concentracao', 'Concentração'),
+    ('sustentado', 'Sustentado'),
     ]
     MODO_CHOICES = [
         ('area', 'Área'),
