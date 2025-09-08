@@ -246,18 +246,7 @@
 
       <div class="mapa-header-row">
         <h3 class="combate-section-title" style="margin:0">Status dos Participantes</h3>
-        {% if personagens_disponiveis %}
-        <form method="post" action="{% url 'adicionar_participante' combate.id %}" class="combate-inline-form form-add-participante">
-          {% csrf_token %}
-          <label for="novo_participante" class="sr-only">Adicionar personagem</label>
-          <select name="personagem_id" id="novo_participante" required class="select-sm" title="Adicionar personagem">
-            {% for personagem in personagens_disponiveis %}
-              <option value="{{ personagem.id }}">{{ personagem.nome }} ({{ personagem.usuario.username }})</option>
-            {% endfor %}
-          </select>
-          <button type="submit" class="btn btn-sm">Adicionar</button>
-        </form>
-        {% endif %}
+  {# Removido: formulário de adicionar_participante inexistente #}
         {% if combate.sala.game_master == user and npcs_disponiveis %}
         <form method="post" action="{% url 'adicionar_npc_participante' combate.id %}" class="combate-inline-form form-add-participante">
           {% csrf_token %}
