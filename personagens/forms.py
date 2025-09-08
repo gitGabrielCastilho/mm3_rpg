@@ -39,24 +39,13 @@ class PersonagemForm(forms.ModelForm):
 
 
 class PoderForm(forms.ModelForm):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Limita opções de 'ligados' aos poderes do mesmo personagem já existentes (exclui ainda não salvos)
-        if self.instance and self.instance.pk and 'ligados' in self.fields:
-            self.fields['ligados'].queryset = Poder.objects.filter(personagem=self.instance.personagem).exclude(pk=self.instance.pk)
-        elif self.instance and self.instance.personagem_id and 'ligados' in self.fields:
-            self.fields['ligados'].queryset = Poder.objects.filter(personagem=self.instance.personagem)
-        else:
-            # Sem personagem definido ainda: esvazia para evitar selecionar poderes de outros
-            if 'ligados' in self.fields:
-                self.fields['ligados'].queryset = Poder.objects.none()
     class Meta:
         model = Poder
         fields = [
             'id',
             'nome', 'tipo', 'modo', 'duracao', 'nivel_efeito', 'bonus_ataque',
             'defesa_ativa', 'defesa_passiva', 'casting_ability',
-            'de_item', 'item_origem', 'de_vantagem', 'vantagem_origem', 'ligados'
+            'de_item', 'item_origem', 'de_vantagem', 'vantagem_origem'
         ]
         widgets = {
             'id': forms.HiddenInput(),
@@ -80,29 +69,6 @@ class PoderForm(forms.ModelForm):
             raise forms.ValidationError("Marque 'Poder de Item?' para selecionar um item de origem.")
         if not de_vantagem and vantagem_origem:
             raise forms.ValidationError("Marque 'Poder de Vantagem?' para selecionar uma vantagem de origem.")
-
-        ligados = cleaned_data.get('ligados')
-        modo = cleaned_data.get('modo')
-        duracao = cleaned_data.get('duracao')
-        if self.instance.pk and ligados:
-            if any(p.pk == self.instance.pk for p in ligados):
-                raise forms.ValidationError("Um poder não pode ser ligado a si mesmo.")
-            # Validação: todos ligados precisam ter mesmo modo e duração
-            incompat = [p for p in ligados if p.modo != modo or p.duracao != duracao]
-            if incompat:
-                raise forms.ValidationError("Todos os poderes ligados devem ter mesmo modo e duração.")
-            # Evitar ciclos diretos já é natural (symmetrical), mas prevenir grande ciclo usando DFS leve
-            visitado = set()
-            def dfs(p):
-                if p.id in visitado:
-                    return
-                visitado.add(p.id)
-                for nxt in p.ligados.all():
-                    if nxt.id == self.instance.id:
-                        continue
-                    dfs(nxt)
-            dfs(self.instance)
-        return cleaned_data
         return cleaned_data
 
 PoderFormSet = inlineformset_factory(
@@ -146,34 +112,12 @@ class PersonagemNPCForm(forms.ModelForm):
 
 
 class PoderNPCForm(forms.ModelForm):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self.instance and self.instance.pk and 'ligados' in self.fields:
-            self.fields['ligados'].queryset = Poder.objects.filter(personagem=self.instance.personagem).exclude(pk=self.instance.pk)
-        elif self.instance and self.instance.personagem_id and 'ligados' in self.fields:
-            self.fields['ligados'].queryset = Poder.objects.filter(personagem=self.instance.personagem)
-        else:
-            if 'ligados' in self.fields:
-                self.fields['ligados'].queryset = Poder.objects.none()
     class Meta:
         model = Poder
         fields = [
             'nome', 'tipo', 'modo', 'duracao', 'nivel_efeito', 'bonus_ataque',
-            'defesa_ativa', 'defesa_passiva', 'casting_ability', 'ligados'
+            'defesa_ativa', 'defesa_passiva', 'casting_ability',
         ]
-
-    def clean(self):
-        cleaned_data = super().clean()
-        ligados = cleaned_data.get('ligados')
-        modo = cleaned_data.get('modo')
-        duracao = cleaned_data.get('duracao')
-        if self.instance.pk and ligados:
-            if any(p.pk == self.instance.pk for p in ligados):
-                raise forms.ValidationError("Um poder não pode ser ligado a si mesmo.")
-            incompat = [p for p in ligados if p.modo != modo or p.duracao != duracao]
-            if incompat:
-                raise forms.ValidationError("Todos os poderes ligados devem ter mesmo modo e duração.")
-        return cleaned_data
 
 
 PoderNPCFormSet = inlineformset_factory(

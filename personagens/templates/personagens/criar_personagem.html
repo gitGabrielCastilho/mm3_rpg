@@ -120,7 +120,6 @@
           <div class="campo-poder linha-checkbox">{{ formset.empty_form.de_item }} <label for="{{ formset.empty_form.de_item.id_for_label }}">Poder de Item?</label></div>
           <div class="campo-poder">{{ formset.empty_form.vantagem_origem.label_tag }}{{ formset.empty_form.vantagem_origem }}</div>
           <div class="campo-poder linha-checkbox">{{ formset.empty_form.de_vantagem }} <label for="{{ formset.empty_form.de_vantagem.id_for_label }}">Poder de Vantagem?</label></div>
-          <div class="campo-poder">{{ formset.empty_form.ligados.label_tag }}{{ formset.empty_form.ligados }}<div class="hint-ligados" style="font-size:0.7rem; color:#bbb; margin-top:2px;">Lista ficará disponível após preencher e salvar (precisa de PK).</div></div>
           <div class="span-2" style="margin-top:0.4rem; text-align:right; display:flex; gap:0.7rem; justify-content:flex-end;">
             <span style="display:none;">{{ formset.empty_form.DELETE }}</span>
             <button type="button" class="btn btn-danger" onclick="removerPoderLinha(this)">Remover</button>
@@ -146,7 +145,6 @@
                 <div class="campo-poder linha-checkbox">{{ form.de_item }} <label for="{{ form.de_item.id_for_label }}">Poder de Item?</label></div>
                 <div class="campo-poder">{{ form.vantagem_origem.label_tag }}{{ form.vantagem_origem }}</div>
                 <div class="campo-poder linha-checkbox">{{ form.de_vantagem }} <label for="{{ form.de_vantagem.id_for_label }}">Poder de Vantagem?</label></div>
-                <div class="campo-poder">{{ form.ligados.label_tag }}{{ form.ligados }}<div class="hint-ligados" style="font-size:0.75rem; color:#bbb; margin-top:2px;">Selecione poderes com mesmo modo e duração. Lista vazia em novos poderes até salvar.</div></div>
               {% if form.DELETE %}
                 <div class="span-2" style="margin-top:0.4rem; text-align: right; display: flex; align-items: center; gap: 0.7rem; justify-content: flex-end;">
                   <span style="display:none;">{{ form.DELETE }}</span>
@@ -161,11 +159,6 @@
       <div style="margin-top:1.5rem; display:flex; gap:1rem; justify-content:center;">
         <button type="button" class="btn btn-danger" onclick="adicionarPoder()">Adicionar Poder</button>
         <button type="button" class="btn btn-danger" onclick="removerPoder()">Remover Último Poder</button>
-        {% if draft_personagem %}
-          <input type="hidden" name="draft_id" value="{{ draft_personagem.id }}">
-        {% endif %}
-        <button type="submit" class="btn btn-primary" name="action" value="add_power">Salvar & Atualizar Ligações</button>
-        <button type="submit" class="btn btn-success" name="action" value="finalizar">Finalizar Personagem</button>
       </div>
       <div class="inventario-largo">
         <h2>Inventário</h2>
