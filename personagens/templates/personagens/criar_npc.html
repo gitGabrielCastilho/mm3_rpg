@@ -133,7 +133,12 @@
       <div style="margin-top:1.5rem; display:flex; gap:1rem; justify-content:center;">
         <button type="button" class="btn btn-danger" onclick="adicionarPoder()">Adicionar Poder</button>
         <button type="button" class="btn btn-danger" onclick="removerPoder()">Remover Último Poder</button>
+        {% if draft_npc %}<input type="hidden" name="draft_id" value="{{ draft_npc.id }}">{% endif %}
+        <button type="submit" class="btn btn-primary" name="action" value="add_power">Salvar & Atualizar Ligações</button>
+        <button type="submit" class="btn btn-warning" name="action" value="remove_power" onclick="document.getElementById('flag-remove-latest').value='1'">Salvar Remoção</button>
+        <button type="submit" class="btn btn-success" name="action" value="finalizar">Finalizar NPC</button>
       </div>
+      <input type="hidden" id="flag-remove-latest" name="remove_latest" value="0">
 
       <div style="margin-top:2rem; text-align:center;">
         <input type="submit" value="Salvar NPC" class="btn">

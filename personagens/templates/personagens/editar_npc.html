@@ -131,15 +131,15 @@
         </div>
       </div>
 
-      <div style="margin-top:1.5rem; display:flex; gap:1rem; justify-content:center;">
-        <button type="button" class="btn btn-danger" onclick="adicionarPoder()">Adicionar Poder</button>
-        <button type="button" class="btn btn-danger" onclick="removerPoder()">Remover Último Poder</button>
-      </div>
-
-      <div style="margin-top:2rem; text-align:center;">
-        <input type="submit" value="Salvar NPC" class="btn">
+      <div style="margin-top:1.5rem; display:flex; gap:1rem; flex-wrap:wrap; justify-content:center;">
+        <button type="button" class="btn btn-danger" onclick="adicionarPoder()">Adicionar Poder (local)</button>
+        <button type="button" class="btn btn-danger" onclick="removerPoder()">Remover Último (local)</button>
+        <button type="submit" class="btn btn-primary" name="action" value="add_power">Salvar & Atualizar Ligações</button>
+        <button type="submit" class="btn btn-warning" name="action" value="remove_power">Salvar Remoção & Atualizar</button>
+        <button type="submit" class="btn btn-success" name="action" value="finalizar">Salvar Definitivo</button>
         <a href="{% url 'listar_npcs' %}" class="btn" style="margin-left:0.6rem;">Voltar</a>
       </div>
+      <input type="hidden" name="action_helper" value="1">
     </div>
   </form>
 </div>

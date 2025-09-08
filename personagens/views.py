@@ -556,9 +556,18 @@ def criar_npc(request, sala_id):
     if sala.game_master != request.user:
         return redirect('listar_salas')
 
+    draft_id = request.GET.get('draft') or request.POST.get('draft_id')
+    npc_draft = None
+    if draft_id:
+        try:
+            npc_draft = Personagem.objects.get(id=draft_id, usuario=request.user, is_npc=True, sala=sala)
+        except Personagem.DoesNotExist:
+            npc_draft = None
+
     if request.method == 'POST':
-        form = PersonagemNPCForm(request.POST, request.FILES)
-        formset = PoderNPCFormSet(request.POST, request.FILES, prefix='poder_set')
+        action = request.POST.get('action')  # add_power | remove_power | finalizar
+        form = PersonagemNPCForm(request.POST, request.FILES, instance=npc_draft)
+        formset = PoderNPCFormSet(request.POST, request.FILES, instance=npc_draft, prefix='poder_set')
         basicos_ok = form.is_valid() and formset.is_valid()
         if basicos_ok:
             npc = form.save(commit=False)
@@ -570,10 +579,8 @@ def criar_npc(request, sala_id):
             for poder in poderes:
                 poder.personagem = npc
                 poder.save()
-            # Processa exclusões
             for obj in formset.deleted_objects:
                 obj.delete()
-            # Ligações após todos terem PK
             for f in formset.forms:
                 if not hasattr(f, 'cleaned_data'):
                     continue
@@ -584,6 +591,8 @@ def criar_npc(request, sala_id):
                 if ligados_sel is not None:
                     inst.ligados.set([p for p in ligados_sel if p.personagem_id == npc.id and p.pk != inst.pk and p.modo == inst.modo and p.duracao == inst.duracao])
             formset.save_m2m()
+            if action in ('add_power','remove_power'):
+                return redirect(f"/personagens/npc/criar/{sala.id}/?draft={npc.id}")
             return redirect('listar_npcs')
         else:
             from django.forms.utils import ErrorDict
@@ -615,8 +624,12 @@ def criar_npc(request, sala_id):
             else:
                 messages.error(request, f'Erros ao salvar NPC: {total_err}. Verifique os destaques no formulário.')
     else:
-        form = PersonagemNPCForm()
-        formset = PoderNPCFormSet(prefix='poder_set')
+        if npc_draft:
+            form = PersonagemNPCForm(instance=npc_draft)
+            formset = PoderNPCFormSet(instance=npc_draft, prefix='poder_set')
+        else:
+            form = PersonagemNPCForm()
+            formset = PoderNPCFormSet(prefix='poder_set')
 
     pericias = [
         'acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao',
@@ -634,7 +647,8 @@ def criar_npc(request, sala_id):
         'defesas': ['aparar', 'esquivar', 'fortitude', 'vontade', 'resistencia'],
         'pericias_col1': pericias[:meio],
         'pericias_col2': pericias[meio:],
-        'sala': sala,
+    'sala': sala,
+    'draft_npc': npc_draft,
     }
     return render(request, 'personagens/criar_npc.html', context)
 
@@ -677,6 +691,7 @@ def editar_npc(request, personagem_id):
 
         form = PersonagemNPCForm(data, request.FILES, instance=npc)
         formset = PoderNPCFormSet(data, request.FILES, instance=npc, prefix='poder_set')
+        action = request.POST.get('action')  # add_power | remove_power | finalizar | None
         if form.is_valid() and formset.is_valid():
             npc = form.save(commit=False)
             npc.is_npc = True
@@ -700,6 +715,8 @@ def editar_npc(request, personagem_id):
                 if ligados_sel is not None:
                     inst.ligados.set([p for p in ligados_sel if p.personagem_id == npc.id and p.pk != inst.pk and p.modo == inst.modo and p.duracao == inst.duracao])
             formset.save_m2m()
+            if action in ('add_power','remove_power'):
+                return redirect(f"/personagens/npc/editar/{npc.id}/")
             return redirect('listar_npcs')
         else:
             from django.forms.utils import ErrorDict
