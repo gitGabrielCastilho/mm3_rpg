@@ -39,6 +39,17 @@ class PersonagemForm(forms.ModelForm):
 
 
 class PoderForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Limita opções de 'ligados' aos poderes do mesmo personagem já existentes (exclui ainda não salvos)
+        if self.instance and self.instance.pk and 'ligados' in self.fields:
+            self.fields['ligados'].queryset = Poder.objects.filter(personagem=self.instance.personagem).exclude(pk=self.instance.pk)
+        elif self.instance and self.instance.personagem_id and 'ligados' in self.fields:
+            self.fields['ligados'].queryset = Poder.objects.filter(personagem=self.instance.personagem)
+        else:
+            # Sem personagem definido ainda: esvazia para evitar selecionar poderes de outros
+            if 'ligados' in self.fields:
+                self.fields['ligados'].queryset = Poder.objects.none()
     class Meta:
         model = Poder
         fields = [
@@ -135,6 +146,15 @@ class PersonagemNPCForm(forms.ModelForm):
 
 
 class PoderNPCForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk and 'ligados' in self.fields:
+            self.fields['ligados'].queryset = Poder.objects.filter(personagem=self.instance.personagem).exclude(pk=self.instance.pk)
+        elif self.instance and self.instance.personagem_id and 'ligados' in self.fields:
+            self.fields['ligados'].queryset = Poder.objects.filter(personagem=self.instance.personagem)
+        else:
+            if 'ligados' in self.fields:
+                self.fields['ligados'].queryset = Poder.objects.none()
     class Meta:
         model = Poder
         fields = [

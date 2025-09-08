@@ -63,23 +63,28 @@ def criar_personagem(request):
             inventario.personagem = personagem
             inventario.save()
             inventario_form.save_m2m()
-            poderes = formset.save(commit=False)
-
-            # Coleta vantagens selecionadas manualmente
+            poderes_forms = formset.save(commit=False)
+            # Primeiro salva poderes (sem M2M ligados) para garantir PK
             vantagens_ids = set(request.POST.getlist('vantagens'))
             personagem.vantagens.set(vantagens_ids)
-            # Salva os poderes e coleta vantagens de origem dos poderes
-            for poder in poderes:
+            for poder in poderes_forms:
                 poder.personagem = personagem
                 poder.save()
                 if getattr(poder, 'de_vantagem', False) and getattr(poder, 'vantagem_origem', None):
                     vantagens_ids.add(str(poder.vantagem_origem.id))
                 if getattr(poder, 'de_item', False) and getattr(poder, 'item_origem', None):
                     inventario.itens.add(poder.item_origem)
-
-            # Salva todas as vantagens (sem duplicidade)
             personagem.vantagens.set(vantagens_ids)
-
+            # Agora processa M2M 'ligados'
+            for f in formset.forms:
+                if not hasattr(f, 'cleaned_data'):
+                    continue
+                inst = f.instance
+                if not inst.pk or f.cleaned_data.get('DELETE'):
+                    continue
+                ligados_sel = f.cleaned_data.get('ligados')
+                if ligados_sel is not None:
+                    inst.ligados.set([p for p in ligados_sel if p.personagem_id == personagem.id and p.pk != inst.pk])
             formset.save_m2m()
             return redirect('listar_personagens')
     else:
@@ -298,22 +303,21 @@ def clonar_personagem_para_jogador(request, personagem_id):
 def editar_personagem(request, personagem_id):
     personagem = get_object_or_404(Personagem, id=personagem_id, usuario=request.user)
     # Exige estar na sala do personagem
-    sala_atual = None
     try:
         sala_atual = request.user.perfilusuario.sala_atual
     except Exception:
         sala_atual = None
     if not sala_atual or personagem.sala_id != sala_atual.id:
         return redirect('listar_salas')
-    inventario, created = Inventario.objects.get_or_create(personagem=personagem)
+
+    inventario, _ = Inventario.objects.get_or_create(personagem=personagem)
+
     if request.method == 'POST':
-        # Garante que ids dos poderes existentes estejam presentes no POST (workaround de template/JS)
         data = request.POST.copy() if not isinstance(request.POST, QueryDict) else request.POST.copy()
         try:
             initial_forms = int(data.get('poder_set-INITIAL_FORMS', '0'))
         except Exception:
             initial_forms = 0
-        # Usa ordem determinística por pk
         existing_pks = list(personagem.poderes.order_by('pk').values_list('pk', flat=True))
         for i in range(min(initial_forms, len(existing_pks))):
             key = f'poder_set-{i}-id'
@@ -323,59 +327,60 @@ def editar_personagem(request, personagem_id):
         form = PersonagemForm(data, request.FILES, instance=personagem)
         inventario_form = InventarioForm(data, instance=inventario)
         formset = PoderFormSet(data, request.FILES, instance=personagem, prefix='poder_set')
+
         if form.is_valid() and inventario_form.is_valid() and formset.is_valid():
             personagem = form.save(commit=False)
             personagem.sala = sala_atual
             personagem.save()
 
-            # Inventário: preservar itens selecionados no formulário E itens de poderes
             inv = inventario_form.save(commit=False)
             inv.personagem = personagem
             inv.save()
-            # Limpa e remonta o conjunto de itens
             inv.itens.clear()
             itens_selecionados = list(inventario_form.cleaned_data.get('itens') or [])
             if itens_selecionados:
                 inv.itens.add(*itens_selecionados)
 
-            poderes = formset.save(commit=False)
-
-            # Coleta vantagens selecionadas manualmente
+            poderes_forms = formset.save(commit=False)
             vantagens_ids = set(request.POST.getlist('vantagens'))
 
-            for poder in poderes:
+            for poder in poderes_forms:
                 poder.personagem = personagem
                 poder.save()
-                # Adiciona vantagem ao personagem se for poder de vantagem
                 if getattr(poder, 'de_vantagem', False) and getattr(poder, 'vantagem_origem', None):
                     vantagens_ids.add(str(poder.vantagem_origem.id))
-                # Adiciona item ao inventário se for poder de item
                 if getattr(poder, 'de_item', False) and getattr(poder, 'item_origem', None):
                     inv.itens.add(poder.item_origem)
 
-            # Processa exclusões do formset
             for obj in formset.deleted_objects:
                 obj.delete()
 
-            # Salva todas as vantagens (sem duplicidade)
             personagem.vantagens.set(vantagens_ids)
 
-            # InlineFormSet não tem M2M, mas chamamos para consistência
+            for f in formset.forms:
+                if not hasattr(f, 'cleaned_data'):
+                    continue
+                inst = f.instance
+                if not inst.pk or f.cleaned_data.get('DELETE'):
+                    continue
+                ligados_sel = f.cleaned_data.get('ligados')
+                if ligados_sel is not None:
+                    inst.ligados.set([p for p in ligados_sel if p.personagem_id == personagem.id and p.pk != inst.pk])
             formset.save_m2m()
             return redirect('listar_personagens')
         else:
-            # Surface concise error indicators via messages
             from django.forms.utils import ErrorDict
+
             def _count_errors(f):
                 if hasattr(f, 'errors') and isinstance(f.errors, ErrorDict):
                     return sum(len(v) for v in f.errors.values()) + len(getattr(f, 'non_field_errors', lambda: [])())
                 return 0
+
             total_err = _count_errors(form) + _count_errors(inventario_form)
-            # formset errors: per-form + non-form
             fs_non = len(getattr(formset, 'non_form_errors', lambda: [])())
             fs_forms = sum(_count_errors(f) for f in formset.forms)
             total_err += fs_non + fs_forms
-            # Collect detailed errors for logging and optional short preview
+
             details = []
             for e in form.non_field_errors():
                 details.append(f"form: {e}")
@@ -397,9 +402,7 @@ def editar_personagem(request, personagem_id):
                         details.append(f"poder[{idx}].{name}: {e}")
             if details:
                 logger.warning("[editar_personagem] Falha de validação (%d):\n%s", total_err, "\n".join(details))
-            # Debug: log IDs enviados pelo cliente para cada form do formset
             try:
-                # Log management form values
                 for k in [
                     'poder_set-TOTAL_FORMS',
                     'poder_set-INITIAL_FORMS',
@@ -414,10 +417,8 @@ def editar_personagem(request, personagem_id):
                     logger.warning("[editar_personagem] POST %s-id=%s", f.prefix, pid)
                     if pid_list and (len(pid_list) > 1 or (pid_list and pid_list[0] != pid)):
                         logger.warning("[editar_personagem] POST %s-id getlist=%s", f.prefix, pid_list)
-                # Dump all poder_set-* fields for debugging names/values
                 keys = sorted([k for k in request.POST.keys() if k.startswith('poder_set-')])
                 for k in keys:
-                    # Don't spam with large textareas; log only short values
                     v = request.POST.getlist(k)
                     vs = v if len(v) > 1 else (v[0] if v else '')
                     logger.warning("[editar_personagem] POST %s => %s", k, vs)
@@ -430,7 +431,6 @@ def editar_personagem(request, personagem_id):
                 else:
                     messages.error(request, f'Erros ao salvar: {total_err}. Verifique os destaques no formulário abaixo.')
     else:
-        # GET: prepara formulários preenchidos
         form = PersonagemForm(instance=personagem)
         inventario_form = InventarioForm(instance=inventario)
         formset = PoderFormSet(instance=personagem, prefix='poder_set')
