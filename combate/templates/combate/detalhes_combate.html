@@ -1205,20 +1205,54 @@
               case 'adicionar_participante':
                 // Atualiza selects localmente de imediato
                 if (data.participante) {
+                  try { console.debug('[WS][adicionar_participante] recebida participante id=', data.participante.id); } catch(_) {}
                   ensureAlvoHasParticipant(data.participante);
                   maybeAddToAcoesDe(data.participante);
                 }
                 // Atualize coluna direita, status e também o form de ataque para forçar inclusão do novo participante ordenado
                 // O refreshSelectors preserva seleção de alvos/poder graças à lógica de salvamento interno
                 await refreshSelectors(['.combate-col-right', '#status-card', '#form-ataque']);
+                // Fallback: se por alguma razão o novo participante ainda não estiver no select de alvos, faz um refresh adicional assíncrono
+                try {
+                  const newId = data.participante && data.participante.id;
+                  if (newId) {
+                    setTimeout(() => {
+                      try {
+                        const alvoSel = document.getElementById('alvo');
+                        const exists = alvoSel && Array.from(alvoSel.options).some(o => String(o.value) === String(newId));
+                        if (!exists) {
+                          console.debug('[WS][adicionar_participante] fallback refresh para incluir participante', newId);
+                          refreshSelectors(['#form-ataque']).catch(()=>{});
+                        }
+                      } catch(_) {}
+                    }, 800);
+                  }
+                } catch(_) {}
                 break;
               case 'remover_participante':
                 if (data.participante_id) {
+                  try { console.debug('[WS][remover_participante][AJAX] participante_id=', data.participante_id); } catch(_) {}
                   removeFromAlvo(data.participante_id);
                   removeFromAcoesDe(data.participante_id);
                 }
                 // Atualiza coluna direita e também o form de ataque para retirar alvos removidos
                 await refreshSelectors(['.combate-col-right', '#status-card', '#form-ataque']);
+                // Fallback: se a opção ainda persistir (race condition de cache), faz refresh tardio
+                try {
+                  const remId = data.participante_id;
+                  if (remId) {
+                    setTimeout(() => {
+                      try {
+                        const alvoSel = document.getElementById('alvo');
+                        const still = alvoSel && Array.from(alvoSel.options).some(o => String(o.value) === String(remId));
+                        if (still) {
+                          console.debug('[WS][remover_participante][AJAX] fallback refresh para remover id ainda presente', remId);
+                          refreshSelectors(['#form-ataque']).catch(()=>{});
+                        }
+                      } catch(_) {}
+                    }, 800);
+                  }
+                } catch(_) {}
                 break;
               case 'iniciar_turno':
               case 'avancar_turno':
@@ -1331,6 +1365,22 @@
           maybeAddToAcoesDe(payload && payload.participante);
           // Atualiza coluna direita (mapa/status) e sempre o form de ataque para refletir novo alvo em tempo real
           await refreshSelectors(['.combate-col-right', '#status-card', '#form-ataque']);
+          // Fallback tardio se a opção não apareceu
+          try {
+            const newId = payload && payload.participante && payload.participante.id;
+            if (newId) {
+              setTimeout(() => {
+                try {
+                  const alvoSel = document.getElementById('alvo');
+                  const exists = alvoSel && Array.from(alvoSel.options).some(o => String(o.value) === String(newId));
+                  if (!exists) {
+                    console.debug('[WS][adicionar_participante] fallback refresh (listener) para incluir', newId);
+                    refreshSelectors(['#form-ataque']).catch(()=>{});
+                  }
+                } catch(_) {}
+              }, 800);
+            }
+          } catch(_) {}
           break;
         }
         case 'remover_participante': {
@@ -1338,6 +1388,22 @@
           removeFromAcoesDe(payload && payload.participante_id);
           // Atualiza coluna direita e o form de ataque para refletir remoção imediata
           await refreshSelectors(['.combate-col-right', '#status-card', '#form-ataque']);
+          // Fallback tardio se a opção ainda estiver presente
+          try {
+            const remId = payload && payload.participante_id;
+            if (remId) {
+              setTimeout(() => {
+                try {
+                  const alvoSel = document.getElementById('alvo');
+                  const still = alvoSel && Array.from(alvoSel.options).some(o => String(o.value) === String(remId));
+                  if (still) {
+                    console.debug('[WS][remover_participante] fallback refresh (listener) para remover', remId);
+                    refreshSelectors(['#form-ataque']).catch(()=>{});
+                  }
+                } catch(_) {}
+              }, 800);
+            }
+          } catch(_) {}
           break;
         }
         case 'iniciar_turno':
