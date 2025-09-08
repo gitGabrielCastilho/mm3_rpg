@@ -549,20 +549,24 @@
 
   // Fallback: polling quando WS não estiver disponível ou WS ficar ocioso
     let _combatePollTimer = null;
-  function startCombatePolling(){
+    function startCombatePolling(){
       if (_combatePollTimer) return;
       let tick = 0;
-    _combatePollTimer = setInterval(() => {
+      _combatePollTimer = setInterval(() => {
         tick = (tick + 1) % 12; // 12 * 5s = 60s
+        const wsDown = !window._combateWsActive; // se WS caiu precisamos atualizar também o form de ataque (alvos)
         if (tick === 0) {
-          // Atualiza a coluna direita com pouca frequência para evitar reset de selects
-      refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']).catch(()=>{});
+          const sels = ['.turno-topbar', '#historico-card', '.combate-col-right'];
+          if (wsDown) sels.push('#form-ataque');
+          refreshSelectors(sels).catch(()=>{});
         } else if (tick === 6) {
-          // Evita atualizar a coluna esquerda automaticamente para não trocar seleções de Ações/Poder
-      refreshSelectors(['#status-card']).catch(()=>{});
+          const sels = ['#status-card'];
+          if (wsDown) sels.push('#form-ataque');
+          refreshSelectors(sels).catch(()=>{});
         } else {
-          // Atualizações leves frequentes
-      refreshSelectors(['.turno-topbar', '#historico-card', '#status-card']).catch(()=>{});
+          const sels = ['.turno-topbar', '#historico-card', '#status-card'];
+          if (wsDown) sels.push('#form-ataque');
+          refreshSelectors(sels).catch(()=>{});
         }
       }, 5000);
     }
@@ -1451,10 +1455,16 @@
       }
     };
 
-    combateSocket.onopen = function(){ stopCombatePolling(); };
+    window._combateWsActive = true;
+    combateSocket.onopen = function(){ window._combateWsActive = true; stopCombatePolling(); };
     combateSocket.onclose = function(e) {
+      window._combateWsActive = false;
       console.warn('WebSocket fechado. Atualização por polling ativada.');
       startCombatePolling();
+    };
+    combateSocket.onerror = function(){
+      // Marca como inativo para habilitar refresh mais agressivo (inclui #form-ataque)
+      window._combateWsActive = false;
     };
   startHeartbeat();
 
