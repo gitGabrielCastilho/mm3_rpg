@@ -54,19 +54,26 @@ def criar_personagem(request):
         form = PersonagemForm(request.POST, request.FILES)
         inventario_form = InventarioForm(request.POST)
         formset = PoderFormSet(request.POST, request.FILES, prefix='poder_set')
-        if form.is_valid() and inventario_form.is_valid() and formset.is_valid():
+
+        # Etapa 1: validar formulários básicos (exceto M2M ligados que dependem de PKs)
+        basicos_ok = form.is_valid() and inventario_form.is_valid() and formset.is_valid()
+        if basicos_ok:
+            # Criar personagem e inventário primeiro
             personagem = form.save(commit=False)
             personagem.usuario = request.user
             personagem.sala = sala_atual
             personagem.save()
+
             inventario = inventario_form.save(commit=False)
             inventario.personagem = personagem
             inventario.save()
             inventario_form.save_m2m()
+
+            # Salvar poderes sem ainda definir ligados
             poderes_forms = formset.save(commit=False)
-            # Primeiro salva poderes (sem M2M ligados) para garantir PK
             vantagens_ids = set(request.POST.getlist('vantagens'))
             personagem.vantagens.set(vantagens_ids)
+
             for poder in poderes_forms:
                 poder.personagem = personagem
                 poder.save()
@@ -75,7 +82,12 @@ def criar_personagem(request):
                 if getattr(poder, 'de_item', False) and getattr(poder, 'item_origem', None):
                     inventario.itens.add(poder.item_origem)
             personagem.vantagens.set(vantagens_ids)
-            # Agora processa M2M 'ligados'
+
+            # Tratamento de exclusões marcadas
+            for obj in formset.deleted_objects:
+                obj.delete()
+
+            # Etapa 2: aplicar ligações agora que todos têm PK
             for f in formset.forms:
                 if not hasattr(f, 'cleaned_data'):
                     continue
@@ -84,9 +96,11 @@ def criar_personagem(request):
                     continue
                 ligados_sel = f.cleaned_data.get('ligados')
                 if ligados_sel is not None:
-                    inst.ligados.set([p for p in ligados_sel if p.personagem_id == personagem.id and p.pk != inst.pk])
+                    # Filtra apenas poderes deste personagem e evita auto‑referência
+                    inst.ligados.set([p for p in ligados_sel if p.personagem_id == personagem.id and p.pk != inst.pk and p.modo == inst.modo and p.duracao == inst.duracao])
             formset.save_m2m()
             return redirect('listar_personagens')
+        # Caso falhe validação básica, continua fluxo para re-renderizar com erros
     else:
         form = PersonagemForm()
         inventario_form = InventarioForm()
@@ -530,10 +544,10 @@ def criar_npc(request, sala_id):
     if request.method == 'POST':
         form = PersonagemNPCForm(request.POST, request.FILES)
         formset = PoderNPCFormSet(request.POST, request.FILES, prefix='poder_set')
-        if form.is_valid() and formset.is_valid():
+        basicos_ok = form.is_valid() and formset.is_valid()
+        if basicos_ok:
             npc = form.save(commit=False)
-            # Dono será o GM para controle; sem vantagens/inventário
-            npc.is_npc = True  # garante bypass de validações do modelo
+            npc.is_npc = True
             npc.usuario = request.user
             npc.sala = sala
             npc.save()
@@ -541,10 +555,22 @@ def criar_npc(request, sala_id):
             for poder in poderes:
                 poder.personagem = npc
                 poder.save()
+            # Processa exclusões
+            for obj in formset.deleted_objects:
+                obj.delete()
+            # Ligações após todos terem PK
+            for f in formset.forms:
+                if not hasattr(f, 'cleaned_data'):
+                    continue
+                inst = f.instance
+                if not inst.pk or f.cleaned_data.get('DELETE'):
+                    continue
+                ligados_sel = f.cleaned_data.get('ligados')
+                if ligados_sel is not None:
+                    inst.ligados.set([p for p in ligados_sel if p.personagem_id == npc.id and p.pk != inst.pk and p.modo == inst.modo and p.duracao == inst.duracao])
             formset.save_m2m()
             return redirect('listar_npcs')
         else:
-            # Notifica o usuário sobre erros ao salvar NPC
             from django.forms.utils import ErrorDict
             def _count_errors(f):
                 if hasattr(f, 'errors') and isinstance(f.errors, ErrorDict):
@@ -554,7 +580,6 @@ def criar_npc(request, sala_id):
             fs_non = len(getattr(formset, 'non_form_errors', lambda: [])())
             fs_forms = sum(_count_errors(f) for f in formset.forms)
             total_err += fs_non + fs_forms
-            # Log resumido e mensagem ao usuário
             details = []
             for e in form.non_field_errors():
                 details.append(f"form: {e}")
@@ -624,7 +649,6 @@ def editar_npc(request, personagem_id):
     if not sala_atual or npc.sala_id != sala_atual.id:
         return redirect('listar_salas')
     if request.method == 'POST':
-        # Preenche ids dos poderes existentes se ausentes no POST
         data = request.POST.copy()
         try:
             initial_forms = int(data.get('poder_set-INITIAL_FORMS', '0'))
@@ -640,11 +664,27 @@ def editar_npc(request, personagem_id):
         formset = PoderNPCFormSet(data, request.FILES, instance=npc, prefix='poder_set')
         if form.is_valid() and formset.is_valid():
             npc = form.save(commit=False)
-            npc.is_npc = True  # garante bypass de validações do modelo
+            npc.is_npc = True
             npc.usuario = request.user
             npc.sala = sala_atual
             npc.save()
-            formset.save()
+            poderes_forms = formset.save(commit=False)
+            for poder in poderes_forms:
+                poder.personagem = npc
+                poder.save()
+            for obj in formset.deleted_objects:
+                obj.delete()
+            # Ligações pós-PK
+            for f in formset.forms:
+                if not hasattr(f, 'cleaned_data'):
+                    continue
+                inst = f.instance
+                if not inst.pk or f.cleaned_data.get('DELETE'):
+                    continue
+                ligados_sel = f.cleaned_data.get('ligados')
+                if ligados_sel is not None:
+                    inst.ligados.set([p for p in ligados_sel if p.personagem_id == npc.id and p.pk != inst.pk and p.modo == inst.modo and p.duracao == inst.duracao])
+            formset.save_m2m()
             return redirect('listar_npcs')
         else:
             from django.forms.utils import ErrorDict
