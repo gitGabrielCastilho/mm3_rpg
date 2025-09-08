@@ -57,7 +57,37 @@ def poderes_personagem_ajax(request):
         # Não revelar poderes de outros personagens para jogadores
         return JsonResponse({'poderes': []})
 
-    poderes = list(Poder.objects.filter(personagem=personagem).values('id', 'nome', 'tipo', 'duracao'))
+    # Agrupa poderes por nome para evitar duplicatas quando estão encadeados (ligados)
+    # Regra: com a nova validação, somente poderes com MESMO nome podem estar ligados.
+    poderes_qs = Poder.objects.filter(personagem=personagem).prefetch_related('ligados')
+    grupos = {}
+    for poder in poderes_qs:
+        nome = poder.nome
+        entry = grupos.get(nome)
+        if not entry:
+            grupos[nome] = {
+                'id': poder.id,  # representante
+                'nome': nome,
+                'tipo': poder.tipo,
+                'duracao': poder.duracao,
+                'ids_equivalentes': set([poder.id])
+            }
+        else:
+            # Se já existe um representante, só agrega o id
+            entry['ids_equivalentes'].add(poder.id)
+        # Também adiciona ids dos ligados (mesmo nome pela validação)
+        for ligado in poder.ligados.all():
+            grupos[nome]['ids_equivalentes'].add(ligado.id)
+    poderes = []
+    for g in grupos.values():
+        poderes.append({
+            'id': g['id'],
+            'nome': g['nome'],
+            'tipo': g['tipo'],
+            'duracao': g['duracao'],
+            'equivalentes': list(sorted(g['ids_equivalentes']))
+        })
+    poderes.sort(key=lambda x: x['nome'].lower())
     return JsonResponse({'poderes': poderes})
 
 # JSON enxuto: lista de participantes (id, personagem_id, nome/display_nome) para sincronização leve sem recarregar formulário.

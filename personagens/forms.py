@@ -66,6 +66,7 @@ class PoderForm(forms.ModelForm):
         item_origem = cleaned_data.get('item_origem')
         de_vantagem = cleaned_data.get('de_vantagem')
         vantagem_origem = cleaned_data.get('vantagem_origem')
+        nome = cleaned_data.get('nome')
 
         # Não pode ter duas origens
         if de_item and de_vantagem:
@@ -88,6 +89,8 @@ class PoderForm(forms.ModelForm):
                 raise forms.ValidationError(f"Poder ligado '{lp.nome}' deve ter mesmo modo e duração ({modo}/{duracao}).")
             if self.instance.pk and lp.pk == self.instance.pk:
                 raise forms.ValidationError("Um poder não pode estar ligado a si mesmo.")
+            if nome and lp.nome != nome:
+                raise forms.ValidationError(f"Poder ligado '{lp.nome}' deve ter o mesmo nome ('{nome}').")
         return cleaned_data
 
 PoderFormSet = inlineformset_factory(
@@ -146,6 +149,23 @@ class PoderNPCForm(forms.ModelForm):
             else:
                 self.fields['ligados'].queryset = Poder.objects.none()
                 self.fields['ligados'].help_text = 'Salve o NPC para encadear poderes.'
+
+    def clean(self):
+        cleaned_data = super().clean()
+        ligados = cleaned_data.get('ligados') or []
+        modo = cleaned_data.get('modo')
+        duracao = cleaned_data.get('duracao')
+        nome = cleaned_data.get('nome')
+        for lp in ligados:
+            if self.instance.pk and lp.personagem_id != self.instance.personagem_id:
+                raise forms.ValidationError(f"Poder ligado '{lp.nome}' não pertence ao mesmo personagem.")
+            if lp.modo != modo or lp.duracao != duracao:
+                raise forms.ValidationError(f"Poder ligado '{lp.nome}' deve ter mesmo modo e duração ({modo}/{duracao}).")
+            if self.instance.pk and lp.pk == self.instance.pk:
+                raise forms.ValidationError("Um poder não pode estar ligado a si mesmo.")
+            if nome and lp.nome != nome:
+                raise forms.ValidationError(f"Poder ligado '{lp.nome}' deve ter o mesmo nome ('{nome}').")
+        return cleaned_data
 
 
 PoderNPCFormSet = inlineformset_factory(

@@ -420,13 +420,15 @@
             if (data.poderes && data.poderes.length > 0) {
               data.poderes.forEach(function(p) {
                 const opt = document.createElement('option');
-                opt.value = p.id;
+                opt.value = p.id; // representante
                 opt.textContent = p.nome;
                 if (p.tipo) opt.dataset.tipo = p.tipo;
-        if (p.duracao) opt.dataset.duracao = p.duracao;
-                // Prefer savedValue; depois tenta prevValue
-                if (!restored && savedValue && String(p.id) === String(savedValue)) { opt.selected = true; restored = true; }
-                else if (!restored && String(p.id) === String(prevValue)) { opt.selected = true; restored = true; }
+                if (p.duracao) opt.dataset.duracao = p.duracao;
+                if (p.equivalentes) opt.dataset.equivalentes = p.equivalentes.join(',');
+                // Prefer savedValue; depois tenta prevValue (qualquer equivalente também vale)
+                const eqSet = new Set([String(p.id)].concat((p.equivalentes||[]).map(String)));
+                if (!restored && savedValue && eqSet.has(String(savedValue))) { opt.selected = true; restored = true; }
+                else if (!restored && eqSet.has(String(prevValue))) { opt.selected = true; restored = true; }
                 poderSelect.appendChild(opt);
               });
             } else {

@@ -203,7 +203,7 @@ class Poder(models.Model):
     )
     ligados = models.ManyToManyField(
         'self', blank=True, symmetrical=False,
-        help_text='Poderes que disparam em cadeia junto com este. Precisam ter mesmo modo e duração.'
+    help_text='Poderes que disparam em cadeia junto com este. Precisam ter mesmo nome, modo e duração.'
     )
     def __str__(self):
         return f"{self.nome} ({self.tipo}, {self.modo})"
