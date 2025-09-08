@@ -1,4 +1,3 @@
-
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.shortcuts import render, redirect, get_object_or_404
@@ -474,133 +473,87 @@ def avancar_turno(request, combate_id):
         turno_ativo.ativo = False
         turno_ativo.save()
         participantes = Participante.objects.filter(combate=combate).order_by('-iniciativa')
-        participante_ids = list(participantes.values_list('id', flat=True))
         personagem_ids = list(participantes.values_list('personagem_id', flat=True))
         if turno_ativo.personagem_id in personagem_ids:
             idx = personagem_ids.index(turno_ativo.personagem_id)
             proximo_idx = (idx + 1) % len(personagem_ids)
         else:
-            proximo_idx = 0  
+            proximo_idx = 0
         personagem_proximo = participantes[proximo_idx].personagem
-        novo_turno = Turno.objects.create(
-            combate=combate,
-            personagem=personagem_proximo,
-            ordem=turno_ativo.ordem + 1,
-            ativo=True
-        )
-        # Tique de Concentração/Sustentado: reaplica efeitos no início do turno do conjurador
+        novo_turno = Turno.objects.create(combate=combate, personagem=personagem_proximo, ordem=turno_ativo.ordem + 1, ativo=True)
+        # Processa efeitos de concentração / sustentado
         try:
-            # Resumo de efeitos ativos (Sustentado e Concentração) no início do turno
-            mensagens_tick = []
-            ativos_qs = (
+            ativos = (
                 EfeitoConcentracao.objects
                 .filter(combate=combate, aplicador=personagem_proximo, ativo=True)
                 .select_related('alvo_participante', 'alvo_participante__personagem', 'poder')
             )
-            sust_ativos = [
-                f"• <b>{ef.poder.nome}</b> em {ef.alvo_participante.personagem.nome}"
-                for ef in ativos_qs if getattr(ef.poder, 'duracao', '') == 'sustentado'
-            ]
-            conc_ativos = [
-                f"• <b>{ef.poder.nome}</b> em {ef.alvo_participante.personagem.nome}"
-                for ef in ativos_qs if getattr(ef.poder, 'duracao', '') == 'concentracao'
-            ]
-            if sust_ativos:
+            mensagens_tick = []
+            sust = [f"• <b>{ef.poder.nome}</b> em {ef.alvo_participante.personagem.nome}" for ef in ativos if getattr(ef.poder, 'duracao', '') == 'sustentado']
+            conc = [f"• <b>{ef.poder.nome}</b> em {ef.alvo_participante.personagem.nome}" for ef in ativos if getattr(ef.poder, 'duracao', '') == 'concentracao']
+            if sust:
                 mensagens_tick.append("[Sustentado] Ativos no início do turno:")
-                mensagens_tick.extend(sust_ativos)
-            if conc_ativos:
+                mensagens_tick.extend(sust)
+            if conc:
                 mensagens_tick.append("[Concentração] Ativos no início do turno:")
-                mensagens_tick.extend(conc_ativos)
-            efeitos = ativos_qs
-            for ef in efeitos:
+                mensagens_tick.extend(conc)
+            for ef in ativos:
                 poder = ef.poder
                 alvo_part = ef.alvo_participante
                 alvo = alvo_part.personagem
-                tick_label = '[Concentração]' if getattr(poder, 'duracao', 'concentracao') == 'concentracao' else ('[Sustentado]' if getattr(poder, 'duracao', '') == 'sustentado' else '[Concentração]')
+                label = '[Concentração]' if getattr(poder, 'duracao', '') == 'concentracao' else ('[Sustentado]' if getattr(poder, 'duracao', '') == 'sustentado' else '')
                 if poder.tipo in ('dano', 'aflicao'):
-                    cd = (15 + poder.nivel_efeito) if poder.tipo == 'dano' else (10 + poder.nivel_efeito)
+                    cd = (15 if poder.tipo == 'dano' else 10) + poder.nivel_efeito
                     defesa_attr = getattr(poder, 'defesa_passiva', 'resistencia') or 'resistencia'
-                    defesa_valor = getattr(alvo, defesa_attr, 0)
+                    base = random.randint(1, 20)
+                    val = getattr(alvo, defesa_attr, 0)
                     buff = alvo_part.bonus_temporario
                     debuff = alvo_part.penalidade_temporaria
-                    rolagem_base = random.randint(1, 20)
-                    total_def = rolagem_base + defesa_valor + buff - debuff
+                    total = base + val + buff - debuff
                     Participante.objects.filter(pk=alvo_part.pk).update(bonus_temporario=0, penalidade_temporaria=0)
-                    defesa_msg = (
-                        f"{rolagem_base} + {defesa_valor}"
-                        f"{' + ' + str(buff) if buff else ''}"
-                        f"{' - ' + str(debuff) if debuff else ''} = {total_def}"
-                    )
-                    if total_def < cd:
-                        if poder.tipo == 'dano':
-                            Participante.objects.filter(pk=alvo_part.pk).update(dano=F('dano') + 1)
-                            mensagens_tick.append(
-                                f"{tick_label} {poder.nome} afeta {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — <b>Sofreu 1 de dano!</b>"
-                            )
-                        else:
-                            Participante.objects.filter(pk=alvo_part.pk).update(aflicao=F('aflicao') + 1)
-                            mensagens_tick.append(
-                                f"{tick_label} {poder.nome} afeta {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — <b>Sofreu 1 de aflição!</b>"
-                            )
-                        # Teste de Vigor CD 15: apenas se o alvo mantém efeitos próprios
+                    msg_def = f"{base} + {val}{' + ' + str(buff) if buff else ''}{' - ' + str(debuff) if debuff else ''} = {total}"
+                    if total < cd:
+                        field = 'dano' if poder.tipo == 'dano' else 'aflicao'
+                        Participante.objects.filter(pk=alvo_part.pk).update(**{field: F(field) + 1})
+                        mensagens_tick.append(f"{label} {poder.nome} afeta {alvo.nome}: teste de {defesa_attr} ({msg_def}) contra CD {cd} — <b>{'Dano' if field=='dano' else 'Aflição'} +1</b>.")
                         if EfeitoConcentracao.objects.filter(combate=combate, ativo=True, aplicador=alvo).exists():
                             vigor = getattr(alvo, 'vigor', 0)
-                            rolagem_vigor = random.randint(1, 20)
-                            total_vigor = rolagem_vigor + vigor
-                            if total_vigor < 15:
-                                encerrados = EfeitoConcentracao.objects.filter(
-                                    combate=combate, ativo=True, aplicador=alvo
-                                )
-                                if encerrados.exists():
-                                    encerrados.update(ativo=False)
-                                    nomes = ", ".join(set(e.poder.nome for e in encerrados))
-                                    mensagens_tick.append(
-                                        f"[Concentração] {alvo.nome} falhou Vigor ({rolagem_vigor} + {vigor} = {total_vigor}) vs CD 15 — efeitos encerrados: {nomes}."
-                                    )
+                            b = random.randint(1, 20)
+                            tv = b + vigor
+                            if tv < 15:
+                                enc = EfeitoConcentracao.objects.filter(combate=combate, ativo=True, aplicador=alvo)
+                                if enc.exists():
+                                    enc.update(ativo=False)
+                                    nomes = ", ".join(set(e.poder.nome for e in enc))
+                                    mensagens_tick.append(f"[Concentração] {alvo.nome} falhou Vigor ({b} + {vigor} = {tv}) vs 15 — efeitos encerrados: {nomes}.")
                             else:
-                                mensagens_tick.append(
-                                    f"[Concentração] {alvo.nome} manteve a concentração (Vigor {rolagem_vigor} + {vigor} = {total_vigor} vs 15)."
-                                )
+                                mensagens_tick.append(f"[Concentração] {alvo.nome} manteve a concentração (Vigor {b} + {vigor} = {tv} vs 15).")
                     else:
-                        mensagens_tick.append(
-                            f"{tick_label} {poder.nome} em {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — sem efeito."
-                        )
+                        mensagens_tick.append(f"{label} {poder.nome} em {alvo.nome}: teste de {defesa_attr} ({msg_def}) contra CD {cd} — sem efeito.")
                 elif poder.tipo == 'cura':
                     casting_ability = getattr(poder, 'casting_ability', '')
-                    bonus_caster = getattr(personagem_proximo, casting_ability, 0) if casting_ability else 0
-                    rolagem = random.randint(1, 20) + bonus_caster
+                    bonus = getattr(personagem_proximo, casting_ability, 0) if casting_ability else 0
+                    roll = random.randint(1, 20) + bonus
                     cd = 10 - poder.nivel_efeito
-                    if rolagem >= cd:
+                    if roll >= cd:
                         if alvo_part.dano >= alvo_part.aflicao and alvo_part.dano > 0:
                             Participante.objects.filter(pk=alvo_part.pk).update(dano=F('dano') - 1)
-                            mensagens_tick.append(
-                                f"{tick_label} {poder.nome} cura {alvo.nome} (Rolagem {rolagem} vs CD {cd}): Dano reduzido em 1."
-                            )
+                            mensagens_tick.append(f"{label} {poder.nome} cura {alvo.nome} (Rol {roll} vs {cd}): Dano -1.")
                         elif alvo_part.aflicao > alvo_part.dano and alvo_part.aflicao > 0:
                             Participante.objects.filter(pk=alvo_part.pk).update(aflicao=F('aflicao') - 1)
-                            mensagens_tick.append(
-                                f"{tick_label} {poder.nome} cura {alvo.nome} (Rolagem {rolagem} vs CD {cd}): Aflição reduzida em 1."
-                            )
+                            mensagens_tick.append(f"{label} {poder.nome} cura {alvo.nome} (Rol {roll} vs {cd}): Aflição -1.")
                         else:
-                            mensagens_tick.append(
-                                f"{tick_label} {poder.nome} cura {alvo.nome} (Rolagem {rolagem} vs CD {cd}): nada para curar."
-                            )
+                            mensagens_tick.append(f"{label} {poder.nome} cura {alvo.nome} (Rol {roll} vs {cd}): nada para curar.")
                     else:
-                        mensagens_tick.append(
-                            f"{tick_label} {poder.nome} tentou curar {alvo.nome} (Rolagem {rolagem} vs CD {cd}): falhou."
-                        )
+                        mensagens_tick.append(f"{label} {poder.nome} tentou curar {alvo.nome} (Rol {roll} vs {cd}): falhou.")
                 elif poder.tipo == 'buff':
                     alvo_part.bonus_temporario += poder.nivel_efeito
                     alvo_part.save()
-                    mensagens_tick.append(
-                        f"{tick_label} {poder.nome} concede novamente +{poder.nivel_efeito} para {alvo.nome} na próxima rolagem."
-                    )
+                    mensagens_tick.append(f"{label} {poder.nome} concede novamente +{poder.nivel_efeito} para {alvo.nome}.")
                 elif poder.tipo == 'debuff':
                     alvo_part.penalidade_temporaria += poder.nivel_efeito
                     alvo_part.save()
-                    mensagens_tick.append(
-                        f"{tick_label} {poder.nome} impõe novamente -{poder.nivel_efeito} a {alvo.nome} na próxima rolagem."
-                    )
+                    mensagens_tick.append(f"{label} {poder.nome} impõe novamente -{poder.nivel_efeito} a {alvo.nome}.")
             if mensagens_tick:
                 texto = "<br>".join(mensagens_tick)
                 novo_turno.descricao = (novo_turno.descricao + "<br>" if novo_turno.descricao else "") + texto
@@ -617,16 +570,19 @@ def avancar_turno(request, combate_id):
                 except Exception:
                     logger.warning("Falha ao enviar evento 'concentracao_tick' via Channels (ignorado)", exc_info=True)
         except Exception:
-            logger.warning("Falha ao processar tique de concentração ao avançar turno", exc_info=True)
-        # Notifica todos os participantes sobre o avanço do turno
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f'combate_{combate.id}',
-            {
-                'type': 'combate_message',
-                'message': json.dumps({'evento': 'avancar_turno', 'descricao': f'Turno avançado para {personagem_proximo.nome}.'})
-            }
-        )
+            logger.warning("Falha no processamento do tique de concentração em avancar_turno", exc_info=True)
+        # Evento avancar_turno
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'combate_{combate.id}',
+                {
+                    'type': 'combate_message',
+                    'message': json.dumps({'evento': 'avancar_turno', 'descricao': f'Turno avançado para {personagem_proximo.nome}.'})
+                }
+            )
+        except Exception:
+            logger.warning("Falha ao enviar evento 'avancar_turno' via Channels (ignorado)", exc_info=True)
     if _expects_json(request):
         resp = {'status': 'ok', 'evento': 'avancar_turno', 'combate_id': combate.id}
         try:
@@ -798,8 +754,6 @@ def encerrar_meus_efeitos(request, combate_id):
 
 
 
-
-@login_required
 
 @login_required
 def adicionar_mapa_global(request):
@@ -1541,6 +1495,68 @@ def adicionar_npc_participante(request, combate_id):
                 'nome': npc.nome,
                 'iniciativa': iniciativa,
                 'is_npc': True,
+            }
+        })
+    return redirect('detalhes_combate', combate_id=combate_id)
+
+def adicionar_participante(request, combate_id):
+    """Adiciona um personagem jogador existente (não NPC) ao combate. Recriado após remoção anterior.
+    Regras:
+      - Usuário deve ser GM da sala OU dono do personagem (autoadicionar).
+      - Personagem não pode já estar participando.
+    """
+    if request.method != 'POST':
+        return redirect('detalhes_combate', combate_id=combate_id)
+    combate = get_object_or_404(Combate, id=combate_id)
+    sala = combate.sala
+    personagem_id = request.POST.get('personagem_id')
+    personagem = get_object_or_404(Personagem, id=personagem_id, is_npc=False)
+    # Permissão: GM da sala ou dono do personagem (e personagem na mesma sala)
+    if not (sala.game_master_id == request.user.id or personagem.usuario_id == request.user.id):
+        return redirect('detalhes_combate', combate_id=combate_id)
+    if personagem.sala_id != sala.id:
+        return redirect('detalhes_combate', combate_id=combate_id)
+    if Participante.objects.filter(combate=combate, personagem=personagem).exists():
+        return redirect('detalhes_combate', combate_id=combate_id)
+    iniciativa = random.randint(1, 20) + personagem.prontidao
+    participante = Participante.objects.create(personagem=personagem, combate=combate, iniciativa=iniciativa)
+    # Cria token inicial em todos os mapas
+    for mapa in combate.mapas.all():
+        if not PosicaoPersonagem.objects.filter(mapa=mapa, participante=participante).exists():
+            PosicaoPersonagem.objects.create(mapa=mapa, participante=participante, x=10, y=10)
+    # Notifica canais
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'combate_{combate.id}',
+            {
+                'type': 'combate_message',
+                'message': json.dumps({
+                    'evento': 'adicionar_participante',
+                    'descricao': f'{personagem.nome} entrou no combate.',
+                    'participante': {
+                        'id': participante.id,
+                        'personagem_id': personagem.id,
+                        'nome': personagem.nome,
+                        'usuario_id': personagem.usuario_id,
+                        'is_npc': False,
+                    }
+                })
+            }
+        )
+    except Exception:
+        logger.warning("Falha ao enviar evento 'adicionar_participante' (PC) via Channels (ignorado)", exc_info=True)
+    if _expects_json(request):
+        return JsonResponse({
+            'status': 'ok',
+            'evento': 'adicionar_participante',
+            'combate_id': combate.id,
+            'participante': {
+                'id': participante.id,
+                'personagem_id': personagem.id,
+                'nome': personagem.nome,
+                'iniciativa': iniciativa,
+                'is_npc': False,
             }
         })
     return redirect('detalhes_combate', combate_id=combate_id)
