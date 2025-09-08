@@ -142,6 +142,7 @@
           <div class="campo-poder linha-checkbox">{{ formset.empty_form.de_item }} <label for="{{ formset.empty_form.de_item.id_for_label }}">Poder de Item?</label></div>
           <div class="campo-poder">{{ formset.empty_form.vantagem_origem.label_tag }}{{ formset.empty_form.vantagem_origem }}</div>
           <div class="campo-poder linha-checkbox">{{ formset.empty_form.de_vantagem }} <label for="{{ formset.empty_form.de_vantagem.id_for_label }}">Poder de Vantagem?</label></div>
+          <div class="campo-poder">{{ formset.empty_form.ligados.label_tag }}{{ formset.empty_form.ligados }}</div>
           <div class="span-2" style="margin-top:0.4rem; text-align:right; display:flex; gap:0.7rem; justify-content:flex-end;">
             <button type="button" class="btn btn-danger" onclick="removerPoderLinha(this)">Remover</button>
           </div>
@@ -172,6 +173,7 @@
                       <div class="campo-poder linha-checkbox">{{ form.de_item }} <label for="{{ form.de_item.id_for_label }}">Poder de Item?</label>{% if form.de_item.errors %}<div style="color:#f88;">{{ form.de_item.errors }}</div>{% endif %}</div>
                       <div class="campo-poder">{{ form.vantagem_origem.label_tag }}{{ form.vantagem_origem }}{% if form.vantagem_origem.errors %}<div style="color:#f88;">{{ form.vantagem_origem.errors }}</div>{% endif %}</div>
                       <div class="campo-poder linha-checkbox">{{ form.de_vantagem }} <label for="{{ form.de_vantagem.id_for_label }}">Poder de Vantagem?</label>{% if form.de_vantagem.errors %}<div style="color:#f88;">{{ form.de_vantagem.errors }}</div>{% endif %}</div>
+                      <div class="campo-poder">{{ form.ligados.label_tag }}{{ form.ligados }}{% if form.ligados.errors %}<div style="color:#f88;">{{ form.ligados.errors }}</div>{% endif %}</div>
                     {% if form.non_field_errors %}
                       <div class="span-2" style="color:#f88;">{{ form.non_field_errors }}</div>
                     {% endif %}

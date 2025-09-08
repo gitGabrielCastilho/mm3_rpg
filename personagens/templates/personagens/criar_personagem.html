@@ -120,6 +120,7 @@
           <div class="campo-poder linha-checkbox">{{ formset.empty_form.de_item }} <label for="{{ formset.empty_form.de_item.id_for_label }}">Poder de Item?</label></div>
           <div class="campo-poder">{{ formset.empty_form.vantagem_origem.label_tag }}{{ formset.empty_form.vantagem_origem }}</div>
           <div class="campo-poder linha-checkbox">{{ formset.empty_form.de_vantagem }} <label for="{{ formset.empty_form.de_vantagem.id_for_label }}">Poder de Vantagem?</label></div>
+          <div class="campo-poder">{{ formset.empty_form.ligados.label_tag }}{{ formset.empty_form.ligados }}</div>
           <div class="span-2" style="margin-top:0.4rem; text-align:right; display:flex; gap:0.7rem; justify-content:flex-end;">
             <span style="display:none;">{{ formset.empty_form.DELETE }}</span>
             <button type="button" class="btn btn-danger" onclick="removerPoderLinha(this)">Remover</button>
@@ -145,6 +146,7 @@
                 <div class="campo-poder linha-checkbox">{{ form.de_item }} <label for="{{ form.de_item.id_for_label }}">Poder de Item?</label></div>
                 <div class="campo-poder">{{ form.vantagem_origem.label_tag }}{{ form.vantagem_origem }}</div>
                 <div class="campo-poder linha-checkbox">{{ form.de_vantagem }} <label for="{{ form.de_vantagem.id_for_label }}">Poder de Vantagem?</label></div>
+                <div class="campo-poder">{{ form.ligados.label_tag }}{{ form.ligados }}</div>
               {% if form.DELETE %}
                 <div class="span-2" style="margin-top:0.4rem; text-align: right; display: flex; align-items: center; gap: 0.7rem; justify-content: flex-end;">
                   <span style="display:none;">{{ form.DELETE }}</span>

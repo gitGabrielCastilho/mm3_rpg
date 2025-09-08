@@ -1457,6 +1457,88 @@ def realizar_ataque(request, combate_id):
                 send_event('rolagem', nova_descricao)
                 if _expects_json(request):
                     return JsonResponse({'status': 'ok', 'evento': 'rolagem', 'descricao': nova_descricao})
+                # Após resolver o poder principal, se houver cadeia de ligados, processa cada um (exceto descritivo já tratado)
+                # Evita recursão: processa ligados apenas para o poder originalmente selecionado
+                if getattr(poder, 'ligados', None) and poder.ligados.exists():
+                    ligados_ordenados = poder.ligados.all().order_by('nome')
+                    for poder_ligado in ligados_ordenados:
+                        # Ignora se não compartilha modo/duração por segurança (deve ter sido validado antes)
+                        if poder_ligado.modo != poder.modo or poder_ligado.duracao != poder.duracao:
+                            continue
+                        # Simula submissão apenas mudando o poder, mantendo mesmos alvos
+                        resultados_sec = []
+                        duracao_raw_l = getattr(poder_ligado, 'duracao', 'instantaneo')
+                        duracao_label_l = 'Concentração' if duracao_raw_l == 'concentracao' else ('Sustentado' if duracao_raw_l == 'sustentado' else 'Instantâneo')
+                        resultados_sec.append(f"[Ligado] {atacante.nome} ativa {poder_ligado.nome} — Duração: {duracao_label_l}")
+                        # Copia bloco principal simplificado: reutiliza lógica específica por modo/tipo replicando essencial (sem refator grande agora)
+                        for alvo_id in alvo_ids:
+                            participante_alvo = get_object_or_404(Participante, id=alvo_id, combate_id=combate_id)
+                            alvo = participante_alvo.personagem
+                            # Reuso simplificado: apenas trata tipos que produzem efeito (dano/aflicao/cura/buff/debuff) usando mesma estrutura do bloco acima.
+                            # Para manter consistência, chamamos somente subset crítico (melee/ranged/percepcao/area) sem repetir cabeçalhos complexos.
+                            # CURA
+                            if poder_ligado.tipo == 'cura':
+                                rolagem = random.randint(1, 20) + getattr(atacante, getattr(poder_ligado, 'casting_ability', ''), 0)
+                                cd = 10 - poder_ligado.nivel_efeito
+                                if rolagem >= cd:
+                                    if participante_alvo.dano >= participante_alvo.aflicao and participante_alvo.dano > 0:
+                                        participante_alvo.dano -= 1; participante_alvo.save()
+                                        resultados_sec.append(f"[Ligado] {poder_ligado.nome} cura {alvo.nome}: dano -1 (Rolagem {rolagem} vs CD {cd}).")
+                                    elif participante_alvo.aflicao > participante_alvo.dano and participante_alvo.aflicao > 0:
+                                        participante_alvo.aflicao -= 1; participante_alvo.save()
+                                        resultados_sec.append(f"[Ligado] {poder_ligado.nome} cura {alvo.nome}: aflição -1 (Rolagem {rolagem} vs CD {cd}).")
+                                    else:
+                                        resultados_sec.append(f"[Ligado] {poder_ligado.nome} cura {alvo.nome}: nada para curar (Rolagem {rolagem} vs CD {cd}).")
+                                    if getattr(poder_ligado, 'duracao', 'instantaneo') in ('concentracao', 'sustentado'):
+                                        EfeitoConcentracao.objects.create(
+                                            combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
+                                            poder=poder_ligado, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                                        )
+                                else:
+                                    resultados_sec.append(f"[Ligado] {poder_ligado.nome} falhou ao curar {alvo.nome} (Rolagem {rolagem} vs CD {cd}).")
+                            elif poder_ligado.tipo == 'buff':
+                                participante_alvo.bonus_temporario += poder_ligado.nivel_efeito; participante_alvo.save()
+                                resultados_sec.append(f"[Ligado] {alvo.nome} recebe +{poder_ligado.nivel_efeito} na próxima rolagem ({poder_ligado.nome}).")
+                                if getattr(poder_ligado, 'duracao', 'instantaneo') in ('concentracao', 'sustentado'):
+                                    EfeitoConcentracao.objects.create(
+                                        combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
+                                        poder=poder_ligado, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                                    )
+                            elif poder_ligado.tipo == 'debuff':
+                                participante_alvo.penalidade_temporaria += poder_ligado.nivel_efeito; participante_alvo.save()
+                                resultados_sec.append(f"[Ligado] {alvo.nome} recebe -{poder_ligado.nivel_efeito} na próxima rolagem ({poder_ligado.nome}).")
+                                if getattr(poder_ligado, 'duracao', 'instantaneo') in ('concentracao', 'sustentado'):
+                                    EfeitoConcentracao.objects.create(
+                                        combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
+                                        poder=poder_ligado, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                                    )
+                            elif poder_ligado.tipo in ('dano','aflicao'):
+                                # Simplificação: reutiliza mesma lógica de defesa de percepção para manter conciso sem duplicar grande bloco
+                                defesa_valor = getattr(alvo, poder_ligado.defesa_passiva, 0)
+                                buff = participante_alvo.bonus_temporario
+                                debuff = participante_alvo.penalidade_temporaria
+                                rolagem_defesa_base = random.randint(1, 20)
+                                rolagem_defesa = rolagem_defesa_base + defesa_valor + buff - debuff
+                                participante_alvo.bonus_temporario = 0; participante_alvo.penalidade_temporaria = 0; participante_alvo.save()
+                                cd = (15 + poder_ligado.nivel_efeito) if poder_ligado.tipo == 'dano' else (10 + poder_ligado.nivel_efeito)
+                                if rolagem_defesa < cd:
+                                    if poder_ligado.tipo == 'dano':
+                                        participante_alvo.dano += 1
+                                    else:
+                                        participante_alvo.aflicao += 1
+                                    participante_alvo.save()
+                                    if getattr(poder_ligado, 'duracao', 'instantaneo') in ('concentracao', 'sustentado'):
+                                        EfeitoConcentracao.objects.create(
+                                            combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
+                                            poder=poder_ligado, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                                        )
+                                    resultados_sec.append(f"[Ligado] {poder_ligado.nome} atinge {alvo.nome}: teste {poder_ligado.defesa_passiva} {rolagem_defesa} vs CD {cd} => +1 {'dano' if poder_ligado.tipo=='dano' else 'aflição'}.")
+                                else:
+                                    resultados_sec.append(f"[Ligado] {poder_ligado.nome} em {alvo.nome}: teste {poder_ligado.defesa_passiva} {rolagem_defesa} vs CD {cd} sem efeito.")
+                        if resultados_sec:
+                            texto_sec = "<br>".join(resultados_sec)
+                            append_to_turno(texto_sec)
+                            send_event('rolagem', texto_sec)
                 return redirect('detalhes_combate', combate_id=combate_id)
 
     # Nenhuma ação válida enviada

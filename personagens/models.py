@@ -201,6 +201,10 @@ class Poder(models.Model):
         'Vantagem', on_delete=models.SET_NULL, null=True, blank=True,
         help_text="Se for poder de vantagem, selecione a vantagem de origem."
     )
+    ligados = models.ManyToManyField(
+        'self', blank=True, symmetrical=True,
+        help_text="Poderes que disparam em cadeia junto com este. Precisam ter mesmo modo e duração."
+    )
     def __str__(self):
         return f"{self.nome} ({self.tipo}, {self.modo})"
  

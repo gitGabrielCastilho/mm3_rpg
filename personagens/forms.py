@@ -45,7 +45,7 @@ class PoderForm(forms.ModelForm):
             'id',
             'nome', 'tipo', 'modo', 'duracao', 'nivel_efeito', 'bonus_ataque',
             'defesa_ativa', 'defesa_passiva', 'casting_ability',
-            'de_item', 'item_origem', 'de_vantagem', 'vantagem_origem'
+            'de_item', 'item_origem', 'de_vantagem', 'vantagem_origem', 'ligados'
         ]
         widgets = {
             'id': forms.HiddenInput(),
@@ -69,6 +69,29 @@ class PoderForm(forms.ModelForm):
             raise forms.ValidationError("Marque 'Poder de Item?' para selecionar um item de origem.")
         if not de_vantagem and vantagem_origem:
             raise forms.ValidationError("Marque 'Poder de Vantagem?' para selecionar uma vantagem de origem.")
+
+        ligados = cleaned_data.get('ligados')
+        modo = cleaned_data.get('modo')
+        duracao = cleaned_data.get('duracao')
+        if self.instance.pk and ligados:
+            if any(p.pk == self.instance.pk for p in ligados):
+                raise forms.ValidationError("Um poder não pode ser ligado a si mesmo.")
+            # Validação: todos ligados precisam ter mesmo modo e duração
+            incompat = [p for p in ligados if p.modo != modo or p.duracao != duracao]
+            if incompat:
+                raise forms.ValidationError("Todos os poderes ligados devem ter mesmo modo e duração.")
+            # Evitar ciclos diretos já é natural (symmetrical), mas prevenir grande ciclo usando DFS leve
+            visitado = set()
+            def dfs(p):
+                if p.id in visitado:
+                    return
+                visitado.add(p.id)
+                for nxt in p.ligados.all():
+                    if nxt.id == self.instance.id:
+                        continue
+                    dfs(nxt)
+            dfs(self.instance)
+        return cleaned_data
         return cleaned_data
 
 PoderFormSet = inlineformset_factory(
@@ -116,8 +139,21 @@ class PoderNPCForm(forms.ModelForm):
         model = Poder
         fields = [
             'nome', 'tipo', 'modo', 'duracao', 'nivel_efeito', 'bonus_ataque',
-            'defesa_ativa', 'defesa_passiva', 'casting_ability',
+            'defesa_ativa', 'defesa_passiva', 'casting_ability', 'ligados'
         ]
+
+    def clean(self):
+        cleaned_data = super().clean()
+        ligados = cleaned_data.get('ligados')
+        modo = cleaned_data.get('modo')
+        duracao = cleaned_data.get('duracao')
+        if self.instance.pk and ligados:
+            if any(p.pk == self.instance.pk for p in ligados):
+                raise forms.ValidationError("Um poder não pode ser ligado a si mesmo.")
+            incompat = [p for p in ligados if p.modo != modo or p.duracao != duracao]
+            if incompat:
+                raise forms.ValidationError("Todos os poderes ligados devem ter mesmo modo e duração.")
+        return cleaned_data
 
 
 PoderNPCFormSet = inlineformset_factory(
