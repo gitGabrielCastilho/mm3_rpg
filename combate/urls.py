@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .views import atualizar_posicao_token, remover_mapa_global, adicionar_mapa_global, listar_mapas, adicionar_mapa, remover_mapa, remover_participante, adicionar_participante, realizar_ataque ,criar_combate, detalhes_combate, passar_turno, listar_combates, iniciar_turno, avancar_turno, deletar_combate,finalizar_combate, adicionar_npc_participante, limpar_historico, encerrar_efeito, encerrar_meus_efeitos
+from .views import atualizar_posicao_token, remover_mapa_global, adicionar_mapa_global, listar_mapas, adicionar_mapa, remover_mapa, remover_participante, adicionar_participante, realizar_ataque ,criar_combate, detalhes_combate, passar_turno, listar_combates, iniciar_turno, avancar_turno, deletar_combate,finalizar_combate, adicionar_npc_participante, limpar_historico, encerrar_efeito, encerrar_meus_efeitos, participantes_json
 from . import views_ajax
 
 urlpatterns = [
@@ -26,5 +26,6 @@ urlpatterns = [
     path('mapas/', listar_mapas, name='listar_mapas'),
     path('mapas/remover/<int:mapa_id>/', remover_mapa_global, name='remover_mapa_global'),
     path('atualizar-posicao-token/<int:token_id>/', atualizar_posicao_token, name='atualizar_posicao_token'),
+    path('<int:combate_id>/participantes-json/', participantes_json, name='participantes_json'),
     path('<int:combate_id>/tabela_participantes/', views_ajax.tabela_participantes, name='tabela_participantes'),
 ]

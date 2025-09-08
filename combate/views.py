@@ -61,6 +61,32 @@ def poderes_personagem_ajax(request):
     poderes = list(Poder.objects.filter(personagem=personagem).values('id', 'nome', 'tipo', 'duracao'))
     return JsonResponse({'poderes': poderes})
 
+# JSON enxuto: lista de participantes (id, personagem_id, nome/display_nome) para sincronização leve sem recarregar formulário.
+@login_required
+def participantes_json(request, combate_id):
+    combate = get_object_or_404(Combate, id=combate_id)
+    participantes = (
+        Participante.objects.filter(combate=combate)
+        .select_related('personagem')
+        .order_by('-iniciativa')
+    )
+    # Gera display_nome (mesma lógica de duplicados usada em detalhes_combate)
+    counts = {}
+    data = []
+    for p in participantes:
+        pid = p.personagem_id
+        counts[pid] = counts.get(pid, 0) + 1
+        if counts[pid] > 1:
+            display_nome = f"{p.personagem.nome} ({counts[pid]})"
+        else:
+            display_nome = p.personagem.nome
+        data.append({
+            'id': p.id,
+            'personagem_id': p.personagem_id,
+            'nome': display_nome,
+        })
+    return JsonResponse({'participantes': data})
+
 def criar_combate(request, sala_id):
     sala = get_object_or_404(Sala, id=sala_id, game_master=request.user)
     if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
