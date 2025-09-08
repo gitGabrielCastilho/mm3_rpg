@@ -50,15 +50,22 @@ def criar_personagem(request):
         sala_atual = None
     if not sala_atual:
         return redirect('listar_salas')
-    if request.method == 'POST':
-        form = PersonagemForm(request.POST, request.FILES)
-        inventario_form = InventarioForm(request.POST)
-        formset = PoderFormSet(request.POST, request.FILES, prefix='poder_set')
+    draft_id = request.GET.get('draft') or request.POST.get('draft_id')
+    personagem_draft = None
+    if draft_id:
+        try:
+            personagem_draft = Personagem.objects.get(id=draft_id, usuario=request.user, is_npc=False, sala=sala_atual)
+        except Personagem.DoesNotExist:
+            personagem_draft = None
 
-        # Etapa 1: validar formulários básicos (exceto M2M ligados que dependem de PKs)
+    if request.method == 'POST':
+        action = request.POST.get('action')  # 'add_power' ou 'finalizar'
+        form = PersonagemForm(request.POST, request.FILES, instance=personagem_draft)
+        inventario_form = InventarioForm(request.POST, instance=getattr(personagem_draft, 'inventario', None))
+        formset = PoderFormSet(request.POST, request.FILES, instance=personagem_draft, prefix='poder_set')
+
         basicos_ok = form.is_valid() and inventario_form.is_valid() and formset.is_valid()
         if basicos_ok:
-            # Criar personagem e inventário primeiro
             personagem = form.save(commit=False)
             personagem.usuario = request.user
             personagem.sala = sala_atual
@@ -69,7 +76,6 @@ def criar_personagem(request):
             inventario.save()
             inventario_form.save_m2m()
 
-            # Salvar poderes sem ainda definir ligados
             poderes_forms = formset.save(commit=False)
             vantagens_ids = set(request.POST.getlist('vantagens'))
             personagem.vantagens.set(vantagens_ids)
@@ -83,11 +89,9 @@ def criar_personagem(request):
                     inventario.itens.add(poder.item_origem)
             personagem.vantagens.set(vantagens_ids)
 
-            # Tratamento de exclusões marcadas
             for obj in formset.deleted_objects:
                 obj.delete()
 
-            # Etapa 2: aplicar ligações agora que todos têm PK
             for f in formset.forms:
                 if not hasattr(f, 'cleaned_data'):
                     continue
@@ -96,15 +100,25 @@ def criar_personagem(request):
                     continue
                 ligados_sel = f.cleaned_data.get('ligados')
                 if ligados_sel is not None:
-                    # Filtra apenas poderes deste personagem e evita auto‑referência
                     inst.ligados.set([p for p in ligados_sel if p.personagem_id == personagem.id and p.pk != inst.pk and p.modo == inst.modo and p.duracao == inst.duracao])
             formset.save_m2m()
-            return redirect('listar_personagens')
-        # Caso falhe validação básica, continua fluxo para re-renderizar com erros
+
+            if action == 'add_power':
+                # Redireciona para o mesmo create em modo draft para atualizar selects
+                return redirect(f"/personagens/criar/?draft={personagem.id}")
+            else:
+                return redirect('listar_personagens')
+        # caso inválido, se já existe draft mantém instance para reexibir erros
+        personagem_draft = form.instance if form.instance.pk else personagem_draft
     else:
-        form = PersonagemForm()
-        inventario_form = InventarioForm()
-        formset = PoderFormSet(prefix='poder_set')
+        if personagem_draft:
+            form = PersonagemForm(instance=personagem_draft)
+            inventario_form = InventarioForm(instance=getattr(personagem_draft, 'inventario', None))
+            formset = PoderFormSet(instance=personagem_draft, prefix='poder_set')
+        else:
+            form = PersonagemForm()
+            inventario_form = InventarioForm()
+            formset = PoderFormSet(prefix='poder_set')
 
     pericias = [
         'acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao',
@@ -120,6 +134,7 @@ def criar_personagem(request):
         'inventario_form': inventario_form,
         'formset': formset,
         'itens_possuido_ids': [],
+        'draft_personagem': personagem_draft,
         'caracteristicas': [
             'forca', 'vigor', 'destreza', 'agilidade', 'luta', 'inteligencia', 'prontidao', 'presenca'
         ],

@@ -161,6 +161,11 @@
       <div style="margin-top:1.5rem; display:flex; gap:1rem; justify-content:center;">
         <button type="button" class="btn btn-danger" onclick="adicionarPoder()">Adicionar Poder</button>
         <button type="button" class="btn btn-danger" onclick="removerPoder()">Remover Último Poder</button>
+        {% if draft_personagem %}
+          <input type="hidden" name="draft_id" value="{{ draft_personagem.id }}">
+        {% endif %}
+        <button type="submit" class="btn btn-primary" name="action" value="add_power">Salvar & Atualizar Ligações</button>
+        <button type="submit" class="btn btn-success" name="action" value="finalizar">Finalizar Personagem</button>
       </div>
       <div class="inventario-largo">
         <h2>Inventário</h2>
