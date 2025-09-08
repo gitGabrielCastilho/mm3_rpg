@@ -45,11 +45,20 @@ class PoderForm(forms.ModelForm):
             'id',
             'nome', 'tipo', 'modo', 'duracao', 'nivel_efeito', 'bonus_ataque',
             'defesa_ativa', 'defesa_passiva', 'casting_ability',
-            'de_item', 'item_origem', 'de_vantagem', 'vantagem_origem'
+            'de_item', 'item_origem', 'de_vantagem', 'vantagem_origem', 'ligados'
         ]
         widgets = {
             'id': forms.HiddenInput(),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'ligados' in self.fields:
+            if self.instance and getattr(self.instance, 'personagem_id', None):
+                self.fields['ligados'].queryset = Poder.objects.filter(personagem_id=self.instance.personagem_id).exclude(pk=self.instance.pk)
+            else:
+                self.fields['ligados'].queryset = Poder.objects.none()
+                self.fields['ligados'].help_text = 'Salve o personagem para encadear poderes.'
 
     def clean(self):
         cleaned_data = super().clean()
@@ -69,6 +78,16 @@ class PoderForm(forms.ModelForm):
             raise forms.ValidationError("Marque 'Poder de Item?' para selecionar um item de origem.")
         if not de_vantagem and vantagem_origem:
             raise forms.ValidationError("Marque 'Poder de Vantagem?' para selecionar uma vantagem de origem.")
+        ligados = cleaned_data.get('ligados') or []
+        modo = cleaned_data.get('modo')
+        duracao = cleaned_data.get('duracao')
+        for lp in ligados:
+            if self.instance.pk and lp.personagem_id != self.instance.personagem_id:
+                raise forms.ValidationError(f"Poder ligado '{lp.nome}' não pertence ao mesmo personagem.")
+            if lp.modo != modo or lp.duracao != duracao:
+                raise forms.ValidationError(f"Poder ligado '{lp.nome}' deve ter mesmo modo e duração ({modo}/{duracao}).")
+            if self.instance.pk and lp.pk == self.instance.pk:
+                raise forms.ValidationError("Um poder não pode estar ligado a si mesmo.")
         return cleaned_data
 
 PoderFormSet = inlineformset_factory(
@@ -116,8 +135,17 @@ class PoderNPCForm(forms.ModelForm):
         model = Poder
         fields = [
             'nome', 'tipo', 'modo', 'duracao', 'nivel_efeito', 'bonus_ataque',
-            'defesa_ativa', 'defesa_passiva', 'casting_ability',
+            'defesa_ativa', 'defesa_passiva', 'casting_ability', 'ligados'
         ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'ligados' in self.fields:
+            if self.instance and getattr(self.instance, 'personagem_id', None):
+                self.fields['ligados'].queryset = Poder.objects.filter(personagem_id=self.instance.personagem_id).exclude(pk=self.instance.pk)
+            else:
+                self.fields['ligados'].queryset = Poder.objects.none()
+                self.fields['ligados'].help_text = 'Salve o NPC para encadear poderes.'
 
 
 PoderNPCFormSet = inlineformset_factory(

@@ -224,6 +224,21 @@ def _clonar_personagem(orig: Personagem, sala_destino: Sala, dono):
             vantagem_origem=p.vantagem_origem,
         ))
     Poder.objects.bulk_create(novos_poderes)
+    # Replica encadeamentos se existirem (campo pode não existir em versões antigas)
+    try:
+        mapa_old_new = {old.id: new for old, new in zip(poderes_orig, novos_poderes)}
+        for old in poderes_orig:
+            ligados_ids = list(getattr(old, 'ligados').values_list('id', flat=True)) if hasattr(old, 'ligados') else []
+            if not ligados_ids:
+                continue
+            new = mapa_old_new.get(old.id)
+            if not new:
+                continue
+            novos_ligados = [mapa_old_new[oid] for oid in ligados_ids if oid in mapa_old_new]
+            if novos_ligados:
+                new.ligados.set(novos_ligados)
+    except Exception:
+        pass
     return novo
 
 

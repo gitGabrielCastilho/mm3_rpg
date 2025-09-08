@@ -996,48 +996,13 @@ def realizar_ataque(request, combate_id):
             return JsonResponse({'status': 'ok', 'evento': 'rolagem', 'descricao': nova_descricao})
         return redirect('detalhes_combate', combate_id=combate_id)
 
-    # Poder com alvos (Participante IDs)
+    # Poder com (opcionais) alvos
     alvo_ids = request.POST.getlist('alvo_id')
     poder_id = request.POST.get('poder_id')
     if poder_id:
-        # Garante que o poder pertence ao atacante
         poder = get_object_or_404(Poder, id=poder_id, personagem=atacante)
-        # Etiqueta de duração para histórico
-        duracao_raw = getattr(poder, 'duracao', 'instantaneo')
-        duracao_label = 'Concentração' if duracao_raw == 'concentracao' else ('Sustentado' if duracao_raw == 'sustentado' else 'Instantâneo')
-        # Se for concentração e o conjurador reutilizar o mesmo poder, encerra a anterior
-        # Obs: Sustentado permite múltiplas instâncias ativas, então NÃO encerra anteriores.
-        if duracao_raw == 'concentracao':
-            anteriores = EfeitoConcentracao.objects.filter(
-                combate_id=combate_id, aplicador=atacante, poder=poder, ativo=True
-            )
-            if anteriores.exists():
-                anteriores.update(ativo=False)
-                resultados.append(f"[Concentração] {atacante.nome} reutilizou {poder.nome}: concentração anterior encerrada.")
-        # Novo tipo: Descritivo — apenas gera rolagem/descrição, sem exigir alvos e sem efeitos
-        if getattr(poder, 'tipo', '') == 'descritivo':
-            # Apenas d20 + nível do poder descritivo (sem buffs/debuffs, sem alvo)
-            rolagem_base = random.randint(1, 20)
-            total = rolagem_base + int(getattr(poder, 'nivel_efeito', 0) or 0)
-            resultados.append(f"{atacante.nome} usou {poder.nome} — Duração: {duracao_label}")
-            resultados.append(
-                f"{poder.nome} (Descritivo): {rolagem_base} + {poder.nivel_efeito} = <b>{total}</b>"
-            )
 
-            nova_descricao = "<br>".join(resultados)
-            append_to_turno(nova_descricao)
-            send_event('rolagem', nova_descricao)
-            if _expects_json(request):
-                return JsonResponse({'status': 'ok', 'evento': 'rolagem', 'descricao': nova_descricao})
-            return redirect('detalhes_combate', combate_id=combate_id)
-
-        # Demais tipos exigem alvos
-        if not alvo_ids:
-            # Sem alvos e não-descritivo: ignora esta ação
-            return redirect('detalhes_combate', combate_id=combate_id)
-        # Helper: teste de Vigor CD 15 se o alvo possui concentrações ativas
-    def manter_concentracao_apos_sofrer(alvo_part):
-            # O teste de Vigor é para o personagem alvejado, mas afeta os efeitos que ELE mantém como conjurador
+        def manter_concentracao_apos_sofrer(alvo_part):
             efeitos_mantidos = EfeitoConcentracao.objects.filter(
                 combate_id=combate_id, ativo=True, aplicador=alvo_part.personagem
             )
@@ -1057,460 +1022,311 @@ def realizar_ataque(request, combate_id):
                     f"[Concentração] {alvo_part.personagem.nome} manteve a concentração (Vigor {rolagem} + {vigor} = {total} vs 15)."
                 )
 
-    # Cabeçalho com duração do efeito usado
-    resultados.append(f"{atacante.nome} usou {poder.nome} — Duração: {duracao_label}")
-    for alvo_id in alvo_ids:
-            participante_alvo = get_object_or_404(Participante, id=alvo_id, combate_id=combate_id)
-            alvo = participante_alvo.personagem
+        # Monta sequência encadeada (somente 1 nível)
+        try:
+            ligados = list(poder.ligados.all())
+        except Exception:
+            ligados = []
+        poderes_sequence = [poder] + ligados
 
-            # CURA
-            if poder.tipo == 'cura':
-                rolagem = random.randint(1, 20) + getattr(atacante, getattr(poder, 'casting_ability', ''), 0)
-                cd = 10 - poder.nivel_efeito
-                if rolagem >= cd:
-                    if participante_alvo.dano >= participante_alvo.aflicao and participante_alvo.dano > 0:
-                        participante_alvo.dano -= 1
-                        resultado = f"{atacante.nome} curou {alvo.nome} (Rolagem {rolagem} vs CD {cd}): sucesso! Dano reduzido em 1."
-                    elif participante_alvo.aflicao > participante_alvo.dano and participante_alvo.aflicao > 0:
-                        participante_alvo.aflicao -= 1
-                        resultado = f"{atacante.nome} curou {alvo.nome} (Rolagem {rolagem} vs CD {cd}): sucesso! Aflição reduzida em 1."
+        for idx, poder_atual in enumerate(poderes_sequence):
+            duracao_raw = getattr(poder_atual, 'duracao', 'instantaneo')
+            duracao_label = 'Concentração' if duracao_raw == 'concentracao' else ('Sustentado' if duracao_raw == 'sustentado' else 'Instantâneo')
+
+            # Se concentração: encerrar instância anterior deste poder individualmente
+            if duracao_raw == 'concentracao':
+                anteriores = EfeitoConcentracao.objects.filter(
+                    combate_id=combate_id, aplicador=atacante, poder=poder_atual, ativo=True
+                )
+                if anteriores.exists():
+                    anteriores.update(ativo=False)
+                    resultados.append(f"[Concentração] {atacante.nome} reutilizou {poder_atual.nome}: instância anterior encerrada.")
+
+            cabecalho = (
+                f"{atacante.nome} usou {poder_atual.nome} — Duração: {duracao_label}" if idx == 0
+                else f"[Encadeado] {atacante.nome} aplica {poder_atual.nome}"
+            )
+            resultados.append(cabecalho)
+
+            # Descritivo não exige alvo
+            if getattr(poder_atual, 'tipo', '') == 'descritivo':
+                rolagem_base = random.randint(1, 20)
+                total = rolagem_base + int(getattr(poder_atual, 'nivel_efeito', 0) or 0)
+                resultados.append(
+                    f"{poder_atual.nome} (Descritivo): {rolagem_base} + {poder_atual.nivel_efeito} = <b>{total}</b>"
+                )
+                continue
+
+            # Demais tipos precisam de alvos; se ausentes no poder principal aborta tudo, se em encadeados apenas pula
+            if not alvo_ids:
+                if idx == 0:  # principal sem alvo não-descritivo -> ignora ação
+                    return redirect('detalhes_combate', combate_id=combate_id)
+                else:
+                    continue
+
+            for alvo_id in alvo_ids:
+                participante_alvo = get_object_or_404(Participante, id=alvo_id, combate_id=combate_id)
+                alvo = participante_alvo.personagem
+
+                tipo = getattr(poder_atual, 'tipo', '')
+                modo = getattr(poder_atual, 'modo', '')
+                resultado = None
+
+                if tipo == 'cura':
+                    rolagem = random.randint(1, 20) + getattr(atacante, getattr(poder_atual, 'casting_ability', ''), 0)
+                    cd = 10 - poder_atual.nivel_efeito
+                    if rolagem >= cd:
+                        if participante_alvo.dano >= participante_alvo.aflicao and participante_alvo.dano > 0:
+                            participante_alvo.dano -= 1
+                            resultado = f"{atacante.nome} curou {alvo.nome} ({poder_atual.nome}) Dano -1 (Rol {rolagem} vs {cd})."
+                        elif participante_alvo.aflicao > participante_alvo.dano and participante_alvo.aflicao > 0:
+                            participante_alvo.aflicao -= 1
+                            resultado = f"{atacante.nome} curou {alvo.nome} ({poder_atual.nome}) Aflição -1 (Rol {rolagem} vs {cd})."
+                        else:
+                            resultado = f"{atacante.nome} curou {alvo.nome} ({poder_atual.nome}) (Rol {rolagem} vs {cd}) nada para curar."
+                        participante_alvo.save()
+                        if duracao_raw in ('concentracao', 'sustentado'):
+                            EfeitoConcentracao.objects.create(
+                                combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
+                                poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                            )
                     else:
-                        resultado = f"{atacante.nome} curou {alvo.nome} (Rolagem {rolagem} vs CD {cd}): sucesso! Nada para curar."
+                        resultado = f"{atacante.nome} tentou curar {alvo.nome} ({poder_atual.nome}) (Rol {rolagem} vs {cd}) falhou."
+
+                elif tipo == 'buff':
+                    participante_alvo.bonus_temporario += poder_atual.nivel_efeito
                     participante_alvo.save()
-                    # Cria efeito de concentração para cura contínua, se aplicável
-                    if getattr(poder, 'duracao', 'instantaneo') in ('concentracao', 'sustentado'):
+                    resultado = f"{alvo.nome} recebe +{poder_atual.nivel_efeito} (buff {poder_atual.nome})."
+                    if duracao_raw in ('concentracao', 'sustentado'):
                         EfeitoConcentracao.objects.create(
                             combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
-                            poder=poder, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                            poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
                         )
-                else:
-                    resultado = f"{atacante.nome} tentou curar {alvo.nome} (Rolagem {rolagem} vs CD {cd}): falhou."
 
-            # BUFF
-            elif poder.tipo == 'buff':
-                participante_alvo.bonus_temporario += poder.nivel_efeito
-                participante_alvo.save()
-                resultado = f"{alvo.nome} recebe um bônus de +{poder.nivel_efeito} na próxima rolagem."
-                if getattr(poder, 'duracao', 'instantaneo') in ('concentracao', 'sustentado'):
-                    EfeitoConcentracao.objects.create(
-                        combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
-                        poder=poder, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
-                    )
-
-            # DEBUFF
-            elif poder.tipo == 'debuff':
-                participante_alvo.penalidade_temporaria += poder.nivel_efeito
-                participante_alvo.save()
-                resultado = f"{alvo.nome} recebe uma penalidade de -{poder.nivel_efeito} na próxima rolagem."
-                if getattr(poder, 'duracao', 'instantaneo') in ('concentracao', 'sustentado'):
-                    EfeitoConcentracao.objects.create(
-                        combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
-                        poder=poder, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
-                    )
-
-            # ÁREA
-            elif getattr(poder, 'modo', '') == 'area':
-                esquiva = getattr(alvo, 'esquivar', 0)
-                rolagem_esquiva_base = random.randint(1, 20)
-                rolagem_esquiva = rolagem_esquiva_base + esquiva
-                if poder.tipo == 'dano':
-                    cd = poder.nivel_efeito + 15
-                    cd_sucesso = (15 + poder.nivel_efeito) // 2
-                else:
-                    cd = poder.nivel_efeito + 10
-                    cd_sucesso = (10 + poder.nivel_efeito) // 2
-                if rolagem_esquiva < cd:
-                    defesa_valor = getattr(alvo, poder.defesa_passiva, 0)
-                    buff = participante_alvo.bonus_temporario
-                    debuff = participante_alvo.penalidade_temporaria
-                    rolagem_defesa_base = random.randint(1, 20)
-                    rolagem_defesa = rolagem_defesa_base + defesa_valor + buff - debuff
-                    participante_alvo.bonus_temporario = 0
-                    participante_alvo.penalidade_temporaria = 0
+                elif tipo == 'debuff':
+                    participante_alvo.penalidade_temporaria += poder_atual.nivel_efeito
                     participante_alvo.save()
+                    resultado = f"{alvo.nome} recebe -{poder_atual.nivel_efeito} (debuff {poder_atual.nome})."
+                    if duracao_raw in ('concentracao', 'sustentado'):
+                        EfeitoConcentracao.objects.create(
+                            combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
+                            poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                        )
 
-                    defesa_msg = (
-                        f"{rolagem_defesa_base} + {defesa_valor}"
-                        f"{' + ' + str(buff) if buff else ''}"
-                        f"{' - ' + str(debuff) if debuff else ''}"
-                        f" = {rolagem_defesa}"
-                    )
-
-                    if poder.tipo == 'dano':
-                        if rolagem_defesa < cd:
-                            participante_alvo.dano += 1
-                            participante_alvo.save()
-                            # Cria concentração se aplicável
-                            if getattr(poder, 'duracao', 'instantaneo') in ('concentracao', 'sustentado'):
-                                EfeitoConcentracao.objects.create(
-                                    combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
-                                    poder=poder, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
-                                )
-                            resultado = (
-                                f"{alvo.nome} falhou na esquiva ({rolagem_esquiva_base} + {esquiva} = {rolagem_esquiva} vs {cd}), "
-                                f"defesa {poder.defesa_passiva}: {defesa_msg} <b>Sofreu 1 de dano!</b>"
-                            )
-                            # Teste de concentração do alvo (se houver)
-                            manter_concentracao_apos_sofrer(participante_alvo)
-                        else:
-                            resultado = (
-                                f"{alvo.nome} falhou na esquiva ({rolagem_esquiva_base} + {esquiva} = {rolagem_esquiva} vs {cd}), "
-                                f"defesa {poder.defesa_passiva}: {defesa_msg} (sem dano)"
-                            )
-                    else:
-                        if rolagem_defesa < cd:
-                            participante_alvo.aflicao += 1
-                            participante_alvo.save()
-                            if getattr(poder, 'duracao', 'instantaneo') in ('concentracao', 'sustentado'):
-                                EfeitoConcentracao.objects.create(
-                                    combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
-                                    poder=poder, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
-                                )
-                            resultado = (
-                                f"{alvo.nome} falhou na esquiva ({rolagem_esquiva_base} + {esquiva} = {rolagem_esquiva} vs {cd}), "
-                                f"defesa {poder.defesa_passiva}: {defesa_msg} <b>Sofreu 1 de aflição!</b>"
-                            )
-                            manter_concentracao_apos_sofrer(participante_alvo)
-                        else:
-                            resultado = (
-                                f"{alvo.nome} falhou na esquiva ({rolagem_esquiva_base} + {esquiva} = {rolagem_esquiva} vs {cd}), "
-                                f"defesa {poder.defesa_passiva}: {defesa_msg} (sem aflição)"
-                            )
                 else:
-                    defesa_valor = getattr(alvo, poder.defesa_passiva, 0)
-                    buff = participante_alvo.bonus_temporario
-                    debuff = participante_alvo.penalidade_temporaria
-                    rolagem_defesa_base = random.randint(1, 20)
-                    rolagem_defesa = rolagem_defesa_base + defesa_valor + buff - debuff
-                    participante_alvo.bonus_temporario = 0
-                    participante_alvo.penalidade_temporaria = 0
-                    participante_alvo.save()
+                    # Modos ofensivos: area, percepcao, melee, ranged
+                    # Auxiliares comuns
+                    def resolve_defesa(def_attr, buff, debuff):
+                        base = random.randint(1, 20)
+                        val = getattr(alvo, def_attr, 0)
+                        total = base + val + buff - debuff
+                        return base, val, total
 
-                    defesa_msg = (
-                        f"{rolagem_defesa_base} + {defesa_valor}"
-                        f"{' + ' + str(buff) if buff else ''}"
-                        f"{' - ' + str(debuff) if debuff else ''}"
-                        f" = {rolagem_defesa}"
-                    )
-
-                    if poder.tipo == 'dano':
-                        if rolagem_defesa < cd_sucesso:
-                            participante_alvo.dano += 1
+                    if modo == 'area':
+                        esquiva = getattr(alvo, 'esquivar', 0)
+                        rolagem_esq_base = random.randint(1, 20)
+                        rolagem_esq = rolagem_esq_base + esquiva
+                        cd = poder_atual.nivel_efeito + (15 if tipo == 'dano' else 10)
+                        cd_sucesso = (15 if tipo == 'dano' else 10) + poder_atual.nivel_efeito
+                        cd_sucesso //= 2
+                        defesa_attr = poder_atual.defesa_passiva
+                        if rolagem_esq < cd:  # falhou esquiva
+                            buff = participante_alvo.bonus_temporario
+                            debuff = participante_alvo.penalidade_temporaria
+                            d_base = random.randint(1, 20)
+                            d_valor = getattr(alvo, defesa_attr, 0)
+                            d_total = d_base + d_valor + buff - debuff
+                            participante_alvo.bonus_temporario = 0
+                            participante_alvo.penalidade_temporaria = 0
                             participante_alvo.save()
-                            if getattr(poder, 'duracao', 'instantaneo') in ('concentracao', 'sustentado'):
-                                EfeitoConcentracao.objects.create(
-                                    combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
-                                    poder=poder, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
-                                )
-                            resultado = (
-                                f"{alvo.nome} teve sucesso parcial na esquiva ({rolagem_esquiva_base} + {esquiva} = {rolagem_esquiva} vs {cd}), "
-                                f"defesa {poder.defesa_passiva} contra CD {cd_sucesso}: {defesa_msg} <b>Sofreu 1 de dano!</b>"
+                            defesa_msg = (
+                                f"{d_base} + {d_valor}"
+                                f"{' + ' + str(buff) if buff else ''}"
+                                f"{' - ' + str(debuff) if debuff else ''} = {d_total}"
                             )
-                            manter_concentracao_apos_sofrer(participante_alvo)
-                        else:
-                            resultado = (
-                                f"{alvo.nome} teve sucesso parcial na esquiva ({rolagem_esquiva_base} + {esquiva} = {rolagem_esquiva} vs {cd}), "
-                                f"defesa {poder.defesa_passiva} contra CD {cd_sucesso}: {defesa_msg} (sem dano)"
-                            )
-                    else:
-                        if rolagem_defesa < cd_sucesso:
-                            participante_alvo.aflicao += 1
+                            if tipo == 'dano':
+                                if d_total < cd:
+                                    participante_alvo.dano += 1
+                                    participante_alvo.save()
+                                    if duracao_raw in ('concentracao', 'sustentado'):
+                                        EfeitoConcentracao.objects.create(
+                                            combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
+                                            poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                                        )
+                                    resultado = f"{alvo.nome} falhou esquiva ({rolagem_esq_base}+{esquiva}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} <b>Dano +1</b> ({poder_atual.nome})"
+                                    manter_concentracao_apos_sofrer(participante_alvo)
+                                else:
+                                    resultado = f"{alvo.nome} falhou esquiva ({rolagem_esq_base}+{esquiva}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} (sem dano) ({poder_atual.nome})"
+                            else:
+                                if d_total < cd:
+                                    participante_alvo.aflicao += 1
+                                    participante_alvo.save()
+                                    if duracao_raw in ('concentracao', 'sustentado'):
+                                        EfeitoConcentracao.objects.create(
+                                            combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
+                                            poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                                        )
+                                    resultado = f"{alvo.nome} falhou esquiva ({rolagem_esq_base}+{esquiva}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} <b>Aflição +1</b> ({poder_atual.nome})"
+                                    manter_concentracao_apos_sofrer(participante_alvo)
+                                else:
+                                    resultado = f"{alvo.nome} falhou esquiva ({rolagem_esq_base}+{esquiva}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} (sem aflição) ({poder_atual.nome})"
+                        else:  # sucesso parcial na esquiva
+                            buff = participante_alvo.bonus_temporario
+                            debuff = participante_alvo.penalidade_temporaria
+                            d_base = random.randint(1, 20)
+                            d_valor = getattr(alvo, defesa_attr, 0)
+                            d_total = d_base + d_valor + buff - debuff
+                            participante_alvo.bonus_temporario = 0
+                            participante_alvo.penalidade_temporaria = 0
                             participante_alvo.save()
-                            if getattr(poder, 'duracao', 'instantaneo') in ('concentracao', 'sustentado'):
-                                EfeitoConcentracao.objects.create(
-                                    combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
-                                    poder=poder, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
-                                )
-                            resultado = (
-                                f"{alvo.nome} teve sucesso parcial na esquiva ({rolagem_esquiva_base} + {esquiva} = {rolagem_esquiva} vs {cd}), "
-                                f"defesa {poder.defesa_passiva} contra CD {cd_sucesso}: {defesa_msg} <b>Sofreu 1 de aflição!</b>"
+                            defesa_msg = (
+                                f"{d_base} + {d_valor}"
+                                f"{' + ' + str(buff) if buff else ''}"
+                                f"{' - ' + str(debuff) if debuff else ''} = {d_total}"
                             )
-                            manter_concentracao_apos_sofrer(participante_alvo)
-                        else:
-                            resultado = (
-                                f"{alvo.nome} teve sucesso parcial na esquiva ({rolagem_esquiva_base} + {esquiva} = {rolagem_esquiva} vs {cd}), "
-                                f"defesa {poder.defesa_passiva} contra CD {cd_sucesso}: {defesa_msg} (sem aflição)"
-                            )
+                            if tipo == 'dano':
+                                if d_total < cd_sucesso:
+                                    participante_alvo.dano += 1
+                                    participante_alvo.save()
+                                    if duracao_raw in ('concentracao', 'sustentado'):
+                                        EfeitoConcentracao.objects.create(
+                                            combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
+                                            poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                                        )
+                                    resultado = f"{alvo.nome} sucesso parcial esquiva ({rolagem_esq_base}+{esquiva}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} <b>Dano +1</b> ({poder_atual.nome})"
+                                    manter_concentracao_apos_sofrer(participante_alvo)
+                                else:
+                                    resultado = f"{alvo.nome} sucesso parcial esquiva ({rolagem_esq_base}+{esquiva}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} (sem dano) ({poder_atual.nome})"
+                            else:
+                                if d_total < cd_sucesso:
+                                    participante_alvo.aflicao += 1
+                                    participante_alvo.save()
+                                    if duracao_raw in ('concentracao', 'sustentado'):
+                                        EfeitoConcentracao.objects.create(
+                                            combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
+                                            poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                                        )
+                                    resultado = f"{alvo.nome} sucesso parcial esquiva ({rolagem_esq_base}+{esquiva}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} <b>Aflição +1</b> ({poder_atual.nome})"
+                                    manter_concentracao_apos_sofrer(participante_alvo)
+                                else:
+                                    resultado = f"{alvo.nome} sucesso parcial esquiva ({rolagem_esq_base}+{esquiva}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} (sem aflição) ({poder_atual.nome})"
 
-            # PERCEPÇÃO
-            elif getattr(poder, 'modo', '') == 'percepcao':
-                if poder.tipo == 'dano':
-                    cd = poder.nivel_efeito + 15
-                else:
-                    cd = poder.nivel_efeito + 10
-                defesa_valor = getattr(alvo, poder.defesa_passiva, 0)
-                buff = participante_alvo.bonus_temporario
-                debuff = participante_alvo.penalidade_temporaria
-                rolagem_defesa_base = random.randint(1, 20)
-                rolagem_defesa = rolagem_defesa_base + defesa_valor + buff - debuff
-                participante_alvo.bonus_temporario = 0
-                participante_alvo.penalidade_temporaria = 0
-                participante_alvo.save()
-
-                defesa_msg = (
-                    f"{rolagem_defesa_base} + {defesa_valor}"
-                    f"{' + ' + str(buff) if buff else ''}"
-                    f"{' - ' + str(debuff) if debuff else ''}"
-                    f" = {rolagem_defesa}"
-                )
-
-                if poder.tipo == 'dano':
-                    if rolagem_defesa < cd:
-                        participante_alvo.dano += 1
+                    elif modo == 'percepcao':
+                        cd = poder_atual.nivel_efeito + (15 if tipo == 'dano' else 10)
+                        defesa_attr = poder_atual.defesa_passiva
+                        buff = participante_alvo.bonus_temporario
+                        debuff = participante_alvo.penalidade_temporaria
+                        base, val, total = resolve_defesa(defesa_attr, buff, debuff)
+                        participante_alvo.bonus_temporario = 0
+                        participante_alvo.penalidade_temporaria = 0
                         participante_alvo.save()
-                        if getattr(poder, 'duracao', 'instantaneo') in ('concentracao', 'sustentado'):
-                            EfeitoConcentracao.objects.create(
-                                combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
-                                poder=poder, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
-                            )
-                        resultado = f"{alvo.nome} faz teste de {poder.defesa_passiva} ({defesa_msg}) contra CD {cd} <b>Sofreu 1 de dano!</b>"
-                        manter_concentracao_apos_sofrer(participante_alvo)
-                    else:
-                        resultado = f"{alvo.nome} faz teste de {poder.defesa_passiva} ({defesa_msg}) contra CD {cd} (sem dano)"
-                else:
-                    if rolagem_defesa < cd:
-                        participante_alvo.aflicao += 1
-                        participante_alvo.save()
-                        if getattr(poder, 'duracao', 'instantaneo') in ('concentracao', 'sustentado'):
-                            EfeitoConcentracao.objects.create(
-                                combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
-                                poder=poder, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
-                            )
-                        resultado = f"{alvo.nome} faz teste de {poder.defesa_passiva} ({defesa_msg}) contra CD {cd} <b>Sofreu 1 de aflição!</b>"
-                        manter_concentracao_apos_sofrer(participante_alvo)
-                    else:
-                        resultado = f"{alvo.nome} faz teste de {poder.defesa_passiva} ({defesa_msg}) contra CD {cd} (sem aflição)"
-
-            # MELEE
-            elif getattr(poder, 'modo', '') == 'melee':
-                buff_atacante = participante_atacante.bonus_temporario
-                debuff_atacante = participante_atacante.penalidade_temporaria
-                ataque_base = random.randint(1, 20)
-                ataque = ataque_base + poder.bonus_ataque + buff_atacante - debuff_atacante
-                aparar = getattr(alvo, 'aparar', 0)
-                participante_atacante.bonus_temporario = 0
-                participante_atacante.penalidade_temporaria = 0
-                participante_atacante.save()
-                cd = (15 + poder.nivel_efeito) if poder.tipo == 'dano' else (10 + poder.nivel_efeito)
-                if ataque > 10 + aparar:
-                    defesa_valor = getattr(alvo, poder.defesa_passiva, 0)
-                    buff = participante_alvo.bonus_temporario
-                    debuff = participante_alvo.penalidade_temporaria
-                    rolagem_defesa_base = random.randint(1, 20)
-                    rolagem_defesa = rolagem_defesa_base + defesa_valor + buff - debuff
-                    participante_alvo.bonus_temporario = 0
-                    participante_alvo.penalidade_temporaria = 0
-                    participante_alvo.save()
-
-                    defesa_msg = (
-                        f"{rolagem_defesa_base} + {defesa_valor}"
-                        f"{' + ' + str(buff) if buff else ''}"
-                        f"{' - ' + str(debuff) if debuff else ''}"
-                        f" = {rolagem_defesa}"
-                    )
-
-                    ataque_msg = (
-                        f"{ataque_base} + {poder.bonus_ataque}"
-                        f"{' + ' + str(buff_atacante) if buff_atacante else ''}"
-                        f"{' - ' + str(debuff_atacante) if debuff_atacante else ''}"
-                        f" = {ataque}"
-                    )
-
-                    if poder.tipo == 'dano':
-                        if rolagem_defesa < cd:
-                            participante_alvo.dano += 1
-                            participante_alvo.save()
-                            if getattr(poder, 'duracao', 'instantaneo') in ('concentracao', 'sustentado'):
-                                EfeitoConcentracao.objects.create(
-                                    combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
-                                    poder=poder, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
-                                )
-                            resultado = (
-                                f"{atacante.nome} acertou {alvo.nome} (ataque {ataque_msg} vs {10+aparar}), "
-                                f"defesa {poder.defesa_passiva} ({defesa_msg}) contra CD {cd} <b>Sofreu 1 de dano!</b>"
-                            )
-                            manter_concentracao_apos_sofrer(participante_alvo)
+                        defesa_msg = (
+                            f"{base} + {val}"
+                            f"{' + ' + str(buff) if buff else ''}"
+                            f"{' - ' + str(debuff) if debuff else ''} = {total}"
+                        )
+                        if tipo == 'dano':
+                            if total < cd:
+                                participante_alvo.dano += 1
+                                participante_alvo.save()
+                                if duracao_raw in ('concentracao', 'sustentado'):
+                                    EfeitoConcentracao.objects.create(
+                                        combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
+                                        poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                                    )
+                                resultado = f"{alvo.nome} teste {defesa_attr} ({defesa_msg}) vs CD {cd}: <b>Dano +1</b> ({poder_atual.nome})"
+                                manter_concentracao_apos_sofrer(participante_alvo)
+                            else:
+                                resultado = f"{alvo.nome} teste {defesa_attr} ({defesa_msg}) vs CD {cd}: sem dano ({poder_atual.nome})"
                         else:
-                            resultado = (
-                                f"{atacante.nome} acertou {alvo.nome} (ataque {ataque_msg} vs {10+aparar}), "
-                                f"defesa {poder.defesa_passiva} ({defesa_msg}) contra CD {cd} (sem dano)"
+                            if total < cd:
+                                participante_alvo.aflicao += 1
+                                participante_alvo.save()
+                                if duracao_raw in ('concentracao', 'sustentado'):
+                                    EfeitoConcentracao.objects.create(
+                                        combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
+                                        poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                                    )
+                                resultado = f"{alvo.nome} teste {defesa_attr} ({defesa_msg}) vs CD {cd}: <b>Aflição +1</b> ({poder_atual.nome})"
+                                manter_concentracao_apos_sofrer(participante_alvo)
+                            else:
+                                resultado = f"{alvo.nome} teste {defesa_attr} ({defesa_msg}) vs CD {cd}: sem aflição ({poder_atual.nome})"
+
+                    elif modo in ('melee', 'ranged'):
+                        # ataque vs aparar/esquivar
+                        ataque_base = random.randint(1, 20)
+                        buff_att = participante_atacante.bonus_temporario
+                        debuff_att = participante_atacante.penalidade_temporaria
+                        ataque_total = ataque_base + poder_atual.bonus_ataque + buff_att - debuff_att
+                        defesa_mov = getattr(alvo, 'aparar' if modo == 'melee' else 'esquivar', 0)
+                        participante_atacante.bonus_temporario = 0
+                        participante_atacante.penalidade_temporaria = 0
+                        participante_atacante.save()
+                        if ataque_total > 10 + defesa_mov:
+                            defesa_attr = poder_atual.defesa_passiva
+                            buff = participante_alvo.bonus_temporario
+                            debuff = participante_alvo.penalidade_temporaria
+                            d_base, d_val, d_total = resolve_defesa(defesa_attr, buff, debuff)
+                            participante_alvo.bonus_temporario = 0
+                            participante_alvo.penalidade_temporaria = 0
+                            participante_alvo.save()
+                            ataque_msg = (
+                                f"{ataque_base} + {poder_atual.bonus_ataque}"
+                                f"{' + ' + str(buff_att) if buff_att else ''}"
+                                f"{' - ' + str(debuff_att) if debuff_att else ''} = {ataque_total}"
                             )
+                            defesa_msg = (
+                                f"{d_base} + {d_val}"
+                                f"{' + ' + str(buff) if buff else ''}"
+                                f"{' - ' + str(debuff) if debuff else ''} = {d_total}"
+                            )
+                            cd = (15 if tipo == 'dano' else 10) + poder_atual.nivel_efeito
+                            if tipo == 'dano':
+                                if d_total < cd:
+                                    participante_alvo.dano += 1
+                                    participante_alvo.save()
+                                    if duracao_raw in ('concentracao', 'sustentado'):
+                                        EfeitoConcentracao.objects.create(
+                                            combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
+                                            poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                                        )
+                                    resultado = f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {10+defesa_mov}) {defesa_attr} ({defesa_msg}) CD {cd} <b>Dano +1</b> ({poder_atual.nome})"
+                                    manter_concentracao_apos_sofrer(participante_alvo)
+                                else:
+                                    resultado = f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {10+defesa_mov}) {defesa_attr} ({defesa_msg}) CD {cd} (sem dano) ({poder_atual.nome})"
+                            else:
+                                if d_total < cd:
+                                    participante_alvo.aflicao += 1
+                                    participante_alvo.save()
+                                    if duracao_raw in ('concentracao', 'sustentado'):
+                                        EfeitoConcentracao.objects.create(
+                                            combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
+                                            poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                                        )
+                                    resultado = f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {10+defesa_mov}) {defesa_attr} ({defesa_msg}) CD {cd} <b>Aflição +1</b> ({poder_atual.nome})"
+                                    manter_concentracao_apos_sofrer(participante_alvo)
+                                else:
+                                    resultado = f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {10+defesa_mov}) {defesa_attr} ({defesa_msg}) CD {cd} (sem aflição) ({poder_atual.nome})"
+                        else:
+                            ataque_msg = (
+                                f"{ataque_base} + {poder_atual.bonus_ataque}"
+                                f"{' + ' + str(buff_att) if buff_att else ''}"
+                                f"{' - ' + str(debuff_att) if debuff_att else ''} = {ataque_total}"
+                            )
+                            resultado = f"{atacante.nome} errou {alvo.nome} (atk {ataque_msg} vs {10+defesa_mov}) ({poder_atual.nome})"
                     else:
-                        if rolagem_defesa < cd:
-                            participante_alvo.aflicao += 1
-                            participante_alvo.save()
-                            if getattr(poder, 'duracao', 'instantaneo') in ('concentracao', 'sustentado'):
-                                EfeitoConcentracao.objects.create(
-                                    combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
-                                    poder=poder, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
-                                )
-                            resultado = (
-                                f"{atacante.nome} acertou {alvo.nome} (ataque {ataque_msg} vs {10+aparar}), "
-                                f"defesa {poder.defesa_passiva} ({defesa_msg}) contra CD {cd} <b>Sofreu 1 de aflição!</b>"
-                            )
-                            manter_concentracao_apos_sofrer(participante_alvo)
-                        else:
-                            resultado = (
-                                f"{atacante.nome} acertou {alvo.nome} (ataque {ataque_msg} vs {10+aparar}), "
-                                f"defesa {poder.defesa_passiva} ({defesa_msg}) contra CD {cd} (sem aflição)"
-                            )
-                else:
-                    ataque_msg = (
-                        f"{ataque_base} + {poder.bonus_ataque}"
-                        f"{' + ' + str(buff_atacante) if buff_atacante else ''}"
-                        f"{' - ' + str(debuff_atacante) if debuff_atacante else ''}"
-                        f" = {ataque}"
-                    )
-                    resultado = f"{atacante.nome} errou {alvo.nome} (ataque {ataque_msg} vs {10+aparar})"
+                        resultado = f"Ação inválida para o poder selecionado ({poder_atual.nome})."
 
-            # RANGED
-            elif getattr(poder, 'modo', '') == 'ranged':
-                buff_atacante = participante_atacante.bonus_temporario
-                debuff_atacante = participante_atacante.penalidade_temporaria
-                ataque_base = random.randint(1, 20)
-                ataque = ataque_base + poder.bonus_ataque + buff_atacante - debuff_atacante
-                esquiva = getattr(alvo, 'esquivar', 0)
-                participante_atacante.bonus_temporario = 0
-                participante_atacante.penalidade_temporaria = 0
-                participante_atacante.save()
-                cd = (15 + poder.nivel_efeito) if poder.tipo == 'dano' else (10 + poder.nivel_efeito)
-                if ataque > 10 + esquiva:
-                    defesa_valor = getattr(alvo, poder.defesa_passiva, 0)
-                    buff = participante_alvo.bonus_temporario
-                    debuff = participante_alvo.penalidade_temporaria
-                    rolagem_defesa_base = random.randint(1, 20)
-                    rolagem_defesa = rolagem_defesa_base + defesa_valor + buff - debuff
-                    participante_alvo.bonus_temporario = 0
-                    participante_alvo.penalidade_temporaria = 0
-                    participante_alvo.save()
+                if resultado:
+                    resultados.append(resultado)
 
-                    defesa_msg = (
-                        f"{rolagem_defesa_base} + {defesa_valor}"
-                        f"{' + ' + str(buff) if buff else ''}"
-                        f"{' - ' + str(debuff) if debuff else ''}"
-                        f" = {rolagem_defesa}"
-                    )
+        nova_descricao = "<br>".join(resultados)
+        append_to_turno(nova_descricao)
+        send_event('rolagem', nova_descricao)
+        if _expects_json(request):
+            return JsonResponse({'status': 'ok', 'evento': 'rolagem', 'descricao': nova_descricao})
+        return redirect('detalhes_combate', combate_id=combate_id)
 
-                    ataque_msg = (
-                        f"{ataque_base} + {poder.bonus_ataque}"
-                        f"{' + ' + str(buff_atacante) if buff_atacante else ''}"
-                        f"{' - ' + str(debuff_atacante) if debuff_atacante else ''}"
-                        f" = {ataque}"
-                    )
-
-                    if poder.tipo == 'dano':
-                        if rolagem_defesa < cd:
-                            participante_alvo.dano += 1
-                            participante_alvo.save()
-                            if getattr(poder, 'duracao', 'instantaneo') in ('concentracao', 'sustentado'):
-                                EfeitoConcentracao.objects.create(
-                                    combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
-                                    poder=poder, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
-                                )
-                            resultado = (
-                                f"{atacante.nome} acertou {alvo.nome} (ataque {ataque_msg} vs {10+esquiva}), "
-                                f"defesa {poder.defesa_passiva} ({defesa_msg}) contra CD {cd} <b>Sofreu 1 de dano!</b>"
-                            )
-                            manter_concentracao_apos_sofrer(participante_alvo)
-                        else:
-                            resultado = (
-                                f"{atacante.nome} acertou {alvo.nome} (ataque {ataque_msg} vs {10+esquiva}), "
-                                f"defesa {poder.defesa_passiva} ({defesa_msg}) contra CD {cd} (sem dano)"
-                            )
-                    else:
-                        if rolagem_defesa < cd:
-                            participante_alvo.aflicao += 1
-                            participante_alvo.save()
-                            if getattr(poder, 'duracao', 'instantaneo') in ('concentracao', 'sustentado'):
-                                EfeitoConcentracao.objects.create(
-                                    combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
-                                    poder=poder, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
-                                )
-                            resultado = (
-                                f"{atacante.nome} acertou {alvo.nome} (ataque {ataque_msg} vs {10+esquiva}), "
-                                f"defesa {poder.defesa_passiva} ({defesa_msg}) contra CD {cd} <b>Sofreu 1 de aflição!</b>"
-                            )
-                            manter_concentracao_apos_sofrer(participante_alvo)
-                        else:
-                            resultado = (
-                                f"{atacante.nome} acertou {alvo.nome} (ataque {ataque_msg} vs {10+esquiva}), "
-                                f"defesa {poder.defesa_passiva} ({defesa_msg}) contra CD {cd} (sem aflição)"
-                            )
-                else:
-                    ataque_msg = (
-                        f"{ataque_base} + {poder.bonus_ataque}"
-                        f"{' + ' + str(buff_atacante) if buff_atacante else ''}"
-                        f"{' - ' + str(debuff_atacante) if debuff_atacante else ''}"
-                        f" = {ataque}"
-                    )
-                    resultado = f"{atacante.nome} errou {alvo.nome} (ataque {ataque_msg} vs {10+esquiva})"
-
-            else:
-                resultado = f"Ação inválida para o poder selecionado."
-
-            resultados.append(resultado)
-
-            # Se este for o último alvo, registra no histórico e retorna
-            if str(alvo_id) == str(alvo_ids[-1]):
-                nova_descricao = "<br>".join(resultados)
-                append_to_turno(nova_descricao)
-                send_event('rolagem', nova_descricao)
-                if _expects_json(request):
-                    return JsonResponse({'status': 'ok', 'evento': 'rolagem', 'descricao': nova_descricao})
-                return redirect('detalhes_combate', combate_id=combate_id)
-
-    # Nenhuma ação válida enviada
-    return redirect('detalhes_combate', combate_id=combate_id)
-
-def adicionar_participante(request, combate_id):
-    if not hasattr(request.user, 'perfilusuario') or not request.user.perfilusuario.sala_atual:
-        return redirect('home')
-    combate = get_object_or_404(Combate, id=combate_id)
-    personagem_id = request.POST.get('personagem_id')
-    sala = combate.sala
-    if sala.game_master == request.user:
-        personagem = get_object_or_404(Personagem, id=personagem_id, usuario__in=sala.participantes.all())
-    else:
-        personagem = get_object_or_404(Personagem, id=personagem_id, usuario=request.user)
-    iniciativa = random.randint(1, 20) + personagem.prontidao
-    participante = Participante.objects.create(personagem=personagem, combate=combate, iniciativa=iniciativa)
-    mapa = combate.mapas.first()
-    if mapa:
-        PosicaoPersonagem.objects.create(mapa=mapa, participante=participante, x=10, y=10)
-    # Notifica todos os participantes sobre a adição
-    try:
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f'combate_{combate.id}',
-            {
-                'type': 'combate_message',
-                'message': json.dumps({
-                    'evento': 'adicionar_participante',
-                    'descricao': f'{personagem.nome} entrou no combate.',
-                    'participante': {
-                        'id': participante.id,
-                        'personagem_id': personagem.id,
-                        'nome': personagem.nome,
-                        'usuario_id': personagem.usuario_id,
-                        'is_npc': bool(getattr(personagem, 'is_npc', False)),
-                    }
-                })
-            }
-        )
-    except Exception:
-        logger.warning("Falha ao enviar evento 'adicionar_participante' via Channels (ignorado)", exc_info=True)
-    if _expects_json(request):
-        return JsonResponse({
-            'status': 'ok',
-            'evento': 'adicionar_participante',
-            'combate_id': combate.id,
-            'participante': {
-                'id': participante.id,
-                'personagem_id': personagem.id,
-                'nome': personagem.nome,
-                'iniciativa': iniciativa,
-            }
-        })
     return redirect('detalhes_combate', combate_id=combate_id)
 
 def remover_participante(request, combate_id, participante_id):
