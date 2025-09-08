@@ -93,6 +93,14 @@
           <div class="campo-poder">{{ formset.empty_form.bonus_ataque.label_tag }}{{ formset.empty_form.bonus_ataque }}</div>
           <div class="campo-poder">{{ formset.empty_form.defesa_ativa.label_tag }}{{ formset.empty_form.defesa_ativa }}</div>
           <div class="campo-poder">{{ formset.empty_form.defesa_passiva.label_tag }}{{ formset.empty_form.defesa_passiva }}</div>
+          <div class="campo-poder span-2">
+            {{ formset.empty_form.ligados.label_tag }}{{ formset.empty_form.ligados }}
+            {% if formset.empty_form.ligados.field.queryset|length == 0 %}
+              <div class="helptext">Após salvar haverá poderes para encadear.</div>
+            {% else %}
+              <div class="helptext">Escolha poderes (mesmo modo & duração) que disparam em sequência.</div>
+            {% endif %}
+          </div>
           <div class="span-2" style="margin-top:0.4rem; text-align:right; display:flex; gap:0.7rem; justify-content:flex-end;">
             <span style="display:none;">{{ formset.empty_form.DELETE }}</span>
             <button type="button" class="btn btn-danger" onclick="removerPoderLinha(this)">Remover</button>
@@ -120,6 +128,14 @@
                 <div class="campo-poder">{{ form.bonus_ataque.label_tag }}{{ form.bonus_ataque }}</div>
                 <div class="campo-poder">{{ form.defesa_ativa.label_tag }}{{ form.defesa_ativa }}</div>
                 <div class="campo-poder">{{ form.defesa_passiva.label_tag }}{{ form.defesa_passiva }}</div>
+                <div class="campo-poder span-2">
+                  {{ form.ligados.label_tag }}{{ form.ligados }}
+                  {% if form.ligados.field.queryset|length == 0 %}
+                    <div class="helptext">Sem outros poderes elegíveis para encadear (verifique modo & duração).</div>
+                  {% else %}
+                    <div class="helptext">Selecionados executarão automaticamente após este.</div>
+                  {% endif %}
+                </div>
                 {% if form.DELETE %}
                   <div class="span-2" style="margin-top:0.4rem; text-align: right; display: flex; align-items: center; gap: 0.7rem; justify-content: flex-end;">
                     <button type="button" class="btn btn-danger" onclick="removerPoderLinha(this)">Remover</button>

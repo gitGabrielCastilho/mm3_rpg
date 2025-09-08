@@ -120,6 +120,14 @@
           <div class="campo-poder linha-checkbox">{{ formset.empty_form.de_item }} <label for="{{ formset.empty_form.de_item.id_for_label }}">Poder de Item?</label></div>
           <div class="campo-poder">{{ formset.empty_form.vantagem_origem.label_tag }}{{ formset.empty_form.vantagem_origem }}</div>
           <div class="campo-poder linha-checkbox">{{ formset.empty_form.de_vantagem }} <label for="{{ formset.empty_form.de_vantagem.id_for_label }}">Poder de Vantagem?</label></div>
+          <div class="campo-poder span-2">
+            {{ formset.empty_form.ligados.label_tag }}{{ formset.empty_form.ligados }}
+            {% if formset.empty_form.ligados.field.queryset|length == 0 %}
+              <div class="helptext">Salve o personagem primeiro para poder encadear outros poderes.</div>
+            {% else %}
+              <div class="helptext">Selecione outros poderes (mesmo modo & duração) que serão ativados automaticamente.</div>
+            {% endif %}
+          </div>
           <div class="span-2" style="margin-top:0.4rem; text-align:right; display:flex; gap:0.7rem; justify-content:flex-end;">
             <span style="display:none;">{{ formset.empty_form.DELETE }}</span>
             <button type="button" class="btn btn-danger" onclick="removerPoderLinha(this)">Remover</button>
@@ -145,6 +153,14 @@
                 <div class="campo-poder linha-checkbox">{{ form.de_item }} <label for="{{ form.de_item.id_for_label }}">Poder de Item?</label></div>
                 <div class="campo-poder">{{ form.vantagem_origem.label_tag }}{{ form.vantagem_origem }}</div>
                 <div class="campo-poder linha-checkbox">{{ form.de_vantagem }} <label for="{{ form.de_vantagem.id_for_label }}">Poder de Vantagem?</label></div>
+                <div class="campo-poder span-2">
+                  {{ form.ligados.label_tag }}{{ form.ligados }}
+                  {% if form.ligados.field.queryset|length == 0 %}
+                    <div class="helptext">Salve primeiro para ter opções de encadeamento.</div>
+                  {% else %}
+                    <div class="helptext">Poderes selecionados disparam após este.</div>
+                  {% endif %}
+                </div>
               {% if form.DELETE %}
                 <div class="span-2" style="margin-top:0.4rem; text-align: right; display: flex; align-items: center; gap: 0.7rem; justify-content: flex-end;">
                   <span style="display:none;">{{ form.DELETE }}</span>
