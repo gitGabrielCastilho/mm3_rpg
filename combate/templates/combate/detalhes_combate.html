@@ -1217,8 +1217,8 @@
                   removeFromAlvo(data.participante_id);
                   removeFromAcoesDe(data.participante_id);
                 }
-                // Evita trocar elementos da coluna esquerda para não resetar selects
-                await refreshSelectors(['.combate-col-right', '#status-card']);
+                // Atualiza coluna direita e também o form de ataque para retirar alvos removidos
+                await refreshSelectors(['.combate-col-right', '#status-card', '#form-ataque']);
                 break;
               case 'iniciar_turno':
               case 'avancar_turno':
@@ -1336,9 +1336,8 @@
         case 'remover_participante': {
           removeFromAlvo(payload && payload.participante_id);
           removeFromAcoesDe(payload && payload.participante_id);
-          // Atualiza apenas a coluna direita (mapa + status) — não toque no form da esquerda
-          await refreshSelectors(['.combate-col-right', '#status-card']);
-          removeFromAlvo(payload && payload.participante_id);
+          // Atualiza coluna direita e o form de ataque para refletir remoção imediata
+          await refreshSelectors(['.combate-col-right', '#status-card', '#form-ataque']);
           break;
         }
         case 'iniciar_turno':
