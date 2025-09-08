@@ -1208,14 +1208,9 @@
                   ensureAlvoHasParticipant(data.participante);
                   maybeAddToAcoesDe(data.participante);
                 }
-                // Atualize apenas direita e status
-                await refreshSelectors(['.combate-col-right', '#status-card']);
-                try {
-                  const idStr = String(data.participante && data.participante.id);
-                  const alvoSel = document.getElementById('alvo');
-                  const has = alvoSel && Array.from(alvoSel.options).some(o => String(o.value) === idStr);
-                  if (!has && idStr) { await refreshSelectors(['#form-ataque']); }
-                } catch(_) {}
+                // Atualize coluna direita, status e também o form de ataque para forçar inclusão do novo participante ordenado
+                // O refreshSelectors preserva seleção de alvos/poder graças à lógica de salvamento interno
+                await refreshSelectors(['.combate-col-right', '#status-card', '#form-ataque']);
                 break;
               case 'remover_participante':
                 if (data.participante_id) {
@@ -1334,17 +1329,8 @@
         case 'adicionar_participante': {
           ensureAlvoHasParticipant(payload && payload.participante);
           maybeAddToAcoesDe(payload && payload.participante);
-          // Atualiza apenas a coluna direita (mapa + status) — não toque no form da esquerda
-          await refreshSelectors(['.combate-col-right', '#status-card']);
-          // Fallback mínimo: apenas se o alvo não existir no select, atualize o form de ataque
-          try {
-            const idStr = String(payload && payload.participante && payload.participante.id);
-            const alvoSel = document.getElementById('alvo');
-            const has = alvoSel && Array.from(alvoSel.options).some(o => String(o.value) === idStr);
-            if (!has && idStr) {
-              await refreshSelectors(['#form-ataque']);
-            }
-          } catch(_) {}
+          // Atualiza coluna direita (mapa/status) e sempre o form de ataque para refletir novo alvo em tempo real
+          await refreshSelectors(['.combate-col-right', '#status-card', '#form-ataque']);
           break;
         }
         case 'remover_participante': {
