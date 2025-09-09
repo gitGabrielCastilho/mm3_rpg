@@ -59,6 +59,12 @@ class PoderForm(forms.ModelForm):
             else:
                 self.fields['ligados'].queryset = Poder.objects.none()
                 self.fields['ligados'].help_text = 'Salve o personagem para encadear poderes.'
+            # Força aparência de dropdown (uma linha) mantendo múltipla seleção
+            self.fields['ligados'].widget = forms.SelectMultiple(attrs={
+                'size': '1',
+                'class': 'ligados-dropdown',
+                'title': 'Selecione (Ctrl/Cmd para múltiplos)'
+            })
 
     def clean(self):
         cleaned_data = super().clean()
@@ -149,6 +155,11 @@ class PoderNPCForm(forms.ModelForm):
             else:
                 self.fields['ligados'].queryset = Poder.objects.none()
                 self.fields['ligados'].help_text = 'Salve o NPC para encadear poderes.'
+            self.fields['ligados'].widget = forms.SelectMultiple(attrs={
+                'size': '1',
+                'class': 'ligados-dropdown',
+                'title': 'Selecione (Ctrl/Cmd para múltiplos)'
+            })
 
     def clean(self):
         cleaned_data = super().clean()
