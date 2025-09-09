@@ -62,6 +62,11 @@
           <input type="hidden" name="personagem_acao" id="personagem_acao_hidden_d20" value="{{ participantes.0.id }}">
           <button type="submit" name="rolar_d20" value="1" class="btn btn-sm">Rolar d20</button>
         </form>
+        <form method="post" action="{% url 'encerrar_meus_efeitos' combate.id %}" class="inline-form" id="form-encerrar-meus">
+          {% csrf_token %}
+          <input type="hidden" name="personagem_acao" id="personagem_acao_hidden_end" value="{{ participantes.0.id }}">
+          <button type="submit" class="btn btn-sm" formnovalidate title="Encerrar todos os efeitos que este personagem está mantendo">Encerrar Efeitos</button>
+        </form>
       </div>
 
       <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-ataque" class="combate-card ataque-card">
@@ -241,18 +246,7 @@
 
       <div class="mapa-header-row">
         <h3 class="combate-section-title" style="margin:0">Status dos Participantes</h3>
-        {% if personagens_disponiveis %}
-        <form method="post" action="{% url 'adicionar_participante' combate.id %}" class="combate-inline-form form-add-participante">
-          {% csrf_token %}
-          <label for="novo_participante" class="sr-only">Adicionar personagem</label>
-          <select name="personagem_id" id="novo_participante" required class="select-sm" title="Adicionar personagem">
-            {% for personagem in personagens_disponiveis %}
-              <option value="{{ personagem.id }}">{{ personagem.nome }} ({{ personagem.usuario.username }})</option>
-            {% endfor %}
-          </select>
-          <button type="submit" class="btn btn-sm">Adicionar</button>
-        </form>
-        {% endif %}
+  {# Removido: formulário de adicionar_participante inexistente #}
         {% if combate.sala.game_master == user and npcs_disponiveis %}
         <form method="post" action="{% url 'adicionar_npc_participante' combate.id %}" class="combate-inline-form form-add-participante">
           {% csrf_token %}
@@ -394,7 +388,8 @@
       const h2 = document.getElementById('personagem_acao_hidden_pericia');
       const h3 = document.getElementById('personagem_acao_hidden_caracteristica');
       const h4 = document.getElementById('personagem_acao_hidden_d20');
-      if (h1) h1.value = val; if (h2) h2.value = val; if (h3) h3.value = val; if (h4) h4.value = val;
+      const h5 = document.getElementById('personagem_acao_hidden_end');
+      if (h1) h1.value = val; if (h2) h2.value = val; if (h3) h3.value = val; if (h4) h4.value = val; if (h5) h5.value = val;
       // Restaura perícia/traço/alvos persistidos
       restoreSkillAndTrait(personagemId);
       restoreTargets(personagemId);
@@ -425,13 +420,15 @@
             if (data.poderes && data.poderes.length > 0) {
               data.poderes.forEach(function(p) {
                 const opt = document.createElement('option');
-                opt.value = p.id;
+                opt.value = p.id; // representante
                 opt.textContent = p.nome;
                 if (p.tipo) opt.dataset.tipo = p.tipo;
-        if (p.duracao) opt.dataset.duracao = p.duracao;
-                // Prefer savedValue; depois tenta prevValue
-                if (!restored && savedValue && String(p.id) === String(savedValue)) { opt.selected = true; restored = true; }
-                else if (!restored && String(p.id) === String(prevValue)) { opt.selected = true; restored = true; }
+                if (p.duracao) opt.dataset.duracao = p.duracao;
+                if (p.equivalentes) opt.dataset.equivalentes = p.equivalentes.join(',');
+                // Prefer savedValue; depois tenta prevValue (qualquer equivalente também vale)
+                const eqSet = new Set([String(p.id)].concat((p.equivalentes||[]).map(String)));
+                if (!restored && savedValue && eqSet.has(String(savedValue))) { opt.selected = true; restored = true; }
+                else if (!restored && eqSet.has(String(prevValue))) { opt.selected = true; restored = true; }
                 poderSelect.appendChild(opt);
               });
             } else {
@@ -543,20 +540,24 @@
 
   // Fallback: polling quando WS não estiver disponível ou WS ficar ocioso
     let _combatePollTimer = null;
-  function startCombatePolling(){
+    function startCombatePolling(){
       if (_combatePollTimer) return;
       let tick = 0;
       _combatePollTimer = setInterval(() => {
         tick = (tick + 1) % 12; // 12 * 5s = 60s
+        const wsDown = !window._combateWsActive; // se WS caiu precisamos atualizar também o form de ataque (alvos)
         if (tick === 0) {
-          // Atualiza a coluna direita com pouca frequência para evitar reset de selects
-          refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right']).catch(()=>{});
+          const sels = ['.turno-topbar', '#historico-card', '.combate-col-right'];
+          if (wsDown) tryUpdateTargetsLight();
+          refreshSelectors(sels).catch(()=>{});
         } else if (tick === 6) {
-          // Evita atualizar a coluna esquerda automaticamente para não trocar seleções de Ações/Poder
-          refreshSelectors(['#status-card']).catch(()=>{});
+          const sels = ['#status-card'];
+          if (wsDown) tryUpdateTargetsLight();
+          refreshSelectors(sels).catch(()=>{});
         } else {
-          // Atualizações leves frequentes
-          refreshSelectors(['.turno-topbar', '#historico-card', '#status-card']).catch(()=>{});
+          const sels = ['.turno-topbar', '#historico-card', '#status-card'];
+          if (wsDown) tryUpdateTargetsLight();
+          refreshSelectors(sels).catch(()=>{});
         }
       }, 5000);
     }
@@ -790,6 +791,12 @@
         persistGridState();
         // Salva estados atuais do mapa (zoom/scroll) para restaurar após troca
         saveMapStates();
+        // Hist: detecta se o usuário está perto do fim para preservar leitura
+        let historicoWasNearBottom = false;
+        try {
+          const hc = document.getElementById('historico-card');
+          if (hc) historicoWasNearBottom = (hc.scrollHeight - hc.scrollTop - hc.clientHeight) < 24;
+        } catch(_) {}
         // Preserva seleção de alvos quando o formulário de ataque for atualizado
         let savedAlvos = null;
         try {
@@ -834,9 +841,11 @@
         restoreMapStates();
   // Se não houver estado salvo (primeira vez), garanta cobertura
   ensureAllAreasMinScale();
-        // Scroll historico para o fim
+        // Autoscroll apenas se antes já estava perto do fim
         const historico = document.getElementById('historico-card');
-        if (historico && historico.scrollHeight > historico.clientHeight) historico.scrollTop = historico.scrollHeight;
+        if (historicoWasNearBottom && historico && historico.scrollHeight > historico.clientHeight) {
+          historico.scrollTop = historico.scrollHeight;
+        }
   // Rebind drag & drop após trocas da coluna direita
         rebindDragDrop();
   // Rebind ações do topo se a barra de turno foi trocada
@@ -1110,6 +1119,53 @@
         }
       } catch(_) {}
     }
+    // Atualização leve: busca JSON de participantes e só mexe nos selects se houve mudança (evita piscar)
+    let _lastParticipantsSig = '';
+    async function tryUpdateTargetsLight(){
+      try {
+        const resp = await fetch(`/combate/${combateId}/participantes-json/?_=${Date.now()}` , {cache:'no-store'});
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (!data || !Array.isArray(data.participantes)) return;
+        // Gera assinatura para detectar mudança relevante
+        const sig = data.participantes.map(p => `${p.id}:${p.nome}`).join('|');
+        if (sig === _lastParticipantsSig) return; // nada mudou
+        _lastParticipantsSig = sig;
+        const alvoSel = document.getElementById('alvo');
+        if (alvoSel) {
+          const prevScroll = alvoSel.scrollTop;
+          const selected = new Set(Array.from(alvoSel.selectedOptions||[]).map(o=>String(o.value)));
+          // Reconstrói mantendo seleção
+          alvoSel.innerHTML = '';
+          data.participantes.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id; opt.textContent = p.nome; if (selected.has(String(p.id))) opt.selected = true; alvoSel.appendChild(opt);
+          });
+          // Restaura scroll anterior
+          try { alvoSel.scrollTop = prevScroll; } catch(_) {}
+        }
+        // Se GM: atualiza "Ações de" apenas se lista mudou (mantém seleção caso id ainda exista)
+        if (IS_GM) {
+          const acaoSel = document.getElementById('personagem_acao');
+            if (acaoSel) {
+              const current = String(acaoSel.value||'');
+              const existingIds = new Set(Array.from(acaoSel.options).map(o=>String(o.value)));
+              const needRebuild = data.participantes.length !== existingIds.size || data.participantes.some(p=>!existingIds.has(String(p.id)));
+              if (needRebuild) {
+                const prevVal = current;
+                acaoSel.innerHTML='';
+                data.participantes.forEach(p=>{
+                  const opt = document.createElement('option');
+                  opt.value = p.id; opt.textContent = p.nome; opt.dataset.personagemId = p.personagem_id; opt.setAttribute('data-personagem-id', p.personagem_id); acaoSel.appendChild(opt);
+                });
+                // Restaura seleção
+                for (let i=0;i<acaoSel.options.length;i++){ if (String(acaoSel.options[i].value)===prevVal){ acaoSel.selectedIndex=i; break; } }
+                acaoSel.dispatchEvent(new Event('change'));
+              }
+            }
+        }
+      } catch(_) {}
+    }
     function maybeAddToAcoesDe(part){
       if (!IS_GM || !part) return;
       try {
@@ -1141,6 +1197,27 @@
         const sel = document.getElementById('personagem_acao');
         if (!sel) return;
         Array.from(sel.options).forEach(o => { if (String(o.value) === String(id)) o.remove(); });
+      } catch(_) {}
+    }
+    // Limpa id removido de seleções persistidas (targets) em localStorage
+    function purgeTargetFromStorage(remId){
+      if (!remId) return;
+      try {
+        const prefix = `combate:${combateId}:targets:`;
+        // Percorre snapshot das keys porque alterar localStorage durante iteração direta pode pular entradas
+        const keys = [];
+        for (let i=0;i<localStorage.length;i++) { const k = localStorage.key(i); if (k && k.startsWith(prefix)) keys.push(k); }
+        keys.forEach(k => {
+          try {
+            const raw = localStorage.getItem(k);
+            if (!raw) return;
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr)) {
+              const filtered = arr.filter(v => String(v) !== String(remId));
+              if (filtered.length !== arr.length) localStorage.setItem(k, JSON.stringify(filtered));
+            }
+          } catch(_) {}
+        });
       } catch(_) {}
     }
 
@@ -1189,33 +1266,73 @@
                 await refreshSelectors(['#historico-card', '#status-card']);
                 break;
               case 'adicionar_participante':
-                // Atualiza selects localmente de imediato
+                // Atualização incremental sem recriar form completo
                 if (data.participante) {
+                  try { console.debug('[AJAX][adicionar_participante] id=', data.participante.id); } catch(_) {}
                   ensureAlvoHasParticipant(data.participante);
                   maybeAddToAcoesDe(data.participante);
                 }
-                // Atualize apenas direita e status
+                // Atualiza apenas coluna direita/status (evita sobrescrever seleção/poderes)
                 await refreshSelectors(['.combate-col-right', '#status-card']);
+                // Verificação tardia apenas injeta opção se ausente (sem refresh do form)
                 try {
-                  const idStr = String(data.participante && data.participante.id);
-                  const alvoSel = document.getElementById('alvo');
-                  const has = alvoSel && Array.from(alvoSel.options).some(o => String(o.value) === idStr);
-                  if (!has && idStr) { await refreshSelectors(['#form-ataque']); }
+                  const newId = data.participante && data.participante.id;
+                  if (newId) {
+                    setTimeout(() => {
+                      try {
+                        const alvoSel = document.getElementById('alvo');
+                        const exists = alvoSel && Array.from(alvoSel.options).some(o => String(o.value) === String(newId));
+                        if (!exists) {
+                          console.debug('[AJAX][adicionar_participante] re-inserindo opção ausente', newId);
+                          ensureAlvoHasParticipant(data.participante);
+                        }
+                      } catch(_) {}
+                    }, 600);
+                  }
                 } catch(_) {}
                 break;
               case 'remover_participante':
                 if (data.participante_id) {
+                  try { console.debug('[AJAX][remover_participante] participante_id=', data.participante_id); } catch(_) {}
                   removeFromAlvo(data.participante_id);
                   removeFromAcoesDe(data.participante_id);
+                  purgeTargetFromStorage(data.participante_id);
+                  // Se atacante selecionado foi removido, troca para primeiro
+                  try {
+                    const sel = document.getElementById('personagem_acao');
+                    if (sel && String(sel.value) === String(data.participante_id)) {
+                      if (sel.options.length) { sel.selectedIndex = 0; sel.dispatchEvent(new Event('change')); }
+                    }
+                  } catch(_) {}
                 }
-                // Evita trocar elementos da coluna esquerda para não resetar selects
                 await refreshSelectors(['.combate-col-right', '#status-card']);
+                // Verificação tardia remove opção persistente sem recriar form
+                try {
+                  const remId = data.participante_id;
+                  if (remId) {
+                    setTimeout(() => {
+                      try {
+                        const alvoSel = document.getElementById('alvo');
+                        const still = alvoSel && Array.from(alvoSel.options).some(o => String(o.value) === String(remId));
+                        if (still) {
+                          console.debug('[AJAX][remover_participante] re-removendo opção persistente', remId);
+                          removeFromAlvo(remId);
+                        }
+                      } catch(_) {}
+                    }, 600);
+                  }
+                } catch(_) {}
                 break;
               case 'iniciar_turno':
               case 'avancar_turno':
               case 'finalizar_combate':
                 await refreshSelectors(['.turno-topbar', '#historico-card', '#status-card']);
                 break;
+              case 'concentracao_tick': {
+                // Após ticks de efeitos, sempre forçar atualização do status pois dano/aflição podem mudar múltiplas vezes
+                await refreshSelectors(['#historico-card', '#status-card']);
+                break;
+              }
               case 'adicionar_mapa':
               case 'remover_mapa':
                 await refreshSelectors(['.combate-col-right']);
@@ -1243,13 +1360,14 @@
     }
     function ajaxifyInteractionForms(){
       bindAjax(document.getElementById('form-d20'));
-      bindAjax(document.getElementById('form-ataque'));
+  bindAjax(document.getElementById('form-ataque'));
   bindAjax(document.getElementById('form-mapa'));
       document.querySelectorAll('.turno-topbar-actions form').forEach(bindAjax);
   document.querySelectorAll('.form-remover-participante').forEach(bindAjax);
   document.querySelectorAll('.form-add-participante').forEach(bindAjax);
     document.querySelectorAll('.form-limpar-historico').forEach(bindAjax);
   document.querySelectorAll('.mapa-remover-form').forEach(bindAjax);
+  bindAjax(document.getElementById('form-encerrar-meus'));
     }
 
     combateSocket.onmessage = async function(e) {
@@ -1312,27 +1430,54 @@
           break;
         }
         case 'adicionar_participante': {
+          // Atualização incremental (sem recriar form inteiro)
           ensureAlvoHasParticipant(payload && payload.participante);
           maybeAddToAcoesDe(payload && payload.participante);
-          // Atualiza apenas a coluna direita (mapa + status) — não toque no form da esquerda
           await refreshSelectors(['.combate-col-right', '#status-card']);
-          // Fallback mínimo: apenas se o alvo não existir no select, atualize o form de ataque
           try {
-            const idStr = String(payload && payload.participante && payload.participante.id);
-            const alvoSel = document.getElementById('alvo');
-            const has = alvoSel && Array.from(alvoSel.options).some(o => String(o.value) === idStr);
-            if (!has && idStr) {
-              await refreshSelectors(['#form-ataque']);
+            const newId = payload && payload.participante && payload.participante.id;
+            if (newId) {
+              setTimeout(() => {
+                try {
+                  const alvoSel = document.getElementById('alvo');
+                  const exists = alvoSel && Array.from(alvoSel.options).some(o => String(o.value) === String(newId));
+                  if (!exists) {
+                    console.debug('[WS][adicionar_participante] re-inserindo opção ausente', newId);
+                    ensureAlvoHasParticipant(payload.participante);
+                  }
+                } catch(_) {}
+              }, 600);
             }
           } catch(_) {}
           break;
         }
         case 'remover_participante': {
-          removeFromAlvo(payload && payload.participante_id);
-          removeFromAcoesDe(payload && payload.participante_id);
-          // Atualiza apenas a coluna direita (mapa + status) — não toque no form da esquerda
+          const remId = payload && payload.participante_id;
+          removeFromAlvo(remId);
+          removeFromAcoesDe(remId);
+          purgeTargetFromStorage(remId);
+          // Se atacante atual foi removido, seleciona primeiro restante
+          try {
+            const sel = document.getElementById('personagem_acao');
+            if (sel && remId && String(sel.value) === String(remId) && sel.options.length) {
+              sel.selectedIndex = 0; sel.dispatchEvent(new Event('change'));
+            }
+          } catch(_) {}
           await refreshSelectors(['.combate-col-right', '#status-card']);
-          removeFromAlvo(payload && payload.participante_id);
+          try {
+            if (remId) {
+              setTimeout(() => {
+                try {
+                  const alvoSel = document.getElementById('alvo');
+                  const still = alvoSel && Array.from(alvoSel.options).some(o => String(o.value) === String(remId));
+                  if (still) {
+                    console.debug('[WS][remover_participante] re-removendo opção persistente', remId);
+                    removeFromAlvo(remId);
+                  }
+                } catch(_) {}
+              }, 600);
+            }
+          } catch(_) {}
           break;
         }
         case 'iniciar_turno':
@@ -1348,10 +1493,16 @@
       }
     };
 
-    combateSocket.onopen = function(){ stopCombatePolling(); };
+    window._combateWsActive = true;
+    combateSocket.onopen = function(){ window._combateWsActive = true; stopCombatePolling(); };
     combateSocket.onclose = function(e) {
+      window._combateWsActive = false;
       console.warn('WebSocket fechado. Atualização por polling ativada.');
       startCombatePolling();
+    };
+    combateSocket.onerror = function(){
+      // Marca como inativo para habilitar refresh mais agressivo (inclui #form-ataque)
+      window._combateWsActive = false;
     };
   startHeartbeat();
 
@@ -1393,12 +1544,14 @@
 
       // Histórico = mesma altura do Status; se maior, aplica scroll
       if (historicoCard && statusCard) {
+        // Preserve current scroll position when resizing unless already at bottom
+        const nearBottom = (historicoCard.scrollHeight - historicoCard.scrollTop - historicoCard.clientHeight) < 24;
         const statusAlt = statusCard.offsetHeight;
         historicoCard.style.height = statusAlt + 'px';
         historicoCard.style.maxHeight = statusAlt + 'px';
         historicoCard.style.overflowY = 'auto';
         // Mantém o scroll sempre no final para mostrar os eventos mais recentes
-        if (historicoCard.scrollHeight > historicoCard.clientHeight) {
+        if (nearBottom && historicoCard.scrollHeight > historicoCard.clientHeight) {
           historicoCard.scrollTop = historicoCard.scrollHeight;
         }
       }

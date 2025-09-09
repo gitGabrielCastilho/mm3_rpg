@@ -55,24 +55,10 @@ class PoderForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if 'ligados' in self.fields:
             if self.instance and getattr(self.instance, 'personagem_id', None):
-                base_qs = Poder.objects.filter(personagem_id=self.instance.personagem_id).exclude(pk=self.instance.pk)
-                # Limita opções a mesmos nome/modo/duração para tornar visíveis somente elegíveis
-                if self.instance.pk:
-                    base_qs = base_qs.filter(
-                        modo=self.instance.modo,
-                        duracao=self.instance.duracao,
-                        nome=self.instance.nome,
-                    )
-                self.fields['ligados'].queryset = base_qs
+                self.fields['ligados'].queryset = Poder.objects.filter(personagem_id=self.instance.personagem_id).exclude(pk=self.instance.pk)
             else:
                 self.fields['ligados'].queryset = Poder.objects.none()
                 self.fields['ligados'].help_text = 'Salve o personagem para encadear poderes.'
-            # Força aparência de dropdown (uma linha) mantendo múltipla seleção
-            self.fields['ligados'].widget = forms.SelectMultiple(attrs={
-                'size': '1',
-                'class': 'ligados-dropdown',
-                'title': 'Selecione (Ctrl/Cmd para múltiplos)'
-            })
 
     def clean(self):
         cleaned_data = super().clean()
@@ -159,22 +145,10 @@ class PoderNPCForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if 'ligados' in self.fields:
             if self.instance and getattr(self.instance, 'personagem_id', None):
-                base_qs = Poder.objects.filter(personagem_id=self.instance.personagem_id).exclude(pk=self.instance.pk)
-                if self.instance.pk:
-                    base_qs = base_qs.filter(
-                        modo=self.instance.modo,
-                        duracao=self.instance.duracao,
-                        nome=self.instance.nome,
-                    )
-                self.fields['ligados'].queryset = base_qs
+                self.fields['ligados'].queryset = Poder.objects.filter(personagem_id=self.instance.personagem_id).exclude(pk=self.instance.pk)
             else:
                 self.fields['ligados'].queryset = Poder.objects.none()
                 self.fields['ligados'].help_text = 'Salve o NPC para encadear poderes.'
-            self.fields['ligados'].widget = forms.SelectMultiple(attrs={
-                'size': '1',
-                'class': 'ligados-dropdown',
-                'title': 'Selecione (Ctrl/Cmd para múltiplos)'
-            })
 
     def clean(self):
         cleaned_data = super().clean()
