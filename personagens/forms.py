@@ -59,9 +59,9 @@ class PoderForm(forms.ModelForm):
             else:
                 self.fields['ligados'].queryset = Poder.objects.none()
                 self.fields['ligados'].help_text = 'Salve o personagem para encadear poderes.'
-            # Exibir como dropdown (mantém múltipla seleção via Ctrl/Cmd)
+            # Exibir como dropdown-like via JS (mantém múltipla seleção)
             try:
-                self.fields['ligados'].widget.attrs.update({'size': 1})
+                self.fields['ligados'].widget.attrs.update({'size': 1, 'class': (self.fields['ligados'].widget.attrs.get('class','') + ' multi-dropdown').strip(), 'data-multi-dropdown': '1'})
             except Exception:
                 pass
 
@@ -154,9 +154,9 @@ class PoderNPCForm(forms.ModelForm):
             else:
                 self.fields['ligados'].queryset = Poder.objects.none()
                 self.fields['ligados'].help_text = 'Salve o NPC para encadear poderes.'
-            # Exibir como dropdown (mantém múltipla seleção via Ctrl/Cmd)
+            # Exibir como dropdown-like via JS (mantém múltipla seleção)
             try:
-                self.fields['ligados'].widget.attrs.update({'size': 1})
+                self.fields['ligados'].widget.attrs.update({'size': 1, 'class': (self.fields['ligados'].widget.attrs.get('class','') + ' multi-dropdown').strip(), 'data-multi-dropdown': '1'})
             except Exception:
                 pass
 
