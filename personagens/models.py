@@ -1,4 +1,6 @@
 from django.db import models
+from django.db.models.signals import m2m_changed
+from django.dispatch import receiver
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from salas.models import Sala
@@ -207,6 +209,22 @@ class Poder(models.Model):
     )
     def __str__(self):
         return f"{self.nome} ({self.tipo}, {self.modo})"
+
+# --- Signals de validação para o encadeamento (garantir regra mesmo fora dos formulários) ---
+@receiver(m2m_changed, sender=Poder.ligados.through)
+def validar_poderes_ligados(sender, instance, action, pk_set, reverse, model, **kwargs):
+    # Valida antes de adicionar/substituir relações
+    if action in ('pre_add', 'pre_set') and pk_set:
+        ligados = model.objects.filter(pk__in=pk_set)
+        for p in ligados:
+            if p.pk == instance.pk:
+                raise ValidationError("Um poder não pode estar ligado a si mesmo.")
+            if p.personagem_id != instance.personagem_id:
+                raise ValidationError(f"Poder ligado '{p.nome}' não pertence ao mesmo personagem.")
+            if p.modo != instance.modo or p.duracao != instance.duracao:
+                raise ValidationError(f"Poder ligado '{p.nome}' deve ter mesmo modo e duração ({instance.modo}/{instance.duracao}).")
+            if p.nome != instance.nome:
+                raise ValidationError(f"Poder ligado '{p.nome}' deve ter o mesmo nome ('{instance.nome}').")
  
     
 class PerfilUsuario(models.Model):
