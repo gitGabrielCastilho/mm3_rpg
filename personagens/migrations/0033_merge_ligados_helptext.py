@@ -1,8 +1,15 @@
 from django.db import migrations, models
 
+
 class Migration(migrations.Migration):
+    """Merge 0030a_add_poder_ligados and 0032_ensure_poder_ligados to resolve multiple leaf nodes.
+
+    Keeps the latest help_text for campo 'ligados'.
+    """
+
     dependencies = [
-        ('personagens', '0031_create_m2m_ligados_table'),
+        ('personagens', '0030a_add_poder_ligados'),
+        ('personagens', '0032_ensure_poder_ligados'),
     ]
 
     operations = [
