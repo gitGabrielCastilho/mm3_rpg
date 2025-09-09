@@ -6,7 +6,6 @@ from .forms import (
 )
 from .models import Personagem, Poder, Inventario
 from django.core.exceptions import ValidationError
-from django.contrib.auth.models import User
 from django.http import QueryDict
 from django.forms import inlineformset_factory
 from salas.models import Sala
@@ -213,7 +212,6 @@ def _clonar_personagem(orig: Personagem, sala_destino: Sala, dono):
             nome=p.nome,
             tipo=p.tipo,
             modo=p.modo,
-            duracao=p.duracao,
             nivel_efeito=p.nivel_efeito,
             bonus_ataque=p.bonus_ataque,
             defesa_ativa=p.defesa_ativa,
@@ -224,21 +222,6 @@ def _clonar_personagem(orig: Personagem, sala_destino: Sala, dono):
             vantagem_origem=p.vantagem_origem,
         ))
     Poder.objects.bulk_create(novos_poderes)
-    # Replica encadeamentos se existirem (campo pode não existir em versões antigas)
-    try:
-        mapa_old_new = {old.id: new for old, new in zip(poderes_orig, novos_poderes)}
-        for old in poderes_orig:
-            ligados_ids = list(getattr(old, 'ligados').values_list('id', flat=True)) if hasattr(old, 'ligados') else []
-            if not ligados_ids:
-                continue
-            new = mapa_old_new.get(old.id)
-            if not new:
-                continue
-            novos_ligados = [mapa_old_new[oid] for oid in ligados_ids if oid in mapa_old_new]
-            if novos_ligados:
-                new.ligados.set(novos_ligados)
-    except Exception:
-        pass
     return novo
 
 
@@ -258,55 +241,6 @@ def importar_personagem(request, personagem_id):
     novo = _clonar_personagem(orig, sala_atual, request.user)
     messages.success(request, f'Personagem "{novo.nome}" importado para a sala {sala_atual.nome}.')
     return redirect('listar_personagens')
-
-
-@login_required
-@transaction.atomic
-def clonar_personagem_para_jogador(request, personagem_id):
-    """Permite ao GM clonar um Personagem dele para um Jogador da sala atual."""
-    personagem = get_object_or_404(Personagem, id=personagem_id, usuario=request.user)
-    # Verifica sala atual e permissão de GM
-    sala_atual = getattr(getattr(request.user, 'perfilusuario', None), 'sala_atual', None)
-    if not sala_atual or personagem.sala_id != sala_atual.id or sala_atual.game_master_id != request.user.id:
-        return redirect('listar_salas')
-
-    jogadores_qs = sala_atual.jogadores.all().order_by('username')
-    if request.method == 'POST':
-        jogador_id = request.POST.get('jogador_id')
-        nome_novo = (request.POST.get('nome') or '').strip()
-        try:
-            jogador = jogadores_qs.get(id=jogador_id)
-        except Exception:
-            messages.error(request, 'Selecione um jogador válido da sala.')
-            return render(request, 'personagens/clonar_personagem.html', {
-                'personagem': personagem,
-                'sala': sala_atual,
-                'jogadores': jogadores_qs,
-                'nome_sugerido': personagem.nome,
-            })
-        try:
-            novo = _clonar_personagem(personagem, sala_atual, jogador)
-        except ValidationError as ve:
-            messages.error(request, f'Não foi possível clonar: {"; ".join(sum(ve.message_dict.values(), [])) if hasattr(ve, "message_dict") else ", ".join(ve.messages)}')
-            return render(request, 'personagens/clonar_personagem.html', {
-                'personagem': personagem,
-                'sala': sala_atual,
-                'jogadores': jogadores_qs,
-                'nome_sugerido': personagem.nome,
-            })
-        # Renomeia se informado
-        if nome_novo and nome_novo != novo.nome:
-            novo.nome = nome_novo
-            novo.save(update_fields=['nome'])
-        messages.success(request, f'Personagem "{personagem.nome}" clonado para {jogador.username} como "{novo.nome}".')
-        return redirect('listar_personagens')
-
-    return render(request, 'personagens/clonar_personagem.html', {
-        'personagem': personagem,
-        'sala': sala_atual,
-        'jogadores': jogadores_qs,
-        'nome_sugerido': personagem.nome,
-    })
 
 
 @login_required

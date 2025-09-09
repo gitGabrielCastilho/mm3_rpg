@@ -55,7 +55,15 @@ class PoderForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if 'ligados' in self.fields:
             if self.instance and getattr(self.instance, 'personagem_id', None):
-                self.fields['ligados'].queryset = Poder.objects.filter(personagem_id=self.instance.personagem_id).exclude(pk=self.instance.pk)
+                base_qs = Poder.objects.filter(personagem_id=self.instance.personagem_id).exclude(pk=self.instance.pk)
+                # Limita opções a mesmos nome/modo/duração para tornar visíveis somente elegíveis
+                if self.instance.pk:
+                    base_qs = base_qs.filter(
+                        modo=self.instance.modo,
+                        duracao=self.instance.duracao,
+                        nome=self.instance.nome,
+                    )
+                self.fields['ligados'].queryset = base_qs
             else:
                 self.fields['ligados'].queryset = Poder.objects.none()
                 self.fields['ligados'].help_text = 'Salve o personagem para encadear poderes.'
@@ -151,7 +159,14 @@ class PoderNPCForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if 'ligados' in self.fields:
             if self.instance and getattr(self.instance, 'personagem_id', None):
-                self.fields['ligados'].queryset = Poder.objects.filter(personagem_id=self.instance.personagem_id).exclude(pk=self.instance.pk)
+                base_qs = Poder.objects.filter(personagem_id=self.instance.personagem_id).exclude(pk=self.instance.pk)
+                if self.instance.pk:
+                    base_qs = base_qs.filter(
+                        modo=self.instance.modo,
+                        duracao=self.instance.duracao,
+                        nome=self.instance.nome,
+                    )
+                self.fields['ligados'].queryset = base_qs
             else:
                 self.fields['ligados'].queryset = Poder.objects.none()
                 self.fields['ligados'].help_text = 'Salve o NPC para encadear poderes.'

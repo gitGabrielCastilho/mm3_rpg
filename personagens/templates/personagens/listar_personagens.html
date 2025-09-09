@@ -14,11 +14,6 @@
         <a href="{% url 'editar_personagem' personagem.id %}">
           <button type="button" class="btn">Editar</button>
         </a>
-        {% if sala.game_master_id == request.user.id %}
-        <a href="{% url 'clonar_personagem_para_jogador' personagem.id %}">
-          <button type="button" class="btn">Clonar</button>
-        </a>
-        {% endif %}
         <form action="{% url 'excluir_personagem' personagem.id %}" method="post" style="display:inline;">
           {% csrf_token %}
           <button type="submit" class="btn btn-excluir" onclick="return confirm('Tem certeza que deseja excluir este personagem?')">Excluir</button>
