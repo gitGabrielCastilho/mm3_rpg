@@ -98,7 +98,7 @@
             {% if formset.empty_form.ligados.field.queryset|length == 0 %}
               <div class="helptext">Após salvar haverá poderes para encadear.</div>
             {% else %}
-              <div class="helptext">Escolha poderes (mesmo modo & duração) que disparam em sequência.</div>
+              <div class="helptext">Dropdown aceita múltiplos (Ctrl/Cmd). Escolha poderes com mesmo nome, modo e duração.</div>
             {% endif %}
           </div>
           <div class="span-2" style="margin-top:0.4rem; text-align:right; display:flex; gap:0.7rem; justify-content:flex-end;">
@@ -131,9 +131,9 @@
                 <div class="campo-poder span-2">
                   {{ form.ligados.label_tag }}{{ form.ligados }}
                   {% if form.ligados.field.queryset|length == 0 %}
-                    <div class="helptext">Sem outros poderes elegíveis para encadear (verifique modo & duração).</div>
+                    <div class="helptext">Sem outros poderes elegíveis (verifique nome, modo e duração).</div>
                   {% else %}
-                    <div class="helptext">Selecionados executarão automaticamente após este.</div>
+                    <div class="helptext">Dropdown aceita múltiplos (Ctrl/Cmd). Selecionados executarão automaticamente após este.</div>
                   {% endif %}
                 </div>
                 {% if form.DELETE %}
