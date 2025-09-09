@@ -1,0 +1,72 @@
+{% load static %}
+<div class="dropdown-multiselect" data-field-name="{{ widget.name }}">
+  <div class="dropdown-multiselect__control" onclick="dmToggle(this)">
+    <span class="dropdown-multiselect__placeholder" data-empty="Selecione poderes a ligar">Selecionar...</span>
+    <span class="dropdown-multiselect__arrow">▾</span>
+  </div>
+  <div class="dropdown-multiselect__menu" style="display:none;">
+    {% for group, options, index in widget.optgroups %}
+      {% for option in options %}
+        <label class="dropdown-multiselect__option">
+          <input type="checkbox" value="{{ option.value }}" name="{{ widget.name }}" {% if option.selected %}checked{% endif %}>
+          <span>{{ option.label }}</span>
+        </label>
+      {% endfor %}
+    {% endfor %}
+  </div>
+</div>
+<style>
+.dropdown-multiselect{position:relative;max-width:340px;font-size:14px;}
+.dropdown-multiselect__control{border:1px solid #666;padding:6px 10px;background:#1e1e1e;color:#eee;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-radius:4px;}
+.dropdown-multiselect__control:focus{outline:2px solid #3a7afe;}
+.dropdown-multiselect__placeholder{opacity:.85;}
+.dropdown-multiselect__menu{position:absolute;z-index:40;left:0;right:0;top:100%;background:#252525;border:1px solid #555;max-height:260px;overflow:auto;border-radius:4px;margin-top:2px;box-shadow:0 4px 12px rgba(0,0,0,.4);}
+.dropdown-multiselect__option{display:flex;gap:6px;padding:4px 8px;cursor:pointer;user-select:none;align-items:center;}
+.dropdown-multiselect__option:hover{background:#333;}
+.dropdown-multiselect__option input{margin:0;}
+.dropdown-multiselect__arrow{font-size:12px;}
+.dropdown-multiselect.open .dropdown-multiselect__arrow{transform:rotate(180deg);} 
+</style>
+<script>
+(function(){
+  function updatePlaceholder(root){
+    var checks = root.querySelectorAll('input[type=checkbox]:checked');
+    var placeholder = root.querySelector('.dropdown-multiselect__placeholder');
+    if(!placeholder) return;
+    if(checks.length===0){
+      placeholder.textContent = placeholder.getAttribute('data-empty') || 'Selecionar...';
+    } else {
+      var labels = Array.from(checks).slice(0,3).map(c=>c.nextElementSibling.textContent.trim());
+      var extra = checks.length>3 ? ' +' + (checks.length-3) : '';
+      placeholder.textContent = labels.join(', ') + extra;
+    }
+  }
+  window.dmToggle = function(ctrl){
+    var root = ctrl.closest('.dropdown-multiselect');
+    var menu = root.querySelector('.dropdown-multiselect__menu');
+    var open = menu.style.display !== 'none';
+    document.querySelectorAll('.dropdown-multiselect__menu').forEach(m=>{m.style.display='none'; m.closest('.dropdown-multiselect').classList.remove('open');});
+    if(!open){
+      menu.style.display='block';
+      root.classList.add('open');
+    }
+  }
+  document.addEventListener('click', function(e){
+    var root = e.target.closest('.dropdown-multiselect');
+    document.querySelectorAll('.dropdown-multiselect').forEach(el=>{
+      if(el!==root){
+        var menu = el.querySelector('.dropdown-multiselect__menu');
+        if(menu){menu.style.display='none'; el.classList.remove('open');}
+      }
+    });
+  });
+  document.addEventListener('change', function(e){
+    if(e.target.matches('.dropdown-multiselect input[type=checkbox]')){
+      updatePlaceholder(e.target.closest('.dropdown-multiselect'));
+    }
+  });
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('.dropdown-multiselect').forEach(updatePlaceholder);
+  });
+})();
+</script>

@@ -5,6 +5,10 @@ from django.contrib.auth.models import User
 from .models import Personagem, Poder, Inventario, Vantagem
 
 
+class DropdownMultiSelect(forms.SelectMultiple):
+    template_name = 'widgets/dropdown_multiselect.html'
+
+
 class CadastroForm(UserCreationForm):
     class Meta:
         model = User
@@ -49,6 +53,7 @@ class PoderForm(forms.ModelForm):
         ]
         widgets = {
             'id': forms.HiddenInput(),
+            'ligados': DropdownMultiSelect(),
         }
 
     def __init__(self, *args, **kwargs):
@@ -140,6 +145,9 @@ class PoderNPCForm(forms.ModelForm):
             'nome', 'tipo', 'modo', 'duracao', 'nivel_efeito', 'bonus_ataque',
             'defesa_ativa', 'defesa_passiva', 'casting_ability', 'ligados'
         ]
+        widgets = {
+            'ligados': DropdownMultiSelect(),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
