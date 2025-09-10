@@ -112,47 +112,62 @@ document.addEventListener('DOMContentLoaded', function(){
       if (sel.dataset.mdEnhanced) return; sel.dataset.mdEnhanced = '1';
       sel.style.display = 'none';
       const wrapper = document.createElement('div');
-      wrapper.style.position = 'relative';
-      wrapper.style.minWidth = '220px';
+  wrapper.style.position = 'relative';
+  wrapper.style.display = 'inline-block';
+  wrapper.style.width = '100%';
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'btn';
       btn.textContent = 'Selecionar ligados';
       btn.style.width = '100%';
       const panel = document.createElement('div');
-      panel.style.position = 'absolute';
-      panel.style.zIndex = '40';
-      panel.style.background = '#222';
-      panel.style.border = '1px solid #444';
-      panel.style.padding = '8px';
-      panel.style.minWidth = '240px';
-      panel.style.maxHeight = '220px';
-      panel.style.overflow = 'auto';
-      panel.style.display = 'none';
+  panel.style.position = 'absolute';
+  panel.style.zIndex = '40';
+  panel.style.background = '#222';
+  panel.style.border = '1px solid #444';
+  panel.style.borderRadius = '8px';
+  panel.style.padding = '6px 0';
+  panel.style.left = '0';
+  panel.style.top = 'calc(100% + 4px)';
+  panel.style.width = '100%';
+  panel.style.maxHeight = '240px';
+  panel.style.overflow = 'auto';
+  panel.style.display = 'none';
       // Lista de checkboxes
-      Array.from(sel.options).forEach(function(opt, idx){
-        const id = sel.id + '_md_' + idx;
+      Array.from(sel.options).forEach(function(opt){
         const row = document.createElement('label');
         row.style.display = 'flex';
         row.style.alignItems = 'center';
-        row.style.gap = '8px';
-        row.style.margin = '4px 0';
+        row.style.gap = '10px';
+        row.style.padding = '6px 8px';
+        row.style.cursor = 'pointer';
+        row.addEventListener('mouseenter', function(){ row.style.background = '#2a2a2a'; });
+        row.addEventListener('mouseleave', function(){ row.style.background = 'transparent'; });
+        const box = document.createElement('span');
+        box.style.display = 'inline-flex';
+        box.style.width = '22px';
+        box.style.justifyContent = 'center';
         const cb = document.createElement('input');
         cb.type = 'checkbox';
         cb.value = opt.value;
         cb.checked = opt.selected;
+        cb.style.margin = '0';
         cb.addEventListener('change', function(){
           opt.selected = cb.checked;
-          // Dispara change no select para validação Django/JS
           const evt = new Event('change', {bubbles:true}); sel.dispatchEvent(evt);
         });
         const txt = document.createElement('span');
         txt.textContent = opt.textContent;
-        row.appendChild(cb);
+        txt.style.flex = '1 1 auto';
+        txt.style.minWidth = '0';
+        box.appendChild(cb);
+        row.appendChild(box);
         row.appendChild(txt);
         panel.appendChild(row);
       });
       btn.addEventListener('click', function(){
+        // Ajusta largura para casar com o botão
+        try { panel.style.width = btn.offsetWidth + 'px'; } catch(_) {}
         panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
       });
       document.addEventListener('click', function(ev){
