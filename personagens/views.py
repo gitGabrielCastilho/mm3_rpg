@@ -81,6 +81,22 @@ def criar_personagem(request):
             personagem.vantagens.set(vantagens_ids)
 
             formset.save_m2m()
+            # Auto-link: ao criar, poderes com mesmo nome, modo e duração se tornam ligados entre si
+            try:
+                poderes_personagem = list(Poder.objects.filter(personagem=personagem))
+                grupos = {}
+                for p in poderes_personagem:
+                    chave = (p.nome, p.modo, p.duracao)
+                    grupos.setdefault(chave, []).append(p)
+                for grupo in grupos.values():
+                    if len(grupo) < 2:
+                        continue
+                    for p in grupo:
+                        outros = [q for q in grupo if q.id != p.id]
+                        # Cria ligações direcionais para todos os demais do grupo
+                        p.ligados.set(outros)
+            except Exception as e:
+                logger.warning("[criar_personagem] Auto-link falhou: %s", e)
             return redirect('listar_personagens')
     else:
         form = PersonagemForm()
@@ -557,6 +573,21 @@ def criar_npc(request, sala_id):
                 poder.personagem = npc
                 poder.save()
             formset.save_m2m()
+            # Auto-link: ao criar NPC, poderes com mesmo nome, modo e duração se tornam ligados entre si
+            try:
+                poderes_npc = list(Poder.objects.filter(personagem=npc))
+                grupos = {}
+                for p in poderes_npc:
+                    chave = (p.nome, p.modo, p.duracao)
+                    grupos.setdefault(chave, []).append(p)
+                for grupo in grupos.values():
+                    if len(grupo) < 2:
+                        continue
+                    for p in grupo:
+                        outros = [q for q in grupo if q.id != p.id]
+                        p.ligados.set(outros)
+            except Exception as e:
+                logger.warning("[criar_npc] Auto-link falhou: %s", e)
             return redirect('listar_npcs')
         else:
             # Notifica o usuário sobre erros ao salvar NPC
