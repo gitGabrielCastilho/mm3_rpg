@@ -868,14 +868,17 @@
         persistGridState();
         // Salva estados atuais do mapa (zoom/scroll) para restaurar após troca
         saveMapStates();
-        // Hist: detecta se o usuário está perto do fim para preservar leitura
+        // Hist: detecta se o usuário está perto do fim para preservar leitura SOMENTE se vamos trocar o #historico-card
         let historicoWasNearBottom = false;
         let historicoPrevScroll = 0;
+        let willReplaceHistorico = !!(selectors||[]).includes('#historico-card');
         try {
-          const hc = document.getElementById('historico-card');
-          if (hc) {
-            historicoWasNearBottom = (hc.scrollHeight - hc.scrollTop - hc.clientHeight) < 24;
-            historicoPrevScroll = hc.scrollTop || 0;
+          if (willReplaceHistorico) {
+            const hc = document.getElementById('historico-card');
+            if (hc) {
+              historicoWasNearBottom = (hc.scrollHeight - hc.scrollTop - hc.clientHeight) < 24;
+              historicoPrevScroll = hc.scrollTop || 0;
+            }
           }
         } catch(_) {}
         // Preserva seleção de alvos quando o formulário de ataque for atualizado
@@ -912,9 +915,13 @@
           if (!isDescendant) filtered.push(items[i]);
         }
         // Replace in DOM using the pre-collected fresh nodes
+        let replacedHistorico = false;
         for (const it of filtered) {
           const target = document.querySelector(it.sel);
-          if (target && it.fresh) target.replaceWith(it.fresh);
+          if (target && it.fresh) {
+            if (it.sel === '#historico-card') replacedHistorico = true;
+            target.replaceWith(it.fresh);
+          }
         }
   // Reaplica comportamentos após substituições
     rafEqualize();
@@ -924,15 +931,18 @@
   ensureAllAreasMinScale();
   // Reformat history for readability
   try { enhanceHistorico(document); } catch(_) {}
-        // Restaura scroll se usuário não estava no fim; autoscroll apenas se ele estava perto do fim
-        const historico = document.getElementById('historico-card');
-        if (historico) {
-          if (historicoWasNearBottom) {
-            if (historico.scrollHeight > historico.clientHeight) historico.scrollTop = historico.scrollHeight;
-          } else {
-            // Mantém posição anterior na medida do possível
-            const maxTop = Math.max(0, historico.scrollHeight - historico.clientHeight);
-            historico.scrollTop = Math.min(maxTop, historicoPrevScroll);
+        // Ajuste de scroll apenas se o card foi realmente substituído
+        if (replacedHistorico) {
+          // Restaura scroll se usuário não estava no fim; autoscroll apenas se ele estava perto do fim
+          const historico = document.getElementById('historico-card');
+          if (historico) {
+            if (historicoWasNearBottom) {
+              if (historico.scrollHeight > historico.clientHeight) historico.scrollTop = historico.scrollHeight;
+            } else {
+              // Mantém posição anterior na medida do possível
+              const maxTop = Math.max(0, historico.scrollHeight - historico.clientHeight);
+              historico.scrollTop = Math.min(maxTop, historicoPrevScroll);
+            }
           }
         }
   // Rebind drag & drop após trocas da coluna direita
