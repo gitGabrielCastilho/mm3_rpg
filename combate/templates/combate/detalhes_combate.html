@@ -137,7 +137,7 @@
   </div>
   <div id="historico-card" class="combate-card">
   <ul class="turnos-list">
-        {% for turno in turnos %}
+  {% for turno in turnos reversed %}
           <li class="turno-item {% if turno.ativo %}ativo{% endif %}" data-turno-id="{{ turno.id }}">
             <div class="turno-header">
               <strong>Rodada {{ turno.ordem }}</strong>
@@ -1515,7 +1515,7 @@
         case 'rolagem': {
           // Acrescenta somente ao histórico
           const ativo = document.querySelector('.turnos-list .turno-item.ativo .turno-desc')
-                        || document.querySelector('.turnos-list .turno-item:last-child .turno-desc');
+                        || document.querySelector('.turnos-list .turno-item:first-child .turno-desc');
           if (ativo) {
             // Detecta se usuário estava perto do final antes de inserir novo conteúdo
             const historicoBefore = document.getElementById('historico-card');
