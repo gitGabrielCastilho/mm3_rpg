@@ -615,8 +615,12 @@
       _combatePollTimer = setInterval(() => {
         tick = (tick + 1) % 12; // 12 * 5s = 60s
         const wsDown = !window._combateWsActive; // se WS caiu precisamos atualizar também o form de ataque (alvos)
+        // Se usuário está lendo o histórico (não perto do fim), evite atualizar o card para não perder a posição
+        const hc = document.getElementById('historico-card');
+        const userReading = (()=>{ try { return hc && (hc.scrollHeight - hc.scrollTop - hc.clientHeight) >= 24; } catch(_) { return false; } })();
         if (tick === 0) {
-          const sels = ['.turno-topbar', '#historico-card', '.combate-col-right'];
+          const sels = ['.turno-topbar', '.combate-col-right'];
+          if (!userReading) sels.splice(1, 0, '#historico-card');
           if (wsDown) tryUpdateTargetsLight();
           refreshSelectors(sels).catch(()=>{});
         } else if (tick === 6) {
@@ -624,7 +628,8 @@
           if (wsDown) tryUpdateTargetsLight();
           refreshSelectors(sels).catch(()=>{});
         } else {
-          const sels = ['.turno-topbar', '#historico-card', '#status-card'];
+          const sels = ['.turno-topbar', '#status-card'];
+          if (!userReading) sels.splice(1, 0, '#historico-card');
           if (wsDown) tryUpdateTargetsLight();
           refreshSelectors(sels).catch(()=>{});
         }
@@ -862,9 +867,13 @@
         saveMapStates();
         // Hist: detecta se o usuário está perto do fim para preservar leitura
         let historicoWasNearBottom = false;
+        let historicoPrevScroll = 0;
         try {
           const hc = document.getElementById('historico-card');
-          if (hc) historicoWasNearBottom = (hc.scrollHeight - hc.scrollTop - hc.clientHeight) < 24;
+          if (hc) {
+            historicoWasNearBottom = (hc.scrollHeight - hc.scrollTop - hc.clientHeight) < 24;
+            historicoPrevScroll = hc.scrollTop || 0;
+          }
         } catch(_) {}
         // Preserva seleção de alvos quando o formulário de ataque for atualizado
         let savedAlvos = null;
@@ -912,10 +921,16 @@
   ensureAllAreasMinScale();
   // Reformat history for readability
   try { enhanceHistorico(document); } catch(_) {}
-        // Autoscroll apenas se antes já estava perto do fim
+        // Restaura scroll se usuário não estava no fim; autoscroll apenas se ele estava perto do fim
         const historico = document.getElementById('historico-card');
-        if (historicoWasNearBottom && historico && historico.scrollHeight > historico.clientHeight) {
-          historico.scrollTop = historico.scrollHeight;
+        if (historico) {
+          if (historicoWasNearBottom) {
+            if (historico.scrollHeight > historico.clientHeight) historico.scrollTop = historico.scrollHeight;
+          } else {
+            // Mantém posição anterior na medida do possível
+            const maxTop = Math.max(0, historico.scrollHeight - historico.clientHeight);
+            historico.scrollTop = Math.min(maxTop, historicoPrevScroll);
+          }
         }
   // Rebind drag & drop após trocas da coluna direita
         rebindDragDrop();
@@ -1478,6 +1493,14 @@
           const ativo = document.querySelector('.turnos-list .turno-item.ativo .turno-desc')
                         || document.querySelector('.turnos-list .turno-item:last-child .turno-desc');
           if (ativo) {
+            // Detecta se usuário estava perto do final antes de inserir novo conteúdo
+            const historicoBefore = document.getElementById('historico-card');
+            let wasNearBottom = false;
+            try {
+              if (historicoBefore) {
+                wasNearBottom = (historicoBefore.scrollHeight - historicoBefore.scrollTop - historicoBefore.clientHeight) < 24;
+              }
+            } catch(_) {}
             const extra = document.createElement('div');
             extra.innerHTML = payload.descricao || '';
             // Preserva quebras de linha como HTML
@@ -1490,8 +1513,11 @@
               ativo.innerHTML = (ativo.innerHTML ? ativo.innerHTML + '<br>' : '') + extra.innerHTML;
               try { enhanceHistorico(ativo.parentElement); } catch(_) {}
             }
+            // Só rola para o fim se o usuário já estava perto do fim
             const historico = document.getElementById('historico-card');
-            if (historico && historico.scrollHeight > historico.clientHeight) historico.scrollTop = historico.scrollHeight;
+            if (wasNearBottom && historico && historico.scrollHeight > historico.clientHeight) {
+              historico.scrollTop = historico.scrollHeight;
+            }
             // Garante atualização do status dos participantes sem recarregar a página inteira
             await refreshSelectors(['#status-card']);
           } else {
@@ -1647,11 +1673,7 @@
     // E garante scroll ao fundo mesmo em telas pequenas, se houver overflow
     const historicoCardInit = document.getElementById('historico-card');
     if (historicoCardInit) {
-      setTimeout(() => {
-        if (historicoCardInit.scrollHeight > historicoCardInit.clientHeight) {
-          historicoCardInit.scrollTop = historicoCardInit.scrollHeight;
-        }
-      }, 300);
+  // Não force autoscroll inicial; preserve posição do usuário
     }
     // Also after images load
     document.querySelectorAll('.mapa-img').forEach(img => {
