@@ -1645,10 +1645,9 @@
       const acoesCard = document.getElementById('form-ataque');
       const acaoTopRow = document.querySelector('.acao-top-row');
       const mapaAreas = document.querySelectorAll('.mapa-area');
-      const historicoCard = document.getElementById('historico-card');
-      const statusCard = document.getElementById('status-card');
-  // Evita mexer na altura do histórico logo após interação do usuário (impede "pulo" ao topo)
-  const holdHistoryResize = (() => { try { return Date.now() - (window._histUserScrollAt || 0) < 1400; } catch(_) { return false; } })();
+  const historicoCard = document.getElementById('historico-card');
+  const statusCard = document.getElementById('status-card');
+  // Removido: não sincronizamos mais a altura do histórico com o status para evitar "piscadas"
 
       const outerH = (el) => {
         if (!el) return 0;
@@ -1659,11 +1658,7 @@
       // Reset when stacked
       if (isStacked) {
         mapaAreas.forEach(m => m.style.height = '');
-        if (historicoCard) {
-          historicoCard.style.height = '';
-          historicoCard.style.maxHeight = '';
-          historicoCard.style.overflowY = '';
-        }
+        if (historicoCard) { historicoCard.style.height = ''; historicoCard.style.maxHeight = ''; historicoCard.style.overflowY = ''; }
         return;
       }
 
@@ -1673,19 +1668,7 @@
         mapaAreas.forEach(m => m.style.height = Math.max(360, alvoAlt) + 'px');
       }
 
-  // Histórico = mesma altura do Status; só ajuste scroll se usuário já estava no fim e não estiver em "hold"
-  if (historicoCard && statusCard && !holdHistoryResize) {
-        // Detect if user was near bottom before resizing
-        const wasNearBottom = (historicoCard.scrollHeight - historicoCard.scrollTop - historicoCard.clientHeight) < 24;
-        const statusAlt = statusCard.offsetHeight;
-        historicoCard.style.height = statusAlt + 'px';
-        historicoCard.style.maxHeight = statusAlt + 'px';
-        historicoCard.style.overflowY = 'auto';
-        // If the user was at the end, keep them at the end; otherwise, don't change scroll
-        if (wasNearBottom && historicoCard.scrollHeight > historicoCard.clientHeight) {
-          historicoCard.scrollTop = historicoCard.scrollHeight;
-        }
-      }
+  // Histórico: altura controlada por CSS (max-height), não ajustamos mais por JS.
     }
 
     // Run on load and resize (debounced)
