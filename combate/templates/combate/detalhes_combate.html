@@ -644,8 +644,11 @@
         const idleMs = Date.now() - lastEventAt;
         if (idleMs > 12000) { // >12s sem eventos: garante refresh e polling ligado
           startCombatePolling();
-          // Atualiza direita sem tocar no formulário de ações
-          refreshSelectors(['.turno-topbar', '#historico-card', '.combate-col-right', '#status-card']).catch(()=>{});
+          const hc = document.getElementById('historico-card');
+          const userReading = (()=>{ try { return hc && (hc.scrollHeight - hc.scrollTop - hc.clientHeight) >= 24; } catch(_) { return false; } })();
+          const sels = ['.turno-topbar', '.combate-col-right', '#status-card'];
+          if (!userReading) sels.splice(1, 0, '#historico-card');
+          refreshSelectors(sels).catch(()=>{});
         }
       }, 8000);
     }
@@ -1647,18 +1650,17 @@
         mapaAreas.forEach(m => m.style.height = Math.max(360, alvoAlt) + 'px');
       }
 
-      // Histórico = mesma altura do Status; se maior, aplica scroll
+      // Histórico = mesma altura do Status; não force autoscroll aqui
       if (historicoCard && statusCard) {
-        // Preserve current scroll position when resizing unless already at bottom
-        const nearBottom = (historicoCard.scrollHeight - historicoCard.scrollTop - historicoCard.clientHeight) < 24;
+        // Preserve current scroll position when resizing
+        const prevScroll = historicoCard.scrollTop || 0;
         const statusAlt = statusCard.offsetHeight;
         historicoCard.style.height = statusAlt + 'px';
         historicoCard.style.maxHeight = statusAlt + 'px';
         historicoCard.style.overflowY = 'auto';
-        // Mantém o scroll sempre no final para mostrar os eventos mais recentes
-        if (nearBottom && historicoCard.scrollHeight > historicoCard.clientHeight) {
-          historicoCard.scrollTop = historicoCard.scrollHeight;
-        }
+        // Restore scroll position (best effort)
+        const maxTop = Math.max(0, historicoCard.scrollHeight - historicoCard.clientHeight);
+        historicoCard.scrollTop = Math.min(maxTop, prevScroll);
       }
     }
 
