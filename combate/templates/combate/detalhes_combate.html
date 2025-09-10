@@ -138,7 +138,7 @@
   <div id="historico-card" class="combate-card">
   <ul class="turnos-list">
         {% for turno in turnos %}
-          <li class="turno-item {% if turno.ativo %}ativo{% endif %}">
+          <li class="turno-item {% if turno.ativo %}ativo{% endif %}" data-turno-id="{{ turno.id }}">
             <div class="turno-header">
               <strong>Rodada {{ turno.ordem }}</strong>
               <span class="turno-data">{{ turno.criado_em|date:"d/m/Y H:i" }}</span>
@@ -528,6 +528,75 @@
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     const combateId = '{{ combate.id }}';
+    // ====== Histórico: melhor legibilidade ======
+    function removeAccents(str){ try { return (str||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''); } catch(_) { return str||''; } }
+    function enhanceHistorico(container){
+      const scope = container || document;
+      const cards = scope.querySelectorAll('.turno-desc');
+      cards.forEach(desc => {
+        if (!desc) return;
+        // Guard: if already enhanced and content signature didn't change, skip
+        const raw = (desc.dataset.rawHtml && desc.dataset.rawHtml !== '') ? desc.dataset.rawHtml : desc.innerHTML;
+        const currentSig = String(raw.length) + ':' + (raw.match(/<br\s*\/?>(?=\s*\S)/gi)||[]).length;
+        if (desc.dataset.enhancedSig === currentSig) return;
+        // Capture raw HTML once (first run) to avoid compounding wraps
+        let html = desc.dataset.rawHtml || desc.innerHTML;
+        desc.dataset.rawHtml = html;
+        // Split by <br> or newlines into actions
+        const parts = html
+          .replace(/\r/g,'')
+          .split(/<br\s*\/?>(?:\s*)|\n/g)
+          .map(s => s.trim())
+          .filter(Boolean);
+        // Build new DOM
+        const frag = document.createDocumentFragment();
+        parts.forEach((line, idx) => {
+          const div = document.createElement('div');
+          div.className = 'hist-acao';
+          // Leading bullet removal
+          line = line.replace(/^•\s*/, '').trim();
+          // Wrap leading [TAG] into badge
+          const tagMatch = line.match(/^\[(.+?)\]\s*/);
+          if (tagMatch) {
+            const tagText = tagMatch[1];
+            const slug = removeAccents(tagText).toLowerCase().replace(/[^a-z0-9]+/g,'-');
+            const tagSpan = `<span class="hist-tag tag-${slug}">${tagText}</span>`;
+            line = tagSpan + ' ' + line.slice(tagMatch[0].length);
+          }
+          // Highlight common keywords and numbers
+          line = line
+            .replace(/\bCD\s*(\d+)\b/g, '<span class="hist-key">CD</span> <span class="hist-num">$1</span>')
+            .replace(/\bDano\b/g, '<span class="hist-key dano">Dano</span>')
+            .replace(/\bAfli[cç][aã]o\b/gi, '<span class="hist-key aflicao">Aflição</span>')
+            .replace(/\bteste\b/gi, '<span class="hist-key teste">teste</span>');
+          div.innerHTML = line;
+          frag.appendChild(div);
+        });
+        desc.innerHTML = '';
+        desc.appendChild(frag);
+        desc.dataset.enhancedSig = currentSig;
+      });
+      // Collapsible rounds: header toggle with persisted state
+      scope.querySelectorAll('.turno-item').forEach(li => {
+        const hid = li.getAttribute('data-turno-id') || '';
+        const key = `combate:${combateId}:turno:${hid}:col`;
+        const header = li.querySelector('.turno-header');
+        if (header && !header.dataset.collapseBound) {
+          header.style.cursor = 'pointer';
+          header.setAttribute('role','button');
+          header.addEventListener('click', () => {
+            li.classList.toggle('collapsed');
+            try { localStorage.setItem(key, li.classList.contains('collapsed') ? '1' : '0'); } catch(_) {}
+          });
+          header.dataset.collapseBound = '1';
+        }
+        // Restore saved collapsed state
+        try {
+          const saved = localStorage.getItem(key);
+          if (saved === '1') li.classList.add('collapsed');
+        } catch(_) {}
+      });
+    }
     (function(){
       var rootEl = document.getElementById('combate-content');
       window._IS_GM = !!(rootEl && rootEl.dataset && rootEl.dataset.isGm === 'true');
@@ -835,12 +904,14 @@
           const target = document.querySelector(it.sel);
           if (target && it.fresh) target.replaceWith(it.fresh);
         }
-        // Reaplica comportamentos após substituições
+  // Reaplica comportamentos após substituições
     rafEqualize();
   // Restaura estados do mapa após substituição
         restoreMapStates();
   // Se não houver estado salvo (primeira vez), garanta cobertura
   ensureAllAreasMinScale();
+  // Reformat history for readability
+  try { enhanceHistorico(document); } catch(_) {}
         // Autoscroll apenas se antes já estava perto do fim
         const historico = document.getElementById('historico-card');
         if (historicoWasNearBottom && historico && historico.scrollHeight > historico.clientHeight) {
@@ -1410,7 +1481,15 @@
             const extra = document.createElement('div');
             extra.innerHTML = payload.descricao || '';
             // Preserva quebras de linha como HTML
-            ativo.innerHTML = (ativo.innerHTML ? ativo.innerHTML + '<br>' : '') + extra.innerHTML;
+            if (ativo.dataset.rawHtml) {
+              ativo.dataset.rawHtml = (ativo.dataset.rawHtml ? ativo.dataset.rawHtml + '<br>' : '') + (payload.descricao || '');
+              ativo.innerHTML = ativo.dataset.rawHtml;
+              // Reaplica enhance somente para este bloco
+              try { enhanceHistorico(ativo.parentElement); } catch(_) {}
+            } else {
+              ativo.innerHTML = (ativo.innerHTML ? ativo.innerHTML + '<br>' : '') + extra.innerHTML;
+              try { enhanceHistorico(ativo.parentElement); } catch(_) {}
+            }
             const historico = document.getElementById('historico-card');
             if (historico && historico.scrollHeight > historico.clientHeight) historico.scrollTop = historico.scrollHeight;
             // Garante atualização do status dos participantes sem recarregar a página inteira
@@ -1587,6 +1666,8 @@
   updateAllGrids();
   ensureAllAreasMinScale();
   try { restoreTokenSizes(document); } catch(_) {}
+  // Formata histórico ao carregar
+  try { enhanceHistorico(document); } catch(_) {}
 
     // ====== Ações do topo: selecionar/usar/adicionar mapa ======
     function setupTopbarMapActions(){

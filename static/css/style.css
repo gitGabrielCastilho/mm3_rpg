@@ -988,6 +988,23 @@ body {
 .turno-header { display:flex; flex-wrap:wrap; gap:0.6rem; align-items:center; margin-bottom:0.25rem; }
 .turno-data { font-size:0.68rem; letter-spacing:0.5px; background:#151515; padding:0.25rem 0.5rem; border-radius:0.5rem; color:#bbb; }
 .turno-desc { line-height:1.3; }
+.turno-desc .hist-acao { padding:6px 10px; border-left:3px solid #3a3a3a; border-radius:6px; }
+.turno-desc .hist-acao:nth-child(odd) { background:#191919; }
+.turno-desc .hist-acao:nth-child(even) { background:#141414; }
+.turno-desc .hist-acao + .hist-acao { margin-top:6px; }
+.hist-tag { display:inline-block; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.5px; font-weight:800; padding:0.16rem 0.45rem; border-radius:0.55rem; background:#2a2a2a; color:#ddd; margin-right:6px; position:relative; top:-1px; }
+.hist-tag.tag-sustentado { background:#1f2a1f; color:#bfe8c0; }
+.hist-tag.tag-concentracao { background:#2a1f1f; color:#f1b7b7; }
+.hist-tag.tag-encadeado { background:#1f2430; color:#b7c9f1; }
+.hist-key { font-weight:700; color:var(--gold); }
+.hist-key.dano { color:#ffb3b3; }
+.hist-key.aflicao { color:#c5e1ff; }
+.hist-num { font-weight:800; color:#fff; }
+/* Collapsible rounds */
+.turno-item.collapsed .turno-desc { display:none; }
+.turno-item .turno-header { position:relative; padding-right:22px; }
+.turno-item .turno-header::after { content:'▾'; position:absolute; right:0; top:50%; transform:translateY(-50%); opacity:0.6; }
+.turno-item.collapsed .turno-header::after { content:'▸'; }
 .historico-scroll { overflow-y:auto; }
 .mapa-area { position:relative; width:100%; max-width:100%; height:420px; border:1px solid #333; border-radius:0.6rem; overflow:auto; background:#111; margin:0 0 1.2rem 0; box-shadow:0 4px 14px #000a; }
 /* A área real do mapa (tamanho natural da imagem) */
