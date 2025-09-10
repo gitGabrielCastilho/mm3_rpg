@@ -393,6 +393,25 @@ def editar_personagem(request, personagem_id):
 
             # InlineFormSet não tem M2M, mas chamamos para consistência
             formset.save_m2m()
+            # Auto-link: em edição, sincroniza ligações por (nome, modo, duração)
+            try:
+                poderes_personagem = list(Poder.objects.filter(personagem=personagem))
+                grupos = {}
+                for p in poderes_personagem:
+                    chave = (p.nome, p.modo, p.duracao)
+                    grupos.setdefault(chave, []).append(p)
+                for grupo in grupos.values():
+                    if len(grupo) < 2:
+                        # se só 1 no grupo, zera ligações dele
+                        g = grupo[0]
+                        if getattr(g, 'ligados', None) is not None:
+                            g.ligados.clear()
+                        continue
+                    for p in grupo:
+                        outros = [q for q in grupo if q.id != p.id]
+                        p.ligados.set(outros)
+            except Exception as e:
+                logger.warning("[editar_personagem] Auto-link falhou: %s", e)
             return redirect('listar_personagens')
         else:
             # Surface concise error indicators via messages
@@ -691,6 +710,24 @@ def editar_npc(request, personagem_id):
             npc.sala = sala_atual
             npc.save()
             formset.save()
+            # Auto-link: sincroniza ligações por (nome, modo, duração) após salvar edição
+            try:
+                poderes_npc = list(Poder.objects.filter(personagem=npc))
+                grupos = {}
+                for p in poderes_npc:
+                    chave = (p.nome, p.modo, p.duracao)
+                    grupos.setdefault(chave, []).append(p)
+                for grupo in grupos.values():
+                    if len(grupo) < 2:
+                        g = grupo[0]
+                        if getattr(g, 'ligados', None) is not None:
+                            g.ligados.clear()
+                        continue
+                    for p in grupo:
+                        outros = [q for q in grupo if q.id != p.id]
+                        p.ligados.set(outros)
+            except Exception as e:
+                logger.warning("[editar_npc] Auto-link falhou: %s", e)
             return redirect('listar_npcs')
         else:
             from django.forms.utils import ErrorDict

@@ -1,5 +1,5 @@
 from django import forms
-from django.forms import inlineformset_factory
+from django.forms import inlineformset_factory, BaseInlineFormSet
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from .models import Personagem, Poder, Inventario, Vantagem
@@ -98,10 +98,40 @@ class PoderForm(forms.ModelForm):
                 raise forms.ValidationError(f"Poder ligado '{lp.nome}' deve ter o mesmo nome ('{nome}').")
         return cleaned_data
 
+# Validação no formset: proíbe poderes com mesmo nome, mas modos/durações diferentes
+class _PoderesConsistentesFormSet(BaseInlineFormSet):
+    def clean(self):
+        super().clean()
+        # Se qualquer formulário individual falhou, pule para não duplicar mensagens
+        # Ainda assim, conseguimos validar com os que possuem cleaned_data
+        variantes_por_nome = {}
+        nomes_originais = {}
+        for form in getattr(self, 'forms', []):
+            if not hasattr(form, 'cleaned_data'):
+                continue
+            cd = form.cleaned_data or {}
+            if cd.get('DELETE'):
+                continue
+            nome = (cd.get('nome') or '').strip()
+            if not nome:
+                continue
+            modo = cd.get('modo')
+            duracao = cd.get('duracao')
+            key = nome.lower()
+            nomes_originais.setdefault(key, nome)
+            variantes_por_nome.setdefault(key, set()).add((modo, duracao))
+        conflitos = [nomes_originais[k] for k, vs in variantes_por_nome.items() if len(vs) > 1]
+        if conflitos:
+            raise forms.ValidationError(
+                "Não é possível salvar: existem poderes com o mesmo nome mas com modo e/ou duração diferentes: "
+                + ", ".join(sorted(set(conflitos)))
+            )
+
 PoderFormSet = inlineformset_factory(
     Personagem,
     Poder,
     form=PoderForm,
+    formset=_PoderesConsistentesFormSet,
     extra=1,
     can_delete=True
 )
@@ -182,6 +212,7 @@ PoderNPCFormSet = inlineformset_factory(
     Personagem,
     Poder,
     form=PoderNPCForm,
+    formset=_PoderesConsistentesFormSet,
     extra=1,
     can_delete=True
 )

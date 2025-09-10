@@ -101,97 +101,7 @@
       <div>
         {{ form.especialidade_casting_ability.label_tag }} {{ form.especialidade_casting_ability }}
       </div>
-      <div class="pericias-grid-4" style="display:grid; grid-template-columns:repeat(4, minmax(140px,1fr)); gap:1.4rem 2.2rem; justify-items:center; margin-bottom:2rem;">
-
-<script>
-// Transforma selects multiple[data-multi-dropdown] em dropdown com checkboxes
-document.addEventListener('DOMContentLoaded', function(){
-  function enhanceMultiDropdown(root){
-    const selects = (root || document).querySelectorAll('select[multiple][data-multi-dropdown]');
-    selects.forEach(function(sel){
-      if (sel.dataset.mdEnhanced) return; sel.dataset.mdEnhanced = '1';
-      sel.style.display = 'none';
-      const wrapper = document.createElement('div');
-  wrapper.style.position = 'relative';
-  wrapper.style.display = 'inline-block';
-  wrapper.style.width = '100%';
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'btn';
-      btn.textContent = 'Selecionar ligados';
-      btn.style.width = '100%';
-      const panel = document.createElement('div');
-  panel.style.position = 'absolute';
-  panel.style.zIndex = '40';
-  panel.style.background = '#222';
-  panel.style.border = '1px solid #444';
-  panel.style.borderRadius = '8px';
-  panel.style.padding = '6px 0';
-  panel.style.left = '0';
-  panel.style.top = 'calc(100% + 4px)';
-  panel.style.width = '100%';
-  panel.style.maxHeight = '240px';
-  panel.style.overflow = 'auto';
-  panel.style.display = 'none';
-      // Lista de checkboxes
-      Array.from(sel.options).forEach(function(opt){
-        const row = document.createElement('label');
-        row.style.display = 'flex';
-        row.style.alignItems = 'center';
-        row.style.gap = '10px';
-        row.style.padding = '6px 8px';
-        row.style.cursor = 'pointer';
-        row.addEventListener('mouseenter', function(){ row.style.background = '#2a2a2a'; });
-        row.addEventListener('mouseleave', function(){ row.style.background = 'transparent'; });
-        const box = document.createElement('span');
-        box.style.display = 'inline-flex';
-        box.style.width = '22px';
-        box.style.justifyContent = 'center';
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.value = opt.value;
-        cb.checked = opt.selected;
-        cb.style.margin = '0';
-        cb.addEventListener('change', function(){
-          opt.selected = cb.checked;
-          const evt = new Event('change', {bubbles:true}); sel.dispatchEvent(evt);
-        });
-        const txt = document.createElement('span');
-        txt.textContent = opt.textContent;
-        txt.style.flex = '1 1 auto';
-        txt.style.minWidth = '0';
-        box.appendChild(cb);
-        row.appendChild(box);
-        row.appendChild(txt);
-        panel.appendChild(row);
-      });
-      btn.addEventListener('click', function(){
-        // Ajusta largura para casar com o botão
-        try { panel.style.width = btn.offsetWidth + 'px'; } catch(_) {}
-        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-      });
-      document.addEventListener('click', function(ev){
-        if (!wrapper.contains(ev.target)) panel.style.display = 'none';
-      });
-      sel.parentNode.insertBefore(wrapper, sel);
-      wrapper.appendChild(btn);
-      wrapper.appendChild(panel);
-      wrapper.appendChild(sel);
-    });
-  }
-
-  // inicial
-  enhanceMultiDropdown(document);
-  // re-aplica quando adiciona novos poderes
-  window.adicionarPoder = (function(orig){
-    return function(){
-      if (typeof orig === 'function') orig();
-      // pequeno atraso p/ DOM clonar
-      setTimeout(function(){ enhanceMultiDropdown(document); }, 0);
-    };
-  })(window.adicionarPoder);
-});
-</script>
+  <div class="pericias-grid-4" style="display:grid; grid-template-columns:repeat(4, minmax(140px,1fr)); gap:1.4rem 2.2rem; justify-items:center; margin-bottom:2rem;">
         {% for campo in pericias_col1 %}
           {% with field=form|lookup:campo %}
             <div class="pericia-campo" style="display:flex; flex-direction:column; align-items:center;">
@@ -233,12 +143,7 @@ document.addEventListener('DOMContentLoaded', function(){
           <div class="campo-poder">{{ formset.empty_form.vantagem_origem.label_tag }}{{ formset.empty_form.vantagem_origem }}</div>
           <div class="campo-poder linha-checkbox">{{ formset.empty_form.de_vantagem }} <label for="{{ formset.empty_form.de_vantagem.id_for_label }}">Poder de Vantagem?</label></div>
           <div class="campo-poder span-2">
-            {{ formset.empty_form.ligados.label_tag }}{{ formset.empty_form.ligados }}
-            {% if formset.empty_form.ligados.field.queryset|length == 0 %}
-              <div class="helptext">Após salvar haverá opções para encadear.</div>
-            {% else %}
-              <div class="helptext">Dropdown aceita múltiplos (Ctrl/Cmd) — selecione poderes com mesmo nome, modo e duração.</div>
-            {% endif %}
+            <div class="helptext">Ligação automática: poderes com mesmo nome, modo e duração serão ligados ao salvar.</div>
           </div>
           <div class="span-2" style="margin-top:0.4rem; text-align:right; display:flex; gap:0.7rem; justify-content:flex-end;">
             <button type="button" class="btn btn-danger" onclick="removerPoderLinha(this)">Remover</button>
@@ -271,12 +176,7 @@ document.addEventListener('DOMContentLoaded', function(){
                       <div class="campo-poder">{{ form.vantagem_origem.label_tag }}{{ form.vantagem_origem }}{% if form.vantagem_origem.errors %}<div style="color:#f88;">{{ form.vantagem_origem.errors }}</div>{% endif %}</div>
                       <div class="campo-poder linha-checkbox">{{ form.de_vantagem }} <label for="{{ form.de_vantagem.id_for_label }}">Poder de Vantagem?</label>{% if form.de_vantagem.errors %}<div style="color:#f88;">{{ form.de_vantagem.errors }}</div>{% endif %}</div>
                       <div class="campo-poder span-2">
-                        {{ form.ligados.label_tag }}{{ form.ligados }}
-                        {% if form.ligados.field.queryset|length == 0 %}
-                          <div class="helptext">Nenhum outro poder elegível (verifique nome, modo e duração) ou adicione mais poderes.</div>
-                        {% else %}
-                          <div class="helptext">Dropdown aceita múltiplos (Ctrl/Cmd). Selecionados serão executados em cadeia.</div>
-                        {% endif %}
+                        <div class="helptext">Ligação automática: poderes com mesmo nome, modo e duração serão ligados ao salvar.</div>
                       </div>
                     {% if form.non_field_errors %}
                       <div class="span-2" style="color:#f88;">{{ form.non_field_errors }}</div>
