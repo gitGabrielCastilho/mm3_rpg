@@ -1309,6 +1309,8 @@ body {
 /* If there are action buttons at the bottom, make them sticky so they are always reachable */
 .sidebar .sidebar-actions-sticky { position: sticky; bottom: 8px; background: linear-gradient(180deg, transparent 0, rgba(0,0,0,0.25) 35%, var(--card-bg) 65%); padding-top: 0.6rem; padding-right: 14px; margin-top: 0.6rem; padding-bottom: 0.6rem; }
 .sidebar .sidebar-actions-sticky .btn { width: 100%; margin: 0.4rem 0 0 0; display:block; box-sizing: border-box; }
+/* As a safety net, kill any residual margins on buttons in the sidebar (inline styles or global rules) */
+.sidebar .btn, .sidebar .button { margin-left: 0 !important; margin-right: 0 !important; max-width: 100%; }
 /* Prevent global .btn margin-left from causing horizontal overflow inside the sidebar */
 .sidebar .btn { margin-left: 0; }
 
