@@ -1268,7 +1268,7 @@ body {
 }
 .sidebar .sidebar-toggle {
   position: fixed; /* stay visible while scrolling the sidebar */
-  right: 328px; /* 320px sidebar width + small gap */
+  right: 352px; /* move further outside to avoid overlapping the title */
   top: 84px; /* below navbar */
   width: 36px;
   height: 36px;
@@ -1307,8 +1307,10 @@ body {
 .sidebar li { color: var(--text-main); line-height: 1.35; }
 
 /* If there are action buttons at the bottom, make them sticky so they are always reachable */
-.sidebar .sidebar-actions-sticky { position: sticky; bottom: 8px; background: linear-gradient(180deg, transparent 0, rgba(0,0,0,0.25) 35%, var(--card-bg) 65%); padding-top: 0.6rem; padding-right: 10px; margin-top: 0.6rem; padding-bottom: 0.6rem; }
-.sidebar .sidebar-actions-sticky .btn { width: 100%; margin-top: 0.4rem; display:block; box-sizing: border-box; }
+.sidebar .sidebar-actions-sticky { position: sticky; bottom: 8px; background: linear-gradient(180deg, transparent 0, rgba(0,0,0,0.25) 35%, var(--card-bg) 65%); padding-top: 0.6rem; padding-right: 14px; margin-top: 0.6rem; padding-bottom: 0.6rem; }
+.sidebar .sidebar-actions-sticky .btn { width: 100%; margin: 0.4rem 0 0 0; display:block; box-sizing: border-box; }
+/* Prevent global .btn margin-left from causing horizontal overflow inside the sidebar */
+.sidebar .btn { margin-left: 0; }
 
 .card {
   background: var(--card-bg);
