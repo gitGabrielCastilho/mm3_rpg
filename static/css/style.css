@@ -1242,9 +1242,12 @@ body {
   background: var(--card-bg);
   box-shadow: -2px 0 12px rgba(0,0,0,0.18);
   border-radius: 16px 0 0 16px;
-  padding: 2rem 1.5rem 1.5rem 1.5rem;
+  padding: 2rem 1.5rem 2.5rem 1.5rem; /* extra bottom padding so last buttons are reachable */
   color: var(--text-main);
   overflow-y: auto;
+  overscroll-behavior: contain; /* prevent page scroll hijacking */
+  -webkit-overflow-scrolling: touch; /* smooth on mobile */
+  scrollbar-gutter: stable; /* avoid layout shift with scrollbar */
   z-index: 90;
   transition: right 0.3s cubic-bezier(.4,0,.2,1), width 0.3s cubic-bezier(.4,0,.2,1);
 }
@@ -1263,9 +1266,9 @@ body {
 .sidebar.closed .sidebar-toggle {
   display: flex !important;
 }
-.sidebar-toggle {
+.sidebar .sidebar-toggle {
   position: fixed;
-  right: 0;
+  right: 320px; /* sit just outside the open sidebar so it doesn't block the scrollbar */
   top: 84px;
   width: 36px;
   height: 36px;
@@ -1282,6 +1285,25 @@ body {
   z-index: 200;
   transition: right 0.3s cubic-bezier(.4,0,.2,1);
 }
+
+/* When the sidebar is collapsed to mini width */
+.sidebar.closed .sidebar-toggle { right: 40px; }
+
+/* If DOM structure differs, keep a safe default: ensure toggle is not over sidebar scrollbar */
+@media (max-width: 900px) {
+  .sidebar-toggle { right: 0; }
+}
+
+/* Sidebar readability: ensure links have high contrast and visited color isn't purple on dark bg */
+.sidebar a { color: #e8e8ff !important; text-decoration: none; }
+.sidebar a:visited { color: #cfd6ff !important; }
+.sidebar a:hover, .sidebar a:focus { color: var(--gold) !important; text-decoration: underline; }
+.sidebar ul, .sidebar ol { padding-left: 1.2rem; margin: 0.4rem 0 1rem 0; }
+.sidebar li { color: var(--text-main); line-height: 1.35; }
+
+/* If there are action buttons at the bottom, make them sticky so they are always reachable */
+.sidebar .sidebar-actions-sticky { position: sticky; bottom: 0; background: linear-gradient(180deg, transparent 0, rgba(0,0,0,0.25) 30%, var(--card-bg) 60%); padding-top: 0.6rem; margin-top: 0.6rem; }
+.sidebar .sidebar-actions-sticky .btn { width: 100%; margin-top: 0.4rem; }
 
 .card {
   background: var(--card-bg);
