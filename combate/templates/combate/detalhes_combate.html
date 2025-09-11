@@ -14,13 +14,13 @@
       {% endif %}
       </div>
       <div class="turno-topbar-actions">
-      {% if not turno_ativo and combate.ativo %}
+  {% if not turno_ativo and combate.ativo and combate.sala.game_master == user %}
         <form method="post" action="{% url 'iniciar_turno' combate.id %}" class="inline-form">
           {% csrf_token %}
           <button type="submit" class="btn btn-sm">Iniciar Turno</button>
         </form>
       {% endif %}
-      {% if turno_ativo %}
+  {% if turno_ativo and combate.sala.game_master == user %}
         <form method="post" action="{% url 'avancar_turno' combate.id %}" class="inline-form">
           {% csrf_token %}
           <button type="submit" formnovalidate class="btn btn-sm">Avançar Turno</button>
