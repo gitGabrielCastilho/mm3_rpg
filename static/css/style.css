@@ -1242,7 +1242,7 @@ body {
   background: var(--card-bg);
   box-shadow: -2px 0 12px rgba(0,0,0,0.18);
   border-radius: 16px 0 0 16px;
-  padding: 2rem 1.2rem 3.2rem 1.2rem; /* extra bottom padding so last buttons are reachable */
+  padding: 2rem 1.2rem 6.5rem 1.2rem; /* larger bottom padding so sticky buttons are never cut */
   color: var(--text-main);
   overflow-y: auto;
   overscroll-behavior: contain; /* prevent page scroll hijacking */
@@ -1267,9 +1267,9 @@ body {
   display: flex !important;
 }
 .sidebar .sidebar-toggle {
-  position: absolute; /* anchor relative to the sidebar */
-  left: -38px; /* sit just outside the sidebar, not covering content */
-  top: 20px;
+  position: fixed; /* stay visible while scrolling the sidebar */
+  right: 328px; /* 320px sidebar width + small gap */
+  top: 84px; /* below navbar */
   width: 36px;
   height: 36px;
   background: var(--secondary-bg);
@@ -1283,15 +1283,15 @@ body {
   align-items: center;
   justify-content: center;
   z-index: 200;
-  transition: left 0.3s cubic-bezier(.4,0,.2,1);
+  transition: right 0.3s cubic-bezier(.4,0,.2,1), top 0.2s;
 }
 
 /* When the sidebar is collapsed to mini width */
-.sidebar.closed .sidebar-toggle { left: 2px; }
+.sidebar.closed .sidebar-toggle { right: 8px; border-radius: 18px; }
 
 /* Mobile: sidebar spans full width, keep toggle on the right edge */
 @media (max-width: 900px) {
-  .sidebar .sidebar-toggle { left: auto; right: 8px; top: 12px; border-radius: 18px; }
+  .sidebar .sidebar-toggle { right: 8px; top: 12px; border-radius: 18px; }
 }
 
 /* If DOM structure differs, keep a safe default: ensure toggle is not over sidebar scrollbar */
@@ -1307,7 +1307,7 @@ body {
 .sidebar li { color: var(--text-main); line-height: 1.35; }
 
 /* If there are action buttons at the bottom, make them sticky so they are always reachable */
-.sidebar .sidebar-actions-sticky { position: sticky; bottom: 0; background: linear-gradient(180deg, transparent 0, rgba(0,0,0,0.25) 30%, var(--card-bg) 60%); padding-top: 0.6rem; margin-top: 0.6rem; padding-bottom: 0.6rem; }
+.sidebar .sidebar-actions-sticky { position: sticky; bottom: 8px; background: linear-gradient(180deg, transparent 0, rgba(0,0,0,0.25) 35%, var(--card-bg) 65%); padding-top: 0.6rem; padding-right: 10px; margin-top: 0.6rem; padding-bottom: 0.6rem; }
 .sidebar .sidebar-actions-sticky .btn { width: 100%; margin-top: 0.4rem; display:block; box-sizing: border-box; }
 
 .card {
