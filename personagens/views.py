@@ -107,7 +107,7 @@ def criar_personagem(request):
         'acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao',
         'especialidade', 'furtividade', 'intimidacao', 'intuicao', 'investigacao',
         'percepcao', 'persuasao', 'prestidigitacao', 'tecnologia', 'tratamento',
-        'veiculos', 'historia', 'sobrevivencia'
+        'veiculos', 'historia', 'sobrevivencia', 'arcana', 'religiao'
     ]
     meio = len(pericias) // 2 + len(pericias) % 2
     pericias_col1 = pericias[:meio]
@@ -199,6 +199,8 @@ def _clonar_personagem(orig: Personagem, sala_destino: Sala, dono):
         'veiculos': orig.veiculos,
         'historia': orig.historia,
         'sobrevivencia': orig.sobrevivencia,
+        'arcana': orig.arcana,
+        'religiao': orig.religiao,
     }
     novo = Personagem(**campos_simples)
     novo.usuario = dono
@@ -489,7 +491,7 @@ def editar_personagem(request, personagem_id):
         'acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao',
         'especialidade', 'furtividade', 'intimidacao', 'intuicao', 'investigacao',
         'percepcao', 'persuasao', 'prestidigitacao', 'tecnologia', 'tratamento',
-        'veiculos', 'historia', 'sobrevivencia'
+        'veiculos', 'historia', 'sobrevivencia', 'arcana', 'religiao'
     ]
     meio = len(pericias) // 2 + len(pericias) % 2
     pericias_col1 = pericias[:meio]
@@ -559,7 +561,7 @@ def ficha_personagem(request, personagem_id):
         'defesas': ['aparar', 'esquivar', 'fortitude', 'vontade', 'resistencia'],
         'pericias': ['acrobacias', 'atletismo', 'combate_distancia','combate_corpo', 'enganacao', 'especialidade', 'furtividade',
     'intimidacao', 'intuicao', 'investigacao', 'percepcao', 'persuasao', 'prestidigitacao', 'tecnologia', 'tratamento', 'veiculos',
-    'historia', 'sobrevivencia']
+    'historia', 'sobrevivencia', 'arcana', 'religiao']
     }
 
     return render(request, 'personagens/ficha_personagem.html', {
@@ -647,7 +649,7 @@ def criar_npc(request, sala_id):
         'acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao',
         'especialidade', 'furtividade', 'intimidacao', 'intuicao', 'investigacao',
         'percepcao', 'persuasao', 'prestidigitacao', 'tecnologia', 'tratamento',
-        'veiculos', 'historia', 'sobrevivencia'
+        'veiculos', 'historia', 'sobrevivencia', 'arcana', 'religiao'
     ]
     meio = len(pericias) // 2 + len(pericias) % 2
     context = {

@@ -73,6 +73,9 @@ class Personagem(models.Model):
     veiculos = models.IntegerField(default=0)
     historia = models.IntegerField(default=0)
     sobrevivencia = models.IntegerField(default=0)
+    # Novas Perícias
+    arcana = models.IntegerField(default=0)
+    religiao = models.IntegerField(default=0)
 
 
     def clean(self):
@@ -138,6 +141,8 @@ class Personagem(models.Model):
             ('Veículos', self.veiculos),
             ('História', self.historia),
             ('Sobrevivência', self.sobrevivencia),
+            ('Arcana', self.arcana),
+            ('Religião', self.religiao),
         ]
 
         for nome, valor in pericias:

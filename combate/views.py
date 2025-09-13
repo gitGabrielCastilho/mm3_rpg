@@ -175,7 +175,7 @@ def detalhes_combate(request, combate_id):
         'acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao',
         'especialidade', 'furtividade', 'intimidacao', 'intuicao', 'investigacao',
         'percepcao', 'persuasao', 'prestidigitacao', 'tecnologia', 'tratamento',
-        'veiculos', 'historia', 'sobrevivencia'
+        'veiculos', 'historia', 'sobrevivencia', 'arcana', 'religiao'
     ]
     caracteristicas = [
         'forca', 'vigor', 'destreza', 'agilidade', 'luta', 'inteligencia', 'prontidao', 'presenca'
@@ -900,6 +900,8 @@ def realizar_ataque(request, combate_id):
         'veiculos': 'destreza',
         'historia': 'inteligencia',
         'sobrevivencia': 'prontidao',
+        'arcana': 'inteligencia',
+        'religiao': 'prontidao',
     }
 
     # Ramificações simples: perícia, característica e d20

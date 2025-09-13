@@ -31,6 +31,7 @@ class PersonagemForm(forms.ModelForm):
             'acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao', 'especialidade',
             'furtividade', 'intimidacao', 'intuicao', 'investigacao', 'percepcao', 'persuasao',
             'prestidigitacao', 'tecnologia', 'tratamento', 'veiculos', 'historia', 'sobrevivencia',
+            'arcana', 'religiao',
             # Campo especialidade_casting_ability
             'especialidade_casting_ability',
             'vantagens',
@@ -162,6 +163,7 @@ class PersonagemNPCForm(forms.ModelForm):
             'acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao', 'especialidade',
             'furtividade', 'intimidacao', 'intuicao', 'investigacao', 'percepcao', 'persuasao',
             'prestidigitacao', 'tecnologia', 'tratamento', 'veiculos', 'historia', 'sobrevivencia',
+            'arcana', 'religiao',
             # Campo especialidade_casting_ability
             'especialidade_casting_ability',
         ]
