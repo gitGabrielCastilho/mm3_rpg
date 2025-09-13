@@ -432,9 +432,8 @@ def iniciar_turno(request, combate_id):
                     )
             # Cura: repete a rolagem de cura do conjurador para o mesmo alvo
             elif poder.tipo == 'cura':
-                casting_ability = getattr(poder, 'casting_ability', '')
-                bonus_caster = getattr(ef.aplicador, casting_ability, 0) if casting_ability else 0
-                rolagem = random.randint(1, 20) + bonus_caster
+                # Novo: Cura usa d20 + Nível de Efeito (não mais Habilidade de Conjuração)
+                rolagem = random.randint(1, 20) + int(getattr(poder, 'nivel_efeito', 0) or 0)
                 cd = 10 - poder.nivel_efeito
                 if rolagem >= cd:
                     if alvo_part.dano >= alvo_part.aflicao and alvo_part.dano > 0:
@@ -581,9 +580,8 @@ def avancar_turno(request, combate_id):
                     else:
                         mensagens_tick.append(f"{label} {poder.nome} em {alvo.nome}: teste de {defesa_attr} ({msg_def}) contra CD {cd} — sem efeito.")
                 elif poder.tipo == 'cura':
-                    casting_ability = getattr(poder, 'casting_ability', '')
-                    bonus = getattr(personagem_proximo, casting_ability, 0) if casting_ability else 0
-                    roll = random.randint(1, 20) + bonus
+                    # Novo: Cura usa d20 + Nível de Efeito
+                    roll = random.randint(1, 20) + int(getattr(poder, 'nivel_efeito', 0) or 0)
                     cd = 10 - poder.nivel_efeito
                     if roll >= cd:
                         if alvo_part.dano >= alvo_part.aflicao and alvo_part.dano > 0:
@@ -1104,7 +1102,8 @@ def realizar_ataque(request, combate_id):
                 resultado = None
 
                 if tipo == 'cura':
-                    rolagem = random.randint(1, 20) + getattr(atacante, getattr(poder_atual, 'casting_ability', ''), 0)
+                    # Novo: Cura usa d20 + Nível de Efeito
+                    rolagem = random.randint(1, 20) + int(getattr(poder_atual, 'nivel_efeito', 0) or 0)
                     cd = 10 - poder_atual.nivel_efeito
                     if rolagem >= cd:
                         if participante_alvo.dano >= participante_alvo.aflicao and participante_alvo.dano > 0:

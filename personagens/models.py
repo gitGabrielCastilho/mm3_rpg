@@ -17,6 +17,15 @@ CASTING_ABILITY_CHOICES = [
     ('presenca', 'Presença'),
 ]
 
+# Para poderes: permitir escolher também Defesas como "Habilidade de Conjuração"
+POWER_CASTING_ABILITY_CHOICES = CASTING_ABILITY_CHOICES + [
+    ('aparar', 'Aparar'),
+    ('esquivar', 'Esquivar'),
+    ('fortitude', 'Fortitude'),
+    ('vontade', 'Vontade'),
+    ('resistencia', 'Resistência'),
+]
+
 
 class Personagem(models.Model):
     is_npc = models.BooleanField(default=False)
@@ -185,7 +194,7 @@ class Poder(models.Model):
     ]
     casting_ability = models.CharField(
         max_length=20,
-        choices=CASTING_ABILITY_CHOICES,
+        choices=POWER_CASTING_ABILITY_CHOICES,
         verbose_name="Habilidade de Conjuração",
         default='inteligencia'
     )
