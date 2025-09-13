@@ -1213,8 +1213,19 @@ def realizar_ataque(request, combate_id):
 
                     if modo == 'area':
                         esquiva = _atributo_efetivo(alvo, participante_alvo, 'esquivar', combate.id)
+                        # Bônus específico (Aprimorar instantâneo) para próxima rolagem de Esquivar
+                        esq_map = participante_alvo.proximo_bonus_por_atributo or {}
+                        esq_next = int(esq_map.get('esquivar', 0))
                         rolagem_esq_base = random.randint(1, 20)
-                        rolagem_esq = rolagem_esq_base + esquiva
+                        rolagem_esq = rolagem_esq_base + esquiva + esq_next
+                        # Consome bônus específico de Esquivar
+                        if esq_next:
+                            try:
+                                del esq_map['esquivar']
+                            except Exception:
+                                esq_map['esquivar'] = 0
+                            participante_alvo.proximo_bonus_por_atributo = esq_map
+                            participante_alvo.save()
                         cd = poder_atual.nivel_efeito + (15 if tipo == 'dano' else 10)
                         cd_sucesso = (15 if tipo == 'dano' else 10) + poder_atual.nivel_efeito
                         cd_sucesso //= 2
@@ -1246,6 +1257,7 @@ def realizar_ataque(request, combate_id):
                                 f"{' - ' + str(debuff) if debuff else ''}"
                                 f"{a_piece} = {d_total}"
                             )
+                            esq_piece = (f" + {esq_next}" if esq_next > 0 else (f" - {abs(esq_next)}" if esq_next < 0 else ""))
                             if tipo == 'dano':
                                 if d_total < cd:
                                     participante_alvo.dano += 1
@@ -1255,10 +1267,10 @@ def realizar_ataque(request, combate_id):
                                             combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
                                             poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
                                         )
-                                    resultado = f"{alvo.nome} falhou esquiva ({rolagem_esq_base}+{esquiva}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} <b>Dano +1</b> ({poder_atual.nome})"
+                                    resultado = f"{alvo.nome} falhou esquiva ({rolagem_esq_base}+{esquiva}{esq_piece}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} <b>Dano +1</b> ({poder_atual.nome})"
                                     manter_concentracao_apos_sofrer(participante_alvo)
                                 else:
-                                    resultado = f"{alvo.nome} falhou esquiva ({rolagem_esq_base}+{esquiva}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} (sem dano) ({poder_atual.nome})"
+                                    resultado = f"{alvo.nome} falhou esquiva ({rolagem_esq_base}+{esquiva}{esq_piece}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} (sem dano) ({poder_atual.nome})"
                             else:
                                 if d_total < cd:
                                     participante_alvo.aflicao += 1
@@ -1268,10 +1280,10 @@ def realizar_ataque(request, combate_id):
                                             combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
                                             poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
                                         )
-                                    resultado = f"{alvo.nome} falhou esquiva ({rolagem_esq_base}+{esquiva}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} <b>Aflição +1</b> ({poder_atual.nome})"
+                                    resultado = f"{alvo.nome} falhou esquiva ({rolagem_esq_base}+{esquiva}{esq_piece}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} <b>Aflição +1</b> ({poder_atual.nome})"
                                     manter_concentracao_apos_sofrer(participante_alvo)
                                 else:
-                                    resultado = f"{alvo.nome} falhou esquiva ({rolagem_esq_base}+{esquiva}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} (sem aflição) ({poder_atual.nome})"
+                                    resultado = f"{alvo.nome} falhou esquiva ({rolagem_esq_base}+{esquiva}{esq_piece}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} (sem aflição) ({poder_atual.nome})"
                         else:  # sucesso parcial na esquiva
                             buff = participante_alvo.bonus_temporario
                             debuff = participante_alvo.penalidade_temporaria
@@ -1297,6 +1309,7 @@ def realizar_ataque(request, combate_id):
                                 f"{' - ' + str(debuff) if debuff else ''}"
                                 f"{a_piece} = {d_total}"
                             )
+                            esq_piece = (f" + {esq_next}" if esq_next > 0 else (f" - {abs(esq_next)}" if esq_next < 0 else ""))
                             if tipo == 'dano':
                                 if d_total < cd_sucesso:
                                     participante_alvo.dano += 1
@@ -1306,10 +1319,10 @@ def realizar_ataque(request, combate_id):
                                             combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
                                             poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
                                         )
-                                    resultado = f"{alvo.nome} sucesso parcial esquiva ({rolagem_esq_base}+{esquiva}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} <b>Dano +1</b> ({poder_atual.nome})"
+                                    resultado = f"{alvo.nome} sucesso parcial esquiva ({rolagem_esq_base}+{esquiva}{esq_piece}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} <b>Dano +1</b> ({poder_atual.nome})"
                                     manter_concentracao_apos_sofrer(participante_alvo)
                                 else:
-                                    resultado = f"{alvo.nome} sucesso parcial esquiva ({rolagem_esq_base}+{esquiva}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} (sem dano) ({poder_atual.nome})"
+                                    resultado = f"{alvo.nome} sucesso parcial esquiva ({rolagem_esq_base}+{esquiva}{esq_piece}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} (sem dano) ({poder_atual.nome})"
                             else:
                                 if d_total < cd_sucesso:
                                     participante_alvo.aflicao += 1
@@ -1319,10 +1332,10 @@ def realizar_ataque(request, combate_id):
                                             combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
                                             poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
                                         )
-                                    resultado = f"{alvo.nome} sucesso parcial esquiva ({rolagem_esq_base}+{esquiva}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} <b>Aflição +1</b> ({poder_atual.nome})"
+                                    resultado = f"{alvo.nome} sucesso parcial esquiva ({rolagem_esq_base}+{esquiva}{esq_piece}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} <b>Aflição +1</b> ({poder_atual.nome})"
                                     manter_concentracao_apos_sofrer(participante_alvo)
                                 else:
-                                    resultado = f"{alvo.nome} sucesso parcial esquiva ({rolagem_esq_base}+{esquiva}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} (sem aflição) ({poder_atual.nome})"
+                                    resultado = f"{alvo.nome} sucesso parcial esquiva ({rolagem_esq_base}+{esquiva}{esq_piece}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} (sem aflição) ({poder_atual.nome})"
 
                     elif modo == 'percepcao':
                         cd = poder_atual.nivel_efeito + (15 if tipo == 'dano' else 10)
