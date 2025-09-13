@@ -112,6 +112,10 @@ def poderes_personagem_ajax(request):
 @login_required
 def participantes_json(request, combate_id):
     combate = get_object_or_404(Combate, id=combate_id)
+    # Permissão: somente GM da sala ou jogadores da sala
+    sala = combate.sala
+    if sala.game_master != request.user and request.user not in sala.jogadores.all():
+        return JsonResponse({'error': 'forbidden'}, status=403)
     participantes = (
         Participante.objects.filter(combate=combate)
         .select_related('personagem')
@@ -134,6 +138,7 @@ def participantes_json(request, combate_id):
         })
     return JsonResponse({'participantes': data})
 
+@login_required
 def criar_combate(request, sala_id):
     sala = get_object_or_404(Sala, id=sala_id, game_master=request.user)
     if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
@@ -170,8 +175,13 @@ def criar_combate(request, sala_id):
     return render(request, 'combate/criar_combate.html', {'personagens': personagens})
 
 
+@login_required
 def detalhes_combate(request, combate_id):
     combate = get_object_or_404(Combate, id=combate_id)
+    # Permissão: GM da sala ou jogadores pertencentes à sala
+    sala = combate.sala
+    if sala.game_master != request.user and request.user not in sala.jogadores.all():
+        return redirect('home')
     participantes = (
         Participante.objects.filter(combate=combate)
         .select_related('personagem', 'personagem__usuario')
@@ -236,11 +246,14 @@ def detalhes_combate(request, combate_id):
     }
 
     return render(request, 'combate/detalhes_combate.html', context)
-@csrf_exempt
 @login_required
 def atualizar_posicao_token(request, token_id):
     if request.method == "POST":
         posicao = get_object_or_404(PosicaoPersonagem, id=token_id)
+        # Permissão: somente GM da sala ou dono do personagem
+        combate = posicao.participante.combate
+        if not (combate.sala.game_master == request.user or posicao.participante.personagem.usuario_id == request.user.id):
+            return JsonResponse({'error': 'forbidden'}, status=403)
         data = json.loads(request.body)
         posicao.x = int(data.get("x", posicao.x))
         posicao.y = int(data.get("y", posicao.y))
@@ -286,9 +299,14 @@ def atualizar_posicao_token(request, token_id):
             pass
         return JsonResponse({"status": "ok"})
 
+@login_required
 @require_POST
 def passar_turno(request, combate_id):
     combate = get_object_or_404(Combate, id=combate_id)
+    if combate.sala.game_master != request.user:
+        if _expects_json(request):
+            return JsonResponse({'error': 'forbidden'}, status=403)
+        return redirect('detalhes_combate', combate_id=combate.id)
     turnos = Turno.objects.filter(combate=combate).order_by('ordem')
 
     ativo = turnos.filter(ativo=True).first()
@@ -334,6 +352,7 @@ def listar_combates(request, sala_id):
         combates = Combate.objects.filter(sala=sala, participante__personagem__in=personagens_usuario).distinct().order_by('-criado_em')
     return render(request, 'combate/listar_combates.html', {'combates': combates, 'sala': sala})
 
+@login_required
 @require_POST
 def iniciar_turno(request, combate_id):
     if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
@@ -536,9 +555,14 @@ def iniciar_turno(request, combate_id):
     return redirect('detalhes_combate', combate_id=combate.id)
 
 
+@login_required
 @require_POST
 def avancar_turno(request, combate_id):
     combate = get_object_or_404(Combate, id=combate_id)
+    if combate.sala.game_master != request.user:
+        if _expects_json(request):
+            return JsonResponse({'error': 'forbidden'}, status=403)
+        return redirect('detalhes_combate', combate_id=combate.id)
     turnos = Turno.objects.filter(combate=combate).order_by('ordem')
     turno_ativo = turnos.filter(ativo=True).first()
     if turno_ativo:
@@ -680,6 +704,7 @@ def avancar_turno(request, combate_id):
     return redirect('detalhes_combate', combate_id=combate.id)
 
 
+@login_required
 @require_POST
 def finalizar_combate(request, combate_id):
     if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
@@ -714,6 +739,7 @@ def finalizar_combate(request, combate_id):
     return redirect('listar_combates', sala_id=combate.sala.id)
 
 
+@login_required
 @require_POST
 def limpar_historico(request, combate_id):
     """GM-only: remove all Turno records for a combate, effectively clearing the attack log."""
@@ -757,6 +783,7 @@ def deletar_combate(request, combate_id):
 
 
 
+@login_required
 @require_POST
 def encerrar_efeito(request, combate_id, efeito_id):
     """Encerra manualmente um único efeito de concentração/sustentado.
@@ -794,6 +821,7 @@ def encerrar_efeito(request, combate_id, efeito_id):
     return redirect('detalhes_combate', combate_id=combate.id)
 
 
+@login_required
 @require_POST
 def encerrar_meus_efeitos(request, combate_id):
     """Encerra todos os efeitos mantidos pelo personagem selecionado em 'Ações de'."""
@@ -868,7 +896,6 @@ def listar_mapas(request):
     mapas = Mapa.objects.filter(combate__isnull=True, criado_por=request.user).order_by('-id')
     return render(request, 'combate/listar_mapas.html', {'mapas': mapas})
 
-@csrf_exempt
 @login_required
 def realizar_ataque(request, combate_id):
     if request.method != 'POST':
@@ -1459,6 +1486,7 @@ def realizar_ataque(request, combate_id):
 
     return redirect('detalhes_combate', combate_id=combate_id)
 
+@login_required
 def remover_participante(request, combate_id, participante_id):
     if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
         return redirect('home')
@@ -1494,6 +1522,7 @@ def remover_participante(request, combate_id, participante_id):
         return JsonResponse({'status': 'ok', 'evento': 'remover_participante', 'combate_id': combate_id, 'participante_id': participante_id, 'nome': nome})
     return redirect('detalhes_combate', combate_id=combate_id)
 
+@login_required
 def adicionar_mapa(request, combate_id):
     if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
         return redirect('home')
@@ -1600,6 +1629,7 @@ def adicionar_mapa(request, combate_id):
         'mapas_globais': mapas_globais,
     })
 
+@login_required
 def remover_mapa(request, combate_id, mapa_id):
     if not hasattr(request.user, 'perfilusuario') or request.user.perfilusuario.tipo != 'game_master' or not request.user.salas_gm.exists():
         return redirect('home')
@@ -1623,6 +1653,7 @@ def remover_mapa(request, combate_id, mapa_id):
         return JsonResponse({'status': 'ok', 'evento': 'remover_mapa', 'combate_id': combate_id, 'mapa_id': mapa_id, 'nome': nome})
     return redirect('detalhes_combate', combate_id=combate_id)
 
+@login_required
 def adicionar_npc_participante(request, combate_id):
     # Apenas GM com sala atual pode adicionar NPC
     if not hasattr(request.user, 'perfilusuario') or not request.user.perfilusuario.sala_atual or request.user.perfilusuario.tipo != 'game_master':
@@ -1675,6 +1706,7 @@ def adicionar_npc_participante(request, combate_id):
         })
     return redirect('detalhes_combate', combate_id=combate_id)
 
+@login_required
 def adicionar_participante(request, combate_id):
     """Adiciona um personagem jogador existente (não NPC) ao combate. Recriado após remoção anterior.
     Regras:

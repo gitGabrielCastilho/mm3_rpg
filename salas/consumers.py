@@ -5,8 +5,11 @@ import logging
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.core.cache import cache
+from django.contrib.auth.models import AnonymousUser
+from django.shortcuts import get_object_or_404
 
 from personagens.models import PerfilUsuario
+from salas.models import Sala
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +19,18 @@ class SalaConsumer(AsyncWebsocketConsumer):
         self.sala_id = self.scope["url_route"]["kwargs"]["sala_id"]
         self.sala_group_name = f"sala_{self.sala_id}"
         self._hb_task = None
+
+        # Requer usuário autenticado e membro (GM ou jogador) da sala
+        user = self.scope.get("user")
+        if not user or isinstance(user, AnonymousUser) or not user.is_authenticated:
+            return await self.close()
+        try:
+            allowed = await self._user_allowed(int(self.sala_id), user.id)
+        except Exception:
+            logger.warning("Falha ao checar permissão no WS de sala", exc_info=True)
+            return await self.close()
+        if not allowed:
+            return await self.close()
 
         try:
             await self.channel_layer.group_add(self.sala_group_name, self.channel_name)
@@ -172,3 +187,13 @@ class SalaConsumer(AsyncWebsocketConsumer):
                 perfil.save(update_fields=["sala_atual"])
         except PerfilUsuario.DoesNotExist:
             pass
+
+    @database_sync_to_async
+    def _user_allowed(self, sala_id: int, user_id: int) -> bool:
+        try:
+            sala = Sala.objects.select_related('game_master').get(id=sala_id)
+        except Sala.DoesNotExist:
+            return False
+        if sala.game_master_id == user_id:
+            return True
+        return sala.jogadores.filter(id=user_id).exists()
