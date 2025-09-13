@@ -38,6 +38,50 @@ class PersonagemForm(forms.ModelForm):
         ]
         exclude = ['usuario']
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Append attribute abbreviation to each skill label, e.g., "Atletismo (FOR)", "Arcana (INT)"
+        attr_abbr = {
+            'forca': 'FOR', 'vigor': 'VIG', 'destreza': 'DES', 'agilidade': 'AGI',
+            'luta': 'LUT', 'inteligencia': 'INT', 'prontidao': 'PRO', 'presenca': 'PRE',
+        }
+        skill_attr = {
+            'acrobacias': 'agilidade',
+            'atletismo': 'forca',
+            'combate_distancia': 'destreza',
+            'combate_corpo': 'luta',
+            'enganacao': 'presenca',
+            # especialidade is dynamic below
+            'furtividade': 'agilidade',
+            'intimidacao': 'presenca',
+            'intuicao': 'prontidao',
+            'investigacao': 'inteligencia',
+            'percepcao': 'prontidao',
+            'persuasao': 'presenca',
+            'prestidigitacao': 'destreza',
+            'tecnologia': 'inteligencia',
+            'tratamento': 'inteligencia',
+            'veiculos': 'destreza',
+            'historia': 'inteligencia',
+            'sobrevivencia': 'prontidao',
+            'arcana': 'inteligencia',
+            'religiao': 'prontidao',
+        }
+        # Determine selected ability for Especialidade
+        esp_ability = (
+            (self.data.get('especialidade_casting_ability') if hasattr(self, 'data') else None)
+            or getattr(getattr(self, 'instance', None), 'especialidade_casting_ability', None)
+            or self.initial.get('especialidade_casting_ability', None)
+            or 'inteligencia'
+        )
+        skill_attr['especialidade'] = esp_ability
+        # Update labels present in this form
+        for skill, ability in skill_attr.items():
+            if skill in self.fields:
+                base_label = self.fields[skill].label or skill.replace('_', ' ').capitalize()
+                abbr = attr_abbr.get(ability, ability[:3].upper())
+                self.fields[skill].label = f"{base_label} ({abbr})"
+
 
 class PoderForm(forms.ModelForm):
     class Meta:
@@ -168,6 +212,46 @@ class PersonagemNPCForm(forms.ModelForm):
             'especialidade_casting_ability',
         ]
         exclude = ['usuario']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        attr_abbr = {
+            'forca': 'FOR', 'vigor': 'VIG', 'destreza': 'DES', 'agilidade': 'AGI',
+            'luta': 'LUT', 'inteligencia': 'INT', 'prontidao': 'PRO', 'presenca': 'PRE',
+        }
+        skill_attr = {
+            'acrobacias': 'agilidade',
+            'atletismo': 'forca',
+            'combate_distancia': 'destreza',
+            'combate_corpo': 'luta',
+            'enganacao': 'presenca',
+            'furtividade': 'agilidade',
+            'intimidacao': 'presenca',
+            'intuicao': 'prontidao',
+            'investigacao': 'inteligencia',
+            'percepcao': 'prontidao',
+            'persuasao': 'presenca',
+            'prestidigitacao': 'destreza',
+            'tecnologia': 'inteligencia',
+            'tratamento': 'inteligencia',
+            'veiculos': 'destreza',
+            'historia': 'inteligencia',
+            'sobrevivencia': 'prontidao',
+            'arcana': 'inteligencia',
+            'religiao': 'prontidao',
+        }
+        esp_ability = (
+            (self.data.get('especialidade_casting_ability') if hasattr(self, 'data') else None)
+            or getattr(getattr(self, 'instance', None), 'especialidade_casting_ability', None)
+            or self.initial.get('especialidade_casting_ability', None)
+            or 'inteligencia'
+        )
+        skill_attr['especialidade'] = esp_ability
+        for skill, ability in skill_attr.items():
+            if skill in self.fields:
+                base_label = self.fields[skill].label or skill.replace('_', ' ').capitalize()
+                abbr = attr_abbr.get(ability, ability[:3].upper())
+                self.fields[skill].label = f"{base_label} ({abbr})"
 
 
 class PoderNPCForm(forms.ModelForm):

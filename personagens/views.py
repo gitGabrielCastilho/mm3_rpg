@@ -16,6 +16,74 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# --- Perícias helpers: mapeamento e ordenação por característica associada ---
+_SKILL_ATTRIBUTE_MAP = {
+    'acrobacias': 'agilidade',
+    'atletismo': 'forca',
+    'combate_distancia': 'destreza',
+    'combate_corpo': 'luta',
+    'enganacao': 'presenca',
+    # 'especialidade': dinâmico
+    'furtividade': 'agilidade',
+    'intimidacao': 'presenca',
+    'intuicao': 'prontidao',
+    'investigacao': 'inteligencia',
+    'percepcao': 'prontidao',
+    'persuasao': 'presenca',
+    'prestidigitacao': 'destreza',
+    'tecnologia': 'inteligencia',
+    'tratamento': 'inteligencia',
+    'veiculos': 'destreza',
+    'historia': 'inteligencia',
+    'sobrevivencia': 'prontidao',
+    'arcana': 'inteligencia',
+    'religiao': 'prontidao',
+}
+
+_BASE_PERICIAS_LIST = [
+    'acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao',
+    'especialidade', 'furtividade', 'intimidacao', 'intuicao', 'investigacao',
+    'percepcao', 'persuasao', 'prestidigitacao', 'tecnologia', 'tratamento',
+    'veiculos', 'historia', 'sobrevivencia', 'arcana', 'religiao'
+]
+
+_ATTR_ORDER = ['forca', 'vigor', 'destreza', 'agilidade', 'luta', 'inteligencia', 'prontidao', 'presenca']
+
+def _ordered_pericias_for_form(form):
+    """Retorna a lista de perícias ordenadas por característica associada.
+    Considera a habilidade selecionada para 'especialidade'.
+    """
+    # habilidade de especialidade pode vir do POST, instance ou initial
+    esp = (
+        (getattr(form, 'data', None) or {}).get('especialidade_casting_ability')
+        or getattr(getattr(form, 'instance', None), 'especialidade_casting_ability', None)
+        or getattr(form, 'initial', {}).get('especialidade_casting_ability')
+        or 'inteligencia'
+    )
+    # monta mapa efetivo
+    eff_map = dict(_SKILL_ATTRIBUTE_MAP)
+    eff_map['especialidade'] = esp
+    # ordena por ordem da característica e mantém ordem estável da base
+    attr_index = {a: i for i, a in enumerate(_ATTR_ORDER)}
+    def sort_key(skill):
+        a = eff_map.get(skill, 'inteligencia')
+        return (attr_index.get(a, 999), _BASE_PERICIAS_LIST.index(skill))
+    # filtra apenas as habilidades que existem no form
+    skills = [s for s in _BASE_PERICIAS_LIST if s in getattr(form, 'fields', {})]
+    skills.sort(key=sort_key)
+    return skills
+
+def _ordered_pericias_for_personagem(personagem: Personagem):
+    esp = getattr(personagem, 'especialidade_casting_ability', None) or 'inteligencia'
+    eff_map = dict(_SKILL_ATTRIBUTE_MAP)
+    eff_map['especialidade'] = esp
+    attr_index = {a: i for i, a in enumerate(_ATTR_ORDER)}
+    def sort_key(skill):
+        a = eff_map.get(skill, 'inteligencia')
+        return (attr_index.get(a, 999), _BASE_PERICIAS_LIST.index(skill))
+    skills = list(_BASE_PERICIAS_LIST)
+    skills.sort(key=sort_key)
+    return skills
 
 PoderFormSet = inlineformset_factory(
     Personagem,
@@ -103,12 +171,7 @@ def criar_personagem(request):
         inventario_form = InventarioForm()
         formset = PoderFormSet(prefix='poder_set')
 
-    pericias = [
-        'acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao',
-        'especialidade', 'furtividade', 'intimidacao', 'intuicao', 'investigacao',
-        'percepcao', 'persuasao', 'prestidigitacao', 'tecnologia', 'tratamento',
-        'veiculos', 'historia', 'sobrevivencia', 'arcana', 'religiao'
-    ]
+    pericias = _ordered_pericias_for_form(form)
     meio = len(pericias) // 2 + len(pericias) % 2
     pericias_col1 = pericias[:meio]
     pericias_col2 = pericias[meio:]
@@ -487,12 +550,7 @@ def editar_personagem(request, personagem_id):
         inventario_form = InventarioForm(instance=inventario)
         formset = PoderFormSet(instance=personagem, prefix='poder_set')
 
-    pericias = [
-        'acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao',
-        'especialidade', 'furtividade', 'intimidacao', 'intuicao', 'investigacao',
-        'percepcao', 'persuasao', 'prestidigitacao', 'tecnologia', 'tratamento',
-        'veiculos', 'historia', 'sobrevivencia', 'arcana', 'religiao'
-    ]
+    pericias = _ordered_pericias_for_form(form)
     meio = len(pericias) // 2 + len(pericias) % 2
     pericias_col1 = pericias[:meio]
     pericias_col2 = pericias[meio:]
@@ -556,12 +614,11 @@ def ficha_personagem(request, personagem_id):
     if not sala_atual or personagem.sala_id != sala_atual.id or (not is_dono and not is_gm_da_sala):
         return redirect('listar_salas')
     poderes_de_item = poderes_de_item = personagem.poderes.filter(de_item=True)
+    pericias_sorted = _ordered_pericias_for_personagem(personagem)
     categorias = {
         'caracteristicas': ['forca', 'destreza', 'agilidade', 'luta', 'vigor', 'inteligencia', 'prontidao', 'presenca'],
         'defesas': ['aparar', 'esquivar', 'fortitude', 'vontade', 'resistencia'],
-        'pericias': ['acrobacias', 'atletismo', 'combate_distancia','combate_corpo', 'enganacao', 'especialidade', 'furtividade',
-    'intimidacao', 'intuicao', 'investigacao', 'percepcao', 'persuasao', 'prestidigitacao', 'tecnologia', 'tratamento', 'veiculos',
-    'historia', 'sobrevivencia', 'arcana', 'religiao']
+        'pericias': pericias_sorted
     }
 
     return render(request, 'personagens/ficha_personagem.html', {
@@ -645,12 +702,7 @@ def criar_npc(request, sala_id):
         form = PersonagemNPCForm()
         formset = PoderNPCFormSet(prefix='poder_set')
 
-    pericias = [
-        'acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao',
-        'especialidade', 'furtividade', 'intimidacao', 'intuicao', 'investigacao',
-        'percepcao', 'persuasao', 'prestidigitacao', 'tecnologia', 'tratamento',
-        'veiculos', 'historia', 'sobrevivencia', 'arcana', 'religiao'
-    ]
+    pericias = _ordered_pericias_for_form(form)
     meio = len(pericias) // 2 + len(pericias) % 2
     context = {
         'form': form,
@@ -773,12 +825,7 @@ def editar_npc(request, personagem_id):
         form = PersonagemNPCForm(instance=npc)
         formset = PoderNPCFormSet(instance=npc, prefix='poder_set')
 
-    pericias = [
-        'acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao',
-        'especialidade', 'furtividade', 'intimidacao', 'intuicao', 'investigacao',
-        'percepcao', 'persuasao', 'prestidigitacao', 'tecnologia', 'tratamento',
-        'veiculos', 'historia', 'sobrevivencia'
-    ]
+    pericias = _ordered_pericias_for_form(form)
     meio = len(pericias) // 2 + len(pericias) % 2
     context = {
         'form': form,
