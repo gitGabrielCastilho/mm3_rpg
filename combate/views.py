@@ -384,17 +384,30 @@ def iniciar_turno(request, combate_id):
             if poder.tipo in ('dano', 'aflicao'):
                 cd = (15 + poder.nivel_efeito) if poder.tipo == 'dano' else (10 + poder.nivel_efeito)
                 defesa_attr = getattr(poder, 'defesa_passiva', 'resistencia') or 'resistencia'
-                defesa_valor = getattr(alvo, defesa_attr, 0)
+                defesa_valor = _atributo_efetivo(alvo, alvo_part, defesa_attr, combate.id)
+                # Bônus específico (Aprimorar instantâneo) para próxima rolagem daquela defesa
+                attr_bonus_map = alvo_part.proximo_bonus_por_atributo or {}
+                attr_next_bonus = int(attr_bonus_map.get(defesa_attr, 0))
                 buff = alvo_part.bonus_temporario
                 debuff = alvo_part.penalidade_temporaria
                 rolagem_base = random.randint(1, 20)
-                total_def = rolagem_base + defesa_valor + buff - debuff
+                total_def = rolagem_base + defesa_valor + attr_next_bonus + buff - debuff
                 # Consome buff/debuff do alvo sem sobrescrever outros campos atualizados por F()
                 Participante.objects.filter(pk=alvo_part.pk).update(bonus_temporario=0, penalidade_temporaria=0)
+                # Consome bônus específico por atributo (defesa)
+                if attr_next_bonus:
+                    try:
+                        del attr_bonus_map[defesa_attr]
+                    except Exception:
+                        attr_bonus_map[defesa_attr] = 0
+                    alvo_part.proximo_bonus_por_atributo = attr_bonus_map
+                    alvo_part.save()
+                attr_piece = (f" + {attr_next_bonus}" if attr_next_bonus > 0 else (f" - {abs(attr_next_bonus)}" if attr_next_bonus < 0 else ""))
                 defesa_msg = (
                     f"{rolagem_base} + {defesa_valor}"
                     f"{' + ' + str(buff) if buff else ''}"
-                    f"{' - ' + str(debuff) if debuff else ''} = {total_def}"
+                    f"{' - ' + str(debuff) if debuff else ''}"
+                    f"{attr_piece} = {total_def}"
                 )
                 if total_def < cd:
                     if poder.tipo == 'dano':
@@ -410,8 +423,18 @@ def iniciar_turno(request, combate_id):
                     # Teste de Vigor CD 15: apenas se o alvo mantém efeitos próprios (como conjurador)
                     if EfeitoConcentracao.objects.filter(combate=combate, ativo=True, aplicador=alvo).exists():
                         vigor = _atributo_efetivo(alvo, alvo_part, 'vigor', combate.id)
+                        # Consome bônus específico (Aprimorar instantâneo) em Vigor, se houver
+                        vigor_map = alvo_part.proximo_bonus_por_atributo or {}
+                        vigor_next = int(vigor_map.get('vigor', 0))
                         rolagem_vigor = random.randint(1, 20)
-                        total_vigor = rolagem_vigor + vigor
+                        total_vigor = rolagem_vigor + vigor + vigor_next
+                        if vigor_next:
+                            try:
+                                del vigor_map['vigor']
+                            except Exception:
+                                vigor_map['vigor'] = 0
+                            alvo_part.proximo_bonus_por_atributo = vigor_map
+                            alvo_part.save()
                         if total_vigor < 15:
                             encerrados = EfeitoConcentracao.objects.filter(
                                 combate=combate, ativo=True, aplicador=alvo
@@ -555,12 +578,22 @@ def avancar_turno(request, combate_id):
                     cd = (15 if poder.tipo == 'dano' else 10) + poder.nivel_efeito
                     defesa_attr = getattr(poder, 'defesa_passiva', 'resistencia') or 'resistencia'
                     base = random.randint(1, 20)
-                    val = getattr(alvo, defesa_attr, 0)
+                    val = _atributo_efetivo(alvo, alvo_part, defesa_attr, combate.id)
+                    attr_map = alvo_part.proximo_bonus_por_atributo or {}
+                    a_next = int(attr_map.get(defesa_attr, 0))
                     buff = alvo_part.bonus_temporario
                     debuff = alvo_part.penalidade_temporaria
-                    total = base + val + buff - debuff
+                    total = base + val + a_next + buff - debuff
                     Participante.objects.filter(pk=alvo_part.pk).update(bonus_temporario=0, penalidade_temporaria=0)
-                    msg_def = f"{base} + {val}{' + ' + str(buff) if buff else ''}{' - ' + str(debuff) if debuff else ''} = {total}"
+                    if a_next:
+                        try:
+                            del attr_map[defesa_attr]
+                        except Exception:
+                            attr_map[defesa_attr] = 0
+                        alvo_part.proximo_bonus_por_atributo = attr_map
+                        alvo_part.save()
+                    a_piece = (f" + {a_next}" if a_next > 0 else (f" - {abs(a_next)}" if a_next < 0 else ""))
+                    msg_def = f"{base} + {val}{' + ' + str(buff) if buff else ''}{' - ' + str(debuff) if debuff else ''}{a_piece} = {total}"
                     if total < cd:
                         field = 'dano' if poder.tipo == 'dano' else 'aflicao'
                         Participante.objects.filter(pk=alvo_part.pk).update(**{field: F(field) + 1})
@@ -1163,12 +1196,23 @@ def realizar_ataque(request, combate_id):
                     # Auxiliares comuns
                     def resolve_defesa(def_attr, buff, debuff):
                         base = random.randint(1, 20)
-                        val = getattr(alvo, def_attr, 0)
-                        total = base + val + buff - debuff
-                        return base, val, total
+                        val = _atributo_efetivo(alvo, participante_alvo, def_attr, combate.id)
+                        # Bônus específico (Aprimorar instantâneo) para próxima rolagem daquela defesa
+                        attr_map = participante_alvo.proximo_bonus_por_atributo or {}
+                        a_next = int(attr_map.get(def_attr, 0))
+                        total = base + val + a_next + buff - debuff
+                        # Consome bônus específico por defesa
+                        if a_next:
+                            try:
+                                del attr_map[def_attr]
+                            except Exception:
+                                attr_map[def_attr] = 0
+                            participante_alvo.proximo_bonus_por_atributo = attr_map
+                            participante_alvo.save()
+                        return base, val, a_next, total
 
                     if modo == 'area':
-                        esquiva = getattr(alvo, 'esquivar', 0)
+                        esquiva = _atributo_efetivo(alvo, participante_alvo, 'esquivar', combate.id)
                         rolagem_esq_base = random.randint(1, 20)
                         rolagem_esq = rolagem_esq_base + esquiva
                         cd = poder_atual.nivel_efeito + (15 if tipo == 'dano' else 10)
@@ -1179,15 +1223,28 @@ def realizar_ataque(request, combate_id):
                             buff = participante_alvo.bonus_temporario
                             debuff = participante_alvo.penalidade_temporaria
                             d_base = random.randint(1, 20)
-                            d_valor = getattr(alvo, defesa_attr, 0)
-                            d_total = d_base + d_valor + buff - debuff
+                            d_valor = _atributo_efetivo(alvo, participante_alvo, defesa_attr, combate.id)
+                            # Bônus específico para próxima rolagem daquela defesa
+                            a_map = participante_alvo.proximo_bonus_por_atributo or {}
+                            a_next = int(a_map.get(defesa_attr, 0))
+                            d_total = d_base + d_valor + a_next + buff - debuff
                             participante_alvo.bonus_temporario = 0
                             participante_alvo.penalidade_temporaria = 0
                             participante_alvo.save()
+                            # Consome bônus específico por defesa
+                            if a_next:
+                                try:
+                                    del a_map[defesa_attr]
+                                except Exception:
+                                    a_map[defesa_attr] = 0
+                                participante_alvo.proximo_bonus_por_atributo = a_map
+                                participante_alvo.save()
+                            a_piece = (f" + {a_next}" if a_next > 0 else (f" - {abs(a_next)}" if a_next < 0 else ""))
                             defesa_msg = (
                                 f"{d_base} + {d_valor}"
                                 f"{' + ' + str(buff) if buff else ''}"
-                                f"{' - ' + str(debuff) if debuff else ''} = {d_total}"
+                                f"{' - ' + str(debuff) if debuff else ''}"
+                                f"{a_piece} = {d_total}"
                             )
                             if tipo == 'dano':
                                 if d_total < cd:
@@ -1219,15 +1276,26 @@ def realizar_ataque(request, combate_id):
                             buff = participante_alvo.bonus_temporario
                             debuff = participante_alvo.penalidade_temporaria
                             d_base = random.randint(1, 20)
-                            d_valor = getattr(alvo, defesa_attr, 0)
-                            d_total = d_base + d_valor + buff - debuff
+                            d_valor = _atributo_efetivo(alvo, participante_alvo, defesa_attr, combate.id)
+                            a_map = participante_alvo.proximo_bonus_por_atributo or {}
+                            a_next = int(a_map.get(defesa_attr, 0))
+                            d_total = d_base + d_valor + a_next + buff - debuff
                             participante_alvo.bonus_temporario = 0
                             participante_alvo.penalidade_temporaria = 0
                             participante_alvo.save()
+                            if a_next:
+                                try:
+                                    del a_map[defesa_attr]
+                                except Exception:
+                                    a_map[defesa_attr] = 0
+                                participante_alvo.proximo_bonus_por_atributo = a_map
+                                participante_alvo.save()
+                            a_piece = (f" + {a_next}" if a_next > 0 else (f" - {abs(a_next)}" if a_next < 0 else ""))
                             defesa_msg = (
                                 f"{d_base} + {d_valor}"
                                 f"{' + ' + str(buff) if buff else ''}"
-                                f"{' - ' + str(debuff) if debuff else ''} = {d_total}"
+                                f"{' - ' + str(debuff) if debuff else ''}"
+                                f"{a_piece} = {d_total}"
                             )
                             if tipo == 'dano':
                                 if d_total < cd_sucesso:
@@ -1261,14 +1329,16 @@ def realizar_ataque(request, combate_id):
                         defesa_attr = poder_atual.defesa_passiva
                         buff = participante_alvo.bonus_temporario
                         debuff = participante_alvo.penalidade_temporaria
-                        base, val, total = resolve_defesa(defesa_attr, buff, debuff)
+                        base, val, a_next, total = resolve_defesa(defesa_attr, buff, debuff)
                         participante_alvo.bonus_temporario = 0
                         participante_alvo.penalidade_temporaria = 0
                         participante_alvo.save()
+                        a_piece = (f" + {a_next}" if a_next > 0 else (f" - {abs(a_next)}" if a_next < 0 else ""))
                         defesa_msg = (
                             f"{base} + {val}"
                             f"{' + ' + str(buff) if buff else ''}"
-                            f"{' - ' + str(debuff) if debuff else ''} = {total}"
+                            f"{' - ' + str(debuff) if debuff else ''}"
+                            f"{a_piece} = {total}"
                         )
                         if tipo == 'dano':
                             if total < cd:
@@ -1311,7 +1381,7 @@ def realizar_ataque(request, combate_id):
                             defesa_attr = poder_atual.defesa_passiva
                             buff = participante_alvo.bonus_temporario
                             debuff = participante_alvo.penalidade_temporaria
-                            d_base, d_val, d_total = resolve_defesa(defesa_attr, buff, debuff)
+                            d_base, d_val, a_next, d_total = resolve_defesa(defesa_attr, buff, debuff)
                             participante_alvo.bonus_temporario = 0
                             participante_alvo.penalidade_temporaria = 0
                             participante_alvo.save()
@@ -1320,10 +1390,12 @@ def realizar_ataque(request, combate_id):
                                 f"{' + ' + str(buff_att) if buff_att else ''}"
                                 f"{' - ' + str(debuff_att) if debuff_att else ''} = {ataque_total}"
                             )
+                            a_piece = (f" + {a_next}" if a_next > 0 else (f" - {abs(a_next)}" if a_next < 0 else ""))
                             defesa_msg = (
                                 f"{d_base} + {d_val}"
                                 f"{' + ' + str(buff) if buff else ''}"
-                                f"{' - ' + str(debuff) if debuff else ''} = {d_total}"
+                                f"{' - ' + str(debuff) if debuff else ''}"
+                                f"{a_piece} = {d_total}"
                             )
                             cd = (15 if tipo == 'dano' else 10) + poder_atual.nivel_efeito
                             if tipo == 'dano':

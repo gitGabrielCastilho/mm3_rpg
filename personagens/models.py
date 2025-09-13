@@ -195,7 +195,8 @@ class Poder(models.Model):
     casting_ability = models.CharField(
         max_length=20,
         choices=POWER_CASTING_ABILITY_CHOICES,
-        verbose_name="Habilidade de Conjuração",
+        verbose_name="Atributo Afetado",
+        help_text="Usado apenas por poderes Aprimorar/Reduzir",
         default='inteligencia'
     )
     personagem = models.ForeignKey(Personagem, on_delete=models.CASCADE, related_name='poderes')
