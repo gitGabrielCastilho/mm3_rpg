@@ -2,6 +2,17 @@
 {% load static %}
 
 {% block content %}
+{{ allowed_personagem_ids|json_script:"allowedPersonagemIds" }}
+<script>
+  // Lista de Personagem IDs permitidos para atuar/ser alvo, derivada do AtaqueForm escopado pela sala
+  try {
+    window._allowedPersonagemIds = JSON.parse(document.getElementById('allowedPersonagemIds').textContent);
+  } catch (_) { window._allowedPersonagemIds = []; }
+  try { if (!Array.isArray(window._allowedPersonagemIds)) window._allowedPersonagemIds = []; } catch(_) {}
+  window._allowedPersonagemIdsStr = (window._allowedPersonagemIds||[]).map(function(x){ return String(x); });
+  // Helper para checar permissão no cliente (defensivo; servidor revalida)
+  window._isPersonagemAllowed = function(pid){ try { return window._allowedPersonagemIdsStr.indexOf(String(pid)) !== -1; } catch(_) { return true; } };
+</script>
 <div id="combate-content" class="combate-detalhes-center" data-is-gm="{% if combate.sala.game_master == user %}true{% else %}false{% endif %}">
   <!-- Topo: info de turno + ações globais -->
   <div class="turno-topbar combate-card">
@@ -47,11 +58,13 @@
         <select id="personagem_acao" name="personagem_acao" form="form-ataque" class="select-md">
           {% if combate.sala.game_master == user %}
             {% for p in participantes %}
-              <option value="{{ p.id }}" data-personagem-id="{{ p.personagem.id }}">{{ p.display_nome|default:p.personagem.nome }}</option>
+              {% if p.personagem.id in allowed_personagem_ids %}
+                <option value="{{ p.id }}" data-personagem-id="{{ p.personagem.id }}">{{ p.display_nome|default:p.personagem.nome }}</option>
+              {% endif %}
             {% endfor %}
           {% else %}
             {% for p in participantes %}
-              {% if p.personagem.usuario == user %}
+              {% if p.personagem.usuario == user and p.personagem.id in allowed_personagem_ids %}
                 <option value="{{ p.id }}" data-personagem-id="{{ p.personagem.id }}">{{ p.display_nome|default:p.personagem.nome }}</option>
               {% endif %}
             {% endfor %}
@@ -82,7 +95,9 @@
         </small>
   <select id="alvo" name="alvo_id" multiple size="4" class="multiselect-alvos" aria-describedby="alvo_hint" title="Segure Ctrl (Windows/Linux) ou Cmd (macOS) para seleção múltipla; Shift para intervalos.">
           {% for p in participantes %}
-            <option value="{{ p.id }}">{{ p.display_nome|default:p.personagem.nome }}</option>
+            {% if p.personagem.id in allowed_personagem_ids %}
+              <option value="{{ p.id }}">{{ p.display_nome|default:p.personagem.nome }}</option>
+            {% endif %}
           {% endfor %}
         </select>
 
@@ -1219,6 +1234,7 @@
       try {
         const sel = document.getElementById('alvo');
         if (!sel || !part) return;
+        if (window._isPersonagemAllowed && !window._isPersonagemAllowed(part.personagem_id)) return;
         const idStr = String(part.id);
         const exists = Array.from(sel.options).some(o => String(o.value) === idStr);
         if (!exists) {
@@ -1238,7 +1254,8 @@
         const data = await resp.json();
         if (!data || !Array.isArray(data.participantes)) return;
         // Gera assinatura para detectar mudança relevante
-        const sig = data.participantes.map(p => `${p.id}:${p.nome}`).join('|');
+        const filtered = data.participantes.filter(p => !window._isPersonagemAllowed || window._isPersonagemAllowed(p.personagem_id));
+        const sig = filtered.map(p => `${p.id}:${p.nome}`).join('|');
         if (sig === _lastParticipantsSig) return; // nada mudou
         _lastParticipantsSig = sig;
         const alvoSel = document.getElementById('alvo');
@@ -1247,7 +1264,7 @@
           const selected = new Set(Array.from(alvoSel.selectedOptions||[]).map(o=>String(o.value)));
           // Reconstrói mantendo seleção
           alvoSel.innerHTML = '';
-          data.participantes.forEach(p => {
+          filtered.forEach(p => {
             const opt = document.createElement('option');
             opt.value = p.id; opt.textContent = p.nome; if (selected.has(String(p.id))) opt.selected = true; alvoSel.appendChild(opt);
           });
@@ -1260,11 +1277,11 @@
             if (acaoSel) {
               const current = String(acaoSel.value||'');
               const existingIds = new Set(Array.from(acaoSel.options).map(o=>String(o.value)));
-              const needRebuild = data.participantes.length !== existingIds.size || data.participantes.some(p=>!existingIds.has(String(p.id)));
+              const needRebuild = filtered.length !== existingIds.size || filtered.some(p=>!existingIds.has(String(p.id)));
               if (needRebuild) {
                 const prevVal = current;
                 acaoSel.innerHTML='';
-                data.participantes.forEach(p=>{
+                filtered.forEach(p=>{
                   const opt = document.createElement('option');
                   opt.value = p.id; opt.textContent = p.nome; opt.dataset.personagemId = p.personagem_id; opt.setAttribute('data-personagem-id', p.personagem_id); acaoSel.appendChild(opt);
                 });
@@ -1279,6 +1296,7 @@
     function maybeAddToAcoesDe(part){
       if (!IS_GM || !part) return;
       try {
+        if (window._isPersonagemAllowed && !window._isPersonagemAllowed(part.personagem_id)) return;
         const sel = document.getElementById('personagem_acao');
         if (!sel) return;
         const idStr = String(part.id);

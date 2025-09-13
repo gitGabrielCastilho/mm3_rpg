@@ -1,7 +1,6 @@
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.shortcuts import render, redirect, get_object_or_404
-from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponseBadRequest
 from .models import Combate, Turno, Participante
@@ -12,7 +11,7 @@ from django.views.decorators.http import require_POST
 from django.contrib import messages
 from .models import Mapa, PosicaoPersonagem, EfeitoConcentracao
 from django.db.models import Q, F
-from .forms import MapaForm
+from .forms import MapaForm, AtaqueForm
 from salas.models import Sala
 import json
 import logging
@@ -171,7 +170,13 @@ def criar_combate(request, sala_id):
             return JsonResponse({'status': 'ok', 'evento': 'novo_combate', 'combate_id': combate.id, 'sala_id': sala.id})
         return redirect('detalhes_combate', combate_id=combate.id)
 
-    personagens = Personagem.objects.all()
+    # Limita a lista de personagens: jogadores da sala (não-NPC) e NPCs do GM
+    try:
+        personagens = Personagem.objects.filter(
+            Q(usuario__in=sala.participantes.all(), is_npc=False) | Q(usuario=sala.game_master, is_npc=True)
+        ).distinct().order_by('nome')
+    except Exception:
+        personagens = Personagem.objects.none()
     return render(request, 'combate/criar_combate.html', {'personagens': personagens})
 
 
@@ -229,6 +234,17 @@ def detalhes_combate(request, combate_id):
         personagens_disponiveis = Personagem.objects.filter(usuario=request.user, is_npc=False).exclude(id__in=personagens_no_combate_ids)
         npcs_disponiveis = Personagem.objects.none()
     
+    # Form de ataque com escopo de sala
+    try:
+        ataque_form = AtaqueForm(sala=sala)
+        try:
+            allowed_personagem_ids = list(ataque_form.fields['atacante'].queryset.values_list('id', flat=True))
+        except Exception:
+            allowed_personagem_ids = []
+    except Exception:
+        ataque_form = None
+        allowed_personagem_ids = []
+
     context = {
         'combate': combate,
         'participantes': participantes,
@@ -243,6 +259,8 @@ def detalhes_combate(request, combate_id):
         'mapas_globais': mapas_globais,
         'mapa': mapa,
         'posicoes': posicoes,
+        'ataque_form': ataque_form,
+        'allowed_personagem_ids': allowed_personagem_ids,
     }
 
     return render(request, 'combate/detalhes_combate.html', context)

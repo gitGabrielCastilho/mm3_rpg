@@ -1,18 +1,38 @@
 from django import forms
 from django.conf import settings
 from personagens.models import Personagem
+from django.db import models
 from .models import Mapa
 from .utils import process_image_upload
 
 class AtaqueForm(forms.Form):
-    atacante = forms.ModelChoiceField(queryset=Personagem.objects.all())
-    alvo = forms.ModelChoiceField(queryset=Personagem.objects.all())
+    atacante = forms.ModelChoiceField(queryset=Personagem.objects.none())
+    alvo = forms.ModelChoiceField(queryset=Personagem.objects.none())
     tipo = forms.ChoiceField(choices=[("dano", "Dano"), ("aflicao", "Aflição")])
     alcance = forms.ChoiceField(choices=[("comum", "Comum"), ("area", "Área"), ("percepcao", "Percepção")])
     nivel = forms.IntegerField(min_value=1, max_value=20)
     bonus_ataque = forms.IntegerField()
     defesa = forms.ChoiceField(choices=[("aparar", "aparar"), ("esquivar", "esquivar")])
     resistencia = forms.ChoiceField(choices=[("fortitude", "fortitude"),("vontade", "vontade"), ("resistencia", "resistencia")])
+
+    def __init__(self, *args, **kwargs):
+        sala = kwargs.pop('sala', None)
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        qs = Personagem.objects.none()
+        try:
+            if sala is not None:
+                # Personagens dos jogadores da sala e NPCs do GM
+                qs = Personagem.objects.filter(
+                    models.Q(usuario__in=sala.participantes.all(), is_npc=False) | models.Q(usuario=getattr(sala, 'game_master', None), is_npc=True)
+                ).distinct()
+            elif user is not None:
+                # Fallback: personagens do próprio usuário
+                qs = Personagem.objects.filter(usuario=user)
+        except Exception:
+            pass
+        self.fields['atacante'].queryset = qs
+        self.fields['alvo'].queryset = qs
 
 
 

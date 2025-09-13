@@ -127,7 +127,7 @@ def entrar_sala(request, sala_id):
     # Notifica todos os participantes da sala sobre a entrada após commit
     def send_event():
         try:
-            print(f"[Channels] Enviando evento ENTRADA para sala_{sala.id} ({request.user.username})")
+            logger.info("[Channels] Enviando evento ENTRADA para sala_%s (%s)", sala.id, request.user.username)
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(
                 f'sala_{sala.id}',
@@ -152,7 +152,7 @@ def sair_sala(request):
     if sala:
         def send_event():
             try:
-                print(f"[Channels] Enviando evento SAIDA para sala_{sala.id} ({request.user.username})")
+                logger.info("[Channels] Enviando evento SAIDA para sala_%s (%s)", sala.id, request.user.username)
                 channel_layer = get_channel_layer()
                 async_to_sync(channel_layer.group_send)(
                     f'sala_{sala.id}',

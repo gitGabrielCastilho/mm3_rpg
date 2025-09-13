@@ -52,7 +52,7 @@ TIPO_CHOICES = [
 ]
 # Create your models here.
 class Item(models.Model):
-    nome = models.CharField(max_length=100, unique=True)
+    nome = models.CharField(max_length=100)
     tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, blank=True)
     raridade = models.CharField(max_length=20, choices=RARIDADE_CHOICES, blank=True)
     descricao = models.TextField()
