@@ -18,6 +18,8 @@ class Participante(models.Model):
     aflicao = models.IntegerField(default=0)
     bonus_temporario = models.IntegerField(default=0)      # Para Buff
     penalidade_temporaria = models.IntegerField(default=0) # Para Debuff
+    # Próximo bônus específico por atributo (para Aprimorar instantâneo): {"forca": 2, "vigor": 1, ...}
+    proximo_bonus_por_atributo = models.JSONField(default=dict, blank=True)
 
     def __str__(self):
         return f"{self.personagem.nome} (Iniciativa {self.iniciativa})"

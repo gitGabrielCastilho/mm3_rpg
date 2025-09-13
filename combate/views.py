@@ -35,6 +35,24 @@ def _expects_json(request) -> bool:
 
 """Endpoints e views do combate."""
 
+# --- Helpers para Aprimorar ---
+def _atributo_efetivo(personagem: Personagem, participante: Participante, atributo: str, combate_id: int) -> int:
+    """Retorna o valor do atributo considerando efeitos Aprimorar ativos para este alvo no combate.
+    Regra: soma todos os nivel_efeito de poderes do tipo 'aprimorar' com casting_ability == atributo e ativos
+    sobre este participante. Pode ultrapassar limites.
+    """
+    base = getattr(personagem, atributo, 0)
+    try:
+        efeitos = (
+            EfeitoConcentracao.objects
+            .filter(combate_id=combate_id, alvo_participante=participante, ativo=True, poder__tipo='aprimorar', poder__casting_ability=atributo)
+            .select_related('poder')
+        )
+        bonus = sum(getattr(e.poder, 'nivel_efeito', 0) or 0 for e in efeitos)
+        return base + int(bonus)
+    except Exception:
+        return base
+
 # AJAX: retorna poderes de um personagem (com verificação de permissão)
 @login_required
 def poderes_personagem_ajax(request):
@@ -391,7 +409,7 @@ def iniciar_turno(request, combate_id):
                         )
                     # Teste de Vigor CD 15: apenas se o alvo mantém efeitos próprios (como conjurador)
                     if EfeitoConcentracao.objects.filter(combate=combate, ativo=True, aplicador=alvo).exists():
-                        vigor = getattr(alvo, 'vigor', 0)
+                        vigor = _atributo_efetivo(alvo, alvo_part, 'vigor', combate.id)
                         rolagem_vigor = random.randint(1, 20)
                         total_vigor = rolagem_vigor + vigor
                         if total_vigor < 15:
@@ -437,18 +455,20 @@ def iniciar_turno(request, combate_id):
                     mensagens_tick.append(
                         f"{tick_label} {poder.nome} tentou curar {alvo.nome} (Rolagem {rolagem} vs CD {cd}): falhou."
                     )
-            # Buff/Debuff: reaplica o modificador temporário
+            # Buff/Debuff (unificado): reaplica o modificador temporário
             elif poder.tipo == 'buff':
                 alvo_part.bonus_temporario += poder.nivel_efeito
                 alvo_part.save()
+                sign_val = f"+{poder.nivel_efeito}" if int(getattr(poder, 'nivel_efeito', 0) or 0) >= 0 else f"{poder.nivel_efeito}"
                 mensagens_tick.append(
-                    f"{tick_label} {poder.nome} concede novamente +{poder.nivel_efeito} para {alvo.nome} na próxima rolagem."
+                    f"{tick_label} {poder.nome} aplica novamente {sign_val} a {alvo.nome} na próxima rolagem."
                 )
-            elif poder.tipo == 'debuff':
-                alvo_part.penalidade_temporaria += poder.nivel_efeito
-                alvo_part.save()
+            elif poder.tipo == 'aprimorar':
+                # Reaplica o aumento do atributo (por casting_ability)
+                val = int(getattr(poder, 'nivel_efeito', 0) or 0)
+                sign_val = f"+{val}" if val >= 0 else f"{val}"
                 mensagens_tick.append(
-                    f"{tick_label} {poder.nome} impõe novamente -{poder.nivel_efeito} a {alvo.nome} na próxima rolagem."
+                    f"{tick_label} {poder.nome} mantém {alvo.nome} com {sign_val} em {poder.casting_ability.capitalize()}."
                 )
         if mensagens_tick:
             texto = "<br>".join(mensagens_tick)
@@ -547,7 +567,7 @@ def avancar_turno(request, combate_id):
                         Participante.objects.filter(pk=alvo_part.pk).update(**{field: F(field) + 1})
                         mensagens_tick.append(f"{label} {poder.nome} afeta {alvo.nome}: teste de {defesa_attr} ({msg_def}) contra CD {cd} — <b>{'Dano' if field=='dano' else 'Aflição'} +1</b>.")
                         if EfeitoConcentracao.objects.filter(combate=combate, ativo=True, aplicador=alvo).exists():
-                            vigor = getattr(alvo, 'vigor', 0)
+                            vigor = _atributo_efetivo(alvo, alvo_part, 'vigor', combate.id)
                             b = random.randint(1, 20)
                             tv = b + vigor
                             if tv < 15:
@@ -579,11 +599,13 @@ def avancar_turno(request, combate_id):
                 elif poder.tipo == 'buff':
                     alvo_part.bonus_temporario += poder.nivel_efeito
                     alvo_part.save()
-                    mensagens_tick.append(f"{label} {poder.nome} concede novamente +{poder.nivel_efeito} para {alvo.nome}.")
-                elif poder.tipo == 'debuff':
-                    alvo_part.penalidade_temporaria += poder.nivel_efeito
-                    alvo_part.save()
-                    mensagens_tick.append(f"{label} {poder.nome} impõe novamente -{poder.nivel_efeito} a {alvo.nome}.")
+                    val = int(getattr(poder, 'nivel_efeito', 0) or 0)
+                    sign_val = f"+{val}" if val >= 0 else f"{val}"
+                    mensagens_tick.append(f"{label} {poder.nome} aplica novamente {sign_val} a {alvo.nome}.")
+                elif poder.tipo == 'aprimorar':
+                    val = int(getattr(poder, 'nivel_efeito', 0) or 0)
+                    sign_val = f"+{val}" if val >= 0 else f"{val}"
+                    mensagens_tick.append(f"{label} {poder.nome} mantém {alvo.nome} com {sign_val} em {poder.casting_ability.capitalize()}.")
             if mensagens_tick:
                 texto = "<br>".join(mensagens_tick)
                 novo_turno.descricao = (novo_turno.descricao + "<br>" if novo_turno.descricao else "") + texto
@@ -913,22 +935,34 @@ def realizar_ataque(request, combate_id):
             debuff = participante_atacante.penalidade_temporaria
             caracteristica_base = PERICIA_CARACTERISTICA.get(pericia_escolhida)
             if pericia_escolhida == 'especialidade':
-                valor_caracteristica = getattr(atacante, getattr(atacante, 'especialidade_casting_ability', ''), 0)
                 base_name = getattr(atacante, 'especialidade_casting_ability', 'especialidade')
+                valor_caracteristica = _atributo_efetivo(atacante, participante_atacante, base_name, combate_id)
             else:
-                valor_caracteristica = getattr(atacante, caracteristica_base, 0)
                 base_name = caracteristica_base
+                valor_caracteristica = _atributo_efetivo(atacante, participante_atacante, caracteristica_base, combate_id)
+
+            # Bônus específico para próxima rolagem desse atributo (Aprimorar instantâneo)
+            attr_bonus_map = participante_atacante.proximo_bonus_por_atributo or {}
+            attr_next_bonus = int(attr_bonus_map.get(base_name, 0)) if base_name else 0
             if valor_pericia is not None:
                 rolagem_base = random.randint(1, 20)
-                total = rolagem_base + valor_pericia + valor_caracteristica + buff - debuff
+                total = rolagem_base + valor_pericia + valor_caracteristica + attr_next_bonus + buff - debuff
+                attr_piece = (f" + {attr_next_bonus}" if attr_next_bonus > 0 else (f" - {abs(attr_next_bonus)}" if attr_next_bonus < 0 else ""))
                 resultados.append(
                     f"{atacante.nome} rolou {pericia_escolhida.capitalize()}: {rolagem_base} + {valor_pericia} (perícia) + {valor_caracteristica} ({str(base_name).replace('_', ' ').capitalize()})"
                     f"{' + ' + str(buff) if buff else ''}"
                     f"{' - ' + str(debuff) if debuff else ''}"
-                    f" = <b>{total}</b>"
+                    f"{attr_piece} = <b>{total}</b>"
                 )
                 participante_atacante.bonus_temporario = 0
                 participante_atacante.penalidade_temporaria = 0
+                # Consome bônus específico por atributo
+                if attr_next_bonus:
+                    try:
+                        del attr_bonus_map[base_name]
+                    except Exception:
+                        attr_bonus_map[base_name] = 0
+                    participante_atacante.proximo_bonus_por_atributo = attr_bonus_map
                 participante_atacante.save()
             else:
                 resultados.append(f"{atacante.nome} não possui a perícia {pericia_escolhida}.")
@@ -945,20 +979,31 @@ def realizar_ataque(request, combate_id):
     if request.POST.get('rolar_caracteristica'):
         caracteristica_escolhida = request.POST.get('caracteristica')
         if caracteristica_escolhida:
-            valor_caracteristica = getattr(atacante, caracteristica_escolhida, None)
+            valor_caracteristica = _atributo_efetivo(atacante, participante_atacante, caracteristica_escolhida, combate_id)
+            # Bonus específico para próxima rolagem daquele atributo
+            attr_bonus_map = participante_atacante.proximo_bonus_por_atributo or {}
+            attr_next_bonus = int(attr_bonus_map.get(caracteristica_escolhida, 0))
             buff = participante_atacante.bonus_temporario
             debuff = participante_atacante.penalidade_temporaria
             if valor_caracteristica is not None:
                 rolagem_base = random.randint(1, 20)
-                total = rolagem_base + valor_caracteristica + buff - debuff
+                total = rolagem_base + valor_caracteristica + attr_next_bonus + buff - debuff
+                attr_piece = (f" + {attr_next_bonus}" if attr_next_bonus > 0 else (f" - {abs(attr_next_bonus)}" if attr_next_bonus < 0 else ""))
                 resultados.append(
                     f"{atacante.nome} rolou {caracteristica_escolhida.capitalize()}: {rolagem_base} + {valor_caracteristica}"
                     f"{' + ' + str(buff) if buff else ''}"
                     f"{' - ' + str(debuff) if debuff else ''}"
-                    f" = <b>{total}</b>"
+                    f"{attr_piece} = <b>{total}</b>"
                 )
                 participante_atacante.bonus_temporario = 0
                 participante_atacante.penalidade_temporaria = 0
+                # Consome bônus específico por atributo
+                if attr_next_bonus:
+                    try:
+                        del attr_bonus_map[caracteristica_escolhida]
+                    except Exception:
+                        attr_bonus_map[caracteristica_escolhida] = 0
+                    participante_atacante.proximo_bonus_por_atributo = attr_bonus_map
                 participante_atacante.save()
             else:
                 resultados.append(f"{atacante.nome} não possui a característica {caracteristica_escolhida}.")
@@ -994,7 +1039,7 @@ def realizar_ataque(request, combate_id):
             )
             if not efeitos_mantidos.exists():
                 return
-            vigor = getattr(alvo_part.personagem, 'vigor', 0)
+            vigor = _atributo_efetivo(alvo_part.personagem, alvo_part, 'vigor', combate_id)
             rolagem = random.randint(1, 20)
             total = rolagem + vigor
             if total < 15:
@@ -1082,22 +1127,37 @@ def realizar_ataque(request, combate_id):
                 elif tipo == 'buff':
                     participante_alvo.bonus_temporario += poder_atual.nivel_efeito
                     participante_alvo.save()
-                    resultado = f"{alvo.nome} recebe +{poder_atual.nivel_efeito} (buff {poder_atual.nome})."
+                    val = int(getattr(poder_atual, 'nivel_efeito', 0) or 0)
+                    sign_val = f"+{val}" if val >= 0 else f"{val}"
+                    resultado = f"{alvo.nome} recebe {sign_val} (Buff/Debuff {poder_atual.nome})."
                     if duracao_raw in ('concentracao', 'sustentado'):
                         EfeitoConcentracao.objects.create(
                             combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
                             poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
                         )
 
-                elif tipo == 'debuff':
-                    participante_alvo.penalidade_temporaria += poder_atual.nivel_efeito
-                    participante_alvo.save()
-                    resultado = f"{alvo.nome} recebe -{poder_atual.nivel_efeito} (debuff {poder_atual.nome})."
+                elif tipo == 'aprimorar':
+                    # Aumenta a característica igual a casting_ability em +nivel_efeito (pode ultrapassar limites)
+                    # Instantâneo: aplica somente para a próxima rolagem envolvendo aquela característica? Para consistência com descrição, trate como efeito imediato durante a duração:
                     if duracao_raw in ('concentracao', 'sustentado'):
                         EfeitoConcentracao.objects.create(
                             combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
                             poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
                         )
+                        val = int(getattr(poder_atual, 'nivel_efeito', 0) or 0)
+                        sign_val = f"+{val}" if val >= 0 else f"{val}"
+                        resultado = f"{alvo.nome} fica Aprimorado: {sign_val} em {poder_atual.casting_ability.capitalize()} ({duracao_label})."
+                    else:
+                        # Instantâneo: registra como bônus específico para próxima rolagem daquele atributo
+                        attr_map = participante_alvo.proximo_bonus_por_atributo or {}
+                        key = getattr(poder_atual, 'casting_ability', None)
+                        if key:
+                            attr_map[key] = int(attr_map.get(key, 0)) + int(poder_atual.nivel_efeito or 0)
+                            participante_alvo.proximo_bonus_por_atributo = attr_map
+                        participante_alvo.save()
+                        val = int(getattr(poder_atual, 'nivel_efeito', 0) or 0)
+                        sign_val = f"+{val}" if val >= 0 else f"{val}"
+                        resultado = f"{alvo.nome} recebe {sign_val} (Aprimorar/Reduzir instantâneo) na próxima rolagem de {getattr(poder_atual, 'casting_ability', '').capitalize()}."
 
                 else:
                     # Modos ofensivos: area, percepcao, melee, ranged

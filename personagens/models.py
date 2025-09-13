@@ -158,8 +158,8 @@ class Poder(models.Model):
         ('aflicao', 'Aflição'),
         ('dano', 'Dano'),
         ('cura', 'Cura'),
-        ('buff', 'Buff'),
-        ('debuff', 'Debuff'),
+        ('buff', 'Buff/Debuff'),
+    ('aprimorar', 'Aprimorar/Reduzir'),
     ]
     DURACAO_CHOICES = [
         ('instantaneo', 'Instantâneo'),
