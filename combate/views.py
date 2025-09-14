@@ -523,12 +523,51 @@ def iniciar_turno(request, combate_id):
                     f"{tick_label} {poder.nome} aplica novamente {sign_val} a {alvo.nome} na próxima rolagem."
                 )
             elif poder.tipo == 'aprimorar':
-                # Reaplica o aumento do atributo (por casting_ability)
+                # Para Reduzir (valor negativo): alvo faz teste a cada tique; se passar, efeito termina; se falhar, mantém
                 val = int(getattr(poder, 'nivel_efeito', 0) or 0)
-                sign_val = f"+{val}" if val >= 0 else f"{val}"
-                mensagens_tick.append(
-                    f"{tick_label} {poder.nome} mantém {alvo.nome} com {sign_val} em {poder.casting_ability.capitalize()}."
-                )
+                if val < 0:
+                    defesa_attr = getattr(poder, 'defesa_passiva', 'vontade') or 'vontade'
+                    buff = alvo_part.bonus_temporario
+                    debuff = alvo_part.penalidade_temporaria
+                    attr_map = alvo_part.proximo_bonus_por_atributo or {}
+                    a_next = int(attr_map.get(defesa_attr, 0))
+                    base = random.randint(1, 20)
+                    defesa_valor = _atributo_efetivo(alvo, alvo_part, defesa_attr, combate.id)
+                    total = base + defesa_valor + a_next + buff - debuff
+                    # Consome bônus gerais e específico da defesa
+                    Participante.objects.filter(pk=alvo_part.pk).update(bonus_temporario=0, penalidade_temporaria=0)
+                    if a_next:
+                        try:
+                            del attr_map[defesa_attr]
+                        except Exception:
+                            attr_map[defesa_attr] = 0
+                        alvo_part.proximo_bonus_por_atributo = attr_map
+                        alvo_part.save()
+                    cd = 10 + abs(val)
+                    a_piece = (f" + {a_next}" if a_next > 0 else (f" - {abs(a_next)}" if a_next < 0 else ""))
+                    defesa_msg = (
+                        f"{base} + {defesa_valor}"
+                        f"{' + ' + str(buff) if buff else ''}"
+                        f"{' - ' + str(debuff) if debuff else ''}"
+                        f"{a_piece} = {total}"
+                    )
+                    if total >= cd:
+                        # Sucesso: termina o efeito
+                        ef.ativo = False
+                        ef.save()
+                        mensagens_tick.append(
+                            f"{tick_label} {alvo.nome} resistiu a {poder.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — <b>Efeito encerrado</b>."
+                        )
+                    else:
+                        mensagens_tick.append(
+                            f"{tick_label} {poder.nome} mantém {alvo.nome}: falhou {defesa_attr} ({defesa_msg}) contra CD {cd}."
+                        )
+                else:
+                    # Aprimorar positivo: apenas mantém e informa
+                    sign_val = f"+{val}" if val >= 0 else f"{val}"
+                    mensagens_tick.append(
+                        f"{tick_label} {poder.nome} mantém {alvo.nome} com {sign_val} em {poder.casting_ability.capitalize()}."
+                    )
         if mensagens_tick:
             texto = "<br>".join(mensagens_tick)
             novo_turno.descricao = (novo_turno.descricao + "<br>" if novo_turno.descricao else "") + texto
@@ -677,8 +716,41 @@ def avancar_turno(request, combate_id):
                     mensagens_tick.append(f"{label} {poder.nome} aplica novamente {sign_val} a {alvo.nome}.")
                 elif poder.tipo == 'aprimorar':
                     val = int(getattr(poder, 'nivel_efeito', 0) or 0)
-                    sign_val = f"+{val}" if val >= 0 else f"{val}"
-                    mensagens_tick.append(f"{label} {poder.nome} mantém {alvo.nome} com {sign_val} em {poder.casting_ability.capitalize()}.")
+                    if val < 0:
+                        defesa_attr = getattr(poder, 'defesa_passiva', 'vontade') or 'vontade'
+                        buff = alvo_part.bonus_temporario
+                        debuff = alvo_part.penalidade_temporaria
+                        attr_map = alvo_part.proximo_bonus_por_atributo or {}
+                        a_next = int(attr_map.get(defesa_attr, 0))
+                        base = random.randint(1, 20)
+                        defesa_valor = _atributo_efetivo(alvo, alvo_part, defesa_attr, combate.id)
+                        total = base + defesa_valor + a_next + buff - debuff
+                        Participante.objects.filter(pk=alvo_part.pk).update(bonus_temporario=0, penalidade_temporaria=0)
+                        if a_next:
+                            try:
+                                del attr_map[defesa_attr]
+                            except Exception:
+                                attr_map[defesa_attr] = 0
+                            alvo_part.proximo_bonus_por_atributo = attr_map
+                            alvo_part.save()
+                        cd = 10 + abs(val)
+                        a_piece = (f" + {a_next}" if a_next > 0 else (f" - {abs(a_next)}" if a_next < 0 else ""))
+                        defesa_msg = (
+                            f"{base} + {defesa_valor}"
+                            f"{' + ' + str(buff) if buff else ''}"
+                            f"{' - ' + str(debuff) if debuff else ''}"
+                            f"{a_piece} = {total}"
+                        )
+                        if total >= cd:
+                            # Sucesso: termina o efeito
+                            ef.ativo = False
+                            ef.save()
+                            mensagens_tick.append(f"{label} {alvo.nome} resistiu a {poder.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — <b>Efeito encerrado</b>.")
+                        else:
+                            mensagens_tick.append(f"{label} {poder.nome} mantém {alvo.nome}: falhou {defesa_attr} ({defesa_msg}) contra CD {cd}.")
+                    else:
+                        sign_val = f"+{val}" if val >= 0 else f"{val}"
+                        mensagens_tick.append(f"{label} {poder.nome} mantém {alvo.nome} com {sign_val} em {poder.casting_ability.capitalize()}.")
             if mensagens_tick:
                 texto = "<br>".join(mensagens_tick)
                 novo_turno.descricao = (novo_turno.descricao + "<br>" if novo_turno.descricao else "") + texto
@@ -1214,27 +1286,84 @@ def realizar_ataque(request, combate_id):
                         )
 
                 elif tipo == 'aprimorar':
-                    # Aumenta a característica igual a casting_ability em +nivel_efeito (pode ultrapassar limites)
-                    # Instantâneo: aplica somente para a próxima rolagem envolvendo aquela característica? Para consistência com descrição, trate como efeito imediato durante a duração:
-                    if duracao_raw in ('concentracao', 'sustentado'):
-                        EfeitoConcentracao.objects.create(
-                            combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
-                            poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
-                        )
-                        val = int(getattr(poder_atual, 'nivel_efeito', 0) or 0)
-                        sign_val = f"+{val}" if val >= 0 else f"{val}"
-                        resultado = f"{alvo.nome} fica Aprimorado: {sign_val} em {poder_atual.casting_ability.capitalize()} ({duracao_label})."
-                    else:
-                        # Instantâneo: registra como bônus específico para próxima rolagem daquele atributo
+                    # Aprimorar/Reduzir: quando negativo (redução), exige teste do alvo para aplicar
+                    val = int(getattr(poder_atual, 'nivel_efeito', 0) or 0)
+                    # Se valor negativo, realizar teste contra defesa_passiva escolhida no poder
+                    if val < 0:
+                        defesa_attr = getattr(poder_atual, 'defesa_passiva', 'vontade') or 'vontade'
+                        # Bônus gerais e específicos da próxima rolagem daquela defesa
+                        buff = participante_alvo.bonus_temporario
+                        debuff = participante_alvo.penalidade_temporaria
                         attr_map = participante_alvo.proximo_bonus_por_atributo or {}
-                        key = getattr(poder_atual, 'casting_ability', None)
-                        if key:
-                            attr_map[key] = int(attr_map.get(key, 0)) + int(poder_atual.nivel_efeito or 0)
+                        a_next = int(attr_map.get(defesa_attr, 0))
+                        base = random.randint(1, 20)
+                        defesa_val = _atributo_efetivo(alvo, participante_alvo, defesa_attr, combate.id)
+                        total = base + defesa_val + a_next + buff - debuff
+                        # Consome bônus gerais e específico por defesa
+                        participante_alvo.bonus_temporario = 0
+                        participante_alvo.penalidade_temporaria = 0
+                        if a_next:
+                            try:
+                                del attr_map[defesa_attr]
+                            except Exception:
+                                attr_map[defesa_attr] = 0
                             participante_alvo.proximo_bonus_por_atributo = attr_map
                         participante_alvo.save()
-                        val = int(getattr(poder_atual, 'nivel_efeito', 0) or 0)
-                        sign_val = f"+{val}" if val >= 0 else f"{val}"
-                        resultado = f"{alvo.nome} recebe {sign_val} (Aprimorar/Reduzir instantâneo) na próxima rolagem de {getattr(poder_atual, 'casting_ability', '').capitalize()}."
+                        cd = 10 + abs(val)
+                        a_piece = (f" + {a_next}" if a_next > 0 else (f" - {abs(a_next)}" if a_next < 0 else ""))
+                        defesa_msg = (
+                            f"{base} + {defesa_val}"
+                            f"{' + ' + str(buff) if buff else ''}"
+                            f"{' - ' + str(debuff) if debuff else ''}"
+                            f"{a_piece} = {total}"
+                        )
+                        if total < cd:
+                            # Falhou o teste: aplica Reduzir
+                            if duracao_raw in ('concentracao', 'sustentado'):
+                                EfeitoConcentracao.objects.create(
+                                    combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
+                                    poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                                )
+                                resultado = (
+                                    f"{alvo.nome} falhou o teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — "
+                                    f"<b>Reduzido {val}</b> em {poder_atual.casting_ability.capitalize()} ({duracao_label})."
+                                )
+                            else:
+                                # Instantâneo: aplica como penalidade específica na próxima rolagem daquele atributo
+                                attr_map2 = participante_alvo.proximo_bonus_por_atributo or {}
+                                key = getattr(poder_atual, 'casting_ability', None)
+                                if key:
+                                    attr_map2[key] = int(attr_map2.get(key, 0)) + val
+                                    participante_alvo.proximo_bonus_por_atributo = attr_map2
+                                participante_alvo.save()
+                                resultado = (
+                                    f"{alvo.nome} falhou o teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — "
+                                    f"<b>Reduzido {val}</b> na próxima rolagem de {getattr(poder_atual, 'casting_ability', '').capitalize()}."
+                                )
+                        else:
+                            # Resistiu: nenhum efeito
+                            resultado = (
+                                f"{alvo.nome} resistiu a {poder_atual.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — sem efeito."
+                            )
+                    else:
+                        # Valor positivo segue regra atual (não exige teste)
+                        if duracao_raw in ('concentracao', 'sustentado'):
+                            EfeitoConcentracao.objects.create(
+                                combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
+                                poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                            )
+                            sign_val = f"+{val}" if val >= 0 else f"{val}"
+                            resultado = f"{alvo.nome} fica Aprimorado: {sign_val} em {poder_atual.casting_ability.capitalize()} ({duracao_label})."
+                        else:
+                            # Instantâneo positivo: bônus específico para a próxima rolagem
+                            attr_map = participante_alvo.proximo_bonus_por_atributo or {}
+                            key = getattr(poder_atual, 'casting_ability', None)
+                            if key:
+                                attr_map[key] = int(attr_map.get(key, 0)) + val
+                                participante_alvo.proximo_bonus_por_atributo = attr_map
+                            participante_alvo.save()
+                            sign_val = f"+{val}" if val >= 0 else f"{val}"
+                            resultado = f"{alvo.nome} recebe {sign_val} (Aprimorar instantâneo) na próxima rolagem de {getattr(poder_atual, 'casting_ability', '').capitalize()}."
 
                 else:
                     # Modos ofensivos: area, percepcao, melee, ranged
