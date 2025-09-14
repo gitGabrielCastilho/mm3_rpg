@@ -1286,65 +1286,248 @@ def realizar_ataque(request, combate_id):
                         )
 
                 elif tipo == 'aprimorar':
-                    # Aprimorar/Reduzir: quando negativo (redução), exige teste do alvo para aplicar
+                    # Aprimorar/Reduzir: quando negativo (redução), exige teste do alvo para aplicar.
+                    # Se for melee/ranged, é necessário acertar o ataque antes do teste.
                     val = int(getattr(poder_atual, 'nivel_efeito', 0) or 0)
-                    # Se valor negativo, realizar teste contra defesa_passiva escolhida no poder
-                    if val < 0:
-                        defesa_attr = getattr(poder_atual, 'defesa_passiva', 'vontade') or 'vontade'
-                        # Bônus gerais e específicos da próxima rolagem daquela defesa
-                        buff = participante_alvo.bonus_temporario
-                        debuff = participante_alvo.penalidade_temporaria
-                        attr_map = participante_alvo.proximo_bonus_por_atributo or {}
-                        a_next = int(attr_map.get(defesa_attr, 0))
-                        base = random.randint(1, 20)
-                        defesa_val = _atributo_efetivo(alvo, participante_alvo, defesa_attr, combate.id)
-                        total = base + defesa_val + a_next + buff - debuff
-                        # Consome bônus gerais e específico por defesa
-                        participante_alvo.bonus_temporario = 0
-                        participante_alvo.penalidade_temporaria = 0
-                        if a_next:
-                            try:
-                                del attr_map[defesa_attr]
-                            except Exception:
-                                attr_map[defesa_attr] = 0
-                            participante_alvo.proximo_bonus_por_atributo = attr_map
-                        participante_alvo.save()
-                        cd = 10 + abs(val)
-                        a_piece = (f" + {a_next}" if a_next > 0 else (f" - {abs(a_next)}" if a_next < 0 else ""))
-                        defesa_msg = (
-                            f"{base} + {defesa_val}"
-                            f"{' + ' + str(buff) if buff else ''}"
-                            f"{' - ' + str(debuff) if debuff else ''}"
-                            f"{a_piece} = {total}"
-                        )
-                        if total < cd:
-                            # Falhou o teste: aplica Reduzir
-                            if duracao_raw in ('concentracao', 'sustentado'):
-                                EfeitoConcentracao.objects.create(
-                                    combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
-                                    poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
-                                )
-                                resultado = (
-                                    f"{alvo.nome} falhou o teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — "
-                                    f"<b>Reduzido {val}</b> em {poder_atual.casting_ability.capitalize()} ({duracao_label})."
-                                )
-                            else:
-                                # Instantâneo: aplica como penalidade específica na próxima rolagem daquele atributo
-                                attr_map2 = participante_alvo.proximo_bonus_por_atributo or {}
-                                key = getattr(poder_atual, 'casting_ability', None)
-                                if key:
-                                    attr_map2[key] = int(attr_map2.get(key, 0)) + val
-                                    participante_alvo.proximo_bonus_por_atributo = attr_map2
-                                participante_alvo.save()
-                                resultado = (
-                                    f"{alvo.nome} falhou o teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — "
-                                    f"<b>Reduzido {val}</b> na próxima rolagem de {getattr(poder_atual, 'casting_ability', '').capitalize()}."
-                                )
-                        else:
-                            # Resistiu: nenhum efeito
-                            resultado = (
-                                f"{alvo.nome} resistiu a {poder_atual.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — sem efeito."
+                    if val < 0 and modo in ('melee', 'ranged'):
+                        # 1) Checagem de ataque
+                        ataque_base = random.randint(1, 20)
+                        buff_att = participante_atacante.bonus_temporario
+                        debuff_att = participante_atacante.penalidade_temporaria
+                        ataque_total = ataque_base + poder_atual.bonus_ataque + buff_att - debuff_att
+                        defesa_mov = getattr(alvo, 'aparar' if modo == 'melee' else 'esquivar', 0)
+                        # Consome bônus/penalidade do atacante nesta rolagem
+                        participante_atacante.bonus_temporario = 0
+                        participante_atacante.penalidade_temporaria = 0
+                        participante_atacante.save()
+                        if ataque_total <= 10 + defesa_mov:
+                            ataque_msg = (
+                                f"{ataque_base} + {poder_atual.bonus_ataque}"
+                                f"{' + ' + str(buff_att) if buff_att else ''}"
+                                f"{' - ' + str(debuff_att) if debuff_att else ''} = {ataque_total}"
                             )
+                            resultado = f"{atacante.nome} errou {alvo.nome} (atk {ataque_msg} vs {10+defesa_mov}) ({poder_atual.nome})"
+                        else:
+                            # 2) Teste do alvo na defesa passiva
+                            defesa_attr = getattr(poder_atual, 'defesa_passiva', 'vontade') or 'vontade'
+                            buff = participante_alvo.bonus_temporario
+                            debuff = participante_alvo.penalidade_temporaria
+                            attr_map = participante_alvo.proximo_bonus_por_atributo or {}
+                            a_next = int(attr_map.get(defesa_attr, 0))
+                            base = random.randint(1, 20)
+                            defesa_val = _atributo_efetivo(alvo, participante_alvo, defesa_attr, combate.id)
+                            total = base + defesa_val + a_next + buff - debuff
+                            # Consome bônus gerais e específico por defesa
+                            participante_alvo.bonus_temporario = 0
+                            participante_alvo.penalidade_temporaria = 0
+                            if a_next:
+                                try:
+                                    del attr_map[defesa_attr]
+                                except Exception:
+                                    attr_map[defesa_attr] = 0
+                                participante_alvo.proximo_bonus_por_atributo = attr_map
+                            participante_alvo.save()
+                            cd = 10 + abs(val)
+                            a_piece = (f" + {a_next}" if a_next > 0 else (f" - {abs(a_next)}" if a_next < 0 else ""))
+                            defesa_msg = (
+                                f"{base} + {defesa_val}"
+                                f"{' + ' + str(buff) if buff else ''}"
+                                f"{' - ' + str(debuff) if debuff else ''}"
+                                f"{a_piece} = {total}"
+                            )
+                            ataque_msg = (
+                                f"{ataque_base} + {poder_atual.bonus_ataque}"
+                                f"{' + ' + str(buff_att) if buff_att else ''}"
+                                f"{' - ' + str(debuff_att) if debuff_att else ''} = {ataque_total}"
+                            )
+                            if total < cd:
+                                # Falhou o teste: aplica Reduzir
+                                if duracao_raw in ('concentracao', 'sustentado'):
+                                    EfeitoConcentracao.objects.create(
+                                        combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
+                                        poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                                    )
+                                    resultado = (
+                                        f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {10+defesa_mov}); "
+                                        f"teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — "
+                                        f"<b>Reduzido {val}</b> em {poder_atual.casting_ability.capitalize()} ({duracao_label})."
+                                    )
+                                else:
+                                    # Instantâneo: aplica como penalidade específica na próxima rolagem daquele atributo
+                                    attr_map2 = participante_alvo.proximo_bonus_por_atributo or {}
+                                    key = getattr(poder_atual, 'casting_ability', None)
+                                    if key:
+                                        attr_map2[key] = int(attr_map2.get(key, 0)) + val
+                                        participante_alvo.proximo_bonus_por_atributo = attr_map2
+                                    participante_alvo.save()
+                                    resultado = (
+                                        f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {10+defesa_mov}); "
+                                        f"teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — "
+                                        f"<b>Reduzido {val}</b> na próxima rolagem de {getattr(poder_atual, 'casting_ability', '').capitalize()}."
+                                    )
+                            else:
+                                resultado = (
+                                    f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {10+defesa_mov}); "
+                                    f"teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — sem efeito."
+                                )
+                    elif val < 0:
+                        # Modos não-ofensivos/percepção ou área
+                        if modo == 'area':
+                            # Esquiva primeiro, com sucesso parcial reduzindo a CD do teste de defesa
+                            esquiva = _atributo_efetivo(alvo, participante_alvo, 'esquivar', combate.id)
+                            esq_map = participante_alvo.proximo_bonus_por_atributo or {}
+                            esq_next = int(esq_map.get('esquivar', 0))
+                            rolagem_esq_base = random.randint(1, 20)
+                            rolagem_esq = rolagem_esq_base + esquiva + esq_next
+                            # Consome bônus específico de Esquivar
+                            if esq_next:
+                                try:
+                                    del esq_map['esquivar']
+                                except Exception:
+                                    esq_map['esquivar'] = 0
+                                participante_alvo.proximo_bonus_por_atributo = esq_map
+                                participante_alvo.save()
+                            cd_area = 10 + abs(val)
+                            cd_sucesso = cd_area // 2
+                            defesa_attr = getattr(poder_atual, 'defesa_passiva', 'vontade') or 'vontade'
+                            esq_piece = (f" + {esq_next}" if esq_next > 0 else (f" - {abs(esq_next)}" if esq_next < 0 else ""))
+                            # Preparar rol do teste de defesa (consome buffs/penalidades e bônus específico da defesa)
+                            def _teste_defesa(cd_uso: int):
+                                buff = participante_alvo.bonus_temporario
+                                debuff = participante_alvo.penalidade_temporaria
+                                attr_map = participante_alvo.proximo_bonus_por_atributo or {}
+                                a_next = int(attr_map.get(defesa_attr, 0))
+                                base = random.randint(1, 20)
+                                defesa_val = _atributo_efetivo(alvo, participante_alvo, defesa_attr, combate.id)
+                                total = base + defesa_val + a_next + buff - debuff
+                                participante_alvo.bonus_temporario = 0
+                                participante_alvo.penalidade_temporaria = 0
+                                if a_next:
+                                    try:
+                                        del attr_map[defesa_attr]
+                                    except Exception:
+                                        attr_map[defesa_attr] = 0
+                                    participante_alvo.proximo_bonus_por_atributo = attr_map
+                                participante_alvo.save()
+                                a_piece = (f" + {a_next}" if a_next > 0 else (f" - {abs(a_next)}" if a_next < 0 else ""))
+                                defesa_msg = (
+                                    f"{base} + {defesa_val}"
+                                    f"{' + ' + str(buff) if buff else ''}"
+                                    f"{' - ' + str(debuff) if debuff else ''}"
+                                    f"{a_piece} = {total}"
+                                )
+                                return total, defesa_msg, cd_uso
+
+                            if rolagem_esq < cd_area:
+                                # Falha na esquiva: usa CD cheia
+                                total, defesa_msg, cd_uso = _teste_defesa(cd_area)
+                                if total < cd_uso:
+                                    if duracao_raw in ('concentracao', 'sustentado'):
+                                        EfeitoConcentracao.objects.create(
+                                            combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
+                                            poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                                        )
+                                        resultado = (
+                                            f"{alvo.nome} falhou esquiva ({rolagem_esq_base}+{esquiva}{esq_piece}={rolagem_esq} vs {cd_area}); "
+                                            f"teste de {defesa_attr} ({defesa_msg}) contra CD {cd_uso} — <b>Reduzido {val}</b> em {poder_atual.casting_ability.capitalize()} ({duracao_label})."
+                                        )
+                                    else:
+                                        attr_map2 = participante_alvo.proximo_bonus_por_atributo or {}
+                                        key = getattr(poder_atual, 'casting_ability', None)
+                                        if key:
+                                            attr_map2[key] = int(attr_map2.get(key, 0)) + val
+                                            participante_alvo.proximo_bonus_por_atributo = attr_map2
+                                        participante_alvo.save()
+                                        resultado = (
+                                            f"{alvo.nome} falhou esquiva ({rolagem_esq_base}+{esquiva}{esq_piece}={rolagem_esq} vs {cd_area}); "
+                                            f"teste de {defesa_attr} ({defesa_msg}) contra CD {cd_uso} — <b>Reduzido {val}</b> na próxima rolagem de {getattr(poder_atual, 'casting_ability', '').capitalize()}."
+                                        )
+                                else:
+                                    resultado = (
+                                        f"{alvo.nome} falhou esquiva ({rolagem_esq_base}+{esquiva}{esq_piece}={rolagem_esq} vs {cd_area}); "
+                                        f"teste de {defesa_attr} ({defesa_msg}) contra CD {cd_uso} — sem efeito."
+                                    )
+                            else:
+                                # Sucesso parcial na esquiva: CD reduzida
+                                total, defesa_msg, cd_uso = _teste_defesa(cd_sucesso)
+                                if total < cd_uso:
+                                    if duracao_raw in ('concentracao', 'sustentado'):
+                                        EfeitoConcentracao.objects.create(
+                                            combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
+                                            poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                                        )
+                                        resultado = (
+                                            f"{alvo.nome} sucesso parcial esquiva ({rolagem_esq_base}+{esquiva}{esq_piece}={rolagem_esq} vs {cd_area}); "
+                                            f"teste de {defesa_attr} ({defesa_msg}) contra CD {cd_uso} — <b>Reduzido {val}</b> em {poder_atual.casting_ability.capitalize()} ({duracao_label})."
+                                        )
+                                    else:
+                                        attr_map2 = participante_alvo.proximo_bonus_por_atributo or {}
+                                        key = getattr(poder_atual, 'casting_ability', None)
+                                        if key:
+                                            attr_map2[key] = int(attr_map2.get(key, 0)) + val
+                                            participante_alvo.proximo_bonus_por_atributo = attr_map2
+                                        participante_alvo.save()
+                                        resultado = (
+                                            f"{alvo.nome} sucesso parcial esquiva ({rolagem_esq_base}+{esquiva}{esq_piece}={rolagem_esq} vs {cd_area}); "
+                                            f"teste de {defesa_attr} ({defesa_msg}) contra CD {cd_uso} — <b>Reduzido {val}</b> na próxima rolagem de {getattr(poder_atual, 'casting_ability', '').capitalize()}."
+                                        )
+                                else:
+                                    resultado = (
+                                        f"{alvo.nome} sucesso parcial esquiva ({rolagem_esq_base}+{esquiva}{esq_piece}={rolagem_esq} vs {cd_area}); "
+                                        f"teste de {defesa_attr} ({defesa_msg}) contra CD {cd_uso} — sem efeito."
+                                    )
+                        else:
+                            # Percepção (ou outros): teste direto na defesa passiva
+                            defesa_attr = getattr(poder_atual, 'defesa_passiva', 'vontade') or 'vontade'
+                            buff = participante_alvo.bonus_temporario
+                            debuff = participante_alvo.penalidade_temporaria
+                            attr_map = participante_alvo.proximo_bonus_por_atributo or {}
+                            a_next = int(attr_map.get(defesa_attr, 0))
+                            base = random.randint(1, 20)
+                            defesa_val = _atributo_efetivo(alvo, participante_alvo, defesa_attr, combate.id)
+                            total = base + defesa_val + a_next + buff - debuff
+                            participante_alvo.bonus_temporario = 0
+                            participante_alvo.penalidade_temporaria = 0
+                            if a_next:
+                                try:
+                                    del attr_map[defesa_attr]
+                                except Exception:
+                                    attr_map[defesa_attr] = 0
+                                participante_alvo.proximo_bonus_por_atributo = attr_map
+                            participante_alvo.save()
+                            cd = 10 + abs(val)
+                            a_piece = (f" + {a_next}" if a_next > 0 else (f" - {abs(a_next)}" if a_next < 0 else ""))
+                            defesa_msg = (
+                                f"{base} + {defesa_val}"
+                                f"{' + ' + str(buff) if buff else ''}"
+                                f"{' - ' + str(debuff) if debuff else ''}"
+                                f"{a_piece} = {total}"
+                            )
+                            if total < cd:
+                                if duracao_raw in ('concentracao', 'sustentado'):
+                                    EfeitoConcentracao.objects.create(
+                                        combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
+                                        poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                                    )
+                                    resultado = (
+                                        f"{alvo.nome} falhou o teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — "
+                                        f"<b>Reduzido {val}</b> em {poder_atual.casting_ability.capitalize()} ({duracao_label})."
+                                    )
+                                else:
+                                    attr_map2 = participante_alvo.proximo_bonus_por_atributo or {}
+                                    key = getattr(poder_atual, 'casting_ability', None)
+                                    if key:
+                                        attr_map2[key] = int(attr_map2.get(key, 0)) + val
+                                        participante_alvo.proximo_bonus_por_atributo = attr_map2
+                                    participante_alvo.save()
+                                    resultado = (
+                                        f"{alvo.nome} falhou o teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — "
+                                        f"<b>Reduzido {val}</b> na próxima rolagem de {getattr(poder_atual, 'casting_ability', '').capitalize()}."
+                                    )
+                            else:
+                                resultado = (
+                                    f"{alvo.nome} resistiu a {poder_atual.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — sem efeito."
+                                )
                     else:
                         # Valor positivo segue regra atual (não exige teste)
                         if duracao_raw in ('concentracao', 'sustentado'):
