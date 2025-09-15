@@ -68,15 +68,70 @@
     </section>
     <section class="ficha-card">
       <h2 class="ficha-section-title">Poderes</h2>
-      <ul class="ficha-list">
+      <ul class="ficha-list" id="lista-poderes">
         {% for poder in personagem.poderes.all %}
           {% if not poder.de_item %}
-            <li><strong>{{ poder.nome }}</strong> <span class="desc">— Ataque: {{ poder.bonus_ataque }}, Efeito: {{ poder.nivel_efeito }}</span></li>
+            {% with arr=poder.array|default_if_none:'' %}
+              <li data-array="{{ arr }}" data-array-key="{{ arr|lower }}">
+                <strong>{{ poder.nome }}</strong>
+                {% if arr %}<span class="badge array-badge">Array: {{ arr }}</span>{% endif %}
+                <span class="desc">— Ataque: {{ poder.bonus_ataque }}, Efeito: {{ poder.nivel_efeito }}</span>
+              </li>
+            {% endwith %}
           {% endif %}
         {% empty %}
           <li><em>Nenhum poder adicionado.</em></li>
         {% endfor %}
       </ul>
+      <div id="array-groups-container"></div>
+      <script>
+        document.addEventListener('DOMContentLoaded', function () {
+          const list = document.getElementById('lista-poderes');
+          if (!list) return;
+          const items = Array.from(list.querySelectorAll('li'));
+          if (!items.length) return;
+          const groups = new Map();
+          for (const li of items) {
+            const key = (li.getAttribute('data-array-key') || '').trim();
+            const name = (li.getAttribute('data-array') || '').trim();
+            if (!key) continue; // apenas agrupa quando há nome de Array
+            if (!groups.has(key)) groups.set(key, { name, items: [] });
+            groups.get(key).items.push(li);
+          }
+          if (groups.size === 0) return; // nada para agrupar
+          const container = document.getElementById('array-groups-container');
+          // Cria grupos visuais e move os itens correspondentes
+          groups.forEach((group) => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'array-group ficha-subcard';
+            const title = document.createElement('h3');
+            title.className = 'ficha-subtitle';
+            title.textContent = `Array: ${group.name}`;
+            wrapper.appendChild(title);
+            const hint = document.createElement('div');
+            hint.className = 'array-hint';
+            hint.style.fontSize = '0.9em';
+            hint.style.opacity = '0.8';
+            hint.textContent = 'Poderes alternativos — use apenas um por vez.';
+            wrapper.appendChild(hint);
+            const ul = document.createElement('ul');
+            ul.className = 'ficha-list';
+            group.items.forEach((li) => {
+              const badge = li.querySelector('.array-badge');
+              if (badge) badge.remove(); // badge não é necessária dentro do grupo
+              ul.appendChild(li);
+            });
+            wrapper.appendChild(ul);
+            container.appendChild(wrapper);
+          });
+          // Se a lista original ficou sem itens (todos estavam em Arrays), mostra um texto opcional
+          if (!list.querySelector('li')) {
+            const li = document.createElement('li');
+            li.innerHTML = '<em>Nenhum poder fora de Array.</em>';
+            list.appendChild(li);
+          }
+        });
+      </script>
       <h3 class="ficha-subtitle">Poderes de Itens</h3>
       <ul class="ficha-list">
         {% if poderes_de_item %}
