@@ -218,6 +218,17 @@ class Poder(models.Model):
         'Vantagem', on_delete=models.SET_NULL, null=True, blank=True,
         help_text="Se for poder de vantagem, selecione a vantagem de origem."
     )
+    # Campo para agrupar poderes em "Arrays" (efeitos alternativos)
+    array = models.CharField(
+        "Array",
+        max_length=100,
+        blank=True,
+        default="",
+        help_text=(
+            "Nome do grupo de efeitos alternativos. Entre todos os poderes com o mesmo nome, "
+            "o custo do grupo é o do poder mais caro + 1 por efeito alternativo."
+        ),
+    )
     ligados = models.ManyToManyField(
         'self', blank=True, symmetrical=False,
     help_text='Poderes que disparam em cadeia junto com este. Precisam ter mesmo nome, modo e duração.'
@@ -226,8 +237,8 @@ class Poder(models.Model):
         return f"{self.nome} ({self.tipo}, {self.modo})"
 
     # --- Cálculo de custo do poder ---
-    def custo(self):
-        """Calcula o custo do poder conforme regras fornecidas:
+    def custo_base(self):
+        """Calcula o custo base do poder (sem considerar Array nem encadeamentos):
         Base: 1 por nível de efeito
         Modificadores por nível de efeito, cumulativos:
           Tipo: Cura +1, Aprimorar/Reduzir +1, Outros +0
@@ -267,6 +278,13 @@ class Poder(models.Model):
             + duracao_bonus_map.get(self.duracao, 0) \
             + modo_bonus_map.get(self.modo, 0)
         return n * bonus
+
+    def custo(self):
+        """Mantido por compatibilidade: retorna o custo base do poder.
+        O custo efetivo considerando grupos de Array deve ser calculado
+        em nível de Personagem (ver custos_detalhados).
+        """
+        return self.custo_base()
 
 # --- Signals de validação para o encadeamento (garantir regra mesmo fora dos formulários) ---
 @receiver(m2m_changed, sender=Poder.ligados.through)
@@ -336,12 +354,31 @@ def personagem_custos_detalhados(self):
     # Vantagens (cada uma vale 1 enquanto não há nível)
     qtd_vantagens = self.vantagens.count() if hasattr(self, 'vantagens') else 0
     custo_vantagens = qtd_vantagens * 1
-    # Poderes
+    # Poderes (considera Arrays: custo do grupo = max(custo_base) + (qtd-1))
     poderes_qs = getattr(self, 'poderes', None)
+    custo_poderes = 0
     if poderes_qs is not None:
-        custo_poderes = sum(p.custo() for p in poderes_qs.all())
-    else:
-        custo_poderes = 0
+        grupos = {}
+        individuais = []
+        for p in poderes_qs.all():
+            # Ignora poderes de item/vantagem no custo total
+            if getattr(p, 'de_item', False) or getattr(p, 'de_vantagem', False):
+                continue
+            base = p.custo_base()
+            nome_array = (getattr(p, 'array', '') or '').strip()
+            if nome_array:
+                key = nome_array.lower()
+                grupos.setdefault(key, []).append(base)
+            else:
+                individuais.append(base)
+        # Soma individuais
+        custo_poderes += sum(individuais)
+        # Soma grupos: mais caro + 1 por poder alternativo
+        for bases in grupos.values():
+            if not bases:
+                continue
+            n = len(bases)
+            custo_poderes += (max(bases) + max(0, n - 1))
     total = custo_carac + custo_def + custo_pericias + custo_vantagens + custo_poderes
     return {
         'caracteristicas': custo_carac,

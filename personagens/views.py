@@ -296,6 +296,7 @@ def _clonar_personagem(orig: Personagem, sala_destino: Sala, dono):
             personagem=novo,
             casting_ability=p.casting_ability,
             nome=p.nome,
+            array=getattr(p, 'array', ''),
             tipo=p.tipo,
             modo=p.modo,
             duracao=p.duracao,

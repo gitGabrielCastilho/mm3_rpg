@@ -88,7 +88,7 @@ class PoderForm(forms.ModelForm):
         model = Poder
         fields = [
             'id',
-            'nome', 'tipo', 'modo', 'duracao', 'nivel_efeito', 'bonus_ataque',
+            'nome', 'array', 'tipo', 'modo', 'duracao', 'nivel_efeito', 'bonus_ataque',
             'defesa_ativa', 'defesa_passiva', 'casting_ability',
             'de_item', 'item_origem', 'de_vantagem', 'vantagem_origem', 'ligados'
         ]
@@ -258,7 +258,7 @@ class PoderNPCForm(forms.ModelForm):
     class Meta:
         model = Poder
         fields = [
-            'nome', 'tipo', 'modo', 'duracao', 'nivel_efeito', 'bonus_ataque',
+            'nome', 'array', 'tipo', 'modo', 'duracao', 'nivel_efeito', 'bonus_ataque',
             'defesa_ativa', 'defesa_passiva', 'casting_ability', 'ligados'
         ]
 

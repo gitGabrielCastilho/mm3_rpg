@@ -141,6 +141,7 @@
             {{ formset.empty_form.DELETE }}
           </div>
           <div class="campo-poder">{{ formset.empty_form.nome.label_tag }}{{ formset.empty_form.nome }}</div>
+          <div class="campo-poder">{{ formset.empty_form.array.label_tag }}{{ formset.empty_form.array }}</div>
           <div class="campo-poder">{{ formset.empty_form.tipo.label_tag }}{{ formset.empty_form.tipo }}</div>
           <div class="campo-poder">{{ formset.empty_form.modo.label_tag }}{{ formset.empty_form.modo }}</div>
           <div class="campo-poder">{{ formset.empty_form.duracao.label_tag }}{{ formset.empty_form.duracao }}</div>
@@ -172,6 +173,7 @@
                   {{ form.DELETE }}
                 </div>
                 <div class="campo-poder">{{ form.nome.label_tag }}{{ form.nome }}</div>
+                <div class="campo-poder">{{ form.array.label_tag }}{{ form.array }}</div>
                 <div class="campo-poder">{{ form.tipo.label_tag }}{{ form.tipo }}</div>
                 <div class="campo-poder">{{ form.modo.label_tag }}{{ form.modo }}</div>
                 <div class="campo-poder">{{ form.duracao.label_tag }}{{ form.duracao }}</div>
@@ -513,12 +515,32 @@ document.addEventListener('DOMContentLoaded', function() {
     const custoDef = camposDefesas.reduce((s,c)=>s+val(c),0)*1;
     const custoPer = camposPericias.reduce((s,c)=>s+val(c),0)*0.5;
     const custoVant = document.querySelectorAll('input[type="checkbox"][name="vantagens"]:checked').length * 1;
-    let custoPod = 0;
+    // Custos de Poderes com Arrays: agrupar por nome do array (case-insensitive)
+    const grupos = new Map();
+    const individuais = [];
     document.querySelectorAll('.poder-form').forEach(div=>{
       const del = div.querySelector('input[type="checkbox"][name$="-DELETE"]');
       if(del && del.checked) return;
       if(div.style.display==='none') return;
-      custoPod += custoPoderDiv(div);
+      // Ignora poderes de item/vantagem no custo (custo base já ignora, mas garantimos)
+      const chItem = div.querySelector('input[type="checkbox"][name$="-de_item"]');
+      const chVant = div.querySelector('input[type="checkbox"][name$="-de_vantagem"]');
+      if ((chItem && chItem.checked) || (chVant && chVant.checked)) return;
+      const base = custoPoderDiv(div);
+      const arrName = (div.querySelector('[name$="-array"]')?.value || '').trim().toLowerCase();
+      if (arrName) {
+        if (!grupos.has(arrName)) grupos.set(arrName, []);
+        grupos.get(arrName).push(base);
+      } else {
+        individuais.push(base);
+      }
+    });
+    let custoPod = individuais.reduce((a,b)=>a+b,0);
+    grupos.forEach(bases=>{
+      if (!bases || bases.length===0) return;
+      const n = bases.length;
+      const maxBase = Math.max.apply(null, bases);
+      custoPod += maxBase + Math.max(0, n - 1);
     });
     const total = custoCarac + custoDef + custoPer + custoVant + custoPod;
     function fmt(x){ return (Math.round(x*10)%10===0)?x: x.toFixed(1).replace('.0',''); }
