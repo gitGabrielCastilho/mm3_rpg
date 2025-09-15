@@ -20,6 +20,19 @@
 
   <div class="ficha-sections-grid">
     <section class="ficha-card">
+      <h2 class="ficha-section-title">Custos</h2>
+      {% with custos=personagem.custos_detalhados %}
+      <ul class="ficha-list cols-2">
+        <li><span class="lbl">Características</span><span class="val">{{ custos.caracteristicas }}</span></li>
+        <li><span class="lbl">Defesas</span><span class="val">{{ custos.defesas }}</span></li>
+        <li><span class="lbl">Perícias</span><span class="val">{{ custos.pericias }}</span></li>
+        <li><span class="lbl">Vantagens</span><span class="val">{{ custos.vantagens }}</span></li>
+        <li><span class="lbl">Poderes</span><span class="val">{{ custos.poderes }}</span></li>
+        <li><span class="lbl" style="font-weight:bold;">Total</span><span class="val" style="font-weight:bold;">{{ custos.total }}</span></li>
+      </ul>
+      {% endwith %}
+    </section>
+    <section class="ficha-card">
       <h2 class="ficha-section-title">Habilidades</h2>
       <ul class="ficha-list cols-2">
         {% for campo in categorias.caracteristicas %}

@@ -8,6 +8,17 @@
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     <div class="personagem-form-fields">
+      <div id="painel-custos" style="background:#1e1e28; border:1px solid #444; padding:0.8rem 1rem; margin-bottom:1.2rem; font-size:0.95rem; line-height:1.3;">
+        <strong>Custos (dinâmico):</strong>
+        <div style="display:flex; flex-wrap:wrap; gap:1rem; margin-top:0.4rem;">
+          <span>Características: <span id="custo-caracteristicas">0</span></span>
+          <span>Defesas: <span id="custo-defesas">0</span></span>
+          <span>Perícias: <span id="custo-pericias">0</span></span>
+          <span>Vantagens: <span id="custo-vantagens">0</span></span>
+          <span>Poderes: <span id="custo-poderes">0</span></span>
+          <span style="font-weight:bold;">Total: <span id="custo-total">0</span></span>
+        </div>
+      </div>
       <div class="linha-topo" style="display:flex; gap:2rem; flex-wrap:wrap; align-items:flex-start;">
         <div class="campo-nome" style="flex:1 1 200px; min-width:180px;">
           {{ form.nome.label_tag }} {{ form.nome }}
@@ -259,6 +270,106 @@
 </div>
 
 <script>
+// ---- Cálculo Dinâmico de Custos ----
+document.addEventListener('DOMContentLoaded', function() {
+  const camposCaracteristicas = ['forca','vigor','destreza','agilidade','luta','inteligencia','prontidao','presenca'];
+  const camposDefesas = ['aparar','esquivar','fortitude','vontade','resistencia'];
+  const camposPericias = ['acrobacias','atletismo','combate_distancia','combate_corpo','enganacao','especialidade','furtividade','intimidacao','intuicao','investigacao','percepcao','persuasao','prestidigitacao','tecnologia','tratamento','veiculos','historia','sobrevivencia','arcana','religiao'];
+
+  function val(id){
+    const el = document.getElementById('id_'+id);
+    if(!el) return 0;
+    const v = parseFloat(el.value.replace(',', '.'));
+    return isNaN(v)?0:v;
+  }
+
+  function custoPoderDiv(div){
+    function sel(name){ return div.querySelector('[name$="-'+name+'"]'); }
+    const nivelInput = sel('nivel_efeito');
+    if(!nivelInput) return 0;
+    const n = parseFloat(nivelInput.value)||0;
+    if(n<=0) return 0;
+    const tipo = (sel('tipo')?.value)||'';
+    const dur = (sel('duracao')?.value)||'';
+    const modo = (sel('modo')?.value)||'';
+    const tipoBonus = (tipo==='cura'||tipo==='aprimorar')?1:0;
+    const durBonus = dur==='concentracao'?1:(dur==='sustentado'?2:0);
+    const modoBonus = modo==='ranged'?1:(modo==='area'?2:(modo==='percepcao'?3:0));
+    const mult = 1 + tipoBonus + durBonus + modoBonus;
+    return n * mult;
+  }
+
+  function atualizarCustos(){
+    const custoCarac = camposCaracteristicas.reduce((s,c)=>s+val(c),0)*2;
+    const custoDef = camposDefesas.reduce((s,c)=>s+val(c),0)*1;
+    const custoPer = camposPericias.reduce((s,c)=>s+val(c),0)*0.5;
+    // Vantagens: cada checkbox marcado = 1
+    const custoVant = document.querySelectorAll('input[type="checkbox"][name="vantagens"]:checked').length * 1;
+    // Poderes: percorre .poder-form visíveis não deletados
+    let custoPod = 0;
+    document.querySelectorAll('.poder-form').forEach(div=>{
+      const del = div.querySelector('input[type="checkbox"][name$="-DELETE"]');
+      if(del && del.checked) return; // ignorar deletados
+      if(div.style.display==='none') return;
+      custoPod += custoPoderDiv(div);
+    });
+    const total = custoCarac + custoDef + custoPer + custoVant + custoPod;
+    document.getElementById('custo-caracteristicas').textContent = custoCarac;
+    document.getElementById('custo-defesas').textContent = custoDef;
+    // Exibe .5 com .5, senão inteiro
+    function fmt(x){ return (Math.round(x*10)%10===0)?x: x.toFixed(1).replace('.0',''); }
+    document.getElementById('custo-pericias').textContent = fmt(custoPer);
+    document.getElementById('custo-vantagens').textContent = custoVant;
+    document.getElementById('custo-poderes').textContent = custoPod;
+    document.getElementById('custo-total').textContent = fmt(total);
+  }
+
+  // Observers
+  const watchSelectors = []
+    .concat(camposCaracteristicas.map(c=>'#id_'+c))
+    .concat(camposDefesas.map(c=>'#id_'+c))
+    .concat(camposPericias.map(c=>'#id_'+c))
+    .concat(['input[type="checkbox"][name="vantagens"]']);
+  function addListeners(){
+    watchSelectors.forEach(sel=>{
+      document.querySelectorAll(sel).forEach(el=>{
+        el.addEventListener('input', atualizarCustos);
+        el.addEventListener('change', atualizarCustos);
+      });
+    });
+    // Campos de poder
+    document.querySelectorAll('.poder-form select, .poder-form input').forEach(el=>{
+      el.addEventListener('input', atualizarCustos);
+      el.addEventListener('change', atualizarCustos);
+    });
+  }
+  addListeners();
+  // Reaplicar listeners ao adicionar poder
+  const originalAdicionar = window.adicionarPoder;
+  window.adicionarPoder = function(){
+    originalAdicionar();
+    // Dar tempo para DOM inserir
+    setTimeout(()=>{
+      document.querySelectorAll('.poder-form:last-child select, .poder-form:last-child input').forEach(el=>{
+        el.addEventListener('input', atualizarCustos);
+        el.addEventListener('change', atualizarCustos);
+      });
+      atualizarCustos();
+    },50);
+  }
+  const originalRemover = window.removerPoderLinha;
+  window.removerPoderLinha = function(btn){
+    originalRemover(btn);
+    atualizarCustos();
+  }
+  const originalRemoverUltimo = window.removerPoder;
+  window.removerPoder = function(){
+    originalRemoverUltimo();
+    atualizarCustos();
+  }
+  atualizarCustos();
+});
+</script>
 function adicionarPoder() {
   const formsetDiv = document.getElementById('poderes-formset');
   const poderesContainer = formsetDiv.querySelector('div[style*="flex-direction: column"]');

@@ -225,6 +225,44 @@ class Poder(models.Model):
     def __str__(self):
         return f"{self.nome} ({self.tipo}, {self.modo})"
 
+    # --- Cálculo de custo do poder ---
+    def custo(self):
+        """Calcula o custo do poder conforme regras fornecidas:
+        Base: 1 por nível de efeito
+        Modificadores por nível de efeito, cumulativos:
+          Tipo: Cura +1, Aprimorar/Reduzir +1, Outros +0
+          Duração: Instantâneo +0, Concentração +1, Sustentado +2
+          Modo: Corpo a Corpo +0, À distância +1, Área +2, Percepção +3
+        Custo = nivel_efeito * (1 + soma_modificadores)
+        """
+        n = self.nivel_efeito or 0
+        if n <= 0:
+            return 0
+        tipo_bonus_map = {
+            'cura': 1,
+            'aprimorar': 1,  # chave 'aprimorar' usada nas choices
+            'buff': 0,
+            'dano': 0,
+            'aflicao': 0,
+            'descritivo': 0,
+        }
+        duracao_bonus_map = {
+            'instantaneo': 0,
+            'concentracao': 1,
+            'sustentado': 2,
+        }
+        modo_bonus_map = {
+            'melee': 0,
+            'ranged': 1,
+            'area': 2,
+            'percepcao': 3,
+        }
+        bonus = 1 \
+            + tipo_bonus_map.get(self.tipo, 0) \
+            + duracao_bonus_map.get(self.duracao, 0) \
+            + modo_bonus_map.get(self.modo, 0)
+        return n * bonus
+
 # --- Signals de validação para o encadeamento (garantir regra mesmo fora dos formulários) ---
 @receiver(m2m_changed, sender=Poder.ligados.through)
 def validar_poderes_ligados(sender, instance, action, pk_set, reverse, model, **kwargs):
@@ -262,3 +300,59 @@ class Vantagem(models.Model):
 
     def __str__(self):
         return self.nome
+
+
+# ---- Métodos auxiliares dinamicamente adicionados a Personagem (após classe) ----
+def personagem_custos_detalhados(self):
+    """Retorna um dicionário com o detalhamento dos custos do personagem.
+    Regras:
+      Característica: 2 pts por nível (soma dos 8 atributos)
+      Vantagem: 1 pt por vantagem (não há nível atualmente)
+      Perícia: 0.5 pt por nível (soma das perícias)
+      Defesa: 1 pt por nível (aparar, esquivar, fortitude, vontade, resistencia)
+      Poder: conforme Poder.custo()
+    """
+    # Características
+    carac_campos = ['forca','vigor','destreza','agilidade','luta','inteligencia','prontidao','presenca']
+    soma_carac = sum(getattr(self, c, 0) or 0 for c in carac_campos)
+    custo_carac = soma_carac * 2
+    # Defesas
+    def_campos = ['aparar','esquivar','fortitude','vontade','resistencia']
+    soma_def = sum(getattr(self, c, 0) or 0 for c in def_campos)
+    custo_def = soma_def * 1
+    # Perícias
+    pericia_campos = [
+        'acrobacias','atletismo','combate_distancia','combate_corpo','enganacao','especialidade',
+        'furtividade','intimidacao','intuicao','investigacao','percepcao','persuasao',
+        'prestidigitacao','tecnologia','tratamento','veiculos','historia','sobrevivencia','arcana','religiao'
+    ]
+    soma_pericias = sum(getattr(self, c, 0) or 0 for c in pericia_campos)
+    custo_pericias = soma_pericias * 0.5
+    # Vantagens (cada uma vale 1 enquanto não há nível)
+    qtd_vantagens = self.vantagens.count() if hasattr(self, 'vantagens') else 0
+    custo_vantagens = qtd_vantagens * 1
+    # Poderes
+    poderes_qs = getattr(self, 'poderes', None)
+    if poderes_qs is not None:
+        custo_poderes = sum(p.custo() for p in poderes_qs.all())
+    else:
+        custo_poderes = 0
+    total = custo_carac + custo_def + custo_pericias + custo_vantagens + custo_poderes
+    return {
+        'caracteristicas': custo_carac,
+        'defesas': custo_def,
+        'pericias': custo_pericias,
+        'vantagens': custo_vantagens,
+        'poderes': custo_poderes,
+        'total': total,
+        'soma_caracteristicas': soma_carac,
+        'soma_defesas': soma_def,
+        'soma_pericias': soma_pericias,
+        'qtd_vantagens': qtd_vantagens,
+    }
+
+def personagem_custo_total(self):
+    return personagem_custos_detalhados(self)['total']
+
+Personagem.custos_detalhados = personagem_custos_detalhados  # type: ignore
+Personagem.custo_total = personagem_custo_total  # type: ignore
