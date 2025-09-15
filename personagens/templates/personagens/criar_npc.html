@@ -161,6 +161,10 @@ document.addEventListener('DOMContentLoaded', function() {
   function val(id){ const el = document.getElementById('id_'+id); if(!el) return 0; const v = parseFloat(el.value.replace(',', '.')); return isNaN(v)?0:v; }
   function custoPoderDiv(div){
     function sel(name){ return div.querySelector('[name$="-'+name+'"]'); }
+    // Caso esta tela venha a ter check de item/vantagem no futuro, já tratamos
+    const chItem = div.querySelector('input[type="checkbox"][name$="-de_item"]');
+    const chVant = div.querySelector('input[type="checkbox"][name$="-de_vantagem"]');
+    if ((chItem && chItem.checked) || (chVant && chVant.checked)) return 0;
     let n = parseFloat((sel('nivel_efeito')?.value)||0) || 0;
     n = Math.abs(n);
     if(n===0) return 0;

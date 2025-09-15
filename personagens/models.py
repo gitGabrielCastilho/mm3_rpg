@@ -235,6 +235,9 @@ class Poder(models.Model):
           Modo: Corpo a Corpo +0, À distância +1, Área +2, Percepção +3
         Custo = nivel_efeito * (1 + soma_modificadores)
         """
+        # Se for poder de item ou de vantagem, custo é desconsiderado
+        if getattr(self, 'de_item', False) or getattr(self, 'de_vantagem', False):
+            return 0
         # Usa valor absoluto: níveis negativos contam como custo positivo equivalente
         n_raw = self.nivel_efeito or 0
         n = abs(n_raw)
