@@ -523,8 +523,9 @@ document.addEventListener('DOMContentLoaded', function() {
      function sel(name){ return div.querySelector('[name$="-'+name+'"]'); }
      const nivelInput = sel('nivel_efeito');
      if(!nivelInput) return 0;
-     const n = parseFloat(nivelInput.value)||0;
-     if(n<=0) return 0;
+     let n = parseFloat(nivelInput.value)||0;
+     n = Math.abs(n); // usa módulo para níveis negativos
+     if(n===0) return 0;
      const tipo = (sel('tipo')?.value)||'';
      const dur = (sel('duracao')?.value)||'';
      const modo = (sel('modo')?.value)||'';

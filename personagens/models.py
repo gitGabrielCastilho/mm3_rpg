@@ -235,8 +235,10 @@ class Poder(models.Model):
           Modo: Corpo a Corpo +0, À distância +1, Área +2, Percepção +3
         Custo = nivel_efeito * (1 + soma_modificadores)
         """
-        n = self.nivel_efeito or 0
-        if n <= 0:
+        # Usa valor absoluto: níveis negativos contam como custo positivo equivalente
+        n_raw = self.nivel_efeito or 0
+        n = abs(n_raw)
+        if n == 0:
             return 0
         tipo_bonus_map = {
             'cura': 1,

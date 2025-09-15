@@ -161,7 +161,9 @@ document.addEventListener('DOMContentLoaded', function() {
   function val(id){ const el = document.getElementById('id_'+id); if(!el) return 0; const v = parseFloat(el.value.replace(',', '.')); return isNaN(v)?0:v; }
   function custoPoderDiv(div){
     function sel(name){ return div.querySelector('[name$="-'+name+'"]'); }
-    const n = parseFloat((sel('nivel_efeito')?.value)||0) || 0; if(n<=0) return 0;
+    let n = parseFloat((sel('nivel_efeito')?.value)||0) || 0;
+    n = Math.abs(n);
+    if(n===0) return 0;
     const tipo = (sel('tipo')?.value)||''; const dur = (sel('duracao')?.value)||''; const modo = (sel('modo')?.value)||'';
     const tipoBonus = (tipo==='cura'||tipo==='aprimorar')?1:0;
     const durBonus = dur==='concentracao'?1:(dur==='sustentado'?2:0);
