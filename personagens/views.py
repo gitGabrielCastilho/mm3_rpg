@@ -200,7 +200,11 @@ def listar_personagens(request):
         sala_atual = None
     if not sala_atual:
         return redirect('listar_salas')
-    personagens = Personagem.objects.filter(usuario=request.user, is_npc=False, sala=sala_atual)
+    # Se o usuário é o GM da sala, lista todos os heróis da sala; caso contrário, apenas os seus
+    if sala_atual.game_master_id == request.user.id:
+        personagens = Personagem.objects.filter(is_npc=False, sala=sala_atual)
+    else:
+        personagens = Personagem.objects.filter(usuario=request.user, is_npc=False, sala=sala_atual)
     return render(request, 'personagens/listar_personagens.html', {'personagens': personagens, 'sala': sala_atual})
 
 
@@ -392,14 +396,17 @@ def clonar_personagem_para_jogador(request, personagem_id):
 
 @login_required
 def editar_personagem(request, personagem_id):
-    personagem = get_object_or_404(Personagem, id=personagem_id, usuario=request.user)
+    # Permite edição pelo dono ou pelo GM da sala do personagem (na sala atual)
+    personagem = get_object_or_404(Personagem, id=personagem_id)
     # Exige estar na sala do personagem
     sala_atual = None
     try:
         sala_atual = request.user.perfilusuario.sala_atual
     except Exception:
         sala_atual = None
-    if not sala_atual or personagem.sala_id != sala_atual.id:
+    is_dono = personagem.usuario_id == request.user.id
+    is_gm_da_sala = sala_atual and personagem.sala_id == sala_atual.id and sala_atual.game_master_id == request.user.id
+    if not sala_atual or personagem.sala_id != sala_atual.id or (not is_dono and not is_gm_da_sala):
         return redirect('listar_salas')
     inventario, created = Inventario.objects.get_or_create(personagem=personagem)
     if request.method == 'POST':
@@ -625,7 +632,7 @@ def ficha_personagem(request, personagem_id):
         'personagem': personagem,
         'categorias': categorias,
         'poderes_de_item': poderes_de_item,
-        'pode_editar': is_dono,
+        'pode_editar': (is_dono or is_gm_da_sala),
     })
 
 

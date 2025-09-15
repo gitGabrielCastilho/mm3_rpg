@@ -2,7 +2,7 @@
 {% block content %}
 {% load filtros %}
 <div class="personagens-center">
-  <h1 class="personagens-title">Meus Personagens</h1>
+  <h1 class="personagens-title">{% if sala.game_master_id == request.user.id %}Personagens da Sala{% else %}Meus Personagens{% endif %}</h1>
   <div style="margin-bottom: 12px;">
     <a href="{% url 'importar_personagem_lista' %}" class="btn">Importar de outra sala</a>
   </div>
@@ -11,6 +11,9 @@
       <li>
         <a class="personagem-link" href="{% url 'ficha_personagem' personagem.id %}">{{ personagem.nome }}</a>
         <span class="personagem-np">(NP {{ personagem.nivel_poder|default:"?" }})</span>
+        {% if sala.game_master_id == request.user.id %}
+          <span class="personagem-owner">— Jogador: {{ personagem.usuario.username }}</span>
+        {% endif %}
         <a href="{% url 'editar_personagem' personagem.id %}">
           <button type="button" class="btn">Editar</button>
         </a>
@@ -19,10 +22,12 @@
           <button type="button" class="btn">Clonar</button>
         </a>
         {% endif %}
-        <form action="{% url 'excluir_personagem' personagem.id %}" method="post" style="display:inline;">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-excluir" onclick="return confirm('Tem certeza que deseja excluir este personagem?')">Excluir</button>
-        </form>
+        {% if personagem.usuario_id == request.user.id %}
+          <form action="{% url 'excluir_personagem' personagem.id %}" method="post" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-excluir" onclick="return confirm('Tem certeza que deseja excluir este personagem?')">Excluir</button>
+          </form>
+        {% endif %}
       </li>
     {% empty %}
       <p>Você ainda não criou nenhum personagem.</p>
