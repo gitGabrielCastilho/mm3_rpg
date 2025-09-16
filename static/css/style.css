@@ -1410,6 +1410,23 @@ input:focus, select:focus, textarea:focus {
   border-radius: 8px;
 }
 
+/* ===== Custo por Poder (badge) ===== */
+.poder-form { position: relative; }
+.poder-custo-badge {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: #1e1e1e;
+  border: 1px solid #444;
+  color: var(--gold);
+  padding: 0.15rem 0.55rem;
+  border-radius: 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+
 /* ---------------- Inventário largo dentro do form (criar/editar personagem) ---------------- */
 .inventario-largo { width:100%; margin-top:1.5rem; background:transparent; padding:0 0 0.8rem 0; border-radius:0; box-shadow:none; display:flex; flex-direction:column; gap:0.8rem; }
 .inventario-moedas-inline { font-weight:600; display:flex; flex-wrap:wrap; gap:1.2rem; align-items:center; }
