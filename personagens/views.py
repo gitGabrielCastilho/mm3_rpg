@@ -582,14 +582,17 @@ def editar_personagem(request, personagem_id):
 
 @login_required
 def excluir_personagem(request, personagem_id):
-    personagem = get_object_or_404(Personagem, id=personagem_id, usuario=request.user)
-    # Permite excluir somente dentro da sala do personagem
+    # Permite exclusão pelo dono OU pelo GM da sala do personagem (na sala atual)
+    personagem = get_object_or_404(Personagem, id=personagem_id)
     sala_atual = None
     try:
         sala_atual = request.user.perfilusuario.sala_atual
     except Exception:
         sala_atual = None
-    if not sala_atual or personagem.sala_id != sala_atual.id:
+    # Verifica permissões: precisa estar na sala do personagem
+    is_dono = personagem.usuario_id == request.user.id
+    is_gm_da_sala = sala_atual and personagem.sala_id == sala_atual.id and sala_atual.game_master_id == request.user.id
+    if not sala_atual or personagem.sala_id != sala_atual.id or (not is_dono and not is_gm_da_sala):
         return redirect('listar_salas')
     if request.method == 'POST':
         personagem.delete()

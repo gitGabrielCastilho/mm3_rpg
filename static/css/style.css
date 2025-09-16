@@ -597,7 +597,7 @@ thead {
   padding: 0;
   margin: 0;
   width: 100%;
-  max-width: 520px;
+  max-width: 760px; /* widen to fit actions without overflow */
 }
 .personagens-list li {
   background: var(--card-bg);
@@ -607,6 +607,7 @@ thead {
   padding: 1.2rem 1.5rem;
   display: flex;
   align-items: center;
+  flex-wrap: wrap; /* allow name/NP and buttons to wrap on small widths */
   gap: 1.2rem;
   font-size: 1.13rem;
 }
