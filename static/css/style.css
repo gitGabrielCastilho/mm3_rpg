@@ -655,6 +655,27 @@ thead {
   background: #e6c200;
   color: var(--text-dark) !important;
 }
+/* ===== NPCs list in one line ===== */
+.personagens-list.npcs-inline li.npc-item {
+  flex-direction: row;              /* one row */
+  align-items: center;
+  justify-content: space-between;   /* left info | right actions */
+  gap: 0.8rem;
+}
+.personagens-list.npcs-inline li.npc-item .npc-info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.personagens-list.npcs-inline li.npc-item .npc-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;              /* keep buttons on one line */
+  flex: 0 0 auto;
+}
 /* Área responsiva para título, filtros e tabela de itens */
 .itens-area-responsive {
   width: 100%;

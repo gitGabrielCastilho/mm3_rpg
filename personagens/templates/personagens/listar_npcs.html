@@ -2,17 +2,21 @@
 {% block content %}
 <div class="personagens-center">
   <h1 class="personagens-title">Meus NPCs</h1>
-  <ul class="personagens-list">
+  <ul class="personagens-list npcs-inline">
     {% for npc in npcs %}
-      <li>
-        <span class="personagem-link">{{ npc.nome }}</span>
-        <span class="personagem-np">(NP {{ npc.nivel_poder|default:"?" }})</span>
-        <a href="{% url 'editar_npc' npc.id %}">
-          <button type="button" class="btn">Editar</button>
-        </a>
-        <a href="{% url 'excluir_npc' npc.id %}">
-          <button type="button" class="btn btn-excluir">Excluir</button>
-        </a>
+      <li class="npc-item">
+        <div class="npc-info">
+          <span class="personagem-link">{{ npc.nome }}</span>
+          <span class="personagem-np">(NP {{ npc.nivel_poder|default:"?" }})</span>
+        </div>
+        <div class="npc-actions">
+          <a href="{% url 'editar_npc' npc.id %}">
+            <button type="button" class="btn btn-sm">Editar</button>
+          </a>
+          <a href="{% url 'excluir_npc' npc.id %}">
+            <button type="button" class="btn btn-excluir btn-sm">Excluir</button>
+          </a>
+        </div>
       </li>
     {% empty %}
       <p>Você ainda não criou nenhum NPC.</p>
