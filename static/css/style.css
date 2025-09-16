@@ -606,11 +606,15 @@ thead {
   margin-bottom: 1.2rem;
   padding: 1.2rem 1.5rem;
   display: flex;
-  align-items: center;
-  flex-wrap: wrap; /* allow name/NP and buttons to wrap on small widths */
-  gap: 1.2rem;
+  flex-direction: column; /* stack top and owner rows */
+  gap: 0.6rem;
   font-size: 1.13rem;
 }
+.personagem-top { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+.personagem-info { display:flex; align-items:center; gap:0.6rem; flex:1 1 auto; min-width:0; }
+.personagem-acoes { display:flex; align-items:center; gap:0.6rem; flex:0 0 auto; white-space:nowrap; }
+.personagem-owner { color:#ccc; font-size:0.95rem; }
+.personagens-list .btn { padding: 0.35rem 0.9rem; font-size: 0.95rem; }
 .personagem-link {
   color: var(--gold);
   font-weight: 600;
