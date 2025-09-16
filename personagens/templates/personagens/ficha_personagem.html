@@ -181,9 +181,8 @@
   </div>
 
   <div class="ficha-acoes">
-    {% if pode_editar or (request.user.is_authenticated and sala and sala.game_master_id == request.user.id and personagem.sala_id == sala.id) %}
+    {% if pode_editar %}
       <a href="{% url 'editar_personagem' personagem.id %}" class="btn">Editar</a>
-      <a href="{% url 'excluir_personagem' personagem.id %}" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja excluir este personagem?');">Excluir</a>
     {% endif %}
     <a href="{% url 'listar_personagens' %}" class="btn btn-secondary">Voltar</a>
   </div>
