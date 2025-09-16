@@ -349,12 +349,13 @@ def importar_personagem(request, personagem_id):
 @login_required
 @transaction.atomic
 def clonar_personagem_para_jogador(request, personagem_id):
-    """Permite ao GM clonar um Personagem dele para um Jogador da sala atual."""
-    personagem = get_object_or_404(Personagem, id=personagem_id, usuario=request.user)
-    # Verifica sala atual e permissão de GM
+    """Permite ao GM clonar qualquer Personagem da sala atual para um Jogador da própria sala."""
+    # Verifica sala atual e permissão de GM primeiro
     sala_atual = getattr(getattr(request.user, 'perfilusuario', None), 'sala_atual', None)
-    if not sala_atual or personagem.sala_id != sala_atual.id or sala_atual.game_master_id != request.user.id:
+    if not sala_atual or sala_atual.game_master_id != request.user.id:
         return redirect('listar_salas')
+    # GM pode clonar QUALQUER personagem (não-NPC) que esteja nesta sala
+    personagem = get_object_or_404(Personagem, id=personagem_id, sala=sala_atual, is_npc=False)
 
     jogadores_qs = sala_atual.jogadores.all().order_by('username')
     if request.method == 'POST':
