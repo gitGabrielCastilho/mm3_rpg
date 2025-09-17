@@ -99,36 +99,16 @@ class Personagem(models.Model):
         if any(valor > np + 5 for valor in atributos):
             raise ValidationError("Nenhuma característica pode exceder o nível de poder + 5.")
 
-        # Validar defesas combinadas
-        if self.aparar + self.resistencia> np * 2:
-            raise ValidationError("Aparar + Esquiva não pode exceder o dobro do Nível de Poder.")
-
-        if self.esquivar + self.resistencia > np * 2:
-            raise ValidationError("Esquivar + Resistencia não pode exceder o dobro do Nível de Poder.")
-
-        if self.fortitude + self.resistencia > np * 2:
-            raise ValidationError("Fortitude + Resistencia não pode exceder o dobro do Nível de Poder.")
-
-        if self.vontade + self.resistencia > np * 2:
-            raise ValidationError("Vontade + Resistencia não pode exceder o dobro do Nível de Poder.")
-
-        if self.vontade + self.fortitude > np * 2:
-            raise ValidationError("Vontade + Fortitude não pode exceder o dobro do Nível de Poder.")
-        
-        if self.aparar + self.fortitude > np * 2:
-            raise ValidationError("Aparar + Fortitude não pode exceder o dobro do Nível de Poder.")
-        
-        if self.esquivar + self.fortitude > np * 2:
-            raise ValidationError("Esquivar + Fortitude não pode exceder o dobro do Nível de Poder.")
-
-        if self.esquivar + self.vontade > np * 2:
-            raise ValidationError("Esquivar + Vontade não pode exceder o dobro do Nível de Poder.")
-        
-        if self.aparar + self.vontade > np * 2:
-            raise ValidationError("Aparar + Vontade não pode exceder o dobro do Nível de Poder.")
-
-        if self.aparar + self.esquivar > np * 2:
-            raise ValidationError("Aparar + Esquivar não pode exceder o dobro do Nível de Poder.")
+        # Validar defesas combinadas (apenas as três regras solicitadas)
+        # 1) Esquiva + Resistência ≤ 2 × NP
+        if (self.esquivar + self.resistencia) > (np * 2):
+            raise ValidationError("Esquivar + Resistência não pode exceder o dobro do Nível de Poder.")
+        # 2) Aparar + Resistência ≤ 2 × NP
+        if (self.aparar + self.resistencia) > (np * 2):
+            raise ValidationError("Aparar + Resistência não pode exceder o dobro do Nível de Poder.")
+        # 3) Fortitude + Vontade ≤ 2 × NP
+        if (self.fortitude + self.vontade) > (np * 2):
+            raise ValidationError("Fortitude + Vontade não pode exceder o dobro do Nível de Poder.")
 
         # Validar perícias
         pericias = [
