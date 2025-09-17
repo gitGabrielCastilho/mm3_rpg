@@ -34,7 +34,7 @@
           {{ form.nivel_poder.label_tag }} {{ form.nivel_poder }}
         </div>
       </div>
-      <h2>Características</h2>
+  <h2>Características <span id="badge-carac" class="section-cost-badge" title="Cada ponto em Características custa +2 pp.">+2 pp — 0</span></h2>
   <div class="caracteristicas-grid espacamento-campos" style="display:grid; grid-template-columns:repeat(4, minmax(110px,1fr)); gap:1.5rem 2.5rem; justify-items:center;">
         <!-- Linha 1 -->
         <div class="campo-carac">{{ form.forca.label_tag }} {{ form.forca }}{% if form.forca.errors %}<div style="color:red;">{{ form.forca.errors }}</div>{% endif %}</div>
@@ -47,7 +47,7 @@
         <div class="campo-carac">{{ form.luta.label_tag }} {{ form.luta }}{% if form.luta.errors %}<div style="color:red;">{{ form.luta.errors }}</div>{% endif %}</div>
         <div class="campo-carac">{{ form.agilidade.label_tag }} {{ form.agilidade }}{% if form.agilidade.errors %}<div style="color:red;">{{ form.agilidade.errors }}</div>{% endif %}</div>
       </div>
-      <h2>Vantagens</h2>
+  <h2>Vantagens <span id="badge-vant" class="section-cost-badge" title="Cada vantagem selecionada custa +1 pp.">+1 pp — 0</span></h2>
       <div style="display: flex; align-items: center; gap: 2rem; margin-bottom: 0.7rem; flex-wrap: wrap;">
         <input type="text" id="busca-vantagem" placeholder="Buscar vantagem..." style="flex: 1 1 250px; min-width: 200px; max-width: 350px;">
         <label for="filtro-vantagem-selecionada" style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
@@ -79,7 +79,7 @@
           </tbody>
         </table>
       </div>
-      <h2>Defesas</h2>
+  <h2>Defesas <span id="badge-def" class="section-cost-badge" title="Cada ponto em Defesas custa +1 pp.">+1 pp — 0</span></h2>
       <div class="defesas-grid" style="display:grid; grid-template-columns:repeat(3, minmax(140px,1fr)); gap:1.8rem 3rem; justify-items:center; margin-bottom:2rem;">
         <!-- Linha 1: Aparar, Esquivar, Resistência -->
         <div class="campo-def">{{ form.aparar.label_tag }} {{ form.aparar }}{% if form.aparar.errors %}<div style="color:red;">{{ form.aparar.errors }}</div>{% endif %}</div>
@@ -90,7 +90,7 @@
         <div class="campo-def">{{ form.fortitude.label_tag }} {{ form.fortitude }}{% if form.fortitude.errors %}<div style="color:red;">{{ form.fortitude.errors }}</div>{% endif %}</div>
         <div></div>
       </div>
-      <h2>Perícias</h2>
+  <h2>Perícias <span id="badge-per" class="section-cost-badge" title="Cada ponto em Perícias custa +0,5 pp.">+0,5 pp — 0</span></h2>
       <div>
         {{ form.especialidade_casting_ability.label_tag }} {{ form.especialidade_casting_ability }}
       </div>
@@ -114,7 +114,7 @@
           {% endwith %}
         {% endfor %}
       </div>
-      <h2>Poderes</h2>
+  <h2>Poderes <span id="badge-pod" class="section-cost-badge" title="Custo por poder = Nível × (1 + bônus de Tipo + Duração + Modo). Bônus: Tipo: +1 (cura/aprimorar). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Arrays: custo do grupo = maior base + (n−1); líder paga o maior, demais pagam 1.">Nivel x (1+Tipo+Duração+Modo) — 0</span></h2>
       <!-- Empty form grid para JS clonar (opcional, se usar JS dinâmico igual editar) -->
       <div id="empty-poder-form" style="display:none;">
   <div class="poder-form poder-form-grid" style="border:1px solid #444; width:100%; position: relative;">
@@ -132,6 +132,9 @@
           <div class="campo-poder linha-checkbox">{{ formset.empty_form.de_item }} <label for="{{ formset.empty_form.de_item.id_for_label }}">Poder de Item?</label></div>
           <div class="campo-poder">{{ formset.empty_form.vantagem_origem.label_tag }}{{ formset.empty_form.vantagem_origem }}</div>
           <div class="campo-poder linha-checkbox">{{ formset.empty_form.de_vantagem }} <label for="{{ formset.empty_form.de_vantagem.id_for_label }}">Poder de Vantagem?</label></div>
+          <div class="campo-poder span-2">
+            <div class="helptext">Ligação automática: poderes com mesmo nome, modo e duração serão ligados ao salvar.</div>
+          </div>
           <div class="span-2" style="margin-top:0.4rem; text-align:right; display:flex; gap:0.7rem; justify-content:flex-end;">
             <span style="display:none;">{{ formset.empty_form.DELETE }}</span>
             <button type="button" class="btn btn-danger" onclick="removerPoderLinha(this)">Remover</button>
@@ -158,6 +161,11 @@
                 <div class="campo-poder linha-checkbox">{{ form.de_item }} <label for="{{ form.de_item.id_for_label }}">Poder de Item?</label></div>
                 <div class="campo-poder">{{ form.vantagem_origem.label_tag }}{{ form.vantagem_origem }}</div>
                 <div class="campo-poder linha-checkbox">{{ form.de_vantagem }} <label for="{{ form.de_vantagem.id_for_label }}">Poder de Vantagem?</label></div>
+                <!-- detalhe do custo por poder (preenchido via JS) -->
+                <div class="poder-custo-detalhe" style="grid-column:1 / -1; text-align:right; font-size:0.85rem; color:#cfcfe1; opacity:0.95; padding-top:0.2rem;"></div>
+                <div class="campo-poder span-2">
+                  <div class="helptext">Ligação automática: poderes com mesmo nome, modo e duração serão ligados ao salvar.</div>
+                </div>
               {% if form.DELETE %}
                 <div class="span-2" style="margin-top:0.4rem; text-align: right; display: flex; align-items: center; gap: 0.7rem; justify-content: flex-end;">
                   <span style="display:none;">{{ form.DELETE }}</span>
@@ -332,11 +340,13 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
     let custoPod = individuais.reduce((a,b)=>a+b,0);
+    let temArray = false;
     grupos.forEach(bases=>{
       if (!bases || bases.length===0) return;
       const n = bases.length;
       const maxBase = Math.max.apply(null, bases);
       custoPod += maxBase + Math.max(0, n - 1);
+      temArray = true;
     });
     const total = custoCarac + custoDef + custoPer + custoVant + custoPod;
     document.getElementById('custo-caracteristicas').textContent = custoCarac;
@@ -347,6 +357,16 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('custo-vantagens').textContent = custoVant;
     document.getElementById('custo-poderes').textContent = custoPod;
     document.getElementById('custo-total').textContent = fmt(total);
+    // Badges de seção
+    const bCar = document.getElementById('badge-carac'); if (bCar){ bCar.textContent = '+2 pp — ' + custoCarac; bCar.title = 'Cada ponto em Características custa +2 pp. Total atual: '+custoCarac; }
+    const bDef = document.getElementById('badge-def'); if (bDef){ bDef.textContent = '+1 pp — ' + custoDef; bDef.title = 'Cada ponto em Defesas custa +1 pp. Total atual: '+custoDef; }
+    const bPer = document.getElementById('badge-per'); if (bPer){ bPer.textContent = '+0,5 pp — ' + fmt(custoPer); bPer.title = 'Cada ponto em Perícias custa +0,5 pp. Total atual: '+fmt(custoPer); }
+    const bVan = document.getElementById('badge-vant'); if (bVan){ bVan.textContent = '+1 pp — ' + custoVant; bVan.title = 'Cada vantagem selecionada custa +1 pp. Total atual: '+custoVant; }
+    const bPod = document.getElementById('badge-pod');
+    if (bPod){
+      bPod.textContent = (temArray? 'Nivel x (1+Tipo+Duração+Modo) + Arrays' : 'Nivel x (1+Tipo+Duração+Modo)') + ' — ' + custoPod;
+      bPod.title = 'Custo por poder = Nível × (1 + Tipo + Duração + Modo). Tipo: +1 (cura/aprimorar). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). ' + (temArray ? 'Arrays: grupo = maior base + (n−1); líder paga maior, demais 1. ' : '') + 'Total atual: ' + custoPod;
+    }
   }
 
   // Observers
@@ -624,10 +644,41 @@ document.addEventListener('DOMContentLoaded', function(){
     const modoBonus = modo==='ranged'?1:(modo==='area'?2:(modo==='percepcao'?3:0));
     return n * (1 + tipoBonus + durBonus + modoBonus);
   }
+  function breakdown(div){
+    // Calcula n e bônus individuais para tooltip
+    const sel = n => div.querySelector('[name$="-'+n+'"]');
+    const nivelInput = sel('nivel_efeito');
+    let n = 0; if (nivelInput){ n = parseFloat((nivelInput.value||'').toString().replace(',', '.'))||0; }
+    n = Math.abs(n);
+    const tipo = (sel('tipo')?.value)||'';
+    const dur = (sel('duracao')?.value)||'';
+    const modo = (sel('modo')?.value)||'';
+    const tipoBonus = (tipo==='cura'||tipo==='aprimorar')?1:0;
+    const durBonus = dur==='concentracao'?1:(dur==='sustentado'?2:0);
+    const modoBonus = modo==='ranged'?1:(modo==='area'?2:(modo==='percepcao'?3:0));
+    const mult = 1 + tipoBonus + durBonus + modoBonus;
+    const base = (n||0) * mult;
+    return { n, tipoBonus, durBonus, modoBonus, mult, base };
+  }
   function ensureBadge(div){
     let b = div.querySelector('.poder-custo-badge');
     if (!b){ b = document.createElement('span'); b.className = 'poder-custo-badge'; div.appendChild(b); }
     return b;
+  }
+  function setDetalhe(div, texto){
+    let det = div.querySelector('.poder-custo-detalhe');
+    if (!det){
+      det = document.createElement('div');
+      det.className = 'poder-custo-detalhe';
+      det.style.gridColumn = '1 / -1';
+      det.style.textAlign = 'right';
+      det.style.fontSize = '0.85rem';
+      det.style.color = '#cfcfe1';
+      det.style.opacity = '0.95';
+      det.style.paddingTop = '0.2rem';
+      div.appendChild(det);
+    }
+    det.textContent = texto;
   }
   function updateBadges(){
     const forms = Array.from(document.querySelectorAll('.poder-form'));
@@ -637,8 +688,9 @@ document.addEventListener('DOMContentLoaded', function(){
       if (isDeletedOrHidden(div)) return;
       const arr = (div.querySelector('[name$="-array"]')?.value||'').trim().toLowerCase();
       const base = baseDoPoder(div);
+      const brk = breakdown(div);
       const excluido = isItemOuVant(div);
-      const info = {div, arr, base, excluido};
+      const info = {div, arr, base, excluido, brk};
       infos.push(info);
       if (!excluido && arr){ if (!grupos.has(arr)) grupos.set(arr, []); grupos.get(arr).push(info); }
     });
@@ -649,15 +701,32 @@ document.addEventListener('DOMContentLoaded', function(){
       lideres.set(arr, {lider, maxBase, n: lista.length});
     });
     infos.forEach(info => {
-      const {div, arr, base, excluido} = info;
+      const {div, arr, base, excluido, brk} = info;
       const badge = ensureBadge(div);
-      if (excluido){ badge.textContent = 'Custo: 0'; badge.title = 'Este poder não conta custo (Item/Vantagem).'; return; }
-      if (!arr){ badge.textContent = 'Custo: ' + base; badge.title = 'Custo base deste poder.'; return; }
+      if (excluido){
+        badge.textContent = 'Custo: 0';
+        badge.title = 'Este poder não conta custo (Item/Vantagem).';
+        setDetalhe(div, 'Item/Vantagem: custo 0');
+        return;
+      }
+      if (!arr){
+        badge.textContent = 'Custo: ' + base;
+        badge.title = `Base = Nível ${brk.n} × (1 + Tipo ${brk.tipoBonus} + Duração ${brk.durBonus} + Modo ${brk.modoBonus}) = ${base}`;
+        setDetalhe(div, `Sem array • Base: ${brk.n} × (1 + ${brk.tipoBonus}+${brk.durBonus}+${brk.modoBonus}) = ${base}`);
+        return;
+      }
       const meta = lideres.get(arr);
-      if (!meta){ badge.textContent = 'Custo: ' + base; badge.title = 'Array vazio; usando custo base.'; return; }
+      if (!meta){
+        badge.textContent = 'Custo: ' + base;
+        badge.title = `Array vazio; usando base. Base = Nível ${brk.n} × (1 + ${brk.tipoBonus}+${brk.durBonus}+${brk.modoBonus}) = ${base}`;
+        setDetalhe(div, `Array (sem líder) • Base: ${brk.n} × (1 + ${brk.tipoBonus}+${brk.durBonus}+${brk.modoBonus}) = ${base}`);
+        return;
+      }
       const contrib = (meta.lider === info) ? meta.maxBase : 1;
       badge.textContent = 'Custo: ' + contrib;
-      badge.title = `Array "${arr}": custo do grupo = ${meta.maxBase} + (${meta.n}-1). Este poder conta: ${contrib}.`;
+      badge.title = `Array "${arr}": grupo = ${meta.maxBase} + (${meta.n}-1). Contribuição deste poder: ${contrib}. Base = Nível ${brk.n} × (1 + Tipo ${brk.tipoBonus} + Duração ${brk.durBonus} + Modo ${brk.modoBonus}) = ${base}`;
+      const papel = (meta.lider === info) ? 'Líder' : 'Membro';
+      setDetalhe(div, `Array: ${arr} • ${papel} • Contrib.: ${contrib} • Base: ${brk.n} × (1 + ${brk.tipoBonus}+${brk.durBonus}+${brk.modoBonus}) = ${base}`);
     });
   }
   function bind(scope){ (scope||document).querySelectorAll('.poder-form select, .poder-form input').forEach(el => { el.addEventListener('input', updateBadges); el.addEventListener('change', updateBadges); }); }

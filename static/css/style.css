@@ -1447,6 +1447,21 @@ input:focus, select:focus, textarea:focus {
   line-height: 1;
   box-shadow: 0 2px 8px rgba(0,0,0,0.25);
 }
+/* Small inline chip next to section titles (Características, Defesas, etc.) */
+.section-cost-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: 0.6rem;
+  background: #1e1e1e;
+  border: 1px solid #444;
+  color: var(--gold);
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
 
 /* ---------------- Inventário largo dentro do form (criar/editar personagem) ---------------- */
 .inventario-largo { width:100%; margin-top:1.5rem; background:transparent; padding:0 0 0.8rem 0; border-radius:0; box-shadow:none; display:flex; flex-direction:column; gap:0.8rem; }
