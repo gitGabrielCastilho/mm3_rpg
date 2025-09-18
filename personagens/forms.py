@@ -40,6 +40,11 @@ class PersonagemForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # As perícias 'combate_distancia' e 'combate_corpo' foram removidas da UI.
+        # Torná-las não obrigatórias evita erros de validação ao salvar.
+        for f in ('combate_distancia', 'combate_corpo'):
+            if f in self.fields:
+                self.fields[f].required = False
         # Append attribute abbreviation to each skill label, e.g., "Atletismo (FOR)", "Arcana (INT)"
         attr_abbr = {
             'forca': 'FOR', 'vigor': 'VIG', 'destreza': 'DES', 'agilidade': 'AGI',
@@ -81,6 +86,14 @@ class PersonagemForm(forms.ModelForm):
                 base_label = self.fields[skill].label or skill.replace('_', ' ').capitalize()
                 abbr = attr_abbr.get(ability, ability[:3].upper())
                 self.fields[skill].label = f"{base_label} ({abbr})"
+
+    def clean(self):
+        cleaned_data = super().clean()
+        # Se os campos não vierem no POST (pois não estão na UI), normalize para 0
+        for f in ('combate_distancia', 'combate_corpo'):
+            if cleaned_data.get(f) in (None, ''):
+                cleaned_data[f] = 0
+        return cleaned_data
 
 
 class PoderForm(forms.ModelForm):
@@ -215,6 +228,10 @@ class PersonagemNPCForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Tornar não obrigatórias as perícias ocultas na UI
+        for f in ('combate_distancia', 'combate_corpo'):
+            if f in self.fields:
+                self.fields[f].required = False
         attr_abbr = {
             'forca': 'FOR', 'vigor': 'VIG', 'destreza': 'DES', 'agilidade': 'AGI',
             'luta': 'LUT', 'inteligencia': 'INT', 'prontidao': 'PRO', 'presenca': 'PRE',
@@ -252,6 +269,14 @@ class PersonagemNPCForm(forms.ModelForm):
                 base_label = self.fields[skill].label or skill.replace('_', ' ').capitalize()
                 abbr = attr_abbr.get(ability, ability[:3].upper())
                 self.fields[skill].label = f"{base_label} ({abbr})"
+
+    def clean(self):
+        cleaned_data = super().clean()
+        # Normaliza para 0 quando ausentes
+        for f in ('combate_distancia', 'combate_corpo'):
+            if cleaned_data.get(f) in (None, ''):
+                cleaned_data[f] = 0
+        return cleaned_data
 
 
 class PoderNPCForm(forms.ModelForm):
