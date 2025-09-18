@@ -761,3 +761,16 @@ document.addEventListener('DOMContentLoaded', function(){
 })();
 </script>
 {% endblock %}
+<!-- Fallback delegado: garante recalculo em qualquer mudança nos campos de poderes -->
+<script>
+(function(){
+  if(window._poderDelegatedRecalc) return; // evita duplicar
+  window._poderDelegatedRecalc = true;
+  function recalc(){
+    if(typeof window.atualizarCustos === 'function'){ try{ window.atualizarCustos(); }catch(e){} }
+    if(typeof window.updateBadges === 'function'){ try{ window.updateBadges(); }catch(e){} }
+  }
+  document.addEventListener('input', function(ev){ if(ev.target && ev.target.closest('.poder-form')) recalc(); });
+  document.addEventListener('change', function(ev){ if(ev.target && ev.target.closest('.poder-form')) recalc(); });
+})();
+</script>
