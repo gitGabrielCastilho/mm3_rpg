@@ -440,7 +440,9 @@ function adicionarPoder() {
     formsetDiv.appendChild(emptyDiv);
   }
   totalFormsInput.value = formIdx + 1;
-  atualizarCamposOrigem(emptyDiv);
+  if (typeof window.atualizarCamposOrigem === 'function') {
+    try { window.atualizarCamposOrigem(emptyDiv); } catch(e) { /* noop */ }
+  }
 }
 </script>
 
@@ -609,13 +611,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
+  // Exporta globalmente para uso após inserções dinâmicas
+  window.atualizarCamposOrigem = atualizarCamposOrigem;
+
   document.querySelectorAll('.poder-form').forEach(function(poderForm) {
-    atualizarCamposOrigem(poderForm);
-    // Atualiza ao mudar checkboxes
+    try { atualizarCamposOrigem(poderForm); } catch(e){}
     const deItem = poderForm.querySelector('input[type="checkbox"][name$="de_item"]');
     const deVantagem = poderForm.querySelector('input[type="checkbox"][name$="de_vantagem"]');
-    if (deItem) deItem.addEventListener('change', function() { atualizarCamposOrigem(poderForm); });
-    if (deVantagem) deVantagem.addEventListener('change', function() { atualizarCamposOrigem(poderForm); });
+    if (deItem) deItem.addEventListener('change', function() { if (typeof window.atualizarCamposOrigem === 'function') window.atualizarCamposOrigem(poderForm); });
+    if (deVantagem) deVantagem.addEventListener('change', function() { if (typeof window.atualizarCamposOrigem === 'function') window.atualizarCamposOrigem(poderForm); });
   });
 });
 </script>
