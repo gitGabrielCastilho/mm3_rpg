@@ -571,6 +571,7 @@ document.addEventListener('DOMContentLoaded', function() {
       bPod.title = 'Custo por poder = Nível × (1 + Tipo + Duração + Modo). Tipo: +1 (cura/aprimorar). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). ' + (temArray ? 'Arrays: grupo = maior base + (n−1); líder paga maior, demais 1. ' : '') + 'Total atual: ' + custoPod;
     }
   }
+  window.atualizarCustos = atualizarCustos;
 
   const watchSelectors = []
     .concat(camposCaracteristicas.map(c=>'#id_'+c))
@@ -594,7 +595,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   const originalAdicionar = window.adicionarPoder;
   window.adicionarPoder = function(){
-    originalAdicionar();
+    if (typeof originalAdicionar === 'function') originalAdicionar();
     setTimeout(()=>{
       const last = document.querySelector('.poder-form:last-child');
       if(last){
@@ -605,7 +606,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       atualizarCustos();
     },50);
-  }
+  };
   const originalRemoverLinha = window.removerPoderLinha;
   window.removerPoderLinha = function(btn){
     originalRemoverLinha(btn);
@@ -735,6 +736,7 @@ document.addEventListener('DOMContentLoaded', function(){
       setDetalhe(div, `Array: ${arr} • ${papel} • Contrib.: ${contrib} • Base: ${brk.n} × (1 + ${brk.tipoBonus}+${brk.durBonus}+${brk.modoBonus}) = ${base}`);
     });
   }
+  window.updateBadges = updateBadges;
   function bindListeners(scope){
     (scope||document).querySelectorAll('.poder-form select, .poder-form input').forEach(el => {
       el.addEventListener('input', updateBadges);
@@ -777,18 +779,4 @@ document.addEventListener('DOMContentLoaded', function(){
     }, 60);
   };
 })();
-</script>
-<!-- Delegação de eventos para campos de Poder: evita falhas de bind em novos formulários -->
-<script>
-document.addEventListener('DOMContentLoaded', function(){
-  function handle(e){
-    if (!e.target.closest) return;
-    if (e.target.closest('.poder-form')) {
-      if (typeof atualizarCustos === 'function') { try { atualizarCustos(); } catch(err){} }
-      if (typeof updateBadges === 'function') { try { updateBadges(); } catch(err){} }
-    }
-  }
-  document.addEventListener('input', handle, true);
-  document.addEventListener('change', handle, true);
-});
 </script>
