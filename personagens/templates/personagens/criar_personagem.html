@@ -80,15 +80,47 @@
         </table>
       </div>
   <h2>Defesas <span id="badge-def" class="section-cost-badge" title="Cada ponto em Defesas custa +1 pp.">+1 pp — 0</span></h2>
-      <div class="defesas-grid" style="display:grid; grid-template-columns:repeat(3, minmax(140px,1fr)); gap:1.8rem 3rem; justify-items:center; margin-bottom:2rem;">
-        <!-- Linha 1: Aparar, Esquivar, Resistência -->
-        <div class="campo-def">{{ form.aparar.label_tag }} {{ form.aparar }}{% if form.aparar.errors %}<div style="color:red;">{{ form.aparar.errors }}</div>{% endif %}</div>
-        <div class="campo-def">{{ form.esquivar.label_tag }} {{ form.esquivar }}{% if form.esquivar.errors %}<div style="color:red;">{{ form.esquivar.errors }}</div>{% endif %}</div>
-        <div class="campo-def">{{ form.resistencia.label_tag }} {{ form.resistencia }}{% if form.resistencia.errors %}<div style="color:red;">{{ form.resistencia.errors }}</div>{% endif %}</div>
-        <!-- Linha 2: Vontade, Fortitude (centralizando com célula vazia final) -->
-        <div class="campo-def">{{ form.vontade.label_tag }} {{ form.vontade }}{% if form.vontade.errors %}<div style="color:red;">{{ form.vontade.errors }}</div>{% endif %}</div>
-        <div class="campo-def">{{ form.fortitude.label_tag }} {{ form.fortitude }}{% if form.fortitude.errors %}<div style="color:red;">{{ form.fortitude.errors }}</div>{% endif %}</div>
-        <div></div>
+      <div class="defesas-grid" style="display:grid; grid-template-columns:repeat(3, minmax(170px,1fr)); gap:1.8rem 3rem; justify-items:center; margin-bottom:2rem;">
+        <!-- Linha 1: Aparar (Luta), Esquivar (Agilidade), Resistência (Vigor) -->
+        <div class="campo-def">
+          <label for="id_aparar">Aparar <small>(Luta)</small></label>
+          {{ form.aparar }}
+          <div class="defesa-total" data-defesa="aparar">Total: <span class="valor-total" id="total_aparar">0</span></div>
+          {% if form.aparar.errors %}<div style="color:red;">{{ form.aparar.errors }}</div>{% endif %}
+        </div>
+        <div class="campo-def">
+          <label for="id_esquivar">Esquivar <small>(Agilidade)</small></label>
+          {{ form.esquivar }}
+          <div class="defesa-total" data-defesa="esquivar">Total: <span class="valor-total" id="total_esquivar">0</span></div>
+          {% if form.esquivar.errors %}<div style="color:red;">{{ form.esquivar.errors }}</div>{% endif %}
+        </div>
+        <div class="campo-def">
+          <label for="id_resistencia">Resistência <small>(Vigor)</small></label>
+          {{ form.resistencia }}
+          <div class="defesa-total" data-defesa="resistencia">Total: <span class="valor-total" id="total_resistencia">0</span></div>
+          {% if form.resistencia.errors %}<div style="color:red;">{{ form.resistencia.errors }}</div>{% endif %}
+        </div>
+        <!-- Linha 2: Vontade (Prontidão), Fortitude (Vigor) -->
+        <div class="campo-def">
+          <label for="id_vontade">Vontade <small>(Prontidão)</small></label>
+          {{ form.vontade }}
+          <div class="defesa-total" data-defesa="vontade">Total: <span class="valor-total" id="total_vontade">0</span></div>
+          {% if form.vontade.errors %}<div style="color:red;">{{ form.vontade.errors }}</div>{% endif %}
+        </div>
+        <div class="campo-def">
+          <label for="id_fortitude">Fortitude <small>(Vigor)</small></label>
+          {{ form.fortitude }}
+          <div class="defesa-total" data-defesa="fortitude">Total: <span class="valor-total" id="total_fortitude">0</span></div>
+          {% if form.fortitude.errors %}<div style="color:red;">{{ form.fortitude.errors }}</div>{% endif %}
+        </div>
+        <div>
+          <div id="limites-defesas" style="font-size:0.8rem; line-height:1.3; text-align:left;">
+            <strong>Limites:</strong><br>
+            Esquivar + Resistência ≤ 2×NP<br>
+            Aparar + Resistência ≤ 2×NP<br>
+            Fortitude + Vontade ≤ 2×NP
+          </div>
+        </div>
       </div>
   <h2>Perícias <span id="badge-per" class="section-cost-badge" title="Cada ponto em Perícias custa +0,5 pp.">+0,5 pp — 0</span></h2>
       <div>
@@ -420,6 +452,59 @@ document.addEventListener('DOMContentLoaded', function() {
   atualizarCustos();
 });
 </script>
+<script>
+// ---- Totais de Defesas (valor + atributo) e verificação de limites ----
+document.addEventListener('DOMContentLoaded', function(){
+  const assoc = {
+    aparar: 'luta',
+    esquivar: 'agilidade',
+    resistencia: 'vigor',
+    vontade: 'prontidao',
+    fortitude: 'vigor'
+  };
+  const nivelPoderEl = document.getElementById('id_nivel_poder');
+  function num(id){ const el=document.getElementById('id_'+id); if(!el) return 0; const v=parseFloat((el.value||'').toString().replace(',','.')); return isNaN(v)?0:v; }
+  function updateTotais(){
+    Object.keys(assoc).forEach(def => {
+      const base = num(def);
+      const carac = num(assoc[def]);
+      const total = base + carac;
+      const span = document.getElementById('total_'+def);
+      if(span) span.textContent = total;
+    });
+    verificarLimites();
+  }
+  function marcar(id, ok){ const el=document.getElementById(id); if(!el) return; if(ok){ el.classList.remove('violacao-limite'); } else { el.classList.add('violacao-limite'); } }
+  function verificarLimites(){
+    const np = num('nivel_poder');
+    const limite = 2 * np;
+    const esquivarTot = num('esquivar') + num('agilidade');
+    const apararTot = num('aparar') + num('luta');
+    const resistenciaTot = num('resistencia') + num('vigor');
+    const fortitudeTot = num('fortitude') + num('vigor');
+    const vontadeTot = num('vontade') + num('prontidao');
+    marcar('total_esquivar', (esquivarTot + resistenciaTot) <= limite);
+    marcar('total_resistencia', (esquivarTot + resistenciaTot) <= limite && (apararTot + resistenciaTot) <= limite);
+    marcar('total_aparar', (apararTot + resistenciaTot) <= limite);
+    marcar('total_fortitude', (fortitudeTot + vontadeTot) <= limite);
+    marcar('total_vontade', (fortitudeTot + vontadeTot) <= limite);
+    // Impede submit se houver violação
+    const violacao = document.querySelector('.violacao-limite');
+    const submitBtn = document.querySelector('form input[type="submit"]');
+    if(submitBtn){ submitBtn.disabled = !!violacao; submitBtn.title = violacao? 'Corrija limites de defesas para salvar.' : ''; }
+  }
+  const campos = ['nivel_poder','aparar','esquivar','resistencia','vontade','fortitude','luta','agilidade','vigor','prontidao'];
+  campos.forEach(c=>{ const el=document.getElementById('id_'+c); if(el){ el.addEventListener('input', ()=>{ updateTotais(); }); el.addEventListener('change', updateTotais); }});
+  // Recalcular também quando custos atualizam
+  const oldAtualizar = window.atualizarCustos;
+  window.atualizarCustos = function(){ if(typeof oldAtualizar==='function') oldAtualizar(); updateTotais(); };
+  updateTotais();
+});
+</script>
+<style>
+.violacao-limite { color:#ff6161; font-weight:700; }
+.defesa-total { font-size:0.75rem; opacity:0.9; margin-top:0.25rem; }
+</style>
 <script>
 function adicionarPoder() {
   const formsetDiv = document.getElementById('poderes-formset');

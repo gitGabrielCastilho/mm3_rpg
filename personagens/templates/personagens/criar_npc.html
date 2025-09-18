@@ -59,12 +59,37 @@
       </div>
 
   <h2>Defesas <span id="badge-def" class="section-cost-badge" title="Cada ponto em Defesas custa +1 pp.">+1 pp — 0</span></h2>
-      <div class="defesas-grid" style="display:grid; grid-template-columns:repeat(3, minmax(140px,1fr)); gap:1.8rem 3rem; justify-items:center; margin-bottom:2rem;">
-        <div class="campo-def">{{ form.aparar.label_tag }} {{ form.aparar }}{% if form.aparar.errors %}<div style="color:red;">{{ form.aparar.errors }}</div>{% endif %}</div>
-        <div class="campo-def">{{ form.esquivar.label_tag }} {{ form.esquivar }}{% if form.esquivar.errors %}<div style="color:red;">{{ form.esquivar.errors }}</div>{% endif %}</div>
-        <div class="campo-def">{{ form.resistencia.label_tag }} {{ form.resistencia }}{% if form.resistencia.errors %}<div style="color:red;">{{ form.resistencia.errors }}</div>{% endif %}</div>
-        <div class="campo-def">{{ form.vontade.label_tag }} {{ form.vontade }}{% if form.vontade.errors %}<div style="color:red;">{{ form.vontade.errors }}</div>{% endif %}</div>
-        <div class="campo-def">{{ form.fortitude.label_tag }} {{ form.fortitude }}{% if form.fortitude.errors %}<div style="color:red;">{{ form.fortitude.errors }}</div>{% endif %}</div>
+      <div class="defesas-grid" style="display:grid; grid-template-columns:repeat(3, minmax(170px,1fr)); gap:1.8rem 3rem; justify-items:center; margin-bottom:2rem;">
+        <div class="campo-def">
+          <label for="id_aparar">Aparar <small>(Luta)</small></label>
+          {{ form.aparar }}
+          <div class="defesa-total" data-defesa="aparar">Total: <span class="valor-total" id="total_aparar">0</span></div>
+          {% if form.aparar.errors %}<div style="color:red;">{{ form.aparar.errors }}</div>{% endif %}
+        </div>
+        <div class="campo-def">
+          <label for="id_esquivar">Esquivar <small>(Agilidade)</small></label>
+          {{ form.esquivar }}
+          <div class="defesa-total" data-defesa="esquivar">Total: <span class="valor-total" id="total_esquivar">0</span></div>
+          {% if form.esquivar.errors %}<div style="color:red;">{{ form.esquivar.errors }}</div>{% endif %}
+        </div>
+        <div class="campo-def">
+          <label for="id_resistencia">Resistência <small>(Vigor)</small></label>
+          {{ form.resistencia }}
+          <div class="defesa-total" data-defesa="resistencia">Total: <span class="valor-total" id="total_resistencia">0</span></div>
+          {% if form.resistencia.errors %}<div style="color:red;">{{ form.resistencia.errors }}</div>{% endif %}
+        </div>
+        <div class="campo-def">
+          <label for="id_vontade">Vontade <small>(Prontidão)</small></label>
+          {{ form.vontade }}
+          <div class="defesa-total" data-defesa="vontade">Total: <span class="valor-total" id="total_vontade">0</span></div>
+          {% if form.vontade.errors %}<div style="color:red;">{{ form.vontade.errors }}</div>{% endif %}
+        </div>
+        <div class="campo-def">
+          <label for="id_fortitude">Fortitude <small>(Vigor)</small></label>
+          {{ form.fortitude }}
+          <div class="defesa-total" data-defesa="fortitude">Total: <span class="valor-total" id="total_fortitude">0</span></div>
+          {% if form.fortitude.errors %}<div style="color:red;">{{ form.fortitude.errors }}</div>{% endif %}
+        </div>
         <div></div>
       </div>
 
@@ -231,6 +256,21 @@ document.addEventListener('DOMContentLoaded', function() {
   atualizar();
 });
 </script>
+<script>
+// Totais de Defesas (NPC) - sem limites
+document.addEventListener('DOMContentLoaded', function(){
+  const assoc = { aparar:'luta', esquivar:'agilidade', resistencia:'vigor', vontade:'prontidao', fortitude:'vigor' };
+  function num(id){ const el=document.getElementById('id_'+id); if(!el) return 0; const v=parseFloat((el.value||'').toString().replace(',','.')); return isNaN(v)?0:v; }
+  function update(){ Object.keys(assoc).forEach(def=>{ const span=document.getElementById('total_'+def); if(span) span.textContent = num(def)+num(assoc[def]); }); }
+  const campos = ['aparar','esquivar','resistencia','vontade','fortitude','luta','agilidade','vigor','prontidao'];
+  campos.forEach(c=>{ const el=document.getElementById('id_'+c); if(el){ el.addEventListener('input', update); el.addEventListener('change', update); }});
+  const oldAtualizar = window.atualizar; if(typeof oldAtualizar==='function'){ window.atualizar = function(){ oldAtualizar(); update(); }; }
+  update();
+});
+</script>
+<style>
+.defesa-total { font-size:0.75rem; opacity:0.9; margin-top:0.25rem; }
+</style>
 <script>
 function adicionarPoder() {
   const formsetDiv = document.getElementById('poderes-formset');

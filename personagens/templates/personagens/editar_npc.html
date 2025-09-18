@@ -59,12 +59,32 @@
       </div>
 
   <h2>Defesas <span id="badge-def" class="section-cost-badge" title="Cada ponto em Defesas custa +1 pp.">+1 pp — 0</span></h2>
-      <div class="defesas-grid" style="display:grid; grid-template-columns:repeat(3, minmax(140px,1fr)); gap:1.8rem 3rem; justify-items:center; margin-bottom:2rem;">
-        <div class="campo-def">{{ form.aparar.label_tag }} {{ form.aparar }}</div>
-        <div class="campo-def">{{ form.esquivar.label_tag }} {{ form.esquivar }}</div>
-        <div class="campo-def">{{ form.resistencia.label_tag }} {{ form.resistencia }}</div>
-        <div class="campo-def">{{ form.vontade.label_tag }} {{ form.vontade }}</div>
-        <div class="campo-def">{{ form.fortitude.label_tag }} {{ form.fortitude }}</div>
+      <div class="defesas-grid" style="display:grid; grid-template-columns:repeat(3, minmax(170px,1fr)); gap:1.8rem 3rem; justify-items:center; margin-bottom:2rem;">
+        <div class="campo-def">
+          <label for="id_aparar">Aparar <small>(Luta)</small></label>
+          {{ form.aparar }}
+          <div class="defesa-total" data-defesa="aparar">Total: <span class="valor-total" id="total_aparar">0</span></div>
+        </div>
+        <div class="campo-def">
+          <label for="id_esquivar">Esquivar <small>(Agilidade)</small></label>
+          {{ form.esquivar }}
+          <div class="defesa-total" data-defesa="esquivar">Total: <span class="valor-total" id="total_esquivar">0</span></div>
+        </div>
+        <div class="campo-def">
+          <label for="id_resistencia">Resistência <small>(Vigor)</small></label>
+          {{ form.resistencia }}
+          <div class="defesa-total" data-defesa="resistencia">Total: <span class="valor-total" id="total_resistencia">0</span></div>
+        </div>
+        <div class="campo-def">
+          <label for="id_vontade">Vontade <small>(Prontidão)</small></label>
+          {{ form.vontade }}
+          <div class="defesa-total" data-defesa="vontade">Total: <span class="valor-total" id="total_vontade">0</span></div>
+        </div>
+        <div class="campo-def">
+          <label for="id_fortitude">Fortitude <small>(Vigor)</small></label>
+          {{ form.fortitude }}
+          <div class="defesa-total" data-defesa="fortitude">Total: <span class="valor-total" id="total_fortitude">0</span></div>
+        </div>
         <div></div>
       </div>
 
@@ -400,3 +420,21 @@ document.addEventListener('DOMContentLoaded', function(){
   };
 })();
 </script>
+<script>
+// Totais de Defesas (Editar NPC) - sem limites
+document.addEventListener('DOMContentLoaded', function(){
+  const assoc = { aparar:'luta', esquivar:'agilidade', resistencia:'vigor', vontade:'prontidao', fortitude:'vigor' };
+  function num(id){ const el=document.getElementById('id_'+id); if(!el) return 0; const v=parseFloat((el.value||'').toString().replace(',','.')); return isNaN(v)?0:v; }
+  function update(){ Object.keys(assoc).forEach(def=>{ const span=document.getElementById('total_'+def); if(span) span.textContent = num(def)+num(assoc[def]); }); }
+  const campos = ['aparar','esquivar','resistencia','vontade','fortitude','luta','agilidade','vigor','prontidao'];
+  campos.forEach(c=>{ const el=document.getElementById('id_'+c); if(el){ el.addEventListener('input', update); el.addEventListener('change', update); }});
+  // Hook possível função atualizar() usada em custo
+  if(typeof window.atualizar === 'function'){
+    const old = window.atualizar; window.atualizar = function(){ old(); update(); };
+  }
+  update();
+});
+</script>
+<style>
+.defesa-total { font-size:0.75rem; opacity:0.9; margin-top:0.25rem; }
+</style>
