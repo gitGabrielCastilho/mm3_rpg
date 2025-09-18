@@ -737,4 +737,20 @@ document.addEventListener('DOMContentLoaded', function(){
   updateBadges();
 });
 </script>
+<!-- Unificador final: garante que ao adicionar Poder recalculamos custos E badges -->
+<script>
+(function(){
+  if(window._addPoderUnified) return; // evita dupla aplicação
+  window._addPoderUnified = true;
+  const prev = window.adicionarPoder;
+  window.adicionarPoder = function(){
+    if (typeof prev === 'function') prev();
+    // Aguarda inserção do DOM e então recalcula tudo
+    setTimeout(function(){
+      if (typeof atualizarCustos === 'function') { try { atualizarCustos(); } catch(e) { /* noop */ } }
+      if (typeof updateBadges === 'function') { try { updateBadges(); } catch(e) { /* noop */ } }
+    }, 60);
+  };
+})();
+</script>
 {% endblock %}

@@ -402,3 +402,18 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 </script>
 {% endblock %}
+<!-- Unificador final: recalcula custos/badges após adicionar Poder (NPC criar) -->
+<script>
+(function(){
+  if(window._addPoderUnified) return;
+  window._addPoderUnified = true;
+  const prev = window.adicionarPoder;
+  window.adicionarPoder = function(){
+    if (typeof prev === 'function') prev();
+    setTimeout(function(){
+      if (typeof atualizar === 'function') { try { atualizar(); } catch(e){} }
+      if (typeof updateBadges === 'function') { try { updateBadges(); } catch(e){} }
+    }, 60);
+  };
+})();
+</script>

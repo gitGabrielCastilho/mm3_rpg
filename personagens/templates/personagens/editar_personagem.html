@@ -763,3 +763,18 @@ document.addEventListener('DOMContentLoaded', function(){
 </script>
 
 {% endblock %}
+<!-- Unificador final: garante recálculo de custos e badges após adicionar novo Poder -->
+<script>
+(function(){
+  if(window._addPoderUnified) return; // já aplicado
+  window._addPoderUnified = true;
+  const prev = window.adicionarPoder;
+  window.adicionarPoder = function(){
+    if (typeof prev === 'function') prev();
+    setTimeout(function(){
+      if (typeof atualizarCustos === 'function') { try { atualizarCustos(); } catch(e){} }
+      if (typeof updateBadges === 'function') { try { updateBadges(); } catch(e){} }
+    }, 60);
+  };
+})();
+</script>
