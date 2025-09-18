@@ -753,4 +753,18 @@ document.addEventListener('DOMContentLoaded', function(){
   };
 })();
 </script>
+<!-- Delegação de eventos: garante recálculo para qualquer campo novo de Poder sem depender de binds específicos -->
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  function handle(e){
+    if (!e.target.closest) return;
+    if (e.target.closest('.poder-form')) {
+      if (typeof atualizarCustos === 'function') { try { atualizarCustos(); } catch(err){} }
+      if (typeof updateBadges === 'function') { try { updateBadges(); } catch(err){} }
+    }
+  }
+  document.addEventListener('input', handle, true); // capture para pegar antes de outros handlers
+  document.addEventListener('change', handle, true);
+});
+</script>
 {% endblock %}

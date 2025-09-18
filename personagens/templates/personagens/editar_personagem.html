@@ -778,3 +778,17 @@ document.addEventListener('DOMContentLoaded', function(){
   };
 })();
 </script>
+<!-- Delegação de eventos para campos de Poder: evita falhas de bind em novos formulários -->
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  function handle(e){
+    if (!e.target.closest) return;
+    if (e.target.closest('.poder-form')) {
+      if (typeof atualizarCustos === 'function') { try { atualizarCustos(); } catch(err){} }
+      if (typeof updateBadges === 'function') { try { updateBadges(); } catch(err){} }
+    }
+  }
+  document.addEventListener('input', handle, true);
+  document.addEventListener('change', handle, true);
+});
+</script>
