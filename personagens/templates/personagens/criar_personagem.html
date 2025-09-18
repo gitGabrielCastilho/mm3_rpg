@@ -128,28 +128,32 @@
       </div>
       <div class="pericias-grid-4" style="display:grid; grid-template-columns:repeat(4, minmax(140px,1fr)); gap:1.4rem 2.2rem; justify-items:center; margin-bottom:2rem;">
         {% for campo in pericias_col1 %}
-          {% with field=form|lookup:campo %}
-            <div class="pericia-campo" style="display:flex; flex-direction:column; align-items:center;">
-              <label style="font-weight:bold; margin-bottom:0.25rem;">{{ field.label }}</label>
-              {{ field }}
-              {% if field.errors %}<div style="color:red;">{{ field.errors }}</div>{% endif %}
-            </div>
-          {% endwith %}
+          {% if campo != 'combate_distancia' and campo != 'combate_corpo' %}
+            {% with field=form|lookup:campo %}
+              <div class="pericia-campo" style="display:flex; flex-direction:column; align-items:center;">
+                <label style="font-weight:bold; margin-bottom:0.25rem;">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}<div style="color:red;">{{ field.errors }}</div>{% endif %}
+              </div>
+            {% endwith %}
+          {% endif %}
         {% endfor %}
         {% for campo in pericias_col2 %}
-          {% with field=form|lookup:campo %}
-            <div class="pericia-campo" style="display:flex; flex-direction:column; align-items:center;">
-              <label style="font-weight:bold; margin-bottom:0.25rem;">{{ field.label }}</label>
-              {{ field }}
-              {% if field.errors %}<div style="color:red;">{{ field.errors }}</div>{% endif %}
-            </div>
-          {% endwith %}
+          {% if campo != 'combate_distancia' and campo != 'combate_corpo' %}
+            {% with field=form|lookup:campo %}
+              <div class="pericia-campo" style="display:flex; flex-direction:column; align-items:center;">
+                <label style="font-weight:bold; margin-bottom:0.25rem;">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}<div style="color:red;">{{ field.errors }}</div>{% endif %}
+              </div>
+            {% endwith %}
+          {% endif %}
         {% endfor %}
       </div>
-  <h2>Poderes <span id="badge-pod" class="section-cost-badge" title="Custo por poder = Nível × (1 + bônus de Tipo + Duração + Modo). Bônus: Tipo: +1 (cura/aprimorar). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Arrays: custo do grupo = maior base + (n−1); líder paga o maior, demais pagam 1.">Nivel x (1+Tipo+Duração+Modo) — 0</span></h2>
+  <h2>Poderes <span id="badge-pod" class="section-cost-badge" title="Custo por poder = Nível × (1 + bônus de Tipo + Duração + Modo) + Bônus de Ataque. Bônus: Tipo: +1 (cura/aprimorar). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +1 pp por ponto (aditivo, por poder). Arrays: parte de Nível do grupo = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque.">Nivel x (1+Tipo+Duração+Modo) + Bônus Ataque — 0</span></h2>
       <!-- Empty form grid para JS clonar (opcional, se usar JS dinâmico igual editar) -->
       <div id="empty-poder-form" style="display:none;">
-  <div class="poder-form poder-form-grid" style="border:1px solid #444; width:100%; position: relative;">
+          <div class="poder-form poder-form-grid" style="border:1px solid #444; width:100%; position: relative;">
           <div class="campo-poder">{{ formset.empty_form.nome.label_tag }}{{ formset.empty_form.nome }}</div>
           <div class="campo-poder">{{ formset.empty_form.array.label_tag }}{{ formset.empty_form.array }}</div>
           <div class="campo-poder">{{ formset.empty_form.tipo.label_tag }}{{ formset.empty_form.tipo }}</div>
@@ -158,6 +162,10 @@
           <div class="campo-poder">{{ formset.empty_form.casting_ability.label_tag }}{{ formset.empty_form.casting_ability }}</div>
           <div class="campo-poder">{{ formset.empty_form.nivel_efeito.label_tag }}{{ formset.empty_form.nivel_efeito }}</div>
           <div class="campo-poder">{{ formset.empty_form.bonus_ataque.label_tag }}{{ formset.empty_form.bonus_ataque }}</div>
+          <div class="linha-ataque-info" style="grid-column:1/-1; font-size:0.7rem; display:flex; justify-content:space-between; align-items:center; margin-top:0.2rem; gap:1rem;">
+            <span class="hint-bonus-ataque" style="text-align:left;" title="Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limite: (Ataque Total + Nível de Efeito) ≤ 2×NP | Custo: cada ponto em Bônus de Ataque soma +1 pp (aditivo)">ⓘ Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limite: (Ataque Total + Nível de Efeito) ≤ 2×NP | Custo: Bônus Ataque +1 pp por ponto</span>
+            <span style="white-space:nowrap;">Total Ataque: <span class="valor-ataque-total">0</span></span>
+          </div>
           <div class="campo-poder">{{ formset.empty_form.defesa_ativa.label_tag }}{{ formset.empty_form.defesa_ativa }}</div>
           <div class="campo-poder">{{ formset.empty_form.defesa_passiva.label_tag }}{{ formset.empty_form.defesa_passiva }}</div>
           <div class="campo-poder">{{ formset.empty_form.item_origem.label_tag }}{{ formset.empty_form.item_origem }}</div>
@@ -187,6 +195,10 @@
                 <div class="campo-poder">{{ form.casting_ability.label_tag }}{{ form.casting_ability }}</div>
                 <div class="campo-poder">{{ form.nivel_efeito.label_tag }}{{ form.nivel_efeito }}</div>
                 <div class="campo-poder">{{ form.bonus_ataque.label_tag }}{{ form.bonus_ataque }}</div>
+                <div class="linha-ataque-info" style="grid-column:1/-1; font-size:0.7rem; display:flex; justify-content:space-between; align-items:center; margin-top:0.2rem; gap:1rem;">
+                  <span class="hint-bonus-ataque" style="text-align:left;" title="Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limite: (Ataque Total + Nível de Efeito) ≤ 2×NP | Custo: cada ponto em Bônus de Ataque soma +1 pp (aditivo)">ⓘ Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limite: (Ataque Total + Nível de Efeito) ≤ 2×NP | Custo: Bônus Ataque +1 pp por ponto</span>
+                  <span style="white-space:nowrap;">Total Ataque: <span class="valor-ataque-total">0</span></span>
+                </div>
                 <div class="campo-poder">{{ form.defesa_ativa.label_tag }}{{ form.defesa_ativa }}</div>
                 <div class="campo-poder">{{ form.defesa_passiva.label_tag }}{{ form.defesa_passiva }}</div>
                 <div class="campo-poder">{{ form.item_origem.label_tag }}{{ form.item_origem }}</div>
@@ -343,7 +355,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const durBonus = dur==='concentracao'?1:(dur==='sustentado'?2:0);
     const modoBonus = modo==='ranged'?1:(modo==='area'?2:(modo==='percepcao'?3:0));
     const mult = 1 + tipoBonus + durBonus + modoBonus;
-    return n * mult;
+    return n * mult; // parte base (nível) usada na regra de arrays
+  }
+  function custoBonusAtaque(div){
+    const el = div.querySelector('[name$="-bonus_ataque"]');
+    if(!el) return 0;
+    const v = parseFloat((el.value||'').toString().replace(',','.'));
+    const b = isNaN(v)?0:Math.abs(v);
+    const chItem = div.querySelector('input[type="checkbox"][name$="-de_item"]');
+    const chVant = div.querySelector('input[type="checkbox"][name$="-de_vantagem"]');
+    if ((chItem && chItem.checked) || (chVant && chVant.checked)) return 0;
+    return b; // +1 pp por ponto de bônus de ataque (aditivo)
   }
 
   function atualizarCustos(){
@@ -353,8 +375,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Vantagens: cada checkbox marcado = 1
     const custoVant = document.querySelectorAll('input[type="checkbox"][name="vantagens"]:checked').length * 1;
     // Poderes: agrupar por Array (nome) e aplicar regra de custo
-    const grupos = new Map();
-    const individuais = [];
+  const grupos = new Map(); // armazena apenas bases (nível)
+  const gruposBonus = new Map(); // soma de bônus de ataque por array
+  const individuais = []; // bases sem array
+  let bonusSemArray = 0; // bônus de ataque somado dos poderes sem array
     document.querySelectorAll('.poder-form').forEach(div=>{
       const del = div.querySelector('input[type="checkbox"][name$="-DELETE"]');
       if(del && del.checked) return; // ignorar deletados
@@ -363,21 +387,25 @@ document.addEventListener('DOMContentLoaded', function() {
       const chVant = div.querySelector('input[type="checkbox"][name$="-de_vantagem"]');
       if ((chItem && chItem.checked) || (chVant && chVant.checked)) return;
       const base = custoPoderDiv(div);
+      const bAtk = custoBonusAtaque(div);
       const arrName = (div.querySelector('[name$="-array"]')?.value || '').trim().toLowerCase();
       if (arrName) {
         if (!grupos.has(arrName)) grupos.set(arrName, []);
         grupos.get(arrName).push(base);
+        gruposBonus.set(arrName, (gruposBonus.get(arrName)||0) + bAtk);
       } else {
         individuais.push(base);
+        bonusSemArray += bAtk;
       }
     });
-    let custoPod = individuais.reduce((a,b)=>a+b,0);
+    let custoPod = individuais.reduce((a,b)=>a+b,0) + bonusSemArray;
     let temArray = false;
-    grupos.forEach(bases=>{
+    grupos.forEach((bases, nome)=>{
       if (!bases || bases.length===0) return;
       const n = bases.length;
       const maxBase = Math.max.apply(null, bases);
-      custoPod += maxBase + Math.max(0, n - 1);
+      custoPod += maxBase + Math.max(0, n - 1); // parte de nível
+      custoPod += (gruposBonus.get(nome)||0); // soma dos bônus de ataque de todos os membros
       temArray = true;
     });
     const total = custoCarac + custoDef + custoPer + custoVant + custoPod;
@@ -396,8 +424,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const bVan = document.getElementById('badge-vant'); if (bVan){ bVan.textContent = '+1 pp — ' + custoVant; bVan.title = 'Cada vantagem selecionada custa +1 pp. Total atual: '+custoVant; }
     const bPod = document.getElementById('badge-pod');
     if (bPod){
-      bPod.textContent = (temArray? 'Nivel x (1+Tipo+Duração+Modo) + Arrays' : 'Nivel x (1+Tipo+Duração+Modo)') + ' — ' + custoPod;
-      bPod.title = 'Custo por poder = Nível × (1 + Tipo + Duração + Modo). Tipo: +1 (cura/aprimorar). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). ' + (temArray ? 'Arrays: grupo = maior base + (n−1); líder paga maior, demais 1. ' : '') + 'Total atual: ' + custoPod;
+      const baseTxt = 'Nivel x (1+Tipo+Duração+Modo) + Bônus Ataque';
+      bPod.textContent = (temArray? baseTxt + ' + Arrays' : baseTxt) + ' — ' + custoPod;
+      bPod.title = 'Custo por poder = Nível × (1 + Tipo + Duração + Modo) + Bônus de Ataque. Tipo: +1 (cura/aprimorar). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +1 pp por ponto (aditivo, por poder). ' + (temArray ? 'Arrays: parte de Nível = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque. ' : '') + 'Total atual: ' + custoPod;
     }
   }
   // Torna acessível globalmente para outros scripts (unificador final)
@@ -452,6 +481,48 @@ document.addEventListener('DOMContentLoaded', function() {
   atualizarCustos();
 });
 </script>
+<!-- Fallback robusto para garantir atualização de Total Ataque (similar ao mecanismo de Defesas) -->
+<script>
+(function(){
+  function n(el){ if(!el) return 0; const v=parseFloat((el.value||'').toString().replace(',','.')); return isNaN(v)?0:v; }
+  function recalcAtaquesSimples(){
+    const luta = n(document.getElementById('id_luta'));
+    const des = n(document.getElementById('id_destreza'));
+    const np  = Math.abs(n(document.getElementById('id_nivel_poder')));
+    const limite = 2 * np;
+    let viol=false;
+    document.querySelectorAll('.poder-form').forEach(div=>{
+      if(div.style.display==='none') return;
+      const modoEl = div.querySelector('[name$="-modo"]');
+      const bonusEl = div.querySelector('[name$="-bonus_ataque"]');
+      const nivelEfEl = div.querySelector('[name$="-nivel_efeito"]');
+      const totalSpan = div.querySelector('.linha-ataque-info .valor-ataque-total');
+      if(!modoEl || !bonusEl || !nivelEfEl || !totalSpan) return;
+      let modoVal = (modoEl.value||'').toLowerCase();
+      const modoTxt = (modoEl.options && modoEl.options[modoEl.selectedIndex]) ? modoEl.options[modoEl.selectedIndex].textContent.toLowerCase() : '';
+      let baseAttr = 0;
+      if(modoVal.includes('melee') || modoTxt.includes('corpo')) baseAttr = luta; else if(modoVal.includes('ranged') || modoTxt.includes('dist')) baseAttr = des;
+      const ataqueTotal = baseAttr + n(bonusEl);
+      totalSpan.textContent = ataqueTotal;
+      const nivelEf = Math.abs(n(nivelEfEl));
+      if((ataqueTotal + nivelEf) > limite){ totalSpan.classList.add('violacao-ataque'); viol=true; } else { totalSpan.classList.remove('violacao-ataque'); }
+    });
+    const submitBtn = document.querySelector('form input[type="submit"]');
+    if(submitBtn){
+      const violDef = !!document.querySelector('.violacao-limite');
+      if(viol || violDef){ submitBtn.disabled = true; submitBtn.title='Corrija limites (defesas/poderes) para salvar.'; }
+      else { submitBtn.disabled = false; if(!document.querySelector('.violacao-limite')) submitBtn.title=''; }
+    }
+  }
+  window.recalcAtaquesSimples = recalcAtaquesSimples;
+  document.addEventListener('input', ev=>{ if(ev.target.closest('.poder-form') || ['id_luta','id_destreza','id_nivel_poder'].includes(ev.target.id)) recalcAtaquesSimples(); });
+  document.addEventListener('change', ev=>{ if(ev.target.closest('.poder-form') || ['id_luta','id_destreza','id_nivel_poder'].includes(ev.target.id)) recalcAtaquesSimples(); });
+  const oldAdd = window.adicionarPoder; window.adicionarPoder = function(){ if(oldAdd) oldAdd(); setTimeout(recalcAtaquesSimples, 80); };
+  const oldRem = window.removerPoderLinha; window.removerPoderLinha = function(btn){ if(oldRem) oldRem(btn); setTimeout(recalcAtaquesSimples, 40); };
+  const oldRemUlt = window.removerPoder; window.removerPoder = function(){ if(oldRemUlt) oldRemUlt(); setTimeout(recalcAtaquesSimples, 40); };
+  setTimeout(recalcAtaquesSimples, 120);
+})();
+</script>
 <script>
 // ---- Totais de Defesas (valor + atributo) e verificação de limites ----
 document.addEventListener('DOMContentLoaded', function(){
@@ -491,7 +562,7 @@ document.addEventListener('DOMContentLoaded', function(){
     // Impede submit se houver violação
     const violacao = document.querySelector('.violacao-limite');
     const submitBtn = document.querySelector('form input[type="submit"]');
-    if(submitBtn){ submitBtn.disabled = !!violacao; submitBtn.title = violacao? 'Corrija limites de defesas para salvar.' : ''; }
+    if(submitBtn){ submitBtn.disabled = !!violacao; submitBtn.title = violacao? 'Corrija limites (defesas/poderes) para salvar.' : ''; }
   }
   const campos = ['nivel_poder','aparar','esquivar','resistencia','vontade','fortitude','luta','agilidade','vigor','prontidao'];
   campos.forEach(c=>{ const el=document.getElementById('id_'+c); if(el){ el.addEventListener('input', ()=>{ updateTotais(); }); el.addEventListener('change', updateTotais); }});
@@ -503,6 +574,7 @@ document.addEventListener('DOMContentLoaded', function(){
 </script>
 <style>
 .violacao-limite { color:#ff6161; font-weight:700; }
+.violacao-ataque { color:#ffb347; font-weight:700; }
 .defesa-total { font-size:0.75rem; opacity:0.9; margin-top:0.25rem; }
 </style>
 <script>
@@ -752,7 +824,10 @@ document.addEventListener('DOMContentLoaded', function(){
     const modoBonus = modo==='ranged'?1:(modo==='area'?2:(modo==='percepcao'?3:0));
     const mult = 1 + tipoBonus + durBonus + modoBonus;
     const base = (n||0) * mult;
-    return { n, tipoBonus, durBonus, modoBonus, mult, base };
+    // bonus de ataque para detalhamento
+    const elBA = div.querySelector('[name$="-bonus_ataque"]');
+    let bAtk = 0; if(elBA){ const v=parseFloat((elBA.value||'').toString().replace(',','.')); bAtk = isNaN(v)?0:Math.abs(v); }
+    return { n, tipoBonus, durBonus, modoBonus, mult, base, bAtk };
   }
   function ensureBadge(div){
     let b = div.querySelector('.poder-custo-badge');
@@ -804,9 +879,10 @@ document.addEventListener('DOMContentLoaded', function(){
         return;
       }
       if (!arr){
-        badge.textContent = 'Custo: ' + base;
-        badge.title = `Base = Nível ${brk.n} × (1 + Tipo ${brk.tipoBonus} + Duração ${brk.durBonus} + Modo ${brk.modoBonus}) = ${base}`;
-        setDetalhe(div, `Sem array • Base: ${brk.n} × (1 + ${brk.tipoBonus}+${brk.durBonus}+${brk.modoBonus}) = ${base}`);
+        const total = base + (brk.bAtk||0);
+        badge.textContent = 'Custo: ' + total;
+        badge.title = `Base = Nível ${brk.n} × (1 + Tipo ${brk.tipoBonus} + Duração ${brk.durBonus} + Modo ${brk.modoBonus}) = ${base}. Bônus de Ataque = ${brk.bAtk||0} (aditivo). Total: ${total}`;
+        setDetalhe(div, `Sem array • Base: ${brk.n} × (1 + ${brk.tipoBonus}+${brk.durBonus}+${brk.modoBonus}) = ${base} • Bônus Atk: ${brk.bAtk||0} • Total: ${total}`);
         return;
       }
       const meta = lideres.get(arr);
@@ -817,10 +893,11 @@ document.addEventListener('DOMContentLoaded', function(){
         return;
       }
       const contrib = (meta.lider === info) ? meta.maxBase : 1;
-      badge.textContent = 'Custo: ' + contrib;
-      badge.title = `Array "${arr}": grupo = ${meta.maxBase} + (${meta.n}-1). Contribuição deste poder: ${contrib}. Base = Nível ${brk.n} × (1 + Tipo ${brk.tipoBonus} + Duração ${brk.durBonus} + Modo ${brk.modoBonus}) = ${base}`;
+      const total = contrib + (brk.bAtk||0);
+      badge.textContent = 'Custo: ' + total;
+      badge.title = `Array "${arr}": grupo = ${meta.maxBase} + (${meta.n}-1). Contribuição deste poder: ${contrib}. Base = Nível ${brk.n} × (1 + Tipo ${brk.tipoBonus} + Duração ${brk.durBonus} + Modo ${brk.modoBonus}) = ${base}. Bônus de Ataque = ${brk.bAtk||0} (aditivo). Total: ${total}`;
       const papel = (meta.lider === info) ? 'Líder' : 'Membro';
-      setDetalhe(div, `Array: ${arr} • ${papel} • Contrib.: ${contrib} • Base: ${brk.n} × (1 + ${brk.tipoBonus}+${brk.durBonus}+${brk.modoBonus}) = ${base}`);
+      setDetalhe(div, `Array: ${arr} • ${papel} • Contrib.: ${contrib} • Base: ${brk.n} × (1 + ${brk.tipoBonus}+${brk.durBonus}+${brk.modoBonus}) = ${base} • Bônus Atk: ${brk.bAtk||0} • Total: ${total}`);
     });
   }
   // Disponibiliza globalmente para o unificador final
@@ -858,8 +935,112 @@ document.addEventListener('DOMContentLoaded', function(){
   function recalc(){
     if(typeof window.atualizarCustos === 'function'){ try{ window.atualizarCustos(); }catch(e){} }
     if(typeof window.updateBadges === 'function'){ try{ window.updateBadges(); }catch(e){} }
+    if(typeof window.atualizarAtaques === 'function'){ try{ window.atualizarAtaques(); }catch(e){} }
   }
   document.addEventListener('input', function(ev){ if(ev.target && ev.target.closest('.poder-form')) recalc(); });
   document.addEventListener('change', function(ev){ if(ev.target && ev.target.closest('.poder-form')) recalc(); });
 })();
+</script>
+<script>
+// ---- Ataque Total (Luta/Destreza + Bônus) e Limite (Ataque Total + Nível de Efeito <= 2×NP) ----
+document.addEventListener('DOMContentLoaded', function(){
+  function numFrom(el){
+    if(!el) return 0; const v=parseFloat((el.value||'').toString().replace(',','.')); return isNaN(v)?0:v;
+  }
+  function getAttr(nome){ return document.getElementById('id_'+nome); }
+  const lutaEl = getAttr('luta');
+  const desEl = getAttr('destreza');
+  const npEl = getAttr('nivel_poder');
+
+  function processarLinha(div){
+    const modo = div.querySelector('[name$="-modo"]');
+    const bonus = div.querySelector('[name$="-bonus_ataque"]');
+    const nivelEf = div.querySelector('[name$="-nivel_efeito"]');
+    const totalSpan = div.querySelector('.valor-ataque-total');
+    if(!modo || !bonus || !nivelEf || !totalSpan) return {viol:false};
+    // Detecta modo (valor ou texto) para maior robustez
+    let modoVal = (modo.value||'').toLowerCase();
+    if(!modoVal && modo.options && modo.selectedIndex>=0){
+      modoVal = (modo.options[modo.selectedIndex].value||'').toLowerCase();
+    }
+    // Alguns casos: label pode conter 'Corpo' ou 'Dist' mesmo que value não seja 'melee'/'ranged'
+    let baseAttr;
+    if(modoVal.includes('melee') || modoVal.includes('corpo')) baseAttr = numFrom(lutaEl);
+    else if(modoVal.includes('ranged') || modoVal.includes('dist')) baseAttr = numFrom(desEl);
+    else {
+      // fallback: tenta texto da opção selecionada
+      const optText = (modo.options && modo.options[modo.selectedIndex]) ? modo.options[modo.selectedIndex].textContent.toLowerCase() : '';
+      if(optText.includes('corpo')) baseAttr = numFrom(lutaEl); else if(optText.includes('dist')) baseAttr = numFrom(desEl); else baseAttr = 0;
+    }
+    const bonusVal = numFrom(bonus);
+    const ataqueTotal = baseAttr + bonusVal;
+    totalSpan.textContent = ataqueTotal;
+    const nivelEfeito = Math.abs(numFrom(nivelEf));
+    const np = Math.abs(numFrom(npEl));
+    const limite = 2 * np;
+    const viol = (ataqueTotal + nivelEfeito) > limite;
+    totalSpan.classList.toggle('violacao-ataque', viol);
+    return {viol};
+  }
+  function atualizarAtaques(){
+    let algumaViol=false;
+    document.querySelectorAll('.poder-form').forEach(div=>{
+      const del=div.querySelector('input[type="checkbox"][name$="-DELETE"]');
+      if(del && del.checked) return;
+      const r=processarLinha(div); if(r.viol) algumaViol=true;
+    });
+    const submitBtn = document.querySelector('form input[type="submit"]');
+    if(submitBtn){
+      const temViolDef = !!document.querySelector('.violacao-limite');
+      const temViolAtk = algumaViol;
+      if(temViolDef || temViolAtk){
+        submitBtn.disabled = true;
+        submitBtn.title = 'Corrija limites (defesas/poderes) para salvar.';
+      } else {
+        submitBtn.disabled = false; submitBtn.title='';
+      }
+    }
+  }
+  window.atualizarAtaques = atualizarAtaques;
+  // Integrar ao fluxo de atualização unificada
+  const oldAtualizar = window.atualizarCustos;
+  window.atualizarCustos = function(){ if(typeof oldAtualizar==='function') oldAtualizar(); atualizarAtaques(); };
+  // Listeners diretos nos campos relevantes de cada poder
+  function bindAtaqueListeners(scope){
+    (scope||document).querySelectorAll('.poder-form').forEach(div=>{
+      div.querySelectorAll('[name$="-modo"],[name$="-bonus_ataque"],[name$="-nivel_efeito"]').forEach(el=>{
+        el.addEventListener('input', atualizarAtaques);
+        el.addEventListener('change', atualizarAtaques);
+      });
+    });
+  }
+  bindAtaqueListeners(document);
+  // Listeners para atributos base que influenciam ataque total
+  ['luta','destreza','nivel_poder'].forEach(c=>{
+    const el=document.getElementById('id_'+c); if(el){ el.addEventListener('input', atualizarAtaques); el.addEventListener('change', atualizarAtaques); }
+  });
+  // Rebind ao adicionar poder
+  const oldAddPoder = window.adicionarPoder;
+  window.adicionarPoder = function(){
+    if(typeof oldAddPoder==='function') oldAddPoder();
+    setTimeout(()=>{ bindAtaqueListeners(document); atualizarAtaques(); }, 80);
+  };
+  // Rebind ao remover linha (já recalcula depois)
+  const oldRemLinha = window.removerPoderLinha;
+  window.removerPoderLinha = function(btn){ if(typeof oldRemLinha==='function') oldRemLinha(btn); setTimeout(atualizarAtaques, 40); };
+  // Rebind remover último
+  const oldRemUlt = window.removerPoder;
+  window.removerPoder = function(){ if(typeof oldRemUlt==='function') oldRemUlt(); setTimeout(atualizarAtaques, 40); };
+  // Chamada inicial (delay para garantir preenchimento do formset renderizado)
+  setTimeout(atualizarAtaques, 30);
+  atualizarAtaques();
+  // Ponte unificada caso scripts antigos chamem somente atualizarCustos
+  if(!window.recalcularTudo){
+    window.recalcularTudo = function(){
+      if(typeof window.atualizarCustos === 'function') try{ window.atualizarCustos(); }catch(e){}
+      if(typeof window.updateBadges === 'function') try{ window.updateBadges(); }catch(e){}
+      if(typeof window.atualizarAtaques === 'function') try{ window.atualizarAtaques(); }catch(e){}
+    };
+  }
+});
 </script>

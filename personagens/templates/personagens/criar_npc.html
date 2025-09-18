@@ -99,26 +99,30 @@
       </div>
       <div class="pericias-grid-4" style="display:grid; grid-template-columns:repeat(4, minmax(140px,1fr)); gap:1.4rem 2.2rem; justify-items:center; margin-bottom:2rem;">
         {% for campo in pericias_col1 %}
-          {% with field=form|lookup:campo %}
-            <div class="pericia-campo" style="display:flex; flex-direction:column; align-items:center;">
-              <label style="font-weight:bold; margin-bottom:0.25rem;">{{ field.label }}</label>
-              {{ field }}
-              {% if field.errors %}<div style="color:red;">{{ field.errors }}</div>{% endif %}
-            </div>
-          {% endwith %}
+          {% if campo != 'combate_distancia' and campo != 'combate_corpo' %}
+            {% with field=form|lookup:campo %}
+              <div class="pericia-campo" style="display:flex; flex-direction:column; align-items:center;">
+                <label style="font-weight:bold; margin-bottom:0.25rem;">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}<div style="color:red;">{{ field.errors }}</div>{% endif %}
+              </div>
+            {% endwith %}
+          {% endif %}
         {% endfor %}
         {% for campo in pericias_col2 %}
-          {% with field=form|lookup:campo %}
-            <div class="pericia-campo" style="display:flex; flex-direction:column; align-items:center;">
-              <label style="font-weight:bold; margin-bottom:0.25rem;">{{ field.label }}</label>
-              {{ field }}
-              {% if field.errors %}<div style="color:red;">{{ field.errors }}</div>{% endif %}
-            </div>
-          {% endwith %}
+          {% if campo != 'combate_distancia' and campo != 'combate_corpo' %}
+            {% with field=form|lookup:campo %}
+              <div class="pericia-campo" style="display:flex; flex-direction:column; align-items:center;">
+                <label style="font-weight:bold; margin-bottom:0.25rem;">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}<div style="color:red;">{{ field.errors }}</div>{% endif %}
+              </div>
+            {% endwith %}
+          {% endif %}
         {% endfor %}
       </div>
 
-  <h2>Poderes <span id="badge-pod" class="section-cost-badge" title="Custo por poder = Nível × (1 + bônus de Tipo + Duração + Modo). Bônus: Tipo: +1 (cura/aprimorar). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Arrays: custo do grupo = maior base + (n−1); líder paga o maior, demais pagam 1.">Nivel x (1+Tipo+Duração+Modo) — 0</span></h2>
+  <h2>Poderes <span id="badge-pod" class="section-cost-badge" title="Custo por poder = Nível × (1 + bônus de Tipo + Duração + Modo) + Bônus de Ataque. Bônus: Tipo: +1 (cura/aprimorar). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +1 pp por ponto (aditivo, por poder). Arrays: parte de Nível do grupo = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque.">Nivel x (1+Tipo+Duração+Modo) + Bônus Ataque — 0</span></h2>
       <div id="empty-poder-form" style="display:none;">
         <div class="poder-form poder-form-grid" style="border:1px solid #444; width:100%; position: relative;">
           <div class="campo-poder">{{ formset.empty_form.nome.label_tag }}{{ formset.empty_form.nome }}</div>
@@ -129,6 +133,10 @@
           <div class="campo-poder">{{ formset.empty_form.casting_ability.label_tag }}{{ formset.empty_form.casting_ability }}</div>
           <div class="campo-poder">{{ formset.empty_form.nivel_efeito.label_tag }}{{ formset.empty_form.nivel_efeito }}</div>
           <div class="campo-poder">{{ formset.empty_form.bonus_ataque.label_tag }}{{ formset.empty_form.bonus_ataque }}</div>
+          <div class="linha-ataque-info" style="grid-column:1/-1; font-size:0.7rem; display:flex; justify-content:space-between; align-items:center; margin-top:0.2rem; gap:1rem;">
+            <span class="hint-bonus-ataque" style="text-align:left;" title="Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limite referência (Ataque Total + Nível de Efeito) ≤ 2×NP (NPC não bloqueia) | Custo: cada ponto em Bônus de Ataque soma +1 pp (aditivo)">ⓘ Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limite ref 2×NP | Custo: Bônus Ataque +1 pp por ponto</span>
+            <span style="white-space:nowrap;">Total Ataque: <span class="valor-ataque-total">0</span></span>
+          </div>
           <div class="campo-poder">{{ formset.empty_form.defesa_ativa.label_tag }}{{ formset.empty_form.defesa_ativa }}</div>
           <div class="campo-poder">{{ formset.empty_form.defesa_passiva.label_tag }}{{ formset.empty_form.defesa_passiva }}</div>
           <div class="campo-poder span-2">
@@ -156,6 +164,10 @@
                 <div class="campo-poder">{{ form.casting_ability.label_tag }}{{ form.casting_ability }}</div>
                 <div class="campo-poder">{{ form.nivel_efeito.label_tag }}{{ form.nivel_efeito }}</div>
                 <div class="campo-poder">{{ form.bonus_ataque.label_tag }}{{ form.bonus_ataque }}</div>
+                <div class="linha-ataque-info" style="grid-column:1/-1; font-size:0.7rem; display:flex; justify-content:space-between; align-items:center; margin-top:0.2rem; gap:1rem;">
+                  <span class="hint-bonus-ataque" style="text-align:left;" title="Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limite referência (Ataque Total + Nível de Efeito) ≤ 2×NP (NPC não bloqueia) | Custo: cada ponto em Bônus de Ataque soma +1 pp (aditivo)">ⓘ Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limite ref 2×NP | Custo: Bônus Ataque +1 pp por ponto</span>
+                  <span style="white-space:nowrap;">Total Ataque: <span class="valor-ataque-total">0</span></span>
+                </div>
                 <div class="campo-poder">{{ form.defesa_ativa.label_tag }}{{ form.defesa_ativa }}</div>
                 <div class="campo-poder">{{ form.defesa_passiva.label_tag }}{{ form.defesa_passiva }}</div>
                 <!-- detalhe do custo por poder (preenchido via JS) -->
@@ -207,15 +219,27 @@ document.addEventListener('DOMContentLoaded', function() {
     const tipoBonus = (tipo==='cura'||tipo==='aprimorar')?1:0;
     const durBonus = dur==='concentracao'?1:(dur==='sustentado'?2:0);
     const modoBonus = modo==='ranged'?1:(modo==='area'?2:(modo==='percepcao'?3:0));
-    return n * (1 + tipoBonus + durBonus + modoBonus);
+    return n * (1 + tipoBonus + durBonus + modoBonus); // base (nível)
+  }
+  function custoBonusAtaque(div){
+    const el = div.querySelector('[name$="-bonus_ataque"]');
+    if(!el) return 0;
+    const v = parseFloat((el.value||'').toString().replace(',','.'));
+    const b = isNaN(v)?0:Math.abs(v);
+    const chItem = div.querySelector('input[type="checkbox"][name$="-de_item"]');
+    const chVant = div.querySelector('input[type="checkbox"][name$="-de_vantagem"]');
+    if ((chItem && chItem.checked) || (chVant && chVant.checked)) return 0;
+    return b;
   }
   function atualizar(){
     const custoCarac = camposCaracteristicas.reduce((s,c)=>s+val(c),0)*2;
     const custoDef = camposDefesas.reduce((s,c)=>s+val(c),0);
     const custoPer = camposPericias.reduce((s,c)=>s+val(c),0)*0.5;
     // Agrupa poderes por Array
-    const grupos = new Map();
-    const individuais = [];
+  const grupos = new Map();
+  const gruposBonus = new Map();
+  const individuais = [];
+  let bonusSemArray = 0;
     document.querySelectorAll('.poder-form').forEach(div=>{
       const del=div.querySelector('input[name$="-DELETE"]');
       if(del&&del.checked) return; if(div.style.display==='none') return;
@@ -223,12 +247,13 @@ document.addEventListener('DOMContentLoaded', function() {
       const chVant = div.querySelector('input[type="checkbox"][name$="-de_vantagem"]');
       if ((chItem && chItem.checked) || (chVant && chVant.checked)) return;
       const base=custoPoderDiv(div);
+      const bAtk=custoBonusAtaque(div);
       const arrName=(div.querySelector('[name$="-array"]')?.value||'').trim().toLowerCase();
-      if(arrName){ if(!grupos.has(arrName)) grupos.set(arrName, []); grupos.get(arrName).push(base);} else { individuais.push(base); }
+      if(arrName){ if(!grupos.has(arrName)) grupos.set(arrName, []); grupos.get(arrName).push(base); gruposBonus.set(arrName,(gruposBonus.get(arrName)||0)+bAtk);} else { individuais.push(base); bonusSemArray+=bAtk; }
     });
-    let custoPod = individuais.reduce((a,b)=>a+b,0);
+    let custoPod = individuais.reduce((a,b)=>a+b,0) + bonusSemArray;
   let temArray = false;
-  grupos.forEach(bases=>{ if(!bases||bases.length===0) return; const n=bases.length; const maxBase=Math.max.apply(null,bases); custoPod += maxBase + Math.max(0, n-1); temArray = true; });
+  grupos.forEach((bases,nome)=>{ if(!bases||bases.length===0) return; const n=bases.length; const maxBase=Math.max.apply(null,bases); custoPod += maxBase + Math.max(0, n-1); custoPod += (gruposBonus.get(nome)||0); temArray = true; });
     const total = custoCarac + custoDef + custoPer + custoPod;
     function fmt(x){ return (Math.round(x*10)%10===0)?x: x.toFixed(1).replace('.0',''); }
     document.getElementById('custo-caracteristicas').textContent = custoCarac;
@@ -242,8 +267,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const bPer = document.getElementById('badge-per'); if (bPer){ bPer.textContent = '+0,5 pp — ' + fmt(custoPer); bPer.title = 'Cada ponto em Perícias custa +0,5 pp. Total atual: '+fmt(custoPer); }
     const bPod = document.getElementById('badge-pod');
     if (bPod){
-      bPod.textContent = (temArray? 'Nivel x (1+Tipo+Duração+Modo) + Arrays' : 'Nivel x (1+Tipo+Duração+Modo)') + ' — ' + custoPod;
-      bPod.title = 'Custo por poder = Nível × (1 + Tipo + Duração + Modo). Tipo: +1 (cura/aprimorar). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). ' + (temArray ? 'Arrays: grupo = maior base + (n−1); líder paga maior, demais 1. ' : '') + 'Total atual: ' + custoPod;
+      const labelBase='Nivel x (1+Tipo+Duração+Modo) + Bônus Ataque';
+      bPod.textContent = (temArray? labelBase + ' + Arrays' : labelBase) + ' — ' + custoPod;
+      bPod.title = 'Custo por poder = Nível × (1 + Tipo + Duração + Modo) + Bônus de Ataque. Tipo: +1 (cura/aprimorar). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +1 pp por ponto (aditivo, por poder). ' + (temArray ? 'Arrays: parte de Nível = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque. ' : '') + 'Total atual: ' + custoPod;
     }
   }
   const watch = [].concat(camposCaracteristicas, camposDefesas, camposPericias);
@@ -271,6 +297,23 @@ document.addEventListener('DOMContentLoaded', function(){
 <style>
 .defesa-total { font-size:0.75rem; opacity:0.9; margin-top:0.25rem; }
 </style>
+<style>.violacao-ataque{ color:#ffb347; font-weight:700; }</style>
+<script>
+// Ataque Total (NPC criar) - sem bloqueio, apenas exibição
+document.addEventListener('DOMContentLoaded', function(){
+  function num(el){ if(!el) return 0; const v=parseFloat((el.value||'').toString().replace(',','.')); return isNaN(v)?0:v; }
+  const luta=document.getElementById('id_luta'); const des=document.getElementById('id_destreza'); const np=document.getElementById('id_nivel_poder');
+  function proc(div){ const modo=div.querySelector('[name$="-modo"]'); const bonus=div.querySelector('[name$="-bonus_ataque"]'); const nivel=div.querySelector('[name$="-nivel_efeito"]'); const span=div.querySelector('.linha-ataque-info .valor-ataque-total'); if(!modo||!bonus||!nivel||!span) return; let mv=(modo.value||'').toLowerCase(); const txt=(modo.options&&modo.options[modo.selectedIndex])?modo.options[modo.selectedIndex].textContent.toLowerCase():''; let base=0; if(mv.includes('melee')||txt.includes('corpo')) base=num(luta); else if(mv.includes('ranged')||txt.includes('dist')) base=num(des); const atk=base+num(bonus); span.textContent=atk; const limite=2*Math.abs(num(np)); const viol=(atk+Math.abs(num(nivel)))>limite; span.classList.toggle('violacao-ataque',viol); }
+  function atualizar(){ document.querySelectorAll('.poder-form').forEach(proc); }
+  ['luta','destreza','nivel_poder'].forEach(id=>{ const el=document.getElementById('id_'+id); if(el){ el.addEventListener('input',atualizar); el.addEventListener('change',atualizar);} });
+  function bind(){ document.querySelectorAll('.poder-form [name$="-modo"], .poder-form [name$="-bonus_ataque"], .poder-form [name$="-nivel_efeito"]').forEach(el=>{ el.addEventListener('input',atualizar); el.addEventListener('change',atualizar); }); }
+  bind();
+  const oldAdd=window.adicionarPoder; window.adicionarPoder=function(){ if(oldAdd) oldAdd(); setTimeout(()=>{ bind(); atualizar(); },80); };
+  const oldRem=window.removerPoderLinha; window.removerPoderLinha=function(btn){ if(oldRem) oldRem(btn); setTimeout(atualizar,40); };
+  const oldRemUlt=window.removerPoder; window.removerPoder=function(){ if(oldRemUlt) oldRemUlt(); setTimeout(atualizar,40); };
+  setTimeout(atualizar,60); atualizar();
+});
+</script>
 <script>
 function adicionarPoder() {
   const formsetDiv = document.getElementById('poderes-formset');
@@ -377,7 +420,9 @@ document.addEventListener('DOMContentLoaded', function(){
     const modoBonus = modo==='ranged'?1:(modo==='area'?2:(modo==='percepcao'?3:0));
     const mult = 1 + tipoBonus + durBonus + modoBonus;
     const base = (n||0) * mult;
-    return { n, tipoBonus, durBonus, modoBonus, mult, base };
+    const elBA = div.querySelector('[name$="-bonus_ataque"]');
+    let bAtk = 0; if(elBA){ const v=parseFloat((elBA.value||'').toString().replace(',','.')); bAtk = isNaN(v)?0:Math.abs(v); }
+    return { n, tipoBonus, durBonus, modoBonus, mult, base, bAtk };
   }
   function ensureBadge(div){
     let b = div.querySelector('.poder-custo-badge');
@@ -423,14 +468,15 @@ document.addEventListener('DOMContentLoaded', function(){
       const {div, arr, base, excluido, brk} = info;
       const badge = ensureBadge(div);
       if (excluido){ badge.textContent = 'Custo: 0'; badge.title = 'Este poder não conta custo (Item/Vantagem).'; setDetalhe(div, 'Item/Vantagem: custo 0'); return; }
-      if (!arr){ badge.textContent = 'Custo: ' + base; badge.title = `Base = Nível ${brk.n} × (1 + Tipo ${brk.tipoBonus} + Duração ${brk.durBonus} + Modo ${brk.modoBonus}) = ${base}`; setDetalhe(div, `Sem array • Base: ${brk.n} × (1 + ${brk.tipoBonus}+${brk.durBonus}+${brk.modoBonus}) = ${base}`); return; }
+  if (!arr){ const total = base + (brk.bAtk||0); badge.textContent = 'Custo: ' + total; badge.title = `Base = Nível ${brk.n} × (1 + Tipo ${brk.tipoBonus} + Duração ${brk.durBonus} + Modo ${brk.modoBonus}) = ${base}. Bônus de Ataque = ${brk.bAtk||0} (aditivo). Total: ${total}`; setDetalhe(div, `Sem array • Base: ${brk.n} × (1 + ${brk.tipoBonus}+${brk.durBonus}+${brk.modoBonus}) = ${base} • Bônus Atk: ${brk.bAtk||0} • Total: ${total}`); return; }
       const meta = lideres.get(arr);
       if (!meta){ badge.textContent = 'Custo: ' + base; badge.title = `Array vazio; usando base. Base = Nível ${brk.n} × (1 + ${brk.tipoBonus}+${brk.durBonus}+${brk.modoBonus}) = ${base}`; setDetalhe(div, `Array (sem líder) • Base: ${brk.n} × (1 + ${brk.tipoBonus}+${brk.durBonus}+${brk.modoBonus}) = ${base}`); return; }
       const contrib = (meta.lider === info) ? meta.maxBase : 1;
-      badge.textContent = 'Custo: ' + contrib;
-      badge.title = `Array "${arr}": grupo = ${meta.maxBase} + (${meta.n}-1). Contribuição deste poder: ${contrib}. Base = Nível ${brk.n} × (1 + Tipo ${brk.tipoBonus} + Duração ${brk.durBonus} + Modo ${brk.modoBonus}) = ${base}`;
+      const total = contrib + (brk.bAtk||0);
+      badge.textContent = 'Custo: ' + total;
+      badge.title = `Array "${arr}": grupo = ${meta.maxBase} + (${meta.n}-1). Contribuição deste poder: ${contrib}. Base = Nível ${brk.n} × (1 + Tipo ${brk.tipoBonus} + Duração ${brk.durBonus} + Modo ${brk.modoBonus}) = ${base}. Bônus de Ataque = ${brk.bAtk||0} (aditivo). Total: ${total}`;
       const papel = (meta.lider === info) ? 'Líder' : 'Membro';
-      setDetalhe(div, `Array: ${arr} • ${papel} • Contrib.: ${contrib} • Base: ${brk.n} × (1 + ${brk.tipoBonus}+${brk.durBonus}+${brk.modoBonus}) = ${base}`);
+      setDetalhe(div, `Array: ${arr} • ${papel} • Contrib.: ${contrib} • Base: ${brk.n} × (1 + ${brk.tipoBonus}+${brk.durBonus}+${brk.modoBonus}) = ${base} • Bônus Atk: ${brk.bAtk||0} • Total: ${total}`);
     });
   }
   function bind(scope){ (scope||document).querySelectorAll('.poder-form select, .poder-form input').forEach(el => { el.addEventListener('input', updateBadges); el.addEventListener('change', updateBadges); }); }
