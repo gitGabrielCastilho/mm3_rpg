@@ -1207,6 +1207,54 @@ def realizar_ataque(request, combate_id):
         except Exception:
             ligados = []
         poderes_sequence = [poder] + ligados
+        # Shared attack state per target for this chain of linked effects
+        _shared_attack_state = {}
+
+        def _get_shared_attack_state_for_target(target_id: int):
+            """Compute or retrieve a shared attack roll for this target across linked melee/ranged effects.
+            Uses one d20 and the highest bonus per kind (melee/ranged). Consumes attacker temp mods once.
+            """
+            st = _shared_attack_state.get(target_id)
+            if st is not None:
+                return st
+            # Determine if there are melee/ranged powers in this chain
+            has_melee = any(getattr(p, 'modo', '') == 'melee' for p in poderes_sequence)
+            has_ranged = any(getattr(p, 'modo', '') == 'ranged' for p in poderes_sequence)
+            if not (has_melee or has_ranged):
+                st = {}
+                _shared_attack_state[target_id] = st
+                return st
+            d20 = random.randint(1, 20)
+            try:
+                max_melee = max([int(getattr(p, 'bonus_ataque', 0) or 0) for p in poderes_sequence if getattr(p, 'modo', '') == 'melee'] or [0])
+                max_ranged = max([int(getattr(p, 'bonus_ataque', 0) or 0) for p in poderes_sequence if getattr(p, 'modo', '') == 'ranged'] or [0])
+            except Exception:
+                max_melee = 0
+                max_ranged = 0
+            buff_att = participante_atacante.bonus_temporario
+            debuff_att = participante_atacante.penalidade_temporaria
+            # We'll need alvo to know defenses; resolve lazily at use-site
+            st = {
+                'd20': d20,
+                'max_melee': max_melee,
+                'max_ranged': max_ranged,
+                'buff_att': buff_att,
+                'debuff_att': debuff_att,
+                'atk_total_melee': None,
+                'atk_total_ranged': None,
+                'hit_melee': None,
+                'hit_ranged': None,
+                'atk_msg_melee': None,
+                'atk_msg_ranged': None,
+                'logged_melee': False,
+                'logged_ranged': False,
+            }
+            # Consume attacker temporary mods once when creating the state
+            participante_atacante.bonus_temporario = 0
+            participante_atacante.penalidade_temporaria = 0
+            participante_atacante.save()
+            _shared_attack_state[target_id] = st
+            return st
 
         for idx, poder_atual in enumerate(poderes_sequence):
             duracao_raw = getattr(poder_atual, 'duracao', 'instantaneo')
@@ -1290,23 +1338,37 @@ def realizar_ataque(request, combate_id):
                     # Se for melee/ranged, é necessário acertar o ataque antes do teste.
                     val = int(getattr(poder_atual, 'nivel_efeito', 0) or 0)
                     if val < 0 and modo in ('melee', 'ranged'):
-                        # 1) Checagem de ataque
-                        ataque_base = random.randint(1, 20)
-                        buff_att = participante_atacante.bonus_temporario
-                        debuff_att = participante_atacante.penalidade_temporaria
-                        ataque_total = ataque_base + poder_atual.bonus_ataque + buff_att - debuff_att
-                        defesa_mov = getattr(alvo, 'aparar' if modo == 'melee' else 'esquivar', 0)
-                        # Consome bônus/penalidade do atacante nesta rolagem
-                        participante_atacante.bonus_temporario = 0
-                        participante_atacante.penalidade_temporaria = 0
-                        participante_atacante.save()
-                        if ataque_total <= 10 + defesa_mov:
-                            ataque_msg = (
-                                f"{ataque_base} + {poder_atual.bonus_ataque}"
-                                f"{' + ' + str(buff_att) if buff_att else ''}"
-                                f"{' - ' + str(debuff_att) if debuff_att else ''} = {ataque_total}"
+                        # Shared attack resolution for linked melee/ranged
+                        st = _get_shared_attack_state_for_target(alvo_id)
+                        # Compute outcome for this kind lazily
+                        is_melee = (modo == 'melee')
+                        if is_melee and st.get('hit_melee') is None:
+                            aparar = getattr(alvo, 'aparar', 0)
+                            atk_total = st['d20'] + st['max_melee'] + st['buff_att'] - st['debuff_att']
+                            st['atk_total_melee'] = atk_total
+                            st['hit_melee'] = atk_total > 10 + aparar
+                            st['atk_msg_melee'] = (
+                                f"{st['d20']} + {st['max_melee']}"
+                                f"{' + ' + str(st['buff_att']) if st['buff_att'] else ''}"
+                                f"{' - ' + str(st['debuff_att']) if st['debuff_att'] else ''} = {atk_total}"
                             )
-                            resultado = f"{atacante.nome} errou {alvo.nome} (atk {ataque_msg} vs {10+defesa_mov}) ({poder_atual.nome})"
+                            st['aparar'] = aparar
+                        if (not is_melee) and st.get('hit_ranged') is None:
+                            esquivar = getattr(alvo, 'esquivar', 0)
+                            atk_total = st['d20'] + st['max_ranged'] + st['buff_att'] - st['debuff_att']
+                            st['atk_total_ranged'] = atk_total
+                            st['hit_ranged'] = atk_total > 10 + esquivar
+                            st['atk_msg_ranged'] = (
+                                f"{st['d20']} + {st['max_ranged']}"
+                                f"{' + ' + str(st['buff_att']) if st['buff_att'] else ''}"
+                                f"{' - ' + str(st['debuff_att']) if st['debuff_att'] else ''} = {atk_total}"
+                            )
+                            st['esquivar'] = esquivar
+                        hit_now = st['hit_melee'] if is_melee else st['hit_ranged']
+                        atk_msg = st['atk_msg_melee'] if is_melee else st['atk_msg_ranged']
+                        defesa_mov_val = 10 + (st['aparar'] if is_melee else st['esquivar'])
+                        if not hit_now:
+                            resultado = f"{atacante.nome} errou {alvo.nome} (atk {atk_msg} vs {defesa_mov_val}) ({poder_atual.nome})"
                         else:
                             # 2) Teste do alvo na defesa passiva
                             defesa_attr = getattr(poder_atual, 'defesa_passiva', 'vontade') or 'vontade'
@@ -1335,11 +1397,7 @@ def realizar_ataque(request, combate_id):
                                 f"{' - ' + str(debuff) if debuff else ''}"
                                 f"{a_piece} = {total}"
                             )
-                            ataque_msg = (
-                                f"{ataque_base} + {poder_atual.bonus_ataque}"
-                                f"{' + ' + str(buff_att) if buff_att else ''}"
-                                f"{' - ' + str(debuff_att) if debuff_att else ''} = {ataque_total}"
-                            )
+                            ataque_msg = atk_msg
                             if total < cd:
                                 # Falhou o teste: aplica Reduzir
                                 if duracao_raw in ('concentracao', 'sustentado'):
@@ -1348,7 +1406,7 @@ def realizar_ataque(request, combate_id):
                                         poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
                                     )
                                     resultado = (
-                                        f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {10+defesa_mov}); "
+                                        f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {defesa_mov_val}); "
                                         f"teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — "
                                         f"<b>Reduzido {val}</b> em {poder_atual.casting_ability.capitalize()} ({duracao_label})."
                                     )
@@ -1361,13 +1419,13 @@ def realizar_ataque(request, combate_id):
                                         participante_alvo.proximo_bonus_por_atributo = attr_map2
                                     participante_alvo.save()
                                     resultado = (
-                                        f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {10+defesa_mov}); "
+                                        f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {defesa_mov_val}); "
                                         f"teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — "
                                         f"<b>Reduzido {val}</b> na próxima rolagem de {getattr(poder_atual, 'casting_ability', '').capitalize()}."
                                     )
                             else:
                                 resultado = (
-                                    f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {10+defesa_mov}); "
+                                    f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {defesa_mov_val}); "
                                     f"teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — sem efeito."
                                 )
                     elif val < 0:
@@ -1738,16 +1796,36 @@ def realizar_ataque(request, combate_id):
                                 resultado = f"{alvo.nome} teste {defesa_attr} ({defesa_msg}) vs CD {cd}: sem aflição ({poder_atual.nome})"
 
                     elif modo in ('melee', 'ranged'):
-                        # ataque vs aparar/esquivar
-                        ataque_base = random.randint(1, 20)
-                        buff_att = participante_atacante.bonus_temporario
-                        debuff_att = participante_atacante.penalidade_temporaria
-                        ataque_total = ataque_base + poder_atual.bonus_ataque + buff_att - debuff_att
-                        defesa_mov = getattr(alvo, 'aparar' if modo == 'melee' else 'esquivar', 0)
-                        participante_atacante.bonus_temporario = 0
-                        participante_atacante.penalidade_temporaria = 0
-                        participante_atacante.save()
-                        if ataque_total > 10 + defesa_mov:
+                        # Shared attack vs aparar/esquivar (reuse for encadeado)
+                        st = _get_shared_attack_state_for_target(alvo_id)
+                        is_melee = (modo == 'melee')
+                        if is_melee and st.get('hit_melee') is None:
+                            aparar = getattr(alvo, 'aparar', 0)
+                            atk_total = st['d20'] + st['max_melee'] + st['buff_att'] - st['debuff_att']
+                            st['atk_total_melee'] = atk_total
+                            st['hit_melee'] = atk_total > 10 + aparar
+                            st['atk_msg_melee'] = (
+                                f"{st['d20']} + {st['max_melee']}"
+                                f"{' + ' + str(st['buff_att']) if st['buff_att'] else ''}"
+                                f"{' - ' + str(st['debuff_att']) if st['debuff_att'] else ''} = {atk_total}"
+                            )
+                            st['aparar'] = aparar
+                        if (not is_melee) and st.get('hit_ranged') is None:
+                            esquivar = getattr(alvo, 'esquivar', 0)
+                            atk_total = st['d20'] + st['max_ranged'] + st['buff_att'] - st['debuff_att']
+                            st['atk_total_ranged'] = atk_total
+                            st['hit_ranged'] = atk_total > 10 + esquivar
+                            st['atk_msg_ranged'] = (
+                                f"{st['d20']} + {st['max_ranged']}"
+                                f"{' + ' + str(st['buff_att']) if st['buff_att'] else ''}"
+                                f"{' - ' + str(st['debuff_att']) if st['debuff_att'] else ''} = {atk_total}"
+                            )
+                            st['esquivar'] = esquivar
+                        hit_now = st['hit_melee'] if is_melee else st['hit_ranged']
+                        atk_msg = st['atk_msg_melee'] if is_melee else st['atk_msg_ranged']
+                        defesa_mov_val = 10 + (st['aparar'] if is_melee else st['esquivar'])
+                        logged_flag = 'logged_melee' if is_melee else 'logged_ranged'
+                        if hit_now:
                             defesa_attr = poder_atual.defesa_passiva
                             buff = participante_alvo.bonus_temporario
                             debuff = participante_alvo.penalidade_temporaria
@@ -1755,11 +1833,7 @@ def realizar_ataque(request, combate_id):
                             participante_alvo.bonus_temporario = 0
                             participante_alvo.penalidade_temporaria = 0
                             participante_alvo.save()
-                            ataque_msg = (
-                                f"{ataque_base} + {poder_atual.bonus_ataque}"
-                                f"{' + ' + str(buff_att) if buff_att else ''}"
-                                f"{' - ' + str(debuff_att) if debuff_att else ''} = {ataque_total}"
-                            )
+                            ataque_msg = atk_msg
                             a_piece = (f" + {a_next}" if a_next > 0 else (f" - {abs(a_next)}" if a_next < 0 else ""))
                             defesa_msg = (
                                 f"{d_base} + {d_val}"
@@ -1777,10 +1851,18 @@ def realizar_ataque(request, combate_id):
                                             combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
                                             poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
                                         )
-                                    resultado = f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {10+defesa_mov}) {defesa_attr} ({defesa_msg}) CD {cd} <b>Dano +1</b> ({poder_atual.nome})"
+                                    if not st[logged_flag]:
+                                        resultado = f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {defesa_mov_val}) {defesa_attr} ({defesa_msg}) CD {cd} <b>Dano +1</b> ({poder_atual.nome})"
+                                        st[logged_flag] = True
+                                    else:
+                                        resultado = f"{atacante.nome} acertou {alvo.nome} {defesa_attr} ({defesa_msg}) CD {cd} <b>Dano +1</b> ({poder_atual.nome})"
                                     manter_concentracao_apos_sofrer(participante_alvo)
                                 else:
-                                    resultado = f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {10+defesa_mov}) {defesa_attr} ({defesa_msg}) CD {cd} (sem dano) ({poder_atual.nome})"
+                                    if not st[logged_flag]:
+                                        resultado = f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {defesa_mov_val}) {defesa_attr} ({defesa_msg}) CD {cd} (sem dano) ({poder_atual.nome})"
+                                        st[logged_flag] = True
+                                    else:
+                                        resultado = f"{atacante.nome} acertou {alvo.nome} {defesa_attr} ({defesa_msg}) CD {cd} (sem dano) ({poder_atual.nome})"
                             else:
                                 if d_total < cd:
                                     participante_alvo.aflicao += 1
@@ -1790,17 +1872,24 @@ def realizar_ataque(request, combate_id):
                                             combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
                                             poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
                                         )
-                                    resultado = f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {10+defesa_mov}) {defesa_attr} ({defesa_msg}) CD {cd} <b>Aflição +1</b> ({poder_atual.nome})"
+                                    if not st[logged_flag]:
+                                        resultado = f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {defesa_mov_val}) {defesa_attr} ({defesa_msg}) CD {cd} <b>Aflição +1</b> ({poder_atual.nome})"
+                                        st[logged_flag] = True
+                                    else:
+                                        resultado = f"{atacante.nome} acertou {alvo.nome} {defesa_attr} ({defesa_msg}) CD {cd} <b>Aflição +1</b> ({poder_atual.nome})"
                                     manter_concentracao_apos_sofrer(participante_alvo)
                                 else:
-                                    resultado = f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {10+defesa_mov}) {defesa_attr} ({defesa_msg}) CD {cd} (sem aflição) ({poder_atual.nome})"
+                                    if not st[logged_flag]:
+                                        resultado = f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {defesa_mov_val}) {defesa_attr} ({defesa_msg}) CD {cd} (sem aflição) ({poder_atual.nome})"
+                                        st[logged_flag] = True
+                                    else:
+                                        resultado = f"{atacante.nome} acertou {alvo.nome} {defesa_attr} ({defesa_msg}) CD {cd} (sem aflição) ({poder_atual.nome})"
                         else:
-                            ataque_msg = (
-                                f"{ataque_base} + {poder_atual.bonus_ataque}"
-                                f"{' + ' + str(buff_att) if buff_att else ''}"
-                                f"{' - ' + str(debuff_att) if debuff_att else ''} = {ataque_total}"
-                            )
-                            resultado = f"{atacante.nome} errou {alvo.nome} (atk {ataque_msg} vs {10+defesa_mov}) ({poder_atual.nome})"
+                            if not st[logged_flag]:
+                                resultado = f"{atacante.nome} errou {alvo.nome} (atk {atk_msg} vs {defesa_mov_val}) ({poder_atual.nome})"
+                                st[logged_flag] = True
+                            else:
+                                resultado = f"{atacante.nome} errou {alvo.nome} ({poder_atual.nome})"
                     else:
                         resultado = f"Ação inválida para o poder selecionado ({poder_atual.nome})."
 
