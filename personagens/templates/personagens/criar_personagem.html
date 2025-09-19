@@ -158,6 +158,15 @@
           <div class="campo-poder">{{ formset.empty_form.array.label_tag }}{{ formset.empty_form.array }}</div>
           <div class="campo-poder">{{ formset.empty_form.tipo.label_tag }}{{ formset.empty_form.tipo }}</div>
           <div class="campo-poder">{{ formset.empty_form.modo.label_tag }}{{ formset.empty_form.modo }}</div>
+          <div class="campo-poder somar-forca-wrap span-2" title="Se marcado e for Dano Corpo a Corpo, o nível de efeito soma a Força.">
+            <div class="somar-forca-left">
+              <label for="{{ formset.empty_form.somar_forca_no_nivel.id_for_label }}">
+                {{ formset.empty_form.somar_forca_no_nivel }} Somar Força ao Nível (melee)
+              </label>
+              <span class="info-tip" title="Se marcado e Dano melee: Nível Efetivo = Nível + Força. O limite usa o Nível Efetivo.">ⓘ</span>
+            </div>
+            <div class="somar-forca-right"><span class="label-total-dano">Total Dano:</span> <span class="valor-dano-total">0</span></div>
+          </div>
           <div class="campo-poder">{{ formset.empty_form.duracao.label_tag }}{{ formset.empty_form.duracao }}</div>
           <div class="campo-poder">{{ formset.empty_form.casting_ability.label_tag }}{{ formset.empty_form.casting_ability }}</div>
           <div class="campo-poder">{{ formset.empty_form.nivel_efeito.label_tag }}{{ formset.empty_form.nivel_efeito }}</div>
@@ -191,6 +200,15 @@
                 <div class="campo-poder">{{ form.array.label_tag }}{{ form.array }}</div>
                 <div class="campo-poder">{{ form.tipo.label_tag }}{{ form.tipo }}</div>
                 <div class="campo-poder">{{ form.modo.label_tag }}{{ form.modo }}</div>
+                <div class="campo-poder somar-forca-wrap span-2" title="Se marcado e for Dano Corpo a Corpo, o nível de efeito soma a Força.">
+                  <div class="somar-forca-left">
+                    <label for="{{ form.somar_forca_no_nivel.id_for_label }}">
+                      {{ form.somar_forca_no_nivel }} Somar Força ao Nível (melee)
+                    </label>
+                    <span class="info-tip" title="Se marcado e Dano melee: Nível Efetivo = Nível + Força. O limite usa o Nível Efetivo.">ⓘ</span>
+                  </div>
+                  <div class="somar-forca-right"><span class="label-total-dano">Total Dano:</span> <span class="valor-dano-total">0</span></div>
+                </div>
                 <div class="campo-poder">{{ form.duracao.label_tag }}{{ form.duracao }}</div>
                 <div class="campo-poder">{{ form.casting_ability.label_tag }}{{ form.casting_ability }}</div>
                 <div class="campo-poder">{{ form.nivel_efeito.label_tag }}{{ form.nivel_efeito }}</div>
@@ -326,6 +344,31 @@
 <script>
 // ---- Cálculo Dinâmico de Custos ----
 document.addEventListener('DOMContentLoaded', function() {
+  // Helpers: efetivo nível de efeito (soma Força quando habilitado) e toggler do checkbox
+  function nivelEfeitoEfetivoPorDiv(div){
+    const tipoEl = div.querySelector('[name$="-tipo"]');
+    const modoEl = div.querySelector('[name$="-modo"]');
+    const somaForcaEl = div.querySelector('[name$="-somar_forca_no_nivel"]');
+    const nivelEl = div.querySelector('[name$="-nivel_efeito"]');
+    let n = 0; if(nivelEl){ const v=parseFloat((nivelEl.value||'').toString().replace(',','.')); n = isNaN(v)?0:Math.abs(v); }
+    if(tipoEl && modoEl && somaForcaEl && somaForcaEl.checked && (tipoEl.value==='dano') && (modoEl.value==='melee')){
+      const forcaEl = document.getElementById('id_forca');
+      const f = forcaEl ? parseFloat((forcaEl.value||'').toString().replace(',','.'))||0 : 0;
+      n += Math.abs(f);
+    }
+    return n;
+  }
+  function toggleSomarForca(div){
+    const tipoEl = div.querySelector('[name$="-tipo"]');
+    const modoEl = div.querySelector('[name$="-modo"]');
+    const wrap = div.querySelector('.somar-forca-wrap');
+    if(!wrap) return;
+    const show = tipoEl && modoEl && tipoEl.value==='dano' && modoEl.value==='melee';
+    wrap.style.display = show ? '' : 'none';
+  }
+  // Expor globalmente para outros scripts
+  window.nivelEfeitoEfetivoPorDiv = nivelEfeitoEfetivoPorDiv;
+  window.toggleSomarForcaPoder = toggleSomarForca;
   const camposCaracteristicas = ['forca','vigor','destreza','agilidade','luta','inteligencia','prontidao','presenca'];
   const camposDefesas = ['aparar','esquivar','fortitude','vontade','resistencia'];
   const camposPericias = ['acrobacias','atletismo','combate_distancia','combate_corpo','enganacao','especialidade','furtividade','intimidacao','intuicao','investigacao','percepcao','persuasao','prestidigitacao','tecnologia','tratamento','veiculos','historia','sobrevivencia','arcana','religiao'];
@@ -386,7 +429,9 @@ document.addEventListener('DOMContentLoaded', function() {
       const chItem = div.querySelector('input[type="checkbox"][name$="-de_item"]');
       const chVant = div.querySelector('input[type="checkbox"][name$="-de_vantagem"]');
       if ((chItem && chItem.checked) || (chVant && chVant.checked)) return;
-      const base = custoPoderDiv(div);
+    const base = custoPoderDiv(div);
+    // Atualiza visibilidade do checkbox de Somar Força
+    toggleSomarForca(div);
       const bAtk = custoBonusAtaque(div);
       const arrName = (div.querySelector('[name$="-array"]')?.value || '').trim().toLowerCase();
       if (arrName) {
@@ -517,15 +562,30 @@ document.addEventListener('DOMContentLoaded', function() {
       const nivelEfEl = div.querySelector('[name$="-nivel_efeito"]');
       const nomeEl = div.querySelector('[name$="-nome"]');
       const durEl = div.querySelector('[name$="-duracao"]');
-      const totalSpan = div.querySelector('.linha-ataque-info .valor-ataque-total');
+  const totalSpan = div.querySelector('.linha-ataque-info .valor-ataque-total');
+  const danoSpan = div.querySelector('.somar-forca-wrap .valor-dano-total');
       if(!modoEl || !bonusEl || !nivelEfEl || !totalSpan || !nomeEl || !durEl) return;
       const mk = kind(modoEl);
       let baseAttr = 0; if(mk==='melee') baseAttr = luta; else if(mk==='ranged') baseAttr = des;
       const useBonus = (mk==='other') ? n(bonusEl) : maxBonusFor(norm(nomeEl.value), mk, norm(durEl.value));
       const ataqueTotal = baseAttr + useBonus;
       totalSpan.textContent = ataqueTotal;
-      const nivelEf = Math.abs(n(nivelEfEl));
-      if((ataqueTotal + nivelEf) > limite){ totalSpan.classList.add('violacao-ataque'); viol=true; } else { totalSpan.classList.remove('violacao-ataque'); }
+      // Atualiza Total Dano (nível efetivo) quando tipo é Dano
+      if(danoSpan){
+        let nEf = Math.abs(n(nivelEfEl));
+        const tipoEl = div.querySelector('[name$="-tipo"]');
+        if(tipoEl && tipoEl.value==='dano'){
+          try { nEf = window.nivelEfeitoEfetivoPorDiv(div); } catch(e) { /* fallback fica no valor simples */ }
+        }
+        danoSpan.textContent = nEf;
+      }
+  // Cap check: (Bônus de Ataque usado + Nível de Efeito efetivo) ≤ 2×NP
+  let nivelEf = 0;
+  const somaForcaEl = div.querySelector('[name$="-somar_forca_no_nivel"]');
+  if(somaForcaEl){ try { nivelEf = window.nivelEfeitoEfetivoPorDiv(div); } catch(e){ nivelEf = Math.abs(n(nivelEfEl)); } }
+  else { nivelEf = Math.abs(n(nivelEfEl)); }
+  const bonusUsado = useBonus; // já é o maior bônus compartilhado se aplicável
+  if((bonusUsado + nivelEf) > limite){ totalSpan.classList.add('violacao-ataque'); viol=true; } else { totalSpan.classList.remove('violacao-ataque'); }
     });
     const submitBtn = document.querySelector('form input[type="submit"]');
     if(submitBtn){
@@ -535,8 +595,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   window.recalcAtaquesSimples = recalcAtaques;
-  document.addEventListener('input', ev=>{ if(ev.target.closest('.poder-form') || ['id_luta','id_destreza','id_nivel_poder'].includes(ev.target.id)) recalcAtaques(); });
-  document.addEventListener('change', ev=>{ if(ev.target.closest('.poder-form') || ['id_luta','id_destreza','id_nivel_poder'].includes(ev.target.id)) recalcAtaques(); });
+  document.addEventListener('input', ev=>{ if(ev.target.closest('.poder-form') || ['id_luta','id_destreza','id_nivel_poder','id_forca'].includes(ev.target.id)) { try{ window.toggleSomarForcaPoder(ev.target.closest('.poder-form')); }catch(e){} recalcAtaques(); } });
+  document.addEventListener('change', ev=>{ if(ev.target.closest('.poder-form') || ['id_luta','id_destreza','id_nivel_poder','id_forca'].includes(ev.target.id)) { try{ window.toggleSomarForcaPoder(ev.target.closest('.poder-form')); }catch(e){} recalcAtaques(); } });
   const oldAdd = window.adicionarPoder; window.adicionarPoder = function(){ if(oldAdd) oldAdd(); setTimeout(recalcAtaques, 80); };
   const oldRem = window.removerPoderLinha; window.removerPoderLinha = function(btn){ if(oldRem) oldRem(btn); setTimeout(recalcAtaques, 40); };
   const oldRemUlt = window.removerPoder; window.removerPoder = function(){ if(oldRemUlt) oldRemUlt(); setTimeout(recalcAtaques, 40); };

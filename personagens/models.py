@@ -186,6 +186,11 @@ class Poder(models.Model):
     duracao = models.CharField(max_length=20, choices=DURACAO_CHOICES, default='instantaneo')
     nivel_efeito = models.IntegerField(default=0)
     bonus_ataque = models.IntegerField(default=0)
+    somar_forca_no_nivel = models.BooleanField(
+        default=False,
+        verbose_name="Somar Força ao Nível de Efeito (melee)",
+        help_text="Quando marcado e o poder for Dano Corpo a Corpo, o Nível de Efeito efetivo soma a Força do personagem."
+    )
     defesa_ativa = models.CharField(max_length=20, choices=DEFESA_ATIVA_CHOICES, default='aparar')
     defesa_passiva = models.CharField(max_length=20, choices=DEFESA_PASSIVA_CHOICES, default='resistencia')
     de_item = models.BooleanField("Poder de Item?", default=False)

@@ -211,6 +211,37 @@ thead {
   text-align: right;
   margin-top: 1em;
 }
+/* Somar Força checkbox wrapper: ensure it stays inside the grid */
+.poder-form-grid .somar-forca-wrap {
+  align-self: start;
+  white-space: normal; /* allow wrapping */
+  grid-column: 1 / -1; /* span both columns */
+  display: flex;           /* override .campo-poder column layout */
+  flex-direction: row;     /* ensure horizontal */
+  justify-content: flex-start; /* keep content together on the left */
+  align-items: center;
+  font-size: 0.7rem;       /* match hint line */
+  color: #cfcfe1;
+  opacity: 0.95;
+  margin-top: 0.2rem;
+  gap: 1rem;
+}
+.poder-form-grid .somar-forca-wrap label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  white-space: normal; /* override any inline nowrap */
+  line-height: 1.2;
+}
+.poder-form-grid .somar-forca-wrap .somar-forca-left { display:flex; align-items:center; gap:0.45rem; }
+.poder-form-grid .somar-forca-wrap .somar-forca-right {
+  white-space:nowrap;
+  margin-left: 1.25rem; /* bring it closer to the label, not flush right */
+}
+.poder-form-grid .somar-forca-wrap .label-total-dano{ margin-right:0.25rem; }
+.poder-form-grid .somar-forca-wrap input[type="checkbox"] {
+  margin-left: 0; /* rely on gap */
+}
 /* Perícias em duas colunas */
 .pericias-duas-colunas {
   display: flex;
