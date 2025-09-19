@@ -52,6 +52,26 @@ def _atributo_efetivo(personagem: Personagem, participante: Participante, atribu
     except Exception:
         return base
 
+# --- Helpers de defesa: inclui característica associada (aparar+luta, esquivar+agilidade, fortitude+vigor, resistencia+vigor, vontade+prontidao)
+_DEFESA_ASSOC_MAP = {
+    'aparar': 'luta',
+    'esquivar': 'agilidade',
+    'fortitude': 'vigor',
+    'resistencia': 'vigor',
+    'vontade': 'prontidao',
+}
+
+def _defesa_efetiva(personagem: Personagem, participante: Participante, defesa: str, combate_id: int) -> int:
+    """Retorna o valor da defesa somando a característica associada.
+    Ex.: Resistência = resistencia + vigor; Aparar = aparar + luta; Esquivar = esquivar + agilidade; etc.
+    Ambos componentes consideram Aprimorar/Reduzir ativos.
+    """
+    val_def = _atributo_efetivo(personagem, participante, defesa, combate_id)
+    assoc = _DEFESA_ASSOC_MAP.get(defesa)
+    if assoc:
+        val_def += _atributo_efetivo(personagem, participante, assoc, combate_id)
+    return val_def
+
 # AJAX: retorna poderes de um personagem (com verificação de permissão)
 @login_required
 def poderes_personagem_ajax(request):
@@ -419,17 +439,20 @@ def iniciar_turno(request, combate_id):
             tick_label = '[Concentração]' if getattr(poder, 'duracao', 'concentracao') == 'concentracao' else ('[Sustentado]' if getattr(poder, 'duracao', '') == 'sustentado' else '[Concentração]')
             # Tipos ofensivos: aplicar teste de defesa similar ao turno inicial
             if poder.tipo in ('dano', 'aflicao'):
-                # CD usa nível efetivo; para dano melee com checkbox somar_forca_no_nivel, soma Força do aplicador
+                # CD usa nível efetivo; para dano melee com checkbox somar_forca_no_nivel, soma Força efetiva do aplicador (com Aprimorar/Reduzir)
                 try:
                     if poder.tipo == 'dano' and getattr(poder, 'modo', '') == 'melee' and getattr(poder, 'somar_forca_no_nivel', False):
-                        n_eff = abs(int(getattr(poder, 'nivel_efeito', 0) or 0)) + abs(int(getattr(ef.poder.personagem, 'forca', 0) or 0))
+                        aplicador = ef.poder.personagem
+                        aplicador_part = Participante.objects.filter(combate=combate, personagem=aplicador).first()
+                        forca_eff = _atributo_efetivo(aplicador, aplicador_part, 'forca', combate.id) if aplicador_part else int(getattr(aplicador, 'forca', 0) or 0)
+                        n_eff = abs(int(getattr(poder, 'nivel_efeito', 0) or 0)) + abs(int(forca_eff))
                     else:
                         n_eff = int(getattr(poder, 'nivel_efeito', 0) or 0)
                 except Exception:
                     n_eff = int(getattr(poder, 'nivel_efeito', 0) or 0)
                 cd = (15 + n_eff) if poder.tipo == 'dano' else (10 + n_eff)
                 defesa_attr = getattr(poder, 'defesa_passiva', 'resistencia') or 'resistencia'
-                defesa_valor = _atributo_efetivo(alvo, alvo_part, defesa_attr, combate.id)
+                defesa_valor = _defesa_efetiva(alvo, alvo_part, defesa_attr, combate.id)
                 # Bônus específico (Aprimorar instantâneo) para próxima rolagem daquela defesa
                 attr_bonus_map = alvo_part.proximo_bonus_por_atributo or {}
                 attr_next_bonus = int(attr_bonus_map.get(defesa_attr, 0))
@@ -666,7 +689,10 @@ def avancar_turno(request, combate_id):
                 if poder.tipo in ('dano', 'aflicao'):
                     try:
                         if poder.tipo == 'dano' and getattr(poder, 'modo', '') == 'melee' and getattr(poder, 'somar_forca_no_nivel', False):
-                            n_eff = abs(int(getattr(poder, 'nivel_efeito', 0) or 0)) + abs(int(getattr(ef.poder.personagem, 'forca', 0) or 0))
+                            aplicador = ef.poder.personagem
+                            aplicador_part = Participante.objects.filter(combate=combate, personagem=aplicador).first()
+                            forca_eff = _atributo_efetivo(aplicador, aplicador_part, 'forca', combate.id) if aplicador_part else int(getattr(aplicador, 'forca', 0) or 0)
+                            n_eff = abs(int(getattr(poder, 'nivel_efeito', 0) or 0)) + abs(int(forca_eff))
                         else:
                             n_eff = int(getattr(poder, 'nivel_efeito', 0) or 0)
                     except Exception:
@@ -1464,7 +1490,7 @@ def realizar_ataque(request, combate_id):
                         # Modos não-ofensivos/percepção ou área
                         if modo == 'area':
                             # Esquiva primeiro, com sucesso parcial reduzindo a CD do teste de defesa
-                            esquiva = _atributo_efetivo(alvo, participante_alvo, 'esquivar', combate.id)
+                            esquiva = _defesa_efetiva(alvo, participante_alvo, 'esquivar', combate.id)
                             esq_map = participante_alvo.proximo_bonus_por_atributo or {}
                             esq_next = int(esq_map.get('esquivar', 0))
                             rolagem_esq_base = random.randint(1, 20)
@@ -1488,7 +1514,7 @@ def realizar_ataque(request, combate_id):
                                 attr_map = participante_alvo.proximo_bonus_por_atributo or {}
                                 a_next = int(attr_map.get(defesa_attr, 0))
                                 base = random.randint(1, 20)
-                                defesa_val = _atributo_efetivo(alvo, participante_alvo, defesa_attr, combate.id)
+                                defesa_val = _defesa_efetiva(alvo, participante_alvo, defesa_attr, combate.id)
                                 total = base + defesa_val + a_next + buff - debuff
                                 participante_alvo.bonus_temporario = 0
                                 participante_alvo.penalidade_temporaria = 0
@@ -1659,7 +1685,7 @@ def realizar_ataque(request, combate_id):
                         return base, val, a_next, total
 
                     if modo == 'area':
-                        esquiva = _atributo_efetivo(alvo, participante_alvo, 'esquivar', combate.id)
+                        esquiva = _defesa_efetiva(alvo, participante_alvo, 'esquivar', combate.id)
                         # Bônus específico (Aprimorar instantâneo) para próxima rolagem de Esquivar
                         esq_map = participante_alvo.proximo_bonus_por_atributo or {}
                         esq_next = int(esq_map.get('esquivar', 0))
@@ -1676,7 +1702,9 @@ def realizar_ataque(request, combate_id):
                         # CD base usa nível efetivo
                         try:
                             if tipo == 'dano' and getattr(poder_atual, 'modo', '') == 'melee' and getattr(poder_atual, 'somar_forca_no_nivel', False):
-                                n_eff = abs(int(getattr(poder_atual, 'nivel_efeito', 0) or 0)) + abs(int(getattr(atacante, 'forca', 0) or 0))
+                                # Usa Força efetiva do atacante (com Aprimorar/Reduzir)
+                                forca_eff = _atributo_efetivo(atacante, participante_atacante, 'forca', combate.id)
+                                n_eff = abs(int(getattr(poder_atual, 'nivel_efeito', 0) or 0)) + abs(int(forca_eff))
                             else:
                                 n_eff = int(getattr(poder_atual, 'nivel_efeito', 0) or 0)
                         except Exception:
@@ -1795,7 +1823,8 @@ def realizar_ataque(request, combate_id):
                     elif modo == 'percepcao':
                         try:
                             if tipo == 'dano' and getattr(poder_atual, 'modo', '') == 'melee' and getattr(poder_atual, 'somar_forca_no_nivel', False):
-                                n_eff = abs(int(getattr(poder_atual, 'nivel_efeito', 0) or 0)) + abs(int(getattr(atacante, 'forca', 0) or 0))
+                                forca_eff = _atributo_efetivo(atacante, participante_atacante, 'forca', combate.id)
+                                n_eff = abs(int(getattr(poder_atual, 'nivel_efeito', 0) or 0)) + abs(int(forca_eff))
                             else:
                                 n_eff = int(getattr(poder_atual, 'nivel_efeito', 0) or 0)
                         except Exception:
@@ -1890,7 +1919,8 @@ def realizar_ataque(request, combate_id):
                             )
                             try:
                                 if tipo == 'dano' and getattr(poder_atual, 'modo', '') == 'melee' and getattr(poder_atual, 'somar_forca_no_nivel', False):
-                                    n_eff2 = abs(int(getattr(poder_atual, 'nivel_efeito', 0) or 0)) + abs(int(getattr(atacante, 'forca', 0) or 0))
+                                    forca_eff2 = _atributo_efetivo(atacante, participante_atacante, 'forca', combate.id)
+                                    n_eff2 = abs(int(getattr(poder_atual, 'nivel_efeito', 0) or 0)) + abs(int(forca_eff2))
                                 else:
                                     n_eff2 = int(getattr(poder_atual, 'nivel_efeito', 0) or 0)
                             except Exception:
