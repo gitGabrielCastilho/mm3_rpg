@@ -122,7 +122,7 @@
         {% endfor %}
       </div>
 
-  <h2>Poderes <span id="badge-pod" class="section-cost-badge" title="Custo por poder = Nível × (1 + bônus de Tipo + Duração + Modo) + Bônus de Ataque. Bônus: Tipo: +1 (cura/aprimorar). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +1 pp por ponto (aditivo, por poder). Arrays: parte de Nível do grupo = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque.">Nivel x (1+Tipo+Duração+Modo) + Bônus Ataque — 0</span></h2>
+  <h2>Poderes <span id="badge-pod" class="section-cost-badge" title="Custo por poder = Nível × (1 + bônus de Tipo + Duração + Modo) + Bônus de Ataque. Bônus: Tipo: +1 (cura/aprimorar). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +0,5 pp por ponto (aditivo, por poder). Arrays: parte de Nível do grupo = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque.">Nivel x (1+Tipo+Duração+Modo) + Bônus Ataque — 0</span></h2>
       <div id="empty-poder-form" style="display:none;">
         <div class="poder-form poder-form-grid" style="border:1px solid #444; width:100%; position: relative;">
           <div class="campo-poder">{{ formset.empty_form.nome.label_tag }}{{ formset.empty_form.nome }}</div>
@@ -134,7 +134,7 @@
           <div class="campo-poder">{{ formset.empty_form.nivel_efeito.label_tag }}{{ formset.empty_form.nivel_efeito }}</div>
           <div class="campo-poder">{{ formset.empty_form.bonus_ataque.label_tag }}{{ formset.empty_form.bonus_ataque }}</div>
           <div class="linha-ataque-info" style="grid-column:1/-1; font-size:0.7rem; display:flex; justify-content:space-between; align-items:center; margin-top:0.2rem; gap:1rem;">
-            <span class="hint-bonus-ataque" style="text-align:left;" title="Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limite referência (Ataque Total + Nível de Efeito) ≤ 2×NP (NPC não bloqueia) | Custo: cada ponto em Bônus de Ataque soma +1 pp (aditivo)">ⓘ Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limite ref 2×NP | Custo: Bônus Ataque +1 pp por ponto</span>
+            <span class="hint-bonus-ataque" style="text-align:left;" title="Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limite referência (Ataque Total + Nível de Efeito) ≤ 2×NP (NPC não bloqueia) | Custo: cada ponto em Bônus de Ataque soma +0,5 pp (aditivo)">ⓘ Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limite ref 2×NP | Custo: Bônus Ataque +0,5 pp por ponto</span>
             <span style="white-space:nowrap;">Total Ataque: <span class="valor-ataque-total">0</span></span>
           </div>
           <div class="campo-poder">{{ formset.empty_form.defesa_ativa.label_tag }}{{ formset.empty_form.defesa_ativa }}</div>
@@ -165,7 +165,7 @@
                 <div class="campo-poder">{{ form.nivel_efeito.label_tag }}{{ form.nivel_efeito }}</div>
                 <div class="campo-poder">{{ form.bonus_ataque.label_tag }}{{ form.bonus_ataque }}</div>
                 <div class="linha-ataque-info" style="grid-column:1/-1; font-size:0.7rem; display:flex; justify-content:space-between; align-items:center; margin-top:0.2rem; gap:1rem;">
-                  <span class="hint-bonus-ataque" style="text-align:left;" title="Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limite referência (Ataque Total + Nível de Efeito) ≤ 2×NP (NPC não bloqueia) | Custo: cada ponto em Bônus de Ataque soma +1 pp (aditivo)">ⓘ Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limite ref 2×NP | Custo: Bônus Ataque +1 pp por ponto</span>
+                  <span class="hint-bonus-ataque" style="text-align:left;" title="Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limite referência (Ataque Total + Nível de Efeito) ≤ 2×NP (NPC não bloqueia) | Custo: cada ponto em Bônus de Ataque soma +0,5 pp (aditivo)">ⓘ Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limite ref 2×NP | Custo: Bônus Ataque +0,5 pp por ponto</span>
                   <span style="white-space:nowrap;">Total Ataque: <span class="valor-ataque-total">0</span></span>
                 </div>
                 <div class="campo-poder">{{ form.defesa_ativa.label_tag }}{{ form.defesa_ativa }}</div>
@@ -229,7 +229,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const chItem = div.querySelector('input[type="checkbox"][name$="-de_item"]');
     const chVant = div.querySelector('input[type="checkbox"][name$="-de_vantagem"]');
     if ((chItem && chItem.checked) || (chVant && chVant.checked)) return 0;
-    return b;
+  return b * 0.5;
   }
   function atualizar(){
     const custoCarac = camposCaracteristicas.reduce((s,c)=>s+val(c),0)*2;
@@ -269,7 +269,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (bPod){
       const labelBase='Nivel x (1+Tipo+Duração+Modo) + Bônus Ataque';
       bPod.textContent = (temArray? labelBase + ' + Arrays' : labelBase) + ' — ' + custoPod;
-      bPod.title = 'Custo por poder = Nível × (1 + Tipo + Duração + Modo) + Bônus de Ataque. Tipo: +1 (cura/aprimorar). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +1 pp por ponto (aditivo, por poder). ' + (temArray ? 'Arrays: parte de Nível = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque. ' : '') + 'Total atual: ' + custoPod;
+  bPod.title = 'Custo por poder = Nível × (1 + Tipo + Duração + Modo) + Bônus de Ataque. Tipo: +1 (cura/aprimorar). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +0,5 pp por ponto (aditivo, por poder). ' + (temArray ? 'Arrays: parte de Nível = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque. ' : '') + 'Total atual: ' + custoPod;
     }
   }
   const watch = [].concat(camposCaracteristicas, camposDefesas, camposPericias);
