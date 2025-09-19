@@ -1368,6 +1368,12 @@ def realizar_ataque(request, combate_id):
                         atk_msg = st['atk_msg_melee'] if is_melee else st['atk_msg_ranged']
                         defesa_mov_val = 10 + (st['aparar'] if is_melee else st['esquivar'])
                         if not hit_now:
+                            # If we've already logged a miss for this kind in this chain, skip duplicates
+                            logged_flag = 'logged_melee' if is_melee else 'logged_ranged'
+                            if st.get(logged_flag):
+                                # Skip producing another attack test/log for encadeado
+                                continue
+                            st[logged_flag] = True
                             resultado = f"{atacante.nome} errou {alvo.nome} (atk {atk_msg} vs {defesa_mov_val}) ({poder_atual.nome})"
                         else:
                             # 2) Teste do alvo na defesa passiva
@@ -1885,11 +1891,11 @@ def realizar_ataque(request, combate_id):
                                     else:
                                         resultado = f"{atacante.nome} acertou {alvo.nome} {defesa_attr} ({defesa_msg}) CD {cd} (sem aflição) ({poder_atual.nome})"
                         else:
-                            if not st[logged_flag]:
-                                resultado = f"{atacante.nome} errou {alvo.nome} (atk {atk_msg} vs {defesa_mov_val}) ({poder_atual.nome})"
-                                st[logged_flag] = True
-                            else:
-                                resultado = f"{atacante.nome} errou {alvo.nome} ({poder_atual.nome})"
+                            if st[logged_flag]:
+                                # We've already logged the miss for this kind in this chain; skip duplicates
+                                continue
+                            resultado = f"{atacante.nome} errou {alvo.nome} (atk {atk_msg} vs {defesa_mov_val}) ({poder_atual.nome})"
+                            st[logged_flag] = True
                     else:
                         resultado = f"Ação inválida para o poder selecionado ({poder_atual.nome})."
 
