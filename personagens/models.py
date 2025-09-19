@@ -260,11 +260,27 @@ class Poder(models.Model):
         return n * bonus
 
     def custo(self):
-        """Mantido por compatibilidade: retorna o custo base do poder.
-        O custo efetivo considerando grupos de Array deve ser calculado
-        em nível de Personagem (ver custos_detalhados).
+        """Custo do poder individual (sem consolidar Arrays).
+        Regra: custo base (por nível e modificadores) + custo do Bônus de Ataque (0,5 por ponto).
+        Observação: Se o poder for parte de um Array, a consolidação do custo do grupo
+        (maior base + (n-1)) é feita em nível de Personagem (ver custos_detalhados).
         """
-        return self.custo_base()
+        if getattr(self, 'de_item', False) or getattr(self, 'de_vantagem', False):
+            return 0
+        return self.custo_base() + self.custo_bonus_ataque()
+
+    def custo_bonus_ataque(self):
+        """Custo aditivo do Bônus de Ataque: 0,5 pp por ponto.
+        Aplicado por poder, independentemente de Array (ou seja, soma-se para cada poder do grupo).
+        Valores negativos são ignorados.
+        """
+        try:
+            b = int(self.bonus_ataque or 0)
+        except (TypeError, ValueError):
+            b = 0
+        if b <= 0:
+            return 0
+        return b * 0.5
 
 # --- Signals de validação para o encadeamento (garantir regra mesmo fora dos formulários) ---
 @receiver(m2m_changed, sender=Poder.ligados.through)
@@ -313,7 +329,9 @@ def personagem_custos_detalhados(self):
       Vantagem: 1 pt por vantagem (não há nível atualmente)
       Perícia: 0.5 pt por nível (soma das perícias)
       Defesa: 1 pt por nível (aparar, esquivar, fortitude, vontade, resistencia)
-      Poder: conforme Poder.custo()
+      Poder: Base = nivel × (1 + Tipo + Duração + Modo) + (em cada poder) Bônus de Ataque × 0,5.
+             Arrays: custo do grupo = maior Base (sem Bônus de Ataque) + (qtd-1);
+             além disso, cada poder ainda soma seu próprio Bônus de Ataque × 0,5 ao total.
     """
     # Características
     carac_campos = ['forca','vigor','destreza','agilidade','luta','inteligencia','prontidao','presenca']
@@ -340,11 +358,18 @@ def personagem_custos_detalhados(self):
     if poderes_qs is not None:
         grupos = {}
         individuais = []
+        custo_bonus_ataque_total = 0.0
         for p in poderes_qs.all():
             # Ignora poderes de item/vantagem no custo total
             if getattr(p, 'de_item', False) or getattr(p, 'de_vantagem', False):
                 continue
             base = p.custo_base()
+            # soma custo do bônus de ataque por poder (0,5 por ponto)
+            try:
+                custo_bonus_ataque_total += float(p.custo_bonus_ataque())
+            except Exception:
+                # Em caso de qualquer problema, ignora custo de bônus deste poder
+                pass
             nome_array = (getattr(p, 'array', '') or '').strip()
             if nome_array:
                 key = nome_array.lower()
@@ -359,6 +384,8 @@ def personagem_custos_detalhados(self):
                 continue
             n = len(bases)
             custo_poderes += (max(bases) + max(0, n - 1))
+        # Soma custo aditivo do Bônus de Ataque (por poder)
+        custo_poderes += custo_bonus_ataque_total
     total = custo_carac + custo_def + custo_pericias + custo_vantagens + custo_poderes
     return {
         'caracteristicas': custo_carac,

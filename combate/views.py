@@ -1231,11 +1231,22 @@ def realizar_ataque(request, combate_id):
             except Exception:
                 max_melee = 0
                 max_ranged = 0
+            # Base do atacante: Luta (melee) e Destreza (ranged)
+            try:
+                base_melee = _atributo_efetivo(atacante, participante_atacante, 'luta', combate_id) if has_melee else 0
+            except Exception:
+                base_melee = 0
+            try:
+                base_ranged = _atributo_efetivo(atacante, participante_atacante, 'destreza', combate_id) if has_ranged else 0
+            except Exception:
+                base_ranged = 0
             buff_att = participante_atacante.bonus_temporario
             debuff_att = participante_atacante.penalidade_temporaria
             # We'll need alvo to know defenses; resolve lazily at use-site
             st = {
                 'd20': d20,
+                'base_melee': base_melee,
+                'base_ranged': base_ranged,
                 'max_melee': max_melee,
                 'max_ranged': max_ranged,
                 'buff_att': buff_att,
@@ -1344,22 +1355,22 @@ def realizar_ataque(request, combate_id):
                         is_melee = (modo == 'melee')
                         if is_melee and st.get('hit_melee') is None:
                             aparar = getattr(alvo, 'aparar', 0)
-                            atk_total = st['d20'] + st['max_melee'] + st['buff_att'] - st['debuff_att']
+                            atk_total = st['d20'] + st['base_melee'] + st['max_melee'] + st['buff_att'] - st['debuff_att']
                             st['atk_total_melee'] = atk_total
                             st['hit_melee'] = atk_total > 10 + aparar
                             st['atk_msg_melee'] = (
-                                f"{st['d20']} + {st['max_melee']}"
+                                f"{st['d20']} + {st['base_melee']} + {st['max_melee']}"
                                 f"{' + ' + str(st['buff_att']) if st['buff_att'] else ''}"
                                 f"{' - ' + str(st['debuff_att']) if st['debuff_att'] else ''} = {atk_total}"
                             )
                             st['aparar'] = aparar
                         if (not is_melee) and st.get('hit_ranged') is None:
                             esquivar = getattr(alvo, 'esquivar', 0)
-                            atk_total = st['d20'] + st['max_ranged'] + st['buff_att'] - st['debuff_att']
+                            atk_total = st['d20'] + st['base_ranged'] + st['max_ranged'] + st['buff_att'] - st['debuff_att']
                             st['atk_total_ranged'] = atk_total
                             st['hit_ranged'] = atk_total > 10 + esquivar
                             st['atk_msg_ranged'] = (
-                                f"{st['d20']} + {st['max_ranged']}"
+                                f"{st['d20']} + {st['base_ranged']} + {st['max_ranged']}"
                                 f"{' + ' + str(st['buff_att']) if st['buff_att'] else ''}"
                                 f"{' - ' + str(st['debuff_att']) if st['debuff_att'] else ''} = {atk_total}"
                             )
@@ -1807,22 +1818,22 @@ def realizar_ataque(request, combate_id):
                         is_melee = (modo == 'melee')
                         if is_melee and st.get('hit_melee') is None:
                             aparar = getattr(alvo, 'aparar', 0)
-                            atk_total = st['d20'] + st['max_melee'] + st['buff_att'] - st['debuff_att']
+                            atk_total = st['d20'] + st['base_melee'] + st['max_melee'] + st['buff_att'] - st['debuff_att']
                             st['atk_total_melee'] = atk_total
                             st['hit_melee'] = atk_total > 10 + aparar
                             st['atk_msg_melee'] = (
-                                f"{st['d20']} + {st['max_melee']}"
+                                f"{st['d20']} + {st['base_melee']} + {st['max_melee']}"
                                 f"{' + ' + str(st['buff_att']) if st['buff_att'] else ''}"
                                 f"{' - ' + str(st['debuff_att']) if st['debuff_att'] else ''} = {atk_total}"
                             )
                             st['aparar'] = aparar
                         if (not is_melee) and st.get('hit_ranged') is None:
                             esquivar = getattr(alvo, 'esquivar', 0)
-                            atk_total = st['d20'] + st['max_ranged'] + st['buff_att'] - st['debuff_att']
+                            atk_total = st['d20'] + st['base_ranged'] + st['max_ranged'] + st['buff_att'] - st['debuff_att']
                             st['atk_total_ranged'] = atk_total
                             st['hit_ranged'] = atk_total > 10 + esquivar
                             st['atk_msg_ranged'] = (
-                                f"{st['d20']} + {st['max_ranged']}"
+                                f"{st['d20']} + {st['base_ranged']} + {st['max_ranged']}"
                                 f"{' + ' + str(st['buff_att']) if st['buff_att'] else ''}"
                                 f"{' - ' + str(st['debuff_att']) if st['debuff_att'] else ''} = {atk_total}"
                             )
