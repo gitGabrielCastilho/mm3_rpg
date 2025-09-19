@@ -481,11 +481,30 @@ document.addEventListener('DOMContentLoaded', function() {
   atualizarCustos();
 });
 </script>
-<!-- Fallback robusto para garantir atualização de Total Ataque (similar ao mecanismo de Defesas) -->
+<!-- Cálculo de Ataque Total com Bônus compartilhado entre poderes ligados (nome+modo+duração) -->
 <script>
 (function(){
   function n(el){ if(!el) return 0; const v=parseFloat((el.value||'').toString().replace(',','.')); return isNaN(v)?0:v; }
-  function recalcAtaquesSimples(){
+  function kind(modoEl){
+    let v=(modoEl?.value||'').toLowerCase();
+    const t=(modoEl && modoEl.options && modoEl.options[modoEl.selectedIndex])? (modoEl.options[modoEl.selectedIndex].textContent||'').toLowerCase() : '';
+    if(v.includes('melee')||t.includes('corpo')) return 'melee';
+    if(v.includes('ranged')||t.includes('dist')) return 'ranged';
+    return 'other';
+  }
+  function norm(s){ return (s||'').toString().trim().toLowerCase(); }
+  function maxBonusFor(nome, mk, dur){
+    let m=0;
+    document.querySelectorAll('.poder-form').forEach(div=>{
+      if(div.style.display==='none') return;
+      const del=div.querySelector('input[type="checkbox"][name$="-DELETE"]'); if(del&&del.checked) return;
+      const nEl=div.querySelector('[name$="-nome"]'); const mEl=div.querySelector('[name$="-modo"]'); const dEl=div.querySelector('[name$="-duracao"]'); const bEl=div.querySelector('[name$="-bonus_ataque"]');
+      if(!nEl||!mEl||!dEl||!bEl) return;
+      if(norm(nEl.value)===nome && kind(mEl)===mk && norm(dEl.value)===dur){ const v=parseFloat((bEl.value||'').toString().replace(',','.')); if(!isNaN(v)) m=Math.max(m, Math.abs(v)); }
+    });
+    return m;
+  }
+  function recalcAtaques(){
     const luta = n(document.getElementById('id_luta'));
     const des = n(document.getElementById('id_destreza'));
     const np  = Math.abs(n(document.getElementById('id_nivel_poder')));
@@ -496,13 +515,14 @@ document.addEventListener('DOMContentLoaded', function() {
       const modoEl = div.querySelector('[name$="-modo"]');
       const bonusEl = div.querySelector('[name$="-bonus_ataque"]');
       const nivelEfEl = div.querySelector('[name$="-nivel_efeito"]');
+      const nomeEl = div.querySelector('[name$="-nome"]');
+      const durEl = div.querySelector('[name$="-duracao"]');
       const totalSpan = div.querySelector('.linha-ataque-info .valor-ataque-total');
-      if(!modoEl || !bonusEl || !nivelEfEl || !totalSpan) return;
-      let modoVal = (modoEl.value||'').toLowerCase();
-      const modoTxt = (modoEl.options && modoEl.options[modoEl.selectedIndex]) ? modoEl.options[modoEl.selectedIndex].textContent.toLowerCase() : '';
-      let baseAttr = 0;
-      if(modoVal.includes('melee') || modoTxt.includes('corpo')) baseAttr = luta; else if(modoVal.includes('ranged') || modoTxt.includes('dist')) baseAttr = des;
-      const ataqueTotal = baseAttr + n(bonusEl);
+      if(!modoEl || !bonusEl || !nivelEfEl || !totalSpan || !nomeEl || !durEl) return;
+      const mk = kind(modoEl);
+      let baseAttr = 0; if(mk==='melee') baseAttr = luta; else if(mk==='ranged') baseAttr = des;
+      const useBonus = (mk==='other') ? n(bonusEl) : maxBonusFor(norm(nomeEl.value), mk, norm(durEl.value));
+      const ataqueTotal = baseAttr + useBonus;
       totalSpan.textContent = ataqueTotal;
       const nivelEf = Math.abs(n(nivelEfEl));
       if((ataqueTotal + nivelEf) > limite){ totalSpan.classList.add('violacao-ataque'); viol=true; } else { totalSpan.classList.remove('violacao-ataque'); }
@@ -514,13 +534,13 @@ document.addEventListener('DOMContentLoaded', function() {
       else { submitBtn.disabled = false; if(!document.querySelector('.violacao-limite')) submitBtn.title=''; }
     }
   }
-  window.recalcAtaquesSimples = recalcAtaquesSimples;
-  document.addEventListener('input', ev=>{ if(ev.target.closest('.poder-form') || ['id_luta','id_destreza','id_nivel_poder'].includes(ev.target.id)) recalcAtaquesSimples(); });
-  document.addEventListener('change', ev=>{ if(ev.target.closest('.poder-form') || ['id_luta','id_destreza','id_nivel_poder'].includes(ev.target.id)) recalcAtaquesSimples(); });
-  const oldAdd = window.adicionarPoder; window.adicionarPoder = function(){ if(oldAdd) oldAdd(); setTimeout(recalcAtaquesSimples, 80); };
-  const oldRem = window.removerPoderLinha; window.removerPoderLinha = function(btn){ if(oldRem) oldRem(btn); setTimeout(recalcAtaquesSimples, 40); };
-  const oldRemUlt = window.removerPoder; window.removerPoder = function(){ if(oldRemUlt) oldRemUlt(); setTimeout(recalcAtaquesSimples, 40); };
-  setTimeout(recalcAtaquesSimples, 120);
+  window.recalcAtaquesSimples = recalcAtaques;
+  document.addEventListener('input', ev=>{ if(ev.target.closest('.poder-form') || ['id_luta','id_destreza','id_nivel_poder'].includes(ev.target.id)) recalcAtaques(); });
+  document.addEventListener('change', ev=>{ if(ev.target.closest('.poder-form') || ['id_luta','id_destreza','id_nivel_poder'].includes(ev.target.id)) recalcAtaques(); });
+  const oldAdd = window.adicionarPoder; window.adicionarPoder = function(){ if(oldAdd) oldAdd(); setTimeout(recalcAtaques, 80); };
+  const oldRem = window.removerPoderLinha; window.removerPoderLinha = function(btn){ if(oldRem) oldRem(btn); setTimeout(recalcAtaques, 40); };
+  const oldRemUlt = window.removerPoder; window.removerPoder = function(){ if(oldRemUlt) oldRemUlt(); setTimeout(recalcAtaques, 40); };
+  setTimeout(recalcAtaques, 120);
 })();
 </script>
 <script>
