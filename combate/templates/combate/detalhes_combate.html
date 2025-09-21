@@ -640,6 +640,11 @@
       if (_combatePollTimer) return;
       let tick = 0;
       _combatePollTimer = setInterval(() => {
+        // Evita refreshs visuais enquanto o usuário interage com selects/inputs
+        try {
+          const ae = document.activeElement;
+          if (ae && (ae.tagName === 'SELECT' || ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
+        } catch(_) {}
         tick = (tick + 1) % 12; // 12 * 5s = 60s
         const wsDown = !window._combateWsActive; // se WS caiu precisamos atualizar também o form de ataque (alvos)
         // Se usuário está lendo o histórico (não perto do fim), evite atualizar o card para não perder a posição
@@ -671,6 +676,11 @@
         const idleMs = Date.now() - lastEventAt;
         if (idleMs > 12000) { // >12s sem eventos: garante refresh e polling ligado
           startCombatePolling();
+          // Se usuário está interagindo com selects/inputs, não force refresh agora
+          try {
+            const ae = document.activeElement;
+            if (ae && (ae.tagName === 'SELECT' || ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
+          } catch(_) {}
           const hc = document.getElementById('historico-card');
           const userReading = (()=>{ try { return hc && (hc.scrollHeight - hc.scrollTop - hc.clientHeight) >= 24; } catch(_) { return false; } })();
           const sels = ['.turno-topbar', '.combate-col-right', '#status-card'];
@@ -994,8 +1004,14 @@
   try { restoreTokenSizes(document); } catch(_) {}
   // Rebind dos formulários para evitar navegação
   ajaxifyInteractionForms();
-  // Rebind dos selects de personagem/ataque, para atualizar poderes
-  bindPersonagemAcaoSync();
+  // Rebind dos selects de personagem/ataque apenas se o formulário foi trocado
+  try {
+    const formAtaque = document.getElementById('form-ataque');
+    if (formAtaque && (!formAtaque.dataset || !formAtaque.dataset.boundSync)) {
+      bindPersonagemAcaoSync();
+      try { if (formAtaque) formAtaque.dataset.boundSync = '1'; } catch(_) {}
+    }
+  } catch(_) { bindPersonagemAcaoSync(); }
   // Restaura selects persistidos
   try {
     persistSelectById('mapa_existente_top', `combate:${combateId}:mapa_existente_top`);
@@ -1312,7 +1328,8 @@
         const sel = document.getElementById('personagem_acao');
         if (!sel) return;
         const idStr = String(part.id);
-        const exists = Array.from(sel.options).some(o => String(o.value) === idStr);
+      // Idempotent guard: if already bound for this DOM node, don't clone/replace again
+      if (select && select.dataset && select.dataset.boundSync === '1') return;
         if (!exists) {
           const opt = document.createElement('option');
           opt.value = idStr;
@@ -1767,6 +1784,9 @@
 
   function drag(event, id) {
     event.dataTransfer.setData("tokenId", id);
+    const newSelect = select.cloneNode(true);
+    // Mark this select as already bound to avoid future unnecessary rebinds
+    try { newSelect.dataset.boundSync = '1'; } catch(_) {}
   }
 
   document.addEventListener("DOMContentLoaded", function() {
