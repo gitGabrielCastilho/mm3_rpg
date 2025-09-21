@@ -656,13 +656,36 @@ def avancar_turno(request, combate_id):
     if turno_ativo:
         turno_ativo.ativo = False
         turno_ativo.save()
-        participantes = Participante.objects.filter(combate=combate).order_by('-iniciativa')
-        personagem_ids = list(participantes.values_list('personagem_id', flat=True))
-        if turno_ativo.personagem_id in personagem_ids:
-            idx = personagem_ids.index(turno_ativo.personagem_id)
-            proximo_idx = (idx + 1) % len(personagem_ids)
+        participantes = list(Participante.objects.filter(combate=combate).order_by('-iniciativa'))
+        
+        # CORREÇÃO SIMPLES: ao invés de usar o problemático index() com personagem_id,
+        # vamos manter um contador rotativo para personagens duplicados
+        
+        # Encontra todos os participantes com o mesmo personagem_id do turno atual
+        participantes_mesmo_personagem = [p for p in participantes if p.personagem_id == turno_ativo.personagem_id]
+        
+        if len(participantes_mesmo_personagem) == 1:
+            # Personagem único: usa a lógica simples original
+            for i, p in enumerate(participantes):
+                if p.personagem_id == turno_ativo.personagem_id:
+                    proximo_idx = (i + 1) % len(participantes)
+                    break
         else:
-            proximo_idx = 0
+            # Múltiplos participantes com mesmo personagem_id: usa rotação baseada no número de turnos
+            # Conta quantos turnos este personagem_id já teve
+            total_turnos_personagem = Turno.objects.filter(
+                combate=combate, 
+                personagem_id=turno_ativo.personagem_id
+            ).count()
+            
+            # O índice dentro do grupo de duplicados é baseado no número de turnos (rotação)
+            indice_no_grupo = (total_turnos_personagem - 1) % len(participantes_mesmo_personagem)
+            participante_atual = participantes_mesmo_personagem[indice_no_grupo]
+            
+            # Encontra o índice deste participante na lista geral
+            idx_atual = participantes.index(participante_atual)
+            proximo_idx = (idx_atual + 1) % len(participantes)
+        
         personagem_proximo = participantes[proximo_idx].personagem
         novo_turno = Turno.objects.create(combate=combate, personagem=personagem_proximo, ordem=turno_ativo.ordem + 1, ativo=True)
         # Processa efeitos de concentração / sustentado
