@@ -224,8 +224,9 @@ def detalhes_combate(request, combate_id):
 
     defesas_disponiveis = ["vontade", "fortitude", "resistencia", "aparar", "esquivar"]
 
+    # Perícias disponíveis no seletor (removido: combate_corpo, combate_distancia)
     pericias = [
-        'acrobacias', 'atletismo', 'combate_distancia', 'combate_corpo', 'enganacao',
+        'acrobacias', 'atletismo', 'enganacao',
         'especialidade', 'furtividade', 'intimidacao', 'intuicao', 'investigacao',
         'percepcao', 'persuasao', 'prestidigitacao', 'tecnologia', 'tratamento',
         'veiculos', 'historia', 'sobrevivencia', 'arcana', 'religiao'
