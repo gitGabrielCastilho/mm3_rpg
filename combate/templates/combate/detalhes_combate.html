@@ -12,6 +12,8 @@
   window._allowedPersonagemIdsStr = (window._allowedPersonagemIds||[]).map(function(x){ return String(x); });
   // Helper para checar permissão no cliente (defensivo; servidor revalida)
   window._isPersonagemAllowed = function(pid){ try { return window._allowedPersonagemIdsStr.indexOf(String(pid)) !== -1; } catch(_) { return true; } };
+  // URL resolvida pelo Django para evitar problemas de prefixo em produção
+  window._poderesAjaxUrl = "{% url 'poderes_personagem_ajax' %}";
 </script>
 <div id="combate-content" class="combate-detalhes-center" data-is-gm="{% if combate.sala.game_master == user %}true{% else %}false{% endif %}">
   <!-- Topo: info de turno + ações globais -->
@@ -338,7 +340,8 @@
     function bindPoderStorageListener(){
       if (!poderSelect || poderSelect.dataset.boundStorage) return;
       poderSelect.addEventListener('change', function(){
-        const opt = select ? select.options[select.selectedIndex] : null;
+        const selNow = document.getElementById('personagem_acao');
+        const opt = selNow ? selNow.options[selNow.selectedIndex] : null;
         const personagemId = opt ? opt.getAttribute('data-personagem-id') : '';
         if (personagemId) {
           try { localStorage.setItem(powerKey(personagemId), String(poderSelect.value||'')); } catch(_) {}
@@ -363,7 +366,8 @@
       const carSel = document.getElementById('caracteristica_rolar');
       if (perSel && !perSel.dataset.persist){
         perSel.addEventListener('change', function(){
-          const opt = select ? select.options[select.selectedIndex] : null;
+          const selNow = document.getElementById('personagem_acao');
+          const opt = selNow ? selNow.options[selNow.selectedIndex] : null;
           const personagemId = opt ? opt.getAttribute('data-personagem-id') : '';
           if (personagemId) try { localStorage.setItem(skillKey(personagemId), String(perSel.value||'')); } catch(_) {}
         });
@@ -371,7 +375,8 @@
       }
       if (carSel && !carSel.dataset.persist){
         carSel.addEventListener('change', function(){
-          const opt = select ? select.options[select.selectedIndex] : null;
+          const selNow = document.getElementById('personagem_acao');
+          const opt = selNow ? selNow.options[selNow.selectedIndex] : null;
           const personagemId = opt ? opt.getAttribute('data-personagem-id') : '';
           if (personagemId) try { localStorage.setItem(traitKey(personagemId), String(carSel.value||'')); } catch(_) {}
         });
@@ -408,8 +413,9 @@
     }
 
     function syncPersonagemAcao() {
-      const val = select.value; // participante id
-      const selectedOpt = select.options[select.selectedIndex];
+  const selNow = document.getElementById('personagem_acao');
+  const val = selNow ? selNow.value : '';
+  const selectedOpt = selNow ? selNow.options[selNow.selectedIndex] : null;
       const personagemId = selectedOpt ? selectedOpt.getAttribute('data-personagem-id') : '';
       const h1 = document.getElementById('personagem_acao_hidden');
       const h2 = document.getElementById('personagem_acao_hidden_pericia');
@@ -437,7 +443,9 @@
         try { savedValue = localStorage.getItem(powerKey(personagemId)) || ''; } catch(_) {}
         const prevValue = poderSelect.value; // fallback: preserva seleção atual
         const mySeq = ++_poderReqSeq;
-        fetch('/combate/poderes-personagem-ajax/?personagem_id=' + personagemId)
+        const baseUrl = (window._poderesAjaxUrl || '/combate/poderes-personagem-ajax/');
+        const url = baseUrl + (baseUrl.indexOf('?') === -1 ? '?' : '&') + 'personagem_id=' + encodeURIComponent(personagemId);
+        fetch(url)
           .then(resp => resp.json())
           .then(data => {
             // Ignora respostas atrasadas
@@ -497,8 +505,10 @@
           .catch(() => {/* silencia para evitar reset visual em falhas */});
       }
     }
+    // Expõe a função para listeners delegados e rebinds externos
+    try { window._syncPersonagemAcao = syncPersonagemAcao; } catch(_) {}
     // Evita listeners duplicados trocando o nó
-    const newSelect = select.cloneNode(true);
+  const newSelect = select.cloneNode(true);
     // Restaura escolha persistida do participante (se existir)
     try {
       const savedPart = localStorage.getItem(SEL_PARTICIPANTE_KEY) || '';
@@ -547,6 +557,20 @@
     }
   }
   document.addEventListener('DOMContentLoaded', bindPersonagemAcaoSync);
+  // Fallback: listener delegado para garantir atualização mesmo se o bind específico falhar
+  (function(){
+    if (document && !document._acoesDeChangeDelegated) {
+      document.addEventListener('change', function(e){
+        try {
+          const t = e.target || e.srcElement;
+          if (t && t.id === 'personagem_acao') {
+            if (typeof window._syncPersonagemAcao === 'function') window._syncPersonagemAcao();
+          }
+        } catch(_) {}
+      }, true);
+      document._acoesDeChangeDelegated = true;
+    }
+  })();
   </script>
 
   
@@ -1328,8 +1352,7 @@
         const sel = document.getElementById('personagem_acao');
         if (!sel) return;
         const idStr = String(part.id);
-      // Idempotent guard: if already bound for this DOM node, don't clone/replace again
-      if (select && select.dataset && select.dataset.boundSync === '1') return;
+        const exists = Array.from(sel.options).some(o => String(o.value) === idStr);
         if (!exists) {
           const opt = document.createElement('option');
           opt.value = idStr;
