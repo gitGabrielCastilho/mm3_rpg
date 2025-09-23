@@ -6,6 +6,7 @@
     <th>Nome</th>
     <th>Dano</th>
     <th>Aflição</th>
+    <th>Ferimentos</th>
     <th>Ficha</th>
   {% get_perfil as perfil %}
   {% if perfil and perfil.sala_atual and perfil.sala_atual.game_master == user %}
@@ -24,6 +25,7 @@
   <td>{{ p.display_nome|default:p.personagem.nome }}</td>
       <td>{{ p.dano }}</td>
       <td>{{ p.aflicao }}</td>
+      <td>{{ p.ferimentos|default:0 }}</td>
       <td>
         {% if p.personagem.usuario == user %}
           <a href="{% url 'ficha_personagem' p.personagem.id %}" target="_blank" class="btn-link-ficha">Ver Ficha</a>
