@@ -61,8 +61,8 @@
         <div>{{ mods_form.religiao.label_tag }}{{ mods_form.religiao }}</div>
       </div>
 
-        <h2 style="margin-top:1rem;">Poderes do Item</h2>
-        <div id="poderes-formset-item" style="margin-top:0.4rem;">
+  <h2 style="margin-top:1rem;">Poderes do Item</h2>
+  <div id="poderes-formset-item" style="margin-top:0.4rem; display:flex; flex-direction:column; gap:0.6rem; align-items:stretch;">
         {{ formset.management_form }}
         <div id="item-empty-poder" style="display:none;">
           <div class="poder-form poder-form-grid" style="border:1px dashed #555; padding:0.6rem; margin-bottom:0.6rem; display:grid; grid-template-columns:repeat(3, minmax(170px,1fr)); gap:1.8rem 3rem; align-items:end;">
@@ -83,7 +83,7 @@
             </div>
           </div>
         </div>
-        <div id="item-poderes-list" style="display:flex; flex-direction:column; gap:0.6rem;">
+  <div id="item-poderes-list" style="display:flex; flex-direction:column; gap:0.6rem; width:100%;">
           {% for f in formset %}
             <div class="poder-form poder-form-grid" style="border:1px dashed #555; padding:0.6rem; display:grid; grid-template-columns:repeat(3, minmax(170px,1fr)); gap:1.8rem 3rem; align-items:end;">
               <div style="display:none;">{% for h in f.hidden_fields %}{{ h }}{% endfor %}{% if f.instance.pk %}<input type="hidden" name="{{ f.prefix }}-id" value="{{ f.instance.pk }}">{% endif %}{{ f.DELETE }}</div>
@@ -104,7 +104,7 @@
             </div>
           {% endfor %}
         </div>
-        <div class="add-btn-wrap" style="text-align:center; margin-top:0.6rem;">
+        <div class="add-btn-wrap" style="text-align:center; margin-top:0.6rem; align-self:center; width:auto;">
           <button type="button" class="btn btn-danger" onclick="adicionarPoderItemTemplate()">Adicionar Poder</button>
         </div>
         </div>
@@ -240,6 +240,9 @@ document.addEventListener('DOMContentLoaded', function() {
 .poder-form-grid .span-2 { grid-column: 1 / -1; }
 /* Evita que o botão "Adicionar Poder" fique ao lado do bloco quando houver floats herdados */
 .add-btn-wrap { clear: both; }
+#poderes-formset-item { display:flex; flex-direction:column; gap:0.6rem; align-items:stretch; }
+#item-poderes-list { width:100%; }
+.add-btn-wrap { align-self:center; width:auto; }
 @media (max-width: 900px){
   .item-topo { grid-template-columns: 1fr; }
   .defesas-grid { grid-template-columns: repeat(2, minmax(140px,1fr)) !important; }
