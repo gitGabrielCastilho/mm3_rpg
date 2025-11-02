@@ -29,7 +29,7 @@
       </div>
 
         <h2 style="margin-top:1rem;">Defesas</h2>
-        <div class="defesas-grid" style="display:grid; grid-template-columns:repeat(5, minmax(140px,1fr)); gap:1.2rem 1.8rem; justify-items:stretch;">
+        <div class="defesas-grid" style="display:grid; grid-template-columns:repeat(3, minmax(170px,1fr)); gap:1.8rem 3rem; justify-items:center; margin-bottom:2rem;">
         <div>{{ mods_form.aparar.label_tag }}{{ mods_form.aparar }}</div>
         <div>{{ mods_form.esquivar.label_tag }}{{ mods_form.esquivar }}</div>
         <div>{{ mods_form.fortitude.label_tag }}{{ mods_form.fortitude }}</div>
@@ -65,7 +65,7 @@
         <div id="poderes-formset-item" style="margin-top:0.4rem;">
         {{ formset.management_form }}
         <div id="item-empty-poder" style="display:none;">
-          <div class="poder-form poder-form-grid" style="border:1px dashed #555; padding:0.6rem; margin-bottom:0.6rem; display:grid; grid-template-columns:repeat(4, minmax(180px,1fr)); gap:0.9rem 1.1rem; align-items:end;">
+          <div class="poder-form poder-form-grid" style="border:1px dashed #555; padding:0.6rem; margin-bottom:0.6rem; display:grid; grid-template-columns:repeat(3, minmax(170px,1fr)); gap:1.8rem 3rem; align-items:end;">
             <div style="display:none;">{{ formset.empty_form.id }}{{ formset.empty_form.DELETE }}</div>
             <div class="campo-poder">{{ formset.empty_form.nome.label_tag }}{{ formset.empty_form.nome }}</div>
             <div class="campo-poder">{{ formset.empty_form.array.label_tag }}{{ formset.empty_form.array }}</div>
@@ -85,7 +85,7 @@
         </div>
         <div id="item-poderes-list" style="display:flex; flex-direction:column; gap:0.6rem;">
           {% for f in formset %}
-            <div class="poder-form poder-form-grid" style="border:1px dashed #555; padding:0.6rem; display:grid; grid-template-columns:repeat(4, minmax(180px,1fr)); gap:0.9rem 1.1rem; align-items:end;">
+            <div class="poder-form poder-form-grid" style="border:1px dashed #555; padding:0.6rem; display:grid; grid-template-columns:repeat(3, minmax(170px,1fr)); gap:1.8rem 3rem; align-items:end;">
               <div style="display:none;">{% for h in f.hidden_fields %}{{ h }}{% endfor %}{% if f.instance.pk %}<input type="hidden" name="{{ f.prefix }}-id" value="{{ f.instance.pk }}">{% endif %}{{ f.DELETE }}</div>
               <div class="campo-poder">{{ f.nome.label_tag }}{{ f.nome }}</div>
               <div class="campo-poder">{{ f.array.label_tag }}{{ f.array }}</div>
