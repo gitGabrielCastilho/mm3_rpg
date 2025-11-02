@@ -4,12 +4,113 @@
 {% block content %}
 
 {% if pode_criar %}
-  <div class="item-form-center">
+  <div class="item-form-center" style="margin-bottom: 1.5rem;">
     <h2>Criar Item</h2>
-  <form method="post">
+    <form method="post">
       {% csrf_token %}
-      {{ form.as_p }}
-  <button type="submit" class="btn">Criar</button>
+      <div class="item-topo" style="display:flex; gap:1rem; flex-wrap:wrap;">
+        <div style="flex:1 1 200px;">{{ form.nome.label_tag }} {{ form.nome }}</div>
+        <div style="flex:1 1 160px;">{{ form.tipo.label_tag }} {{ form.tipo }}</div>
+        <div style="flex:1 1 160px;">{{ form.raridade.label_tag }} {{ form.raridade }}</div>
+      </div>
+      <div style="margin-top:0.5rem;">{{ form.descricao.label_tag }} {{ form.descricao }}</div>
+
+      <h3 style="margin-top:1rem;">Características</h3>
+      <div class="caracteristicas-grid" style="display:grid; grid-template-columns:repeat(4, minmax(110px,1fr)); gap:1rem 1.5rem;">
+        <div>{{ mods_form.forca.label_tag }}{{ mods_form.forca }}</div>
+        <div>{{ mods_form.vigor.label_tag }}{{ mods_form.vigor }}</div>
+        <div>{{ mods_form.destreza.label_tag }}{{ mods_form.destreza }}</div>
+        <div>{{ mods_form.agilidade.label_tag }}{{ mods_form.agilidade }}</div>
+        <div>{{ mods_form.luta.label_tag }}{{ mods_form.luta }}</div>
+        <div>{{ mods_form.inteligencia.label_tag }}{{ mods_form.inteligencia }}</div>
+        <div>{{ mods_form.prontidao.label_tag }}{{ mods_form.prontidao }}</div>
+        <div>{{ mods_form.presenca.label_tag }}{{ mods_form.presenca }}</div>
+      </div>
+
+      <h3 style="margin-top:1rem;">Defesas</h3>
+      <div class="defesas-grid" style="display:grid; grid-template-columns:repeat(5, minmax(110px,1fr)); gap:1rem 1.5rem;">
+        <div>{{ mods_form.aparar.label_tag }}{{ mods_form.aparar }}</div>
+        <div>{{ mods_form.esquivar.label_tag }}{{ mods_form.esquivar }}</div>
+        <div>{{ mods_form.fortitude.label_tag }}{{ mods_form.fortitude }}</div>
+        <div>{{ mods_form.vontade.label_tag }}{{ mods_form.vontade }}</div>
+        <div>{{ mods_form.resistencia.label_tag }}{{ mods_form.resistencia }}</div>
+      </div>
+
+      <h3 style="margin-top:1rem;">Perícias</h3>
+      <div class="pericias-grid" style="display:grid; grid-template-columns:repeat(4, minmax(140px,1fr)); gap:1rem 1.5rem;">
+        <div>{{ mods_form.acrobacias.label_tag }}{{ mods_form.acrobacias }}</div>
+        <div>{{ mods_form.atletismo.label_tag }}{{ mods_form.atletismo }}</div>
+        <div>{{ mods_form.combate_distancia.label_tag }}{{ mods_form.combate_distancia }}</div>
+        <div>{{ mods_form.combate_corpo.label_tag }}{{ mods_form.combate_corpo }}</div>
+        <div>{{ mods_form.enganacao.label_tag }}{{ mods_form.enganacao }}</div>
+        <div>{{ mods_form.especialidade.label_tag }}{{ mods_form.especialidade }}</div>
+        <div>{{ mods_form.furtividade.label_tag }}{{ mods_form.furtividade }}</div>
+        <div>{{ mods_form.intimidacao.label_tag }}{{ mods_form.intimidacao }}</div>
+        <div>{{ mods_form.intuicao.label_tag }}{{ mods_form.intuicao }}</div>
+        <div>{{ mods_form.investigacao.label_tag }}{{ mods_form.investigacao }}</div>
+        <div>{{ mods_form.percepcao.label_tag }}{{ mods_form.percepcao }}</div>
+        <div>{{ mods_form.persuasao.label_tag }}{{ mods_form.persuasao }}</div>
+        <div>{{ mods_form.prestidigitacao.label_tag }}{{ mods_form.prestidigitacao }}</div>
+        <div>{{ mods_form.tecnologia.label_tag }}{{ mods_form.tecnologia }}</div>
+        <div>{{ mods_form.tratamento.label_tag }}{{ mods_form.tratamento }}</div>
+        <div>{{ mods_form.veiculos.label_tag }}{{ mods_form.veiculos }}</div>
+        <div>{{ mods_form.historia.label_tag }}{{ mods_form.historia }}</div>
+        <div>{{ mods_form.sobrevivencia.label_tag }}{{ mods_form.sobrevivencia }}</div>
+        <div>{{ mods_form.arcana.label_tag }}{{ mods_form.arcana }}</div>
+        <div>{{ mods_form.religiao.label_tag }}{{ mods_form.religiao }}</div>
+      </div>
+
+      <h3 style="margin-top:1rem;">Poderes do Item</h3>
+      <div id="poderes-formset-item">
+        {{ formset.management_form }}
+        <div id="item-empty-poder" style="display:none;">
+          <div class="poder-form poder-form-grid" style="border:1px dashed #555; padding:0.6rem; margin-bottom:0.6rem;">
+            <div style="display:none;">{{ formset.empty_form.id }}{{ formset.empty_form.DELETE }}</div>
+            <div class="campo-poder">{{ formset.empty_form.nome.label_tag }}{{ formset.empty_form.nome }}</div>
+            <div class="campo-poder">{{ formset.empty_form.array.label_tag }}{{ formset.empty_form.array }}</div>
+            <div class="campo-poder">{{ formset.empty_form.tipo.label_tag }}{{ formset.empty_form.tipo }}</div>
+            <div class="campo-poder">{{ formset.empty_form.modo.label_tag }}{{ formset.empty_form.modo }}</div>
+            <div class="campo-poder">{{ formset.empty_form.duracao.label_tag }}{{ formset.empty_form.duracao }}</div>
+            <div class="campo-poder">{{ formset.empty_form.casting_ability.label_tag }}{{ formset.empty_form.casting_ability }}</div>
+            <div class="campo-poder">{{ formset.empty_form.nivel_efeito.label_tag }}{{ formset.empty_form.nivel_efeito }}</div>
+            <div class="campo-poder">{{ formset.empty_form.charges.label_tag }}{{ formset.empty_form.charges }}</div>
+            <div class="campo-poder">{{ formset.empty_form.bonus_ataque.label_tag }}{{ formset.empty_form.bonus_ataque }}</div>
+            <div class="campo-poder">{{ formset.empty_form.defesa_ativa.label_tag }}{{ formset.empty_form.defesa_ativa }}</div>
+            <div class="campo-poder">{{ formset.empty_form.defesa_passiva.label_tag }}{{ formset.empty_form.defesa_passiva }}</div>
+            <div class="span-2" style="text-align:right; margin-top:0.4rem;">
+              <button type="button" class="btn btn-danger" onclick="removerPoderItemLinha(this)">Remover</button>
+            </div>
+          </div>
+        </div>
+        <div id="item-poderes-list" style="display:flex; flex-direction:column; gap:0.6rem;">
+          {% for f in formset %}
+            <div class="poder-form poder-form-grid" style="border:1px dashed #555; padding:0.6rem;">
+              <div style="display:none;">{% for h in f.hidden_fields %}{{ h }}{% endfor %}{% if f.instance.pk %}<input type="hidden" name="{{ f.prefix }}-id" value="{{ f.instance.pk }}">{% endif %}{{ f.DELETE }}</div>
+              <div class="campo-poder">{{ f.nome.label_tag }}{{ f.nome }}</div>
+              <div class="campo-poder">{{ f.array.label_tag }}{{ f.array }}</div>
+              <div class="campo-poder">{{ f.tipo.label_tag }}{{ f.tipo }}</div>
+              <div class="campo-poder">{{ f.modo.label_tag }}{{ f.modo }}</div>
+              <div class="campo-poder">{{ f.duracao.label_tag }}{{ f.duracao }}</div>
+              <div class="campo-poder">{{ f.casting_ability.label_tag }}{{ f.casting_ability }}</div>
+              <div class="campo-poder">{{ f.nivel_efeito.label_tag }}{{ f.nivel_efeito }}</div>
+              <div class="campo-poder">{{ f.charges.label_tag }}{{ f.charges }}</div>
+              <div class="campo-poder">{{ f.bonus_ataque.label_tag }}{{ f.bonus_ataque }}</div>
+              <div class="campo-poder">{{ f.defesa_ativa.label_tag }}{{ f.defesa_ativa }}</div>
+              <div class="campo-poder">{{ f.defesa_passiva.label_tag }}{{ f.defesa_passiva }}</div>
+              <div class="span-2" style="text-align:right; margin-top:0.4rem;">
+                <button type="button" class="btn btn-danger" onclick="removerPoderItemLinha(this)">Remover</button>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+        <div style="text-align:center; margin-top:0.6rem;">
+          <button type="button" class="btn btn-danger" onclick="adicionarPoderItemTemplate()">Adicionar Poder</button>
+        </div>
+      </div>
+
+      <div style="margin-top: 1rem; text-align:center;">
+        <button type="submit" class="btn">Criar Item</button>
+      </div>
     </form>
   </div>
 {% endif %}
@@ -55,6 +156,42 @@
     </tbody>
   </table>
 </div>
+
+<script>
+function getItemPoderPrefix(){
+  const mgmt = document.querySelector('#poderes-formset-item input[name$="-TOTAL_FORMS"]');
+  if(!mgmt || !mgmt.name) return 'itempoder_set';
+  const name = mgmt.name; // e.g., itempoder-TOTAL_FORMS (we set prefix='itempoder')
+  return name.replace(/-TOTAL_FORMS$/, '');
+}
+function adicionarPoderItemTemplate(){
+  const emptyWrap = document.getElementById('item-empty-poder');
+  const list = document.getElementById('item-poderes-list');
+  const totalEl = document.querySelector('#poderes-formset-item input[name$="-TOTAL_FORMS"]');
+  if(!emptyWrap || !list || !totalEl){ return; }
+  const idx = parseInt(totalEl.value||'0',10);
+  const clone = emptyWrap.firstElementChild.cloneNode(true);
+  clone.innerHTML = clone.innerHTML.replace(/__prefix__/g, String(idx));
+  list.appendChild(clone);
+  totalEl.value = idx + 1;
+}
+function removerPoderItemLinha(btn){
+  const div = btn.closest('.poder-form');
+  if(!div) return;
+  const del = div.querySelector('input[type="checkbox"][name$="-DELETE"]');
+  const totalEl = document.querySelector('#poderes-formset-item input[name$="-TOTAL_FORMS"]');
+  if(del){ del.checked = true; div.style.display='none'; return; }
+  // reindex after physical removal
+  div.remove();
+  const forms = document.querySelectorAll('#item-poderes-list .poder-form');
+  forms.forEach((d, i)=>{
+    d.querySelectorAll('[name]').forEach(el=>{ if(el.name.match(/-\d+-/)){ el.name = el.name.replace(/-(\d+)-/, '-'+i+'-'); } });
+    d.querySelectorAll('[id]').forEach(el=>{ if(el.id && el.id.match(/_\d+_/)){ el.id = el.id.replace(/_(\d+)_/, '_'+i+'_'); } });
+    d.querySelectorAll('label[for]').forEach(l=>{ if(l.htmlFor && l.htmlFor.match(/_\d+_/)){ l.htmlFor = l.htmlFor.replace(/_(\d+)_/, '_'+i+'_'); } });
+  });
+  if(totalEl) totalEl.value = forms.length;
+}
+</script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

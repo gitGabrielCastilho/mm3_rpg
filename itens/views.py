@@ -1,26 +1,12 @@
 from django.shortcuts import render, redirect
 from django.db import models
 from .models import Item
-from .forms import ItemForm
-import random
+from .forms import ItemForm, ItemModsForm, ItemPoderFormSet
 
 # Create your views here.
 def calcular_valor(rarity):
-    rarity = (rarity or "").lower()
-    if rarity == "common":
-        return random.randint(2, 12) * 5
-    elif rarity == "uncommon":
-        return random.randint(2, 12) * 250
-    elif rarity == "rare":
-        return random.randint(2, 12) * 2500 + 5000
-    elif rarity == "very rare":
-        return random.randint(2, 12) * 8000 + 40000
-    elif rarity == "legendary":
-        return random.randint(2, 12) * 12500 + 150000
-    elif rarity == "artifact":
-        return (random.randint(2, 12) + 6) * 75000 + 3000000
-    else:
-        return 0
+    # Deprecated: preço agora calculado no save() do modelo a partir da raridade base.
+    return 0
 
 def itens(request):
     # Handle users without PerfilUsuario gracefully
@@ -39,17 +25,27 @@ def itens(request):
         pode_criar = True
 
     form = ItemForm(request.POST or None)
-    if pode_criar and request.method == 'POST' and form.is_valid():
+    mods_form = ItemModsForm(request.POST or None)
+    formset = ItemPoderFormSet(request.POST or None, prefix='itempoder')
+    if pode_criar and request.method == 'POST' and form.is_valid() and mods_form.is_valid() and formset.is_valid():
         item = form.save(commit=False)
         item.sala = sala_atual
-        item.preco = calcular_valor(item.raridade)
+        # Preço será atribuído no save() se estiver 0
         item.save()
+        # Salva mods estruturados no JSON
+        item.mods = mods_form.to_mods()
+        item.save()
+        # Salva poderes do item
+        formset.instance = item
+        formset.save()
         return redirect('itens')
 
     tipos = Item._meta.get_field('tipo').choices
     raridades = Item._meta.get_field('raridade').choices
     return render(request, 'itens/itens.html', {
         'form': form,
+        'mods_form': mods_form,
+        'formset': formset,
         'itens': itens,
         'tipos': tipos,
         'raridades': raridades,

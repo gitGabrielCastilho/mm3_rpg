@@ -75,8 +75,9 @@ class Item(models.Model):
     # Ex.: {"caracteristicas": {"forca": 2}, "defesas": {"resistencia": 1}, "pericias": {"atletismo": 3}}
     mods = models.JSONField(default=dict, blank=True)
     sala = models.ForeignKey('salas.Sala', null=True, blank=True, on_delete=models.CASCADE, related_name='itens')
+    # Nomes de itens devem ser únicos globalmente
     class Meta:
-        unique_together = ('nome', 'sala')
+        constraints = []
     def __str__(self):
         return f"{self.nome} [{self.tipo} | {self.raridade}]"
 
@@ -90,3 +91,67 @@ class Item(models.Model):
             # fallback silencioso
             pass
         super().save(*args, **kwargs)
+
+
+# Poderes que pertencem a um Item (template), usados para gerar poderes de item no personagem quando equipado
+class ItemPoder(models.Model):
+    TIPO_CHOICES = [
+        ('descritivo', 'Descritivo'),
+        ('aflicao', 'Aflição'),
+        ('dano', 'Dano'),
+        ('cura', 'Cura'),
+        ('buff', 'Buff/Debuff'),
+        ('aprimorar', 'Aprimorar/Reduzir'),
+    ]
+    DURACAO_CHOICES = [
+        ('instantaneo', 'Instantâneo'),
+        ('concentracao', 'Concentração'),
+        ('sustentado', 'Sustentado'),
+    ]
+    MODO_CHOICES = [
+        ('area', 'Área'),
+        ('percepcao', 'Percepção'),
+        ('ranged', 'À Distância'),
+        ('melee', 'Corpo a Corpo'),
+    ]
+    DEFESA_ATIVA_CHOICES = [
+        ('esquiva', 'Esquiva'),
+        ('aparar', 'Aparar'),
+    ]
+    DEFESA_PASSIVA_CHOICES = [
+        ('fortitude', 'Fortitude'),
+        ('resistencia', 'Resistência'),
+        ('vontade', 'Vontade'),
+    ]
+    CASTING_ABILITY_CHOICES = [
+        ('forca', 'Força'),
+        ('vigor', 'Vigor'),
+        ('destreza', 'Destreza'),
+        ('agilidade', 'Agilidade'),
+        ('luta', 'Luta'),
+        ('inteligencia', 'Inteligência'),
+        ('prontidao', 'Prontidão'),
+        ('presenca', 'Presença'),
+        ('aparar', 'Aparar'),
+        ('esquivar', 'Esquiva'),
+        ('fortitude', 'Fortitude'),
+        ('vontade', 'Vontade'),
+        ('resistencia', 'Resistência'),
+    ]
+
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='poderes')
+    nome = models.CharField(max_length=100)
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='dano')
+    modo = models.CharField(max_length=20, choices=MODO_CHOICES, default='melee')
+    duracao = models.CharField(max_length=20, choices=DURACAO_CHOICES, default='instantaneo')
+    nivel_efeito = models.IntegerField(default=0)
+    bonus_ataque = models.IntegerField(default=0)
+    somar_forca_no_nivel = models.BooleanField(default=False)
+    defesa_ativa = models.CharField(max_length=20, choices=DEFESA_ATIVA_CHOICES, default='aparar')
+    defesa_passiva = models.CharField(max_length=20, choices=DEFESA_PASSIVA_CHOICES, default='resistencia')
+    casting_ability = models.CharField(max_length=20, choices=CASTING_ABILITY_CHOICES, default='inteligencia')
+    charges = models.PositiveIntegerField(null=True, blank=True, default=None)
+    array = models.CharField(max_length=100, blank=True, default="")
+
+    def __str__(self):
+        return f"{self.nome} [{self.item_id}]"
