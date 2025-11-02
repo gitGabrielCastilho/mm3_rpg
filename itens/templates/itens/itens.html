@@ -4,19 +4,19 @@
 {% block content %}
 
 {% if pode_criar %}
-  <div class="item-form-center" style="margin-bottom: 1.5rem;">
-    <h2>Criar Item</h2>
-    <form method="post">
+  <div class="item-form-center" style="margin: 0 auto 1.5rem auto; max-width: 1200px;">
+    <h2 style="text-align:center; margin-bottom:0.8rem;">Criar Item</h2>
+    <form method="post" style="background:#14141b; border:1px solid #444; padding:1rem 1.2rem; border-radius:6px;">
       {% csrf_token %}
-      <div class="item-topo" style="display:flex; gap:1rem; flex-wrap:wrap;">
-        <div style="flex:1 1 200px;">{{ form.nome.label_tag }} {{ form.nome }}</div>
-        <div style="flex:1 1 160px;">{{ form.tipo.label_tag }} {{ form.tipo }}</div>
-        <div style="flex:1 1 160px;">{{ form.raridade.label_tag }} {{ form.raridade }}</div>
+      <div class="item-topo" style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:1rem; align-items:end;">
+        <div>{{ form.nome.label_tag }} {{ form.nome }}</div>
+        <div>{{ form.tipo.label_tag }} {{ form.tipo }}</div>
+        <div>{{ form.raridade.label_tag }} {{ form.raridade }}</div>
       </div>
-      <div style="margin-top:0.5rem;">{{ form.descricao.label_tag }} {{ form.descricao }}</div>
+      <div style="margin-top:0.6rem;">{{ form.descricao.label_tag }} {{ form.descricao }}</div>
 
       <h3 style="margin-top:1rem;">Características</h3>
-      <div class="caracteristicas-grid" style="display:grid; grid-template-columns:repeat(4, minmax(110px,1fr)); gap:1rem 1.5rem;">
+  <div class="caracteristicas-grid" style="display:grid; grid-template-columns:repeat(4, minmax(140px,1fr)); gap:1rem 1.5rem;">
         <div>{{ mods_form.forca.label_tag }}{{ mods_form.forca }}</div>
         <div>{{ mods_form.vigor.label_tag }}{{ mods_form.vigor }}</div>
         <div>{{ mods_form.destreza.label_tag }}{{ mods_form.destreza }}</div>
@@ -28,7 +28,7 @@
       </div>
 
       <h3 style="margin-top:1rem;">Defesas</h3>
-      <div class="defesas-grid" style="display:grid; grid-template-columns:repeat(5, minmax(110px,1fr)); gap:1rem 1.5rem;">
+  <div class="defesas-grid" style="display:grid; grid-template-columns:repeat(5, minmax(140px,1fr)); gap:1rem 1.5rem;">
         <div>{{ mods_form.aparar.label_tag }}{{ mods_form.aparar }}</div>
         <div>{{ mods_form.esquivar.label_tag }}{{ mods_form.esquivar }}</div>
         <div>{{ mods_form.fortitude.label_tag }}{{ mods_form.fortitude }}</div>
@@ -37,7 +37,7 @@
       </div>
 
       <h3 style="margin-top:1rem;">Perícias</h3>
-      <div class="pericias-grid" style="display:grid; grid-template-columns:repeat(4, minmax(140px,1fr)); gap:1rem 1.5rem;">
+  <div class="pericias-grid" style="display:grid; grid-template-columns:repeat(4, minmax(180px,1fr)); gap:1rem 1.5rem;">
         <div>{{ mods_form.acrobacias.label_tag }}{{ mods_form.acrobacias }}</div>
         <div>{{ mods_form.atletismo.label_tag }}{{ mods_form.atletismo }}</div>
         <div>{{ mods_form.combate_distancia.label_tag }}{{ mods_form.combate_distancia }}</div>
@@ -61,7 +61,7 @@
       </div>
 
       <h3 style="margin-top:1rem;">Poderes do Item</h3>
-      <div id="poderes-formset-item">
+      <div id="poderes-formset-item" style="margin-top:0.4rem;">
         {{ formset.management_form }}
         <div id="item-empty-poder" style="display:none;">
           <div class="poder-form poder-form-grid" style="border:1px dashed #555; padding:0.6rem; margin-bottom:0.6rem;">
