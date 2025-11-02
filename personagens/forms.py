@@ -111,6 +111,18 @@ class PoderForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Charges: apenas números positivos (deixe em branco para não usar)
+        if 'charges' in self.fields:
+            try:
+                self.fields['charges'].required = False
+                self.fields['charges'].widget.attrs.update({
+                    'min': 1,
+                    'step': 1,
+                    'inputmode': 'numeric',
+                    'pattern': '[0-9]+'
+                })
+            except Exception:
+                pass
         if 'ligados' in self.fields:
             if self.instance and getattr(self.instance, 'personagem_id', None):
                 self.fields['ligados'].queryset = Poder.objects.filter(personagem_id=self.instance.personagem_id).exclude(pk=self.instance.pk)
@@ -322,6 +334,18 @@ class PoderNPCForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Charges: apenas números positivos (deixe em branco para não usar)
+        if 'charges' in self.fields:
+            try:
+                self.fields['charges'].required = False
+                self.fields['charges'].widget.attrs.update({
+                    'min': 1,
+                    'step': 1,
+                    'inputmode': 'numeric',
+                    'pattern': '[0-9]+'
+                })
+            except Exception:
+                pass
         if 'ligados' in self.fields:
             if self.instance and getattr(self.instance, 'personagem_id', None):
                 self.fields['ligados'].queryset = Poder.objects.filter(personagem_id=self.instance.personagem_id).exclude(pk=self.instance.pk)

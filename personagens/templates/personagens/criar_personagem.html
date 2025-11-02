@@ -1042,6 +1042,31 @@ document.addEventListener('DOMContentLoaded', function(){
 <script>
 // ---- Ataque Total (Luta/Destreza + Bônus) e Limite (Ataque Total + Nível de Efeito <= 2×NP) ----
 document.addEventListener('DOMContentLoaded', function(){
+  // Dinâmica de max para Charges: max = floor(NP/2), min=1; desabilita quando max<1
+  function updateChargesMax(){
+    const npEl = document.getElementById('id_nivel_poder');
+    const np = npEl ? parseInt((npEl.value||'').toString(), 10) : 0;
+    const maxCharges = Math.floor(Math.max(0, isNaN(np)?0:np) / 2);
+    document.querySelectorAll('.poder-form [name$="-charges"]').forEach(inp=>{
+      if(!inp) return;
+      inp.setAttribute('min','1');
+      inp.setAttribute('step','1');
+      if (maxCharges >= 1){
+        inp.removeAttribute('disabled');
+        inp.setAttribute('max', String(maxCharges));
+        const v = parseInt((inp.value||'').toString(), 10);
+        if(!isNaN(v) && v > maxCharges){ inp.value = String(maxCharges); }
+      } else {
+        // NP/2 < 1: sem charges possíveis; limpa e desabilita para evitar números inválidos
+        inp.value = '';
+        inp.setAttribute('max','0');
+        inp.setAttribute('disabled','disabled');
+        inp.title = 'Charges indisponível para o NP atual (NP/2 < 1).';
+      }
+    });
+  }
+  // Expor global para outros scripts poderem chamar após adicionar/remover poderes
+  window._updateChargesMax = updateChargesMax;
   function numFrom(el){
     if(!el) return 0; const v=parseFloat((el.value||'').toString().replace(',','.')); return isNaN(v)?0:v;
   }
@@ -1143,13 +1168,25 @@ document.addEventListener('DOMContentLoaded', function(){
   // Chamada inicial (delay para garantir preenchimento do formset renderizado)
   setTimeout(atualizarAtaques, 30);
   atualizarAtaques();
+  updateChargesMax();
   // Ponte unificada caso scripts antigos chamem somente atualizarCustos
   if(!window.recalcularTudo){
     window.recalcularTudo = function(){
       if(typeof window.atualizarCustos === 'function') try{ window.atualizarCustos(); }catch(e){}
       if(typeof window.updateBadges === 'function') try{ window.updateBadges(); }catch(e){}
       if(typeof window.atualizarAtaques === 'function') try{ window.atualizarAtaques(); }catch(e){}
+      if(typeof window._updateChargesMax === 'function') try{ window._updateChargesMax(); }catch(e){}
     };
   }
+  // Atualizar dinamicamente quando NP muda
+  const npElCharges = document.getElementById('id_nivel_poder');
+  if (npElCharges){ npElCharges.addEventListener('input', updateChargesMax); npElCharges.addEventListener('change', updateChargesMax); }
+  // Rebind ao adicionar/remover poderes
+  const _oldAdd = window.adicionarPoder;
+  window.adicionarPoder = function(){ if(typeof _oldAdd==='function') _oldAdd(); setTimeout(()=>{ updateChargesMax(); }, 60); };
+  const _oldRem = window.removerPoderLinha;
+  window.removerPoderLinha = function(btn){ if(typeof _oldRem==='function') _oldRem(btn); setTimeout(updateChargesMax, 40); };
+  const _oldRemUlt = window.removerPoder;
+  window.removerPoder = function(){ if(typeof _oldRemUlt==='function') _oldRemUlt(); setTimeout(updateChargesMax, 40); };
 });
 </script>

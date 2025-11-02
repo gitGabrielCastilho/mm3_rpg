@@ -515,6 +515,28 @@ document.addEventListener('DOMContentLoaded', function(){
 <script>
 // ---- Ataque Total (Editar Personagem) com Bônus compartilhado entre ligados (nome+modo+duração) ----
 document.addEventListener('DOMContentLoaded', function(){
+  // Dinâmica de max para Charges: max = floor(NP/2), min=1; desabilita quando max<1
+  function updateChargesMaxEdit(){
+    const npEl = document.getElementById('id_nivel_poder');
+    const np = npEl ? parseInt((npEl.value||'').toString(), 10) : 0;
+    const maxCharges = Math.floor(Math.max(0, isNaN(np)?0:np) / 2);
+    document.querySelectorAll('.poder-form [name$="-charges"]').forEach(inp=>{
+      if(!inp) return;
+      inp.setAttribute('min','1');
+      inp.setAttribute('step','1');
+      if (maxCharges >= 1){
+        inp.removeAttribute('disabled');
+        inp.setAttribute('max', String(maxCharges));
+        const v = parseInt((inp.value||'').toString(), 10);
+        if(!isNaN(v) && v > maxCharges){ inp.value = String(maxCharges); }
+      } else {
+        inp.value = '';
+        inp.setAttribute('max','0');
+        inp.setAttribute('disabled','disabled');
+        inp.title = 'Charges indisponível para o NP atual (NP/2 < 1).';
+      }
+    });
+  }
   function num(el){ if(!el) return 0; const v=parseFloat((el.value||'').toString().replace(',','.')); return isNaN(v)?0:v; }
   const lutaEl=document.getElementById('id_luta');
   const desEl=document.getElementById('id_destreza');
@@ -606,14 +628,15 @@ document.addEventListener('DOMContentLoaded', function(){
     let violArr=false; arrCharges.forEach(cnt=>{ if(cnt>1) violArr=true; });
     const submitBtn=document.querySelector('form input[type="submit"]'); if(submitBtn){ const violDef=!!document.querySelector('.violacao-limite'); if(viol||violDef||violArr){ submitBtn.disabled=true; submitBtn.title='Corrija limites (defesas/poderes/charges) para salvar.'; } else { submitBtn.disabled=false; submitBtn.title=''; } } }
   ['luta','destreza','nivel_poder','forca'].forEach(id=>{ const el=document.getElementById('id_'+id); if(el){ el.addEventListener('input',atualizar); el.addEventListener('change',atualizar);} });
-  function bind(scope){ (scope||document).querySelectorAll('.poder-form [name$="-modo"], .poder-form [name$="-bonus_ataque"], .poder-form [name$="-nivel_efeito"], .poder-form [name$="-nome"], .poder-form [name$="-duracao"], .poder-form [name$="-tipo"], .poder-form [name$="-somar_forca_no_nivel"]').forEach(el=>{ el.addEventListener('input',atualizar); el.addEventListener('change',atualizar); }); }
+  function bind(scope){ (scope||document).querySelectorAll('.poder-form [name$="-modo"], .poder-form [name$="-bonus_ataque"], .poder-form [name$="-nivel_efeito"], .poder-form [name$="-nome"], .poder-form [name$="-duracao"], .poder-form [name$="-tipo"], .poder-form [name$="-somar_forca_no_nivel"], .poder-form [name$="-charges"]').forEach(el=>{ el.addEventListener('input',()=>{ atualizar(); updateChargesMaxEdit(); }); el.addEventListener('change',()=>{ atualizar(); updateChargesMaxEdit(); }); }); }
   bind(document);
   // Inicializa visibilidade do checkbox de Somar Força
   document.querySelectorAll('.poder-form').forEach(div=>toggleSomarForca(div));
+  updateChargesMaxEdit();
   const oldAdd=window.adicionarPoder; window.adicionarPoder=function(){ if(oldAdd) oldAdd(); setTimeout(()=>{ bind(document); atualizar(); },80); };
-  const oldRem=window.removerPoderLinha; window.removerPoderLinha=function(btn){ if(oldRem) oldRem(btn); setTimeout(atualizar,40); };
-  const oldRemUlt=window.removerPoder; window.removerPoder=function(){ if(oldRemUlt) oldRemUlt(); setTimeout(atualizar,40); };
-  const oldCustos=window.atualizarCustos; window.atualizarCustos=function(){ if(oldCustos) oldCustos(); atualizar(); };
+  const oldRem=window.removerPoderLinha; window.removerPoderLinha=function(btn){ if(oldRem) oldRem(btn); setTimeout(()=>{ atualizar(); updateChargesMaxEdit(); },40); };
+  const oldRemUlt=window.removerPoder; window.removerPoder=function(){ if(oldRemUlt) oldRemUlt(); setTimeout(()=>{ atualizar(); updateChargesMaxEdit(); },40); };
+  const oldCustos=window.atualizarCustos; window.atualizarCustos=function(){ if(oldCustos) oldCustos(); atualizar(); updateChargesMaxEdit(); };
   setTimeout(atualizar,60); atualizar();
 });
 </script>
