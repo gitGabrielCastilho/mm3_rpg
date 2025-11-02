@@ -19,6 +19,68 @@
           <span style="font-weight:bold;">Total: <span id="custo-total">0</span></span>
         </div>
       </div>
+      <div class="poder-item-outer" style="margin-top:1rem;">
+        <h3>Poderes de Itens (não contam para custo/limites)</h3>
+        <div id="empty-item-poder-form" style="display:none;">
+          <div class="poder-form poder-form-grid item-power" style="border:1px dashed #555; width:100%; position: relative;">
+            <div class="campo-poder">{{ formset.empty_form.nome.label_tag }}{{ formset.empty_form.nome }}</div>
+            <div class="campo-poder">{{ formset.empty_form.array.label_tag }}{{ formset.empty_form.array }}</div>
+            <div class="campo-poder">{{ formset.empty_form.tipo.label_tag }}{{ formset.empty_form.tipo }}</div>
+            <div class="campo-poder">{{ formset.empty_form.modo.label_tag }}{{ formset.empty_form.modo }}</div>
+            <div class="campo-poder somar-forca-wrap span-2">
+              <div class="somar-forca-left"><label for="{{ formset.empty_form.somar_forca_no_nivel.id_for_label }}">{{ formset.empty_form.somar_forca_no_nivel }} Somar Força ao Nível (melee)</label></div>
+              <div class="somar-forca-right"><span class="label-total-dano">Total Dano:</span> <span class="valor-dano-total">0</span></div>
+            </div>
+            <div class="campo-poder">{{ formset.empty_form.duracao.label_tag }}{{ formset.empty_form.duracao }}</div>
+            <div class="campo-poder">{{ formset.empty_form.casting_ability.label_tag }}{{ formset.empty_form.casting_ability }}</div>
+            <div class="campo-poder">{{ formset.empty_form.nivel_efeito.label_tag }}{{ formset.empty_form.nivel_efeito }}</div>
+            <div class="campo-poder">{{ formset.empty_form.charges.label_tag }}{{ formset.empty_form.charges }}</div>
+            <div class="campo-poder">{{ formset.empty_form.bonus_ataque.label_tag }}{{ formset.empty_form.bonus_ataque }}</div>
+            <div class="linha-ataque-info" style="grid-column:1/-1; font-size:0.7rem; display:flex; justify-content:space-between; align-items:center; margin-top:0.2rem; gap:1rem;">
+              <span class="hint-bonus-ataque">ⓘ Este poder é de Item.</span>
+              <span style="white-space:nowrap;">Total Ataque: <span class="valor-ataque-total">0</span></span>
+            </div>
+            <div class="campo-poder">{{ formset.empty_form.defesa_ativa.label_tag }}{{ formset.empty_form.defesa_ativa }}</div>
+            <div class="campo-poder">{{ formset.empty_form.defesa_passiva.label_tag }}{{ formset.empty_form.defesa_passiva }}</div>
+            <div class="campo-poder">{{ formset.empty_form.item_origem.label_tag }}{{ formset.empty_form.item_origem }}</div>
+            <input type="hidden" name="poder_set-__prefix__-de_item" value="on">
+            <div class="span-2" style="margin-top:0.4rem; text-align:right; display:flex; gap:0.7rem; justify-content:flex-end;">
+              <span style="display:none;">{{ formset.empty_form.DELETE }}</span>
+              <button type="button" class="btn btn-danger" onclick="removerPoderItemLinha(this)">Remover</button>
+            </div>
+          </div>
+        </div>
+        <div id="poderes-itens-list" style="display:flex; flex-direction:column; gap:1rem; align-items:center;">
+          {% for form in formset %}
+            {% if form.instance.de_item %}
+              <div class="poder-form poder-form-grid item-power" style="border:1px dashed #555; width:100%; position: relative;">
+                <div style="display:none;">{% for h in form.hidden_fields %}{{ h }}{% endfor %}{% if form.instance.pk %}<input type="hidden" name="{{ form.prefix }}-id" value="{{ form.instance.pk }}">{% endif %}{{ form.DELETE }}</div>
+                <div class="campo-poder">{{ form.nome.label_tag }}{{ form.nome }}</div>
+                <div class="campo-poder">{{ form.array.label_tag }}{{ form.array }}</div>
+                <div class="campo-poder">{{ form.tipo.label_tag }}{{ form.tipo }}</div>
+                <div class="campo-poder">{{ form.modo.label_tag }}{{ form.modo }}</div>
+                <div class="campo-poder somar-forca-wrap span-2"><div class="somar-forca-left"><label for="{{ form.somar_forca_no_nivel.id_for_label }}">{{ form.somar_forca_no_nivel }} Somar Força ao Nível (melee)</label></div><div class="somar-forca-right"><span class="label-total-dano">Total Dano:</span> <span class="valor-dano-total">0</span></div></div>
+                <div class="campo-poder">{{ form.duracao.label_tag }}{{ form.duracao }}</div>
+                <div class="campo-poder">{{ form.casting_ability.label_tag }}{{ form.casting_ability }}</div>
+                <div class="campo-poder">{{ form.nivel_efeito.label_tag }}{{ form.nivel_efeito }}</div>
+                <div class="campo-poder">{{ form.charges.label_tag }}{{ form.charges }}</div>
+                <div class="campo-poder">{{ form.bonus_ataque.label_tag }}{{ form.bonus_ataque }}</div>
+                <div class="linha-ataque-info" style="grid-column:1/-1; font-size:0.7rem; display:flex; justify-content:space-between; align-items:center; margin-top:0.2rem; gap:1rem;"><span class="hint-bonus-ataque">ⓘ Poder de Item</span><span>Total Ataque: <span class="valor-ataque-total">0</span></span></div>
+                <div class="campo-poder">{{ form.defesa_ativa.label_tag }}{{ form.defesa_ativa }}</div>
+                <div class="campo-poder">{{ form.defesa_passiva.label_tag }}{{ form.defesa_passiva }}</div>
+                <div class="campo-poder">{{ form.item_origem.label_tag }}{{ form.item_origem }}</div>
+                <input type="hidden" name="{{ form.prefix }}-de_item" value="on">
+                <div class="span-2" style="margin-top:0.4rem; text-align:right; display:flex; gap:0.7rem; justify-content:flex-end;">
+                  <button type="button" class="btn btn-danger" onclick="removerPoderItemLinha(this)">Remover</button>
+                </div>
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+        <div style="margin-top:0.8rem; display:flex; gap:1rem; justify-content:center;">
+          <button type="button" class="btn btn-danger" onclick="adicionarPoderItem()">Adicionar Poder de Item</button>
+        </div>
+      </div>
       <div class="linha-topo" style="display:flex; gap:2rem; flex-wrap:wrap; align-items:flex-start;">
         <div class="campo-nome" style="flex:1 1 200px; min-width:180px;">
           {{ form.nome.label_tag }} {{ form.nome }}
@@ -178,8 +240,7 @@
           </div>
           <div class="campo-poder">{{ formset.empty_form.defesa_ativa.label_tag }}{{ formset.empty_form.defesa_ativa }}</div>
           <div class="campo-poder">{{ formset.empty_form.defesa_passiva.label_tag }}{{ formset.empty_form.defesa_passiva }}</div>
-          <div class="campo-poder">{{ formset.empty_form.item_origem.label_tag }}{{ formset.empty_form.item_origem }}</div>
-          <div class="campo-poder linha-checkbox">{{ formset.empty_form.de_item }} <label for="{{ formset.empty_form.de_item.id_for_label }}">Poder de Item?</label></div>
+          {# Campo de origem de item removido do bloco principal #}
           <div class="campo-poder">{{ formset.empty_form.vantagem_origem.label_tag }}{{ formset.empty_form.vantagem_origem }}</div>
           <div class="campo-poder linha-checkbox">{{ formset.empty_form.de_vantagem }} <label for="{{ formset.empty_form.de_vantagem.id_for_label }}">Poder de Vantagem?</label></div>
           <div class="campo-poder span-2">
@@ -194,8 +255,9 @@
       <div class="poder-form-outer">
         <div id="poderes-formset">
           {{ formset.management_form }}
-          <div style="display: flex; flex-direction: column; gap: 1.5rem; align-items: center;">
+          <div id="poderes-main-list" style="display: flex; flex-direction: column; gap: 1.5rem; align-items: center;">
             {% for form in formset %}
+              {% if not form.instance.de_item %}
               <div class="poder-form poder-form-grid" style="border:1px solid #444; width:100%; position: relative;">
                 <div class="campo-poder">{{ form.nome.label_tag }}{{ form.nome }}</div>
                 <div class="campo-poder">{{ form.array.label_tag }}{{ form.array }}</div>
@@ -221,8 +283,7 @@
                 </div>
                 <div class="campo-poder">{{ form.defesa_ativa.label_tag }}{{ form.defesa_ativa }}</div>
                 <div class="campo-poder">{{ form.defesa_passiva.label_tag }}{{ form.defesa_passiva }}</div>
-                <div class="campo-poder">{{ form.item_origem.label_tag }}{{ form.item_origem }}</div>
-                <div class="campo-poder linha-checkbox">{{ form.de_item }} <label for="{{ form.de_item.id_for_label }}">Poder de Item?</label></div>
+                {# Origem de Item removida do bloco principal de poderes #}
                 <div class="campo-poder">{{ form.vantagem_origem.label_tag }}{{ form.vantagem_origem }}</div>
                 <div class="campo-poder linha-checkbox">{{ form.de_vantagem }} <label for="{{ form.de_vantagem.id_for_label }}">Poder de Vantagem?</label></div>
                 <!-- detalhe do custo por poder (preenchido via JS) -->
@@ -237,6 +298,7 @@
                 </div>
               {% endif %}
             </div>
+            {% endif %}
           {% endfor %}
           </div>
         </div>
@@ -320,7 +382,7 @@
             </thead>
             <tbody>
               {% for item in inventario_form.fields.itens.queryset %}
-                <tr>
+                <tr data-mods="{{ item.mods|default:'{}'|escapejs }}">
                   <td>
                     <input type="checkbox" name="itens" value="{{ item.id }}"
                       {% if item.id in itens_possuido_ids %}checked{% endif %}>
@@ -424,7 +486,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const gruposBonus = new Map(); // soma de bônus de ataque por array
   const individuais = []; // bases sem array
   let bonusSemArray = 0; // bônus de ataque somado dos poderes sem array
-    document.querySelectorAll('.poder-form').forEach(div=>{
+  document.querySelectorAll('#poderes-main-list .poder-form').forEach(div=>{
       const del = div.querySelector('input[type="checkbox"][name$="-DELETE"]');
       if(del && del.checked) return; // ignorar deletados
       if(div.style.display==='none') return;
@@ -493,7 +555,7 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
     // Campos de poder
-    document.querySelectorAll('.poder-form select, .poder-form input').forEach(el=>{
+  document.querySelectorAll('#poderes-main-list .poder-form select, #poderes-main-list .poder-form input').forEach(el=>{
       el.addEventListener('input', atualizarCustos);
       el.addEventListener('change', atualizarCustos);
     });
@@ -542,7 +604,7 @@ document.addEventListener('DOMContentLoaded', function() {
   function norm(s){ return (s||'').toString().trim().toLowerCase(); }
   function maxBonusFor(nome, mk, dur){
     let m=0;
-    document.querySelectorAll('.poder-form').forEach(div=>{
+  document.querySelectorAll('#poderes-main-list .poder-form').forEach(div=>{
       if(div.style.display==='none') return;
       const del=div.querySelector('input[type="checkbox"][name$="-DELETE"]'); if(del&&del.checked) return;
       const nEl=div.querySelector('[name$="-nome"]'); const mEl=div.querySelector('[name$="-modo"]'); const dEl=div.querySelector('[name$="-duracao"]'); const bEl=div.querySelector('[name$="-bonus_ataque"]');
@@ -559,7 +621,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const maxCharges = Math.floor(np/2);
     let viol=false;
     const arrCharges = new Map();
-    document.querySelectorAll('.poder-form').forEach(div=>{
+  document.querySelectorAll('#poderes-main-list .poder-form').forEach(div=>{
       if(div.style.display==='none') return;
       const modoEl = div.querySelector('[name$="-modo"]');
       const bonusEl = div.querySelector('[name$="-bonus_ataque"]');
@@ -611,8 +673,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   window.recalcAtaquesSimples = recalcAtaques;
-  document.addEventListener('input', ev=>{ if(ev.target.closest('.poder-form') || ['id_luta','id_destreza','id_nivel_poder','id_forca'].includes(ev.target.id)) { try{ window.toggleSomarForcaPoder(ev.target.closest('.poder-form')); }catch(e){} recalcAtaques(); } });
-  document.addEventListener('change', ev=>{ if(ev.target.closest('.poder-form') || ['id_luta','id_destreza','id_nivel_poder','id_forca'].includes(ev.target.id)) { try{ window.toggleSomarForcaPoder(ev.target.closest('.poder-form')); }catch(e){} recalcAtaques(); } });
+  document.addEventListener('input', ev=>{ if(ev.target.closest('#poderes-main-list .poder-form') || ['id_luta','id_destreza','id_nivel_poder','id_forca'].includes(ev.target.id)) { try{ window.toggleSomarForcaPoder(ev.target.closest('.poder-form')); }catch(e){} recalcAtaques(); } });
+  document.addEventListener('change', ev=>{ if(ev.target.closest('#poderes-main-list .poder-form') || ['id_luta','id_destreza','id_nivel_poder','id_forca'].includes(ev.target.id)) { try{ window.toggleSomarForcaPoder(ev.target.closest('.poder-form')); }catch(e){} recalcAtaques(); } });
   const oldAdd = window.adicionarPoder; window.adicionarPoder = function(){ if(oldAdd) oldAdd(); setTimeout(recalcAtaques, 80); };
   const oldRem = window.removerPoderLinha; window.removerPoderLinha = function(btn){ if(oldRem) oldRem(btn); setTimeout(recalcAtaques, 40); };
   const oldRemUlt = window.removerPoder; window.removerPoder = function(){ if(oldRemUlt) oldRemUlt(); setTimeout(recalcAtaques, 40); };
@@ -747,7 +809,7 @@ function removerPoderLinha(botao) {
 function removerPoder() {
   const formsetDiv = document.getElementById('poderes-formset');
   const totalFormsInput = document.getElementById('id_poder_set-TOTAL_FORMS');
-  const poderForms = formsetDiv.querySelectorAll('.poder-form');
+  const poderForms = formsetDiv.querySelectorAll('#poderes-main-list .poder-form, .poder-item-outer .poder-form');
   const formCount = parseInt(totalFormsInput.value);
 
   if (formCount > 0) {
@@ -867,7 +929,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Exporta globalmente para uso após inserções dinâmicas
   window.atualizarCamposOrigem = atualizarCamposOrigem;
 
-  document.querySelectorAll('.poder-form').forEach(function(poderForm) {
+  document.querySelectorAll('#poderes-main-list .poder-form').forEach(function(poderForm) {
     try { atualizarCamposOrigem(poderForm); } catch(e){}
     const deItem = poderForm.querySelector('input[type="checkbox"][name$="de_item"]');
     const deVantagem = poderForm.querySelector('input[type="checkbox"][name$="de_vantagem"]');
@@ -946,7 +1008,7 @@ document.addEventListener('DOMContentLoaded', function(){
     det.textContent = texto;
   }
   function updateBadges(){
-    const forms = Array.from(document.querySelectorAll('.poder-form'));
+  const forms = Array.from(document.querySelectorAll('#poderes-main-list .poder-form'));
     const grupos = new Map();
     const infos = [];
     forms.forEach(div => {
@@ -1000,7 +1062,7 @@ document.addEventListener('DOMContentLoaded', function(){
   }
   // Disponibiliza globalmente para o unificador final
   window.updateBadges = updateBadges;
-  function bind(scope){ (scope||document).querySelectorAll('.poder-form select, .poder-form input').forEach(el => { el.addEventListener('input', updateBadges); el.addEventListener('change', updateBadges); }); }
+  function bind(scope){ (scope||document).querySelectorAll('#poderes-main-list .poder-form select, #poderes-main-list .poder-form input').forEach(el => { el.addEventListener('input', updateBadges); el.addEventListener('change', updateBadges); }); }
   const oldAdd = window.adicionarPoder; window.adicionarPoder = function(){ oldAdd(); setTimeout(()=>{ bind(document); updateBadges(); }, 50); };
   const oldRemLinha = window.removerPoderLinha; window.removerPoderLinha = function(btn){ oldRemLinha(btn); setTimeout(updateBadges, 10); };
   const oldRem = window.removerPoder; window.removerPoder = function(){ oldRem(); setTimeout(updateBadges, 10); };
@@ -1035,8 +1097,8 @@ document.addEventListener('DOMContentLoaded', function(){
     if(typeof window.updateBadges === 'function'){ try{ window.updateBadges(); }catch(e){} }
     if(typeof window.atualizarAtaques === 'function'){ try{ window.atualizarAtaques(); }catch(e){} }
   }
-  document.addEventListener('input', function(ev){ if(ev.target && ev.target.closest('.poder-form')) recalc(); });
-  document.addEventListener('change', function(ev){ if(ev.target && ev.target.closest('.poder-form')) recalc(); });
+  document.addEventListener('input', function(ev){ if(ev.target && ev.target.closest('#poderes-main-list .poder-form')) recalc(); });
+  document.addEventListener('change', function(ev){ if(ev.target && ev.target.closest('#poderes-main-list .poder-form')) recalc(); });
 })();
 </script>
 <script>
@@ -1047,7 +1109,7 @@ document.addEventListener('DOMContentLoaded', function(){
     const npEl = document.getElementById('id_nivel_poder');
     const np = npEl ? parseInt((npEl.value||'').toString(), 10) : 0;
     const maxCharges = Math.floor(Math.max(0, isNaN(np)?0:np) / 2);
-    document.querySelectorAll('.poder-form [name$="-charges"]').forEach(inp=>{
+  document.querySelectorAll('#poderes-main-list .poder-form [name$="-charges"]').forEach(inp=>{
       if(!inp) return;
       inp.setAttribute('min','1');
       inp.setAttribute('step','1');
@@ -1113,7 +1175,7 @@ document.addEventListener('DOMContentLoaded', function(){
     let algumaViol=false;
     // Verificação global de: no máximo 1 poder com charges>0 por Array
     const arrCharges = new Map();
-    document.querySelectorAll('.poder-form').forEach(div=>{
+  document.querySelectorAll('#poderes-main-list .poder-form').forEach(div=>{
       const del=div.querySelector('input[type="checkbox"][name$="-DELETE"]');
       if(del && del.checked) return;
       const r=processarLinha(div); if(r.viol) algumaViol=true;
@@ -1141,7 +1203,7 @@ document.addEventListener('DOMContentLoaded', function(){
   window.atualizarCustos = function(){ if(typeof oldAtualizar==='function') oldAtualizar(); atualizarAtaques(); };
   // Listeners diretos nos campos relevantes de cada poder
   function bindAtaqueListeners(scope){
-    (scope||document).querySelectorAll('.poder-form').forEach(div=>{
+  (scope||document).querySelectorAll('#poderes-main-list .poder-form').forEach(div=>{
       div.querySelectorAll('[name$="-modo"],[name$="-bonus_ataque"],[name$="-nivel_efeito"]').forEach(el=>{
         el.addEventListener('input', atualizarAtaques);
         el.addEventListener('change', atualizarAtaques);

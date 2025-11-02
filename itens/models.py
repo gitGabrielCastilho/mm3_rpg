@@ -1,5 +1,19 @@
 from django.db import models
 
+# Valores base sugeridos por raridade (pode ser ajustado conforme balanceamento)
+PRECO_POR_RARIDADE = {
+    'common': 50,
+    'uncommon': 500,
+    'rare': 7500,
+    'very rare': 48000,
+    'legendary': 165000,
+    'artifact': 3300000,
+    'unknown': 0,
+    'unknown (magic)': 0,
+    'none': 0,
+    'varies': 0,
+}
+
 RARIDADE_CHOICES = [
     ('artifact', 'Artifact'),
     ('common', 'Common'),
@@ -57,8 +71,22 @@ class Item(models.Model):
     raridade = models.CharField(max_length=20, choices=RARIDADE_CHOICES, blank=True)
     descricao = models.TextField()
     preco = models.PositiveIntegerField(default=0)
+    # Modificadores opcionais aplicados quando o item é equipado
+    # Ex.: {"caracteristicas": {"forca": 2}, "defesas": {"resistencia": 1}, "pericias": {"atletismo": 3}}
+    mods = models.JSONField(default=dict, blank=True)
     sala = models.ForeignKey('salas.Sala', null=True, blank=True, on_delete=models.CASCADE, related_name='itens')
     class Meta:
         unique_together = ('nome', 'sala')
     def __str__(self):
         return f"{self.nome} [{self.tipo} | {self.raridade}]"
+
+    def save(self, *args, **kwargs):
+        # Se o preço não foi definido manualmente, calcula automaticamente pela raridade
+        try:
+            rar = (self.raridade or '').lower()
+            if not self.preco or int(self.preco) == 0:
+                self.preco = PRECO_POR_RARIDADE.get(rar, 0)
+        except Exception:
+            # fallback silencioso
+            pass
+        super().save(*args, **kwargs)
