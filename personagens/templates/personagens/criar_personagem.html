@@ -386,6 +386,24 @@
                   <td>
                     <input type="checkbox" name="itens" value="{{ item.id }}"
                       {% if item.id in itens_possuido_ids %}checked{% endif %}>
+                    {# Definições de poderes do item (ocultas) para sincronização automática) #}
+                    <span class="item-powers-defs" style="display:none;">
+                      {% for poder in item.poderes.all %}
+                        <span class="item-power-def"
+                              data-nome="{{ poder.nome|escape }}"
+                              data-tipo="{{ poder.tipo }}"
+                              data-modo="{{ poder.modo }}"
+                              data-duracao="{{ poder.duracao }}"
+                              data-nivel_efeito="{{ poder.nivel_efeito }}"
+                              data-bonus_ataque="{{ poder.bonus_ataque }}"
+                              data-somar_forca_no_nivel="{% if poder.somar_forca_no_nivel %}1{% else %}0{% endif %}"
+                              data-defesa_ativa="{{ poder.defesa_ativa }}"
+                              data-defesa_passiva="{{ poder.defesa_passiva }}"
+                              data-casting_ability="{{ poder.casting_ability }}"
+                              data-charges="{{ poder.charges|default:'' }}"
+                              data-array="{{ poder.array|default:'' }}"></span>
+                      {% endfor %}
+                    </span>
                   </td>
                   <td class="nome-item">{{ item.nome }}</td>
                   <td class="tipo-item">{{ item.tipo }}</td>
@@ -590,6 +608,85 @@ document.addEventListener('DOMContentLoaded', function() {
   atualizarCustos();
 });
 </script>
+<script>
+// Sincroniza automaticamente Poderes de Itens com os itens marcados no inventário (criação)
+document.addEventListener('DOMContentLoaded', function(){
+  function defsFromRow(tr){
+    return Array.from(tr.querySelectorAll('.item-power-def')).map(el=>({
+      nome: el.getAttribute('data-nome')||'',
+      tipo: el.getAttribute('data-tipo')||'',
+      modo: el.getAttribute('data-modo')||'',
+      duracao: el.getAttribute('data-duracao')||'',
+      nivel_efeito: el.getAttribute('data-nivel_efeito')||'',
+      bonus_ataque: el.getAttribute('data-bonus_ataque')||'',
+      somar_forca_no_nivel: el.getAttribute('data-somar_forca_no_nivel')==='1',
+      defesa_ativa: el.getAttribute('data-defesa_ativa')||'',
+      defesa_passiva: el.getAttribute('data-defesa_passiva')||'',
+      casting_ability: el.getAttribute('data-casting_ability')||'',
+      charges: el.getAttribute('data-charges')||'',
+      array: el.getAttribute('data-array')||''
+    }));
+  }
+  function findItemPowerFormBy(itemId, nome){
+    const list = document.getElementById('poderes-itens-list');
+    if(!list) return null;
+    const forms = list.querySelectorAll('.poder-form');
+    for(const div of forms){
+      const selItem = div.querySelector('[name$="-item_origem"]');
+      const nomeEl = div.querySelector('[name$="-nome"]');
+      if(selItem && nomeEl && String(selItem.value)==String(itemId) && (nomeEl.value||'')===nome){
+        return div;
+      }
+    }
+    return null;
+  }
+  function setSelectValue(sel, val){ if(!sel) return; const v=String(val||''); for(let i=0;i<sel.options.length;i++){ if(String(sel.options[i].value)===v){ sel.selectedIndex=i; return; } } }
+  function addItemPower(def, itemId){
+    if(typeof window.adicionarPoderItem !== 'function') return;
+    const list = document.getElementById('poderes-itens-list');
+    window.adicionarPoderItem();
+    const div = list ? list.querySelectorAll('.poder-form')[list.querySelectorAll('.poder-form').length-1] : null;
+    if(!div) return;
+    const nomeEl = div.querySelector('[name$="-nome"]'); if(nomeEl) nomeEl.value = def.nome||'';
+    setSelectValue(div.querySelector('[name$="-tipo"]'), def.tipo);
+    setSelectValue(div.querySelector('[name$="-modo"]'), def.modo);
+    setSelectValue(div.querySelector('[name$="-duracao"]'), def.duracao);
+    setSelectValue(div.querySelector('[name$="-casting_ability"]'), def.casting_ability);
+    setSelectValue(div.querySelector('[name$="-defesa_ativa"]'), def.defesa_ativa);
+    setSelectValue(div.querySelector('[name$="-defesa_passiva"]'), def.defesa_passiva);
+    const nEl = div.querySelector('[name$="-nivel_efeito"]'); if(nEl) nEl.value = def.nivel_efeito;
+    const bEl = div.querySelector('[name$="-bonus_ataque"]'); if(bEl) bEl.value = def.bonus_ataque;
+    const chEl = div.querySelector('[name$="-charges"]'); if(chEl) chEl.value = def.charges;
+    const arrEl = div.querySelector('[name$="-array"]'); if(arrEl) arrEl.value = def.array||'';
+    const somaEl = div.querySelector('[name$="-somar_forca_no_nivel"]'); if(somaEl) somaEl.checked = !!def.somar_forca_no_nivel;
+    const itemSel = div.querySelector('[name$="-item_origem"]'); if(itemSel) setSelectValue(itemSel, itemId);
+  }
+  function ensureForRow(tr){
+    const cb = tr.querySelector('input[type="checkbox"][name="itens"]'); if(!cb) return;
+    const itemId = cb.value;
+    const defs = defsFromRow(tr);
+    if(cb.checked){
+      defs.forEach(def=>{ if(!findItemPowerFormBy(itemId, def.nome)) addItemPower(def, itemId); });
+    } else {
+      const list = document.getElementById('poderes-itens-list'); if(!list) return;
+      list.querySelectorAll('.poder-form').forEach(div=>{
+        const selItem = div.querySelector('[name$="-item_origem"]');
+        if(selItem && String(selItem.value)===String(itemId)){
+          if(typeof window.removerPoderItemLinha==='function') window.removerPoderItemLinha(div.querySelector('button.btn.btn-danger')||div); else div.remove();
+        }
+      });
+    }
+  }
+  function syncAll(){ document.querySelectorAll('#tabela-itens tbody tr').forEach(ensureForRow); }
+  document.getElementById('tabela-itens')?.addEventListener('change', function(ev){
+    if(ev.target && ev.target.matches('input[type="checkbox"][name="itens"]')){
+      const tr = ev.target.closest('tr'); if(tr) ensureForRow(tr);
+      if(typeof window.atualizarCustos==='function') try{ window.atualizarCustos(); }catch(e){}
+    }
+  });
+  setTimeout(syncAll, 40);
+});
+</script>
 <!-- Cálculo de Ataque Total com Bônus compartilhado entre poderes ligados (nome+modo+duração) -->
 <script>
 (function(){
@@ -682,7 +779,7 @@ document.addEventListener('DOMContentLoaded', function() {
 })();
 </script>
 <script>
-// ---- Totais de Defesas (valor + atributo) e verificação de limites ----
+// ---- Totais de Defesas (valor + atributo + bônus de Itens) e verificação de limites ----
 document.addEventListener('DOMContentLoaded', function(){
   const assoc = {
     aparar: 'luta',
@@ -691,27 +788,41 @@ document.addEventListener('DOMContentLoaded', function(){
     vontade: 'prontidao',
     fortitude: 'vigor'
   };
-  const nivelPoderEl = document.getElementById('id_nivel_poder');
   function num(id){ const el=document.getElementById('id_'+id); if(!el) return 0; const v=parseFloat((el.value||'').toString().replace(',','.')); return isNaN(v)?0:v; }
-  function updateTotais(){
-    Object.keys(assoc).forEach(def => {
-      const base = num(def);
-      const carac = num(assoc[def]);
-      const total = base + carac;
-      const span = document.getElementById('total_'+def);
-      if(span) span.textContent = total;
+  function sumItemMods(){
+    const out = { caracteristicas:{}, defesas:{}, pericias:{} };
+    document.querySelectorAll('#tabela-itens tbody tr').forEach(tr=>{
+      const cb = tr.querySelector('input[type="checkbox"][name="itens"]');
+      if(!cb || !cb.checked) return;
+      let mods = {};
+      try { mods = JSON.parse(tr.getAttribute('data-mods') || '{}'); } catch(e){ mods = {}; }
+      ['caracteristicas','defesas','pericias'].forEach(sec=>{
+        const m = mods && mods[sec]; if(!m) return;
+        Object.keys(m).forEach(k=>{ const v=parseFloat(m[k]); if(!isNaN(v)){ out[sec][k] = (out[sec][k]||0) + v; } });
+      });
     });
-    verificarLimites();
+    return out;
+  }
+  function updateTotais(){
+    const mods = sumItemMods();
+    Object.keys(assoc).forEach(def => {
+      const extra = (mods.defesas && typeof mods.defesas[def] !== 'undefined') ? parseFloat(mods.defesas[def])||0 : 0;
+      const total = num(def) + num(assoc[def]) + extra;
+      const span = document.getElementById('total_'+def);
+      if(span){ span.textContent = total; span.title = extra ? ('Inclui +'+extra+' de itens') : ''; }
+    });
+    verificarLimites(mods);
   }
   function marcar(id, ok){ const el=document.getElementById(id); if(!el) return; if(ok){ el.classList.remove('violacao-limite'); } else { el.classList.add('violacao-limite'); } }
-  function verificarLimites(){
+  function verificarLimites(mods){
+    mods = mods || {defesas:{}};
     const np = num('nivel_poder');
     const limite = 2 * np;
-    const esquivarTot = num('esquivar') + num('agilidade');
-    const apararTot = num('aparar') + num('luta');
-    const resistenciaTot = num('resistencia') + num('vigor');
-    const fortitudeTot = num('fortitude') + num('vigor');
-    const vontadeTot = num('vontade') + num('prontidao');
+    const esquivarTot = num('esquivar') + num('agilidade') + (parseFloat(mods.defesas?.esquivar)||0);
+    const apararTot = num('aparar') + num('luta') + (parseFloat(mods.defesas?.aparar)||0);
+    const resistenciaTot = num('resistencia') + num('vigor') + (parseFloat(mods.defesas?.resistencia)||0);
+    const fortitudeTot = num('fortitude') + num('vigor') + (parseFloat(mods.defesas?.fortitude)||0);
+    const vontadeTot = num('vontade') + num('prontidao') + (parseFloat(mods.defesas?.vontade)||0);
     marcar('total_esquivar', (esquivarTot + resistenciaTot) <= limite);
     marcar('total_resistencia', (esquivarTot + resistenciaTot) <= limite && (apararTot + resistenciaTot) <= limite);
     marcar('total_aparar', (apararTot + resistenciaTot) <= limite);
@@ -723,7 +834,10 @@ document.addEventListener('DOMContentLoaded', function(){
     if(submitBtn){ submitBtn.disabled = !!violacao; submitBtn.title = violacao? 'Corrija limites (defesas/poderes) para salvar.' : ''; }
   }
   const campos = ['nivel_poder','aparar','esquivar','resistencia','vontade','fortitude','luta','agilidade','vigor','prontidao'];
-  campos.forEach(c=>{ const el=document.getElementById('id_'+c); if(el){ el.addEventListener('input', ()=>{ updateTotais(); }); el.addEventListener('change', updateTotais); }});
+  campos.forEach(c=>{ const el=document.getElementById('id_'+c); if(el){ el.addEventListener('input', updateTotais); el.addEventListener('change', updateTotais); }});
+  // Recalcular também quando itens são marcados/desmarcados
+  document.querySelectorAll('#tabela-itens tbody input[type="checkbox"][name="itens"]').forEach(cb=>{ cb.addEventListener('change', updateTotais); });
+  document.getElementById('tabela-itens')?.addEventListener('change', function(ev){ if(ev.target && ev.target.matches('input[type="checkbox"][name="itens"]')) updateTotais(); });
   // Recalcular também quando custos atualizam
   const oldAtualizar = window.atualizarCustos;
   window.atualizarCustos = function(){ if(typeof oldAtualizar==='function') oldAtualizar(); updateTotais(); };
