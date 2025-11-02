@@ -170,9 +170,10 @@
           <div class="campo-poder">{{ formset.empty_form.duracao.label_tag }}{{ formset.empty_form.duracao }}</div>
           <div class="campo-poder">{{ formset.empty_form.casting_ability.label_tag }}{{ formset.empty_form.casting_ability }}</div>
           <div class="campo-poder">{{ formset.empty_form.nivel_efeito.label_tag }}{{ formset.empty_form.nivel_efeito }}</div>
+          <div class="campo-poder">{{ formset.empty_form.charges.label_tag }}{{ formset.empty_form.charges }}</div>
           <div class="campo-poder">{{ formset.empty_form.bonus_ataque.label_tag }}{{ formset.empty_form.bonus_ataque }}</div>
           <div class="linha-ataque-info" style="grid-column:1/-1; font-size:0.7rem; display:flex; justify-content:space-between; align-items:center; margin-top:0.2rem; gap:1rem;">
-            <span class="hint-bonus-ataque" style="text-align:left;" title="Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limite: (Ataque Total + Nível de Efeito) ≤ 2×NP | Custo: cada ponto em Bônus de Ataque soma +0,5 pp (aditivo)">ⓘ Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limite: (Ataque Total + Nível de Efeito) ≤ 2×NP | Custo: Bônus Ataque +0,5 pp por ponto</span>
+            <span class="hint-bonus-ataque" style="text-align:left;" title="Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limites: Base (Atk+NE) ≤ 2×NP • Com Charges (>0): (Atk+NE) ≤ (2×NP + ⌊NP/2⌋ − (Charges−1)) | Custo: cada ponto em Bônus de Ataque soma +0,5 pp (aditivo)">ⓘ Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limites: Base (Atk+NE) ≤ 2×NP • Com Charges: (Atk+NE) ≤ (2×NP + ⌊NP/2⌋ − (Charges−1)) | Custo: Bônus Ataque +0,5 pp por ponto</span>
             <span style="white-space:nowrap;">Total Ataque: <span class="valor-ataque-total">0</span></span>
           </div>
           <div class="campo-poder">{{ formset.empty_form.defesa_ativa.label_tag }}{{ formset.empty_form.defesa_ativa }}</div>
@@ -212,9 +213,10 @@
                 <div class="campo-poder">{{ form.duracao.label_tag }}{{ form.duracao }}</div>
                 <div class="campo-poder">{{ form.casting_ability.label_tag }}{{ form.casting_ability }}</div>
                 <div class="campo-poder">{{ form.nivel_efeito.label_tag }}{{ form.nivel_efeito }}</div>
+                <div class="campo-poder">{{ form.charges.label_tag }}{{ form.charges }}</div>
                 <div class="campo-poder">{{ form.bonus_ataque.label_tag }}{{ form.bonus_ataque }}</div>
                 <div class="linha-ataque-info" style="grid-column:1/-1; font-size:0.7rem; display:flex; justify-content:space-between; align-items:center; margin-top:0.2rem; gap:1rem;">
-                  <span class="hint-bonus-ataque" style="text-align:left;" title="Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limite: (Ataque Total + Nível de Efeito) ≤ 2×NP | Custo: cada ponto em Bônus de Ataque soma +0,5 pp (aditivo)">ⓘ Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limite: (Ataque Total + Nível de Efeito) ≤ 2×NP | Custo: Bônus Ataque +0,5 pp por ponto</span>
+                  <span class="hint-bonus-ataque" style="text-align:left;" title="Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limites: Base (Atk+NE) ≤ 2×NP • Com Charges (>0): (Atk+NE) ≤ (2×NP + ⌊NP/2⌋ − (Charges−1)) | Custo: cada ponto em Bônus de Ataque soma +0,5 pp (aditivo)">ⓘ Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limites: Base (Atk+NE) ≤ 2×NP • Com Charges: (Atk+NE) ≤ (2×NP + ⌊NP/2⌋ − (Charges−1)) | Custo: Bônus Ataque +0,5 pp por ponto</span>
                   <span style="white-space:nowrap;">Total Ataque: <span class="valor-ataque-total">0</span></span>
                 </div>
                 <div class="campo-poder">{{ form.defesa_ativa.label_tag }}{{ form.defesa_ativa }}</div>
@@ -553,8 +555,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const luta = n(document.getElementById('id_luta'));
     const des = n(document.getElementById('id_destreza'));
     const np  = Math.abs(n(document.getElementById('id_nivel_poder')));
-    const limite = 2 * np;
+    const baseLimite = 2 * np;
+    const maxCharges = Math.floor(np/2);
     let viol=false;
+    const arrCharges = new Map();
     document.querySelectorAll('.poder-form').forEach(div=>{
       if(div.style.display==='none') return;
       const modoEl = div.querySelector('[name$="-modo"]');
@@ -562,6 +566,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const nivelEfEl = div.querySelector('[name$="-nivel_efeito"]');
       const nomeEl = div.querySelector('[name$="-nome"]');
       const durEl = div.querySelector('[name$="-duracao"]');
+      const chargesEl = div.querySelector('[name$="-charges"]');
   const totalSpan = div.querySelector('.linha-ataque-info .valor-ataque-total');
   const danoSpan = div.querySelector('.somar-forca-wrap .valor-dano-total');
       if(!modoEl || !bonusEl || !nivelEfEl || !totalSpan || !nomeEl || !durEl) return;
@@ -585,12 +590,23 @@ document.addEventListener('DOMContentLoaded', function() {
   if(somaForcaEl){ try { nivelEf = window.nivelEfeitoEfetivoPorDiv(div); } catch(e){ nivelEf = Math.abs(n(nivelEfEl)); } }
   else { nivelEf = Math.abs(n(nivelEfEl)); }
   const bonusUsado = useBonus; // já é o maior bônus compartilhado se aplicável
-  if((bonusUsado + nivelEf) > limite){ totalSpan.classList.add('violacao-ataque'); viol=true; } else { totalSpan.classList.remove('violacao-ataque'); }
+  // Charges ajustam o limite
+  let charges = 0; if(chargesEl){ const cv = parseInt((chargesEl.value||'').toString(), 10); charges = isNaN(cv)?0:Math.max(0, cv); }
+  // Contagem por array para validar no fim
+  const arrName = (div.querySelector('[name$="-array"]')?.value || '').trim().toLowerCase();
+  if (arrName && charges > 0){ arrCharges.set(arrName, (arrCharges.get(arrName)||0) + 1); }
+  const cap = charges > 0 ? (baseLimite + maxCharges - (charges - 1)) : baseLimite;
+  if((bonusUsado + nivelEf) > cap){ totalSpan.classList.add('violacao-ataque'); viol=true; } else { totalSpan.classList.remove('violacao-ataque'); }
+  // Hard cap de charges por poder
+  if (charges > maxCharges){ totalSpan.classList.add('violacao-ataque'); viol = true; }
     });
+    // Regra: no máximo 1 poder com charges>0 por Array
+    let violChargesArr = false;
+    arrCharges.forEach((cnt) => { if (cnt > 1) violChargesArr = true; });
     const submitBtn = document.querySelector('form input[type="submit"]');
     if(submitBtn){
       const violDef = !!document.querySelector('.violacao-limite');
-      if(viol || violDef){ submitBtn.disabled = true; submitBtn.title='Corrija limites (defesas/poderes) para salvar.'; }
+      if(viol || violDef || violChargesArr){ submitBtn.disabled = true; submitBtn.title='Corrija limites (defesas/poderes/charges) para salvar.'; }
       else { submitBtn.disabled = false; if(!document.querySelector('.violacao-limite')) submitBtn.title=''; }
     }
   }
@@ -1038,6 +1054,7 @@ document.addEventListener('DOMContentLoaded', function(){
     const modo = div.querySelector('[name$="-modo"]');
     const bonus = div.querySelector('[name$="-bonus_ataque"]');
     const nivelEf = div.querySelector('[name$="-nivel_efeito"]');
+    const chargesEl = div.querySelector('[name$="-charges"]');
     const totalSpan = div.querySelector('.valor-ataque-total');
     if(!modo || !bonus || !nivelEf || !totalSpan) return {viol:false};
     // Detecta modo (valor ou texto) para maior robustez
@@ -1057,27 +1074,37 @@ document.addEventListener('DOMContentLoaded', function(){
     const bonusVal = numFrom(bonus);
     const ataqueTotal = baseAttr + bonusVal;
     totalSpan.textContent = ataqueTotal;
-    const nivelEfeito = Math.abs(numFrom(nivelEf));
+    let nivelEfeito = Math.abs(numFrom(nivelEf));
     const np = Math.abs(numFrom(npEl));
-    const limite = 2 * np;
-    const viol = (ataqueTotal + nivelEfeito) > limite;
+    const baseLimite = 2 * np;
+    const maxCharges = Math.floor(np/2);
+    let charges = 0; if (chargesEl){ const cv = parseInt((chargesEl.value||'').toString(), 10); charges = isNaN(cv)?0:Math.max(0, cv); }
+    const cap = charges > 0 ? (baseLimite + maxCharges - (charges - 1)) : baseLimite;
+    const viol = (ataqueTotal + nivelEfeito) > cap || (charges > maxCharges);
     totalSpan.classList.toggle('violacao-ataque', viol);
     return {viol};
   }
   function atualizarAtaques(){
     let algumaViol=false;
+    // Verificação global de: no máximo 1 poder com charges>0 por Array
+    const arrCharges = new Map();
     document.querySelectorAll('.poder-form').forEach(div=>{
       const del=div.querySelector('input[type="checkbox"][name$="-DELETE"]');
       if(del && del.checked) return;
       const r=processarLinha(div); if(r.viol) algumaViol=true;
+      const arrName = (div.querySelector('[name$="-array"]')?.value || '').trim().toLowerCase();
+      const chargesEl = div.querySelector('[name$="-charges"]');
+      let charges = 0; if (chargesEl){ const cv = parseInt((chargesEl.value||'').toString(), 10); charges = isNaN(cv)?0:Math.max(0, cv); }
+      if (arrName && charges > 0){ arrCharges.set(arrName, (arrCharges.get(arrName)||0) + 1); }
     });
+    let violChargesArr = false; arrCharges.forEach(cnt => { if (cnt > 1) violChargesArr = true; });
     const submitBtn = document.querySelector('form input[type="submit"]');
     if(submitBtn){
       const temViolDef = !!document.querySelector('.violacao-limite');
-      const temViolAtk = algumaViol;
+      const temViolAtk = algumaViol || violChargesArr;
       if(temViolDef || temViolAtk){
         submitBtn.disabled = true;
-        submitBtn.title = 'Corrija limites (defesas/poderes) para salvar.';
+        submitBtn.title = 'Corrija limites (defesas/poderes/charges) para salvar.';
       } else {
         submitBtn.disabled = false; submitBtn.title='';
       }

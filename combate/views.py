@@ -1426,9 +1426,15 @@ def realizar_ataque(request, combate_id):
                     anteriores.update(ativo=False)
                     resultados.append(f"[Concentração] {atacante.nome} reutilizou {poder_atual.nome}: instância anterior encerrada.")
 
+            # Exibir charges (se houver) no cabeçalho do chat
+            try:
+                charges_val = int(getattr(poder_atual, 'charges', 0) or 0)
+            except Exception:
+                charges_val = 0
+            charges_piece = (f" — Charges: {charges_val}" if charges_val > 0 else "")
             cabecalho = (
-                f"{atacante.nome} usou {poder_atual.nome} — Duração: {duracao_label}" if idx == 0
-                else f"[Encadeado] {atacante.nome} aplica {poder_atual.nome}"
+                f"{atacante.nome} usou {poder_atual.nome} — Duração: {duracao_label}{charges_piece}" if idx == 0
+                else f"[Encadeado] {atacante.nome} aplica {poder_atual.nome}{charges_piece}"
             )
             resultados.append(cabecalho)
 

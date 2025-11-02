@@ -192,9 +192,10 @@
           <div class="campo-poder">{{ formset.empty_form.duracao.label_tag }}{{ formset.empty_form.duracao }}</div>
           <div class="campo-poder">{{ formset.empty_form.casting_ability.label_tag }}{{ formset.empty_form.casting_ability }}</div>
           <div class="campo-poder">{{ formset.empty_form.nivel_efeito.label_tag }}{{ formset.empty_form.nivel_efeito }}</div>
+          <div class="campo-poder">{{ formset.empty_form.charges.label_tag }}{{ formset.empty_form.charges }}</div>
           <div class="campo-poder">{{ formset.empty_form.bonus_ataque.label_tag }}{{ formset.empty_form.bonus_ataque }}</div>
           <div class="linha-ataque-info" style="grid-column:1/-1; font-size:0.7rem; display:flex; justify-content:space-between; align-items:center; margin-top:0.2rem; gap:1rem;">
-            <span class="hint-bonus-ataque" style="text-align:left;" title="Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limite: (Ataque Total + Nível de Efeito) ≤ 2×NP">ⓘ Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limite: (Ataque Total + Nível de Efeito) ≤ 2×NP</span>
+            <span class="hint-bonus-ataque" style="text-align:left;" title="Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limites: Base (Atk+NE) ≤ 2×NP • Com Charges (>0): (Atk+NE) ≤ (2×NP + ⌊NP/2⌋ − (Charges−1))">ⓘ Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limites: Base (Atk+NE) ≤ 2×NP • Com Charges: (Atk+NE) ≤ (2×NP + ⌊NP/2⌋ − (Charges−1))</span>
             <span style="white-space:nowrap;">Total Ataque: <span class="valor-ataque-total">0</span></span>
           </div>
           <div class="campo-poder">{{ formset.empty_form.defesa_ativa.label_tag }}{{ formset.empty_form.defesa_ativa }}</div>
@@ -240,9 +241,10 @@
                 <div class="campo-poder">{{ form.duracao.label_tag }}{{ form.duracao }}</div>
                 <div class="campo-poder">{{ form.casting_ability.label_tag }}{{ form.casting_ability }}</div>
                 <div class="campo-poder">{{ form.nivel_efeito.label_tag }}{{ form.nivel_efeito }}</div>
+                <div class="campo-poder">{{ form.charges.label_tag }}{{ form.charges }}</div>
                 <div class="campo-poder">{{ form.bonus_ataque.label_tag }}{{ form.bonus_ataque }}</div>
                 <div class="linha-ataque-info" style="grid-column:1/-1; font-size:0.7rem; display:flex; justify-content:space-between; align-items:center; margin-top:0.2rem; gap:1rem;">
-                  <span class="hint-bonus-ataque" style="text-align:left;" title="Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limite: (Ataque Total + Nível de Efeito) ≤ 2×NP | Custo: cada ponto em Bônus de Ataque soma +0,5 pp (aditivo)">ⓘ Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limite: (Ataque Total + Nível de Efeito) ≤ 2×NP | Custo: Bônus Ataque +0,5 pp por ponto</span>
+                  <span class="hint-bonus-ataque" style="text-align:left;" title="Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limites: Base (Atk+NE) ≤ 2×NP • Com Charges (>0): (Atk+NE) ≤ (2×NP + ⌊NP/2⌋ − (Charges−1)) | Custo: cada ponto em Bônus de Ataque soma +0,5 pp (aditivo)">ⓘ Corpo a Corpo: Luta + Bônus | À Distância: Destreza + Bônus | Limites: Base (Atk+NE) ≤ 2×NP • Com Charges: (Atk+NE) ≤ (2×NP + ⌊NP/2⌋ − (Charges−1)) | Custo: Bônus Ataque +0,5 pp por ponto</span>
                   <span style="white-space:nowrap;">Total Ataque: <span class="valor-ataque-total">0</span></span>
                 </div>
                 <div class="campo-poder">{{ form.defesa_ativa.label_tag }}{{ form.defesa_ativa }}</div>
@@ -566,6 +568,7 @@ document.addEventListener('DOMContentLoaded', function(){
     const modo=div.querySelector('[name$="-modo"]');
     const bonus=div.querySelector('[name$="-bonus_ataque"]');
     const nivelEf=div.querySelector('[name$="-nivel_efeito"]');
+    const chargesEl=div.querySelector('[name$="-charges"]');
     const tipoEl=div.querySelector('[name$="-tipo"]');
     const nomeEl=div.querySelector('[name$="-nome"]');
     const durEl=div.querySelector('[name$="-duracao"]');
@@ -586,16 +589,22 @@ document.addEventListener('DOMContentLoaded', function(){
       }
       danoSpan.textContent = nEfDano;
     }
-    // Cap para PCs: (Bônus usado + Nível de Efeito efetivo) ≤ 2×NP
-    const limite=2*Math.abs(num(npEl));
+    // Cap para PCs
+    const npVal=Math.abs(num(npEl));
+    const baseLimite=2*npVal;
+    const maxCharges=Math.floor(npVal/2);
     // Nível efetivo: considera soma de Força quando aplicável
     let nEf = Math.abs(num(nivelEf));
     if(tipoEl && tipoEl.value==='dano' && mk==='melee'){
       nEf = efetivoNivel(div);
     }
-    const viol=((effB)+(nEf))>limite; span.classList.toggle('violacao-ataque',viol); return viol; }
-  function atualizar(){ let viol=false; document.querySelectorAll('.poder-form').forEach(div=>{ const del=div.querySelector('input[name$="-DELETE"]'); if(del&&del.checked) return; if(process(div)) viol=true; });
-    const submitBtn=document.querySelector('form input[type="submit"]'); if(submitBtn){ const violDef=!!document.querySelector('.violacao-limite'); if(viol||violDef){ submitBtn.disabled=true; submitBtn.title='Corrija limites (defesas/poderes) para salvar.'; } else { submitBtn.disabled=false; submitBtn.title=''; } } }
+    let charges=0; if(chargesEl){ const cv=parseInt((chargesEl.value||'').toString(),10); charges=isNaN(cv)?0:Math.max(0,cv); }
+    const cap = charges>0 ? (baseLimite + maxCharges - (charges - 1)) : baseLimite;
+    const viol=((effB)+(nEf))>cap || (charges>maxCharges);
+    span.classList.toggle('violacao-ataque',viol); return viol; }
+  function atualizar(){ let viol=false; const arrCharges=new Map(); document.querySelectorAll('.poder-form').forEach(div=>{ const del=div.querySelector('input[name$="-DELETE"]'); if(del&&del.checked) return; if(process(div)) viol=true; const arrName=(div.querySelector('[name$="-array"]')?.value||'').trim().toLowerCase(); const chargesEl=div.querySelector('[name$="-charges"]'); let c=0; if(chargesEl){ const cv=parseInt((chargesEl.value||'').toString(),10); c=isNaN(cv)?0:Math.max(0,cv);} if(arrName && c>0){ arrCharges.set(arrName,(arrCharges.get(arrName)||0)+1); } });
+    let violArr=false; arrCharges.forEach(cnt=>{ if(cnt>1) violArr=true; });
+    const submitBtn=document.querySelector('form input[type="submit"]'); if(submitBtn){ const violDef=!!document.querySelector('.violacao-limite'); if(viol||violDef||violArr){ submitBtn.disabled=true; submitBtn.title='Corrija limites (defesas/poderes/charges) para salvar.'; } else { submitBtn.disabled=false; submitBtn.title=''; } } }
   ['luta','destreza','nivel_poder','forca'].forEach(id=>{ const el=document.getElementById('id_'+id); if(el){ el.addEventListener('input',atualizar); el.addEventListener('change',atualizar);} });
   function bind(scope){ (scope||document).querySelectorAll('.poder-form [name$="-modo"], .poder-form [name$="-bonus_ataque"], .poder-form [name$="-nivel_efeito"], .poder-form [name$="-nome"], .poder-form [name$="-duracao"], .poder-form [name$="-tipo"], .poder-form [name$="-somar_forca_no_nivel"]').forEach(el=>{ el.addEventListener('input',atualizar); el.addEventListener('change',atualizar); }); }
   bind(document);

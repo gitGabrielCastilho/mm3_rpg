@@ -101,7 +101,7 @@ class PoderForm(forms.ModelForm):
         model = Poder
         fields = [
             'id',
-            'nome', 'array', 'tipo', 'modo', 'duracao', 'nivel_efeito', 'bonus_ataque', 'somar_forca_no_nivel',
+            'nome', 'array', 'tipo', 'modo', 'duracao', 'nivel_efeito', 'bonus_ataque', 'somar_forca_no_nivel', 'charges',
             'defesa_ativa', 'defesa_passiva', 'casting_ability',
             'de_item', 'item_origem', 'de_vantagem', 'vantagem_origem', 'ligados'
         ]
@@ -164,6 +164,17 @@ class _PoderesConsistentesFormSet(BaseInlineFormSet):
         # Ainda assim, conseguimos validar com os que possuem cleaned_data
         variantes_por_nome = {}
         nomes_originais = {}
+        # Regras de CHARGES
+        # 1) No máximo 1 poder com charges>0 por Array (mesmo nome de array, case-insensitive)
+        # 2) Cada poder: charges <= floor(NP/2)
+        # O NP vem de self.instance (Personagem) no inline formset
+        try:
+            np = int(getattr(self.instance, 'nivel_poder', 0) or 0)
+        except Exception:
+            np = 0
+        max_charges = max(0, np // 2)
+        charges_por_array = {}
+        # Percorre para coletar conflitos por nome/modo/duracao e validar charges
         for form in getattr(self, 'forms', []):
             if not hasattr(form, 'cleaned_data'):
                 continue
@@ -171,18 +182,40 @@ class _PoderesConsistentesFormSet(BaseInlineFormSet):
             if cd.get('DELETE'):
                 continue
             nome = (cd.get('nome') or '').strip()
-            if not nome:
-                continue
-            modo = cd.get('modo')
-            duracao = cd.get('duracao')
-            key = nome.lower()
-            nomes_originais.setdefault(key, nome)
-            variantes_por_nome.setdefault(key, set()).add((modo, duracao))
+            if nome:
+                modo = cd.get('modo')
+                duracao = cd.get('duracao')
+                key = nome.lower()
+                nomes_originais.setdefault(key, nome)
+                variantes_por_nome.setdefault(key, set()).add((modo, duracao))
+
+            # Validar charges por poder
+            charges = cd.get('charges')
+            try:
+                cval = int(charges) if charges not in (None, '') else 0
+            except Exception:
+                cval = 0
+            if cval < 0:
+                form.add_error('charges', 'Charges não pode ser negativo.')
+            if cval > max_charges:
+                form.add_error('charges', f"Charges máximo por poder é {max_charges} (NP/2).")
+
+            # Regra 1: no máximo um poder com charges>0 por array
+            arr = (cd.get('array') or '').strip().lower()
+            if arr and cval > 0:
+                charges_por_array[arr] = charges_por_array.get(arr, 0) + 1
+
         conflitos = [nomes_originais[k] for k, vs in variantes_por_nome.items() if len(vs) > 1]
         if conflitos:
             raise forms.ValidationError(
                 "Não é possível salvar: existem poderes com o mesmo nome mas com modo e/ou duração diferentes: "
                 + ", ".join(sorted(set(conflitos)))
+            )
+        arrays_invalidos = [arr for arr, cnt in charges_por_array.items() if cnt > 1]
+        if arrays_invalidos:
+            raise forms.ValidationError(
+                "Cada Array pode ter no máximo 1 poder com Charges (>0). Arrays com conflito: "
+                + ", ".join(sorted(set(arrays_invalidos)))
             )
 
 PoderFormSet = inlineformset_factory(
@@ -283,7 +316,7 @@ class PoderNPCForm(forms.ModelForm):
     class Meta:
         model = Poder
         fields = [
-            'nome', 'array', 'tipo', 'modo', 'duracao', 'nivel_efeito', 'bonus_ataque', 'somar_forca_no_nivel',
+            'nome', 'array', 'tipo', 'modo', 'duracao', 'nivel_efeito', 'bonus_ataque', 'somar_forca_no_nivel', 'charges',
             'defesa_ativa', 'defesa_passiva', 'casting_ability', 'ligados'
         ]
 

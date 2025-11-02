@@ -203,6 +203,11 @@ class Poder(models.Model):
         'Vantagem', on_delete=models.SET_NULL, null=True, blank=True,
         help_text="Se for poder de vantagem, selecione a vantagem de origem."
     )
+    # Charges opcionais para poderes (mecânica especial)
+    # Regra de negócio:
+    # - Deixe em branco ou 0 para não usar charges
+    # - Máximo por poder: floor(NP/2) do personagem
+    charges = models.PositiveIntegerField(null=True, blank=True, default=None, verbose_name="Charges")
     # Campo para agrupar poderes em "Arrays" (efeitos alternativos)
     array = models.CharField(
         "Array",
