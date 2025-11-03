@@ -219,34 +219,70 @@ document.addEventListener('DOMContentLoaded', function(){
       'strength':'forca','stamina':'vigor','dexterity':'destreza','agility':'agilidade','fighting':'luta','intellect':'inteligencia','awareness':'prontidao','presence':'presenca',
       'dodge':'esquivar','parry':'aparar','toughness':'resistencia','will':'vontade',
       'força':'forca','inteligência':'inteligencia','prontidão':'prontidao','presença':'presenca','resistência':'resistencia','esquiva':'esquivar',
+      // Abreviações comuns
+      'str':'forca','sta':'vigor','dex':'destreza','agi':'agilidade','fgt':'luta','int':'inteligencia','awe':'prontidao','pre':'presenca','prs':'presenca'
     };
     return aliases[n] || n;
   }
   function normalizeMods(raw){
     const out = { caracteristicas:{}, defesas:{}, pericias:{} };
     if (!raw || typeof raw !== 'object') return out;
-    ['caracteristicas','defesas','pericias'].forEach(sec=>{
-      const src = raw[sec];
-      if (src && typeof src === 'object') {
-        Object.keys(src).forEach(k=>{
-          const mk = mapKey(k);
-          const v = parseFloat(src[k]);
-          if (Number.isFinite(v) && v !== 0) out[sec][mk] = (out[sec][mk]||0) + v;
-        });
+    const secAlias = {
+      'defense':'defesas','defenses':'defesas','saves':'defesas','saving_throws':'defesas',
+      'skills':'pericias','skill':'pericias',
+      'abilities':'caracteristicas','ability':'caracteristicas','attributes':'caracteristicas','stats':'caracteristicas',
+      'defesa':'defesas','perícia':'pericias','perícias':'pericias','característica':'caracteristicas','características':'caracteristicas'
+    };
+    const defKeys = new Set(['esquivar','aparar','fortitude','vontade','resistencia']);
+    function add(bucket, key, val){ if(!Number.isFinite(val) || val===0) return; bucket[key] = (bucket[key]||0)+val; }
+    function foldSection(sectionName, obj){
+      const sec = (secAlias[normKey(sectionName)] || sectionName);
+      Object.keys(obj||{}).forEach(k=>{
+        const mk = mapKey(k);
+        const v = parseFloat(obj[k]);
+        if (!Number.isFinite(v)) return;
+        if (sec === 'defesas' || defKeys.has(mk)) add(out.defesas, mk, v);
+        else if (sec === 'pericias') add(out.pericias, mk, v);
+        else add(out.caracteristicas, mk, v);
+      });
+    }
+    // Seções nomeadas (com aliases)
+    Object.keys(raw).forEach(sec=>{
+      const val = raw[sec];
+      if (val && typeof val === 'object'){
+        const secNorm = secAlias[normKey(sec)] || sec;
+        if (['caracteristicas','defesas','pericias'].includes(secNorm)) foldSection(secNorm, val);
       }
     });
+    // Chaves de topo numéricas
     Object.keys(raw).forEach(k=>{
-      if (['caracteristicas','defesas','pericias'].includes(k)) return;
-      const mk = mapKey(k);
       const v = parseFloat(raw[k]);
-      if (!Number.isFinite(v) || v===0) return;
-      if (['esquivar','aparar','fortitude','vontade','resistencia'].includes(mk)) out.defesas[mk]=(out.defesas[mk]||0)+v;
-      else out.caracteristicas[mk]=(out.caracteristicas[mk]||0)+v;
+      if (!Number.isFinite(v)) return;
+      const mk = mapKey(k);
+      if (defKeys.has(mk)) add(out.defesas, mk, v); else add(out.caracteristicas, mk, v);
+    });
+    // Objetos desconhecidos: varredura rasa para defesas explícitas
+    Object.keys(raw).forEach(sec=>{
+      const val = raw[sec];
+      if (val && typeof val === 'object'){
+        Object.keys(val).forEach(k=>{
+          const v = parseFloat(val[k]);
+          if (!Number.isFinite(v)) return;
+          const mk = mapKey(k);
+          if (defKeys.has(mk)) add(out.defesas, mk, v);
+        });
+      }
     });
     return out;
   }
   function cap(s){ try { return (s||'').charAt(0).toUpperCase()+String(s||'').slice(1); } catch(_) { return s; } }
-  function listFrom(obj, keys){ const parts=[]; if(!obj) return parts; keys.forEach(k=>{ const v=parseFloat(obj[k]); if(Number.isFinite(v) && v!==0){ parts.push((v>0?'+':'')+v+' '+cap(k)); } }); return parts; }
+  function listFrom(obj, keys){
+    const parts=[]; if(!obj) return parts;
+    const seen = new Set();
+    (keys||[]).forEach(k=>{ const v=parseFloat(obj[k]); if(Number.isFinite(v) && v!==0){ parts.push((v>0?'+':'')+v+' '+cap(k)); seen.add(k); } });
+    Object.keys(obj).forEach(k=>{ if(seen.has(k)) return; const v=parseFloat(obj[k]); if(Number.isFinite(v) && v!==0){ parts.push((v>0?'+':'')+v+' '+cap(k)); } });
+    return parts;
+  }
   function poderesFromRow(tr){ return Array.from(tr.querySelectorAll('.item-power-def')).map(s => (s.getAttribute('data-nome')||'').trim()).filter(Boolean); }
   const grupos = {caracteristicas:['forca','vigor','destreza','agilidade','luta','inteligencia','prontidao','presenca'], defesas:['aparar','esquivar','fortitude','vontade','resistencia']};
   const pericias = ['acrobacias','atletismo','combate_distancia','combate_corpo','enganacao','especialidade','furtividade','intimidacao','intuicao','investigacao','percepcao','persuasao','prestidigitacao','tecnologia','tratamento','veiculos','historia','sobrevivencia','arcana','religiao'];

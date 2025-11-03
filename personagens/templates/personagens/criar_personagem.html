@@ -702,12 +702,14 @@ document.addEventListener('DOMContentLoaded', function(){
   function mapKey(k){
     const n = normKey(k);
     const aliases = {
-      // Características
+      // Características (EN -> PT)
       'strength':'forca','stamina':'vigor','dexterity':'destreza','agility':'agilidade','fighting':'luta','intellect':'inteligencia','awareness':'prontidao','presence':'presenca',
+      // Abreviações comuns
+      'str':'forca','sta':'vigor','dex':'destreza','agi':'agilidade','fgt':'luta','int':'inteligencia','awe':'prontidao','pre':'presenca','prs':'presenca',
       // Defesas
-      'dodge':'esquivar','parry':'aparar','toughness':'resistencia','will':'vontade',
-      // PT-BR com acentos
-      'força':'forca','inteligência':'inteligencia','prontidão':'prontidao','presença':'presenca','resistência':'resistencia','esquiva':'esquivar',
+      'dodge':'esquivar','parry':'aparar','toughness':'resistencia','will':'vontade','willpower':'vontade',
+      // PT-BR com acentos e variações
+      'força':'forca','inteligência':'inteligencia','prontidão':'prontidao','presença':'presenca','resistência':'resistencia','esquiva':'esquivar'
     };
     return aliases[n] || n;
   }
@@ -757,7 +759,7 @@ document.addEventListener('DOMContentLoaded', function(){
       if (defKeys.has(mk)) addTo(out.defesas, mk, v);
       else addTo(out.caracteristicas, mk, v);
     });
-    // 3) Deep-objects with unknown section names: scan shallow for any object-like and fold as characteristics unless keys imply defense/pericia
+    // 3) Deep-objects with unknown section names: scan shallow and attribute unknowns to características by default
     Object.keys(raw).forEach(sec=>{
       const val = raw[sec];
       if (val && typeof val === 'object'){
@@ -766,7 +768,7 @@ document.addEventListener('DOMContentLoaded', function(){
           if (!Number.isFinite(v)) return;
           const mk = mapKey(k);
           if (defKeys.has(mk)) addTo(out.defesas, mk, v);
-          // no reliable list for pericias here; default to caracteristicas for others
+          else addTo(out.caracteristicas, mk, v); // default bucket
         });
       }
     });
