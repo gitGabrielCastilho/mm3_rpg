@@ -382,7 +382,7 @@
             </thead>
             <tbody>
               {% for item in inventario_form.fields.itens.queryset %}
-                <tr data-mods="{{ item.mods|tojson|escapejs }}">
+                <tr data-mods="{{ item.mods|tojson|escape }}">
                   <td>
                     <input type="checkbox" name="itens" value="{{ item.id }}"
                       {% if item.id in itens_possuido_ids %}checked{% endif %}>
