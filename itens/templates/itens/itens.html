@@ -5,9 +5,14 @@
 
 {% if pode_criar %}
   <div class="personagem-form-center" style="margin: 0 auto 1.5rem auto; max-width: 1200px;">
-    <h1 class="personagem-form-title" style="text-align:center; margin-bottom:0.8rem;">Criar Item</h1>
+    <h1 class="personagem-form-title" style="text-align:center; margin-bottom:0.8rem;">
+      {% if item_edit %}Editar Item{% else %}Criar Item{% endif %}
+    </h1>
     <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
+      {% if item_edit %}
+        <input type="hidden" name="item_id" value="{{ item_edit.id }}">
+      {% endif %}
       <div class="personagem-form-fields">
         <div class="item-topo" style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:1rem; align-items:end;">
           <div>{{ form.nome.label_tag }} {{ form.nome }}</div>
@@ -109,8 +114,13 @@
         </div>
         </div>
 
-        <div style="margin-top: 1rem; text-align:center;">
-          <button type="submit" class="btn">Criar Item</button>
+        <div style="margin-top: 1rem; text-align:center; display:flex; gap:8px; justify-content:center;">
+          {% if item_edit %}
+            <button type="submit" class="btn">Salvar Alterações</button>
+            <a href="{% url 'itens' %}" class="btn btn-secondary">Cancelar</a>
+          {% else %}
+            <button type="submit" class="btn">Criar Item</button>
+          {% endif %}
         </div>
       </div>
     </form>
@@ -143,6 +153,7 @@
         <th>Raridade</th>
         <th>Descrição</th>
         <th>Preço</th>
+        {% if is_gm %}<th>Ações</th>{% endif %}
       </tr>
     </thead>
     <tbody>
@@ -153,6 +164,15 @@
           <td class="raridade-item">{{ item.raridade }}</td>
           <td>{{ item.descricao }}</td>
           <td>{{ item.preco }}</td>
+          {% if is_gm %}
+            <td>
+              {% if sala_atual and item.sala_id == sala_atual.id %}
+                <a href="{% url 'itens' %}?edit={{ item.id }}" class="btn btn-sm">Editar</a>
+              {% else %}
+                <span style="opacity:0.6; font-size:12px;" title="Somente itens da sala podem ser editados.">—</span>
+              {% endif %}
+            </td>
+          {% endif %}
         </tr>
       {% endfor %}
     </tbody>
