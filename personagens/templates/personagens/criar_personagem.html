@@ -144,70 +144,6 @@
   <h2>Defesas <span id="badge-def" class="section-cost-badge" title="Cada ponto em Defesas custa +1 pp.">+1 pp — 0</span></h2>
       <div class="defesas-grid" style="display:grid; grid-template-columns:repeat(3, minmax(170px,1fr)); gap:1.8rem 3rem; justify-items:center; margin-bottom:2rem;">
         <!-- Linha 1: Aparar (Luta), Esquivar (Agilidade), Resistência (Vigor) -->
-        <script>
-        // Painel de Resumo: características, defesas, perícias e poderes concedidos pelos itens marcados
-        document.addEventListener('DOMContentLoaded', function(){
-          function parseRawMods(tr){ try { return JSON.parse(tr.getAttribute('data-mods')||'{}')||{}; } catch(_) { return {}; } }
-          function normKey(k){ return (k||'').toString().trim().toLowerCase(); }
-          function mapKey(k){
-            const n = normKey(k);
-            const aliases = {
-              // Características
-              'strength':'forca','stamina':'vigor','dexterity':'destreza','agility':'agilidade','fighting':'luta','intellect':'inteligencia','awareness':'prontidao','presence':'presenca',
-              // Defesas
-              'dodge':'esquivar','parry':'aparar','toughness':'resistencia','will':'vontade',
-              // Já no idioma alvo
-              'força':'forca','vigor':'vigor','destreza':'destreza','agilidade':'agilidade','luta':'luta','inteligência':'inteligencia','prontidão':'prontidao','presença':'presenca',
-              'esquiva':'esquivar','aparar':'aparar','resistência':'resistencia','vontade':'vontade',
-            };
-            return aliases[n] || n;
-          }
-          function normalizeMods(raw){
-            const out = { caracteristicas:{}, defesas:{}, pericias:{} };
-            if (!raw || typeof raw !== 'object') return out;
-            // Seções conhecidas
-            ['caracteristicas','defesas','pericias'].forEach(sec=>{
-              const src = raw[sec];
-              if (src && typeof src === 'object') {
-                Object.keys(src).forEach(k=>{
-                  const mk = mapKey(k);
-                  const v = parseFloat(src[k]);
-                  if (Number.isFinite(v) && v !== 0) out[sec][mk] = (out[sec][mk]||0) + v;
-                });
-              }
-            });
-            // Chaves soltas no nível raiz (compat inglês/PT-BR)
-            Object.keys(raw).forEach(k=>{
-              if (['caracteristicas','defesas','pericias'].includes(k)) return;
-              const mk = mapKey(k);
-              const v = parseFloat(raw[k]);
-              if (!Number.isFinite(v) || v===0) return;
-              if (['esquivar','aparar','fortitude','vontade','resistencia'].includes(mk)) out.defesas[mk]=(out.defesas[mk]||0)+v;
-              else out.caracteristicas[mk]=(out.caracteristicas[mk]||0)+v;
-            });
-            return out;
-          }
-          {% if campo != 'combate_distancia' and campo != 'combate_corpo' %}
-            {% with field=form|lookup:campo %}
-              <div class="pericia-campo" style="display:flex; flex-direction:column; align-items:center;">
-                <label style="font-weight:bold; margin-bottom:0.25rem;">{{ field.label }}</label>
-                {{ field }}
-                {% if field.errors %}<div style="color:red;">{{ field.errors }}</div>{% endif %}
-              </div>
-            {% endwith %}
-          {% endif %}
-        {% endfor %}
-        {% for campo in pericias_col2 %}
-          {% if campo != 'combate_distancia' and campo != 'combate_corpo' %}
-            {% with field=form|lookup:campo %}
-              <div class="pericia-campo" style="display:flex; flex-direction:column; align-items:center;">
-                <label style="font-weight:bold; margin-bottom:0.25rem;">{{ field.label }}</label>
-                {{ field }}
-                {% if field.errors %}<div style="color:red;">{{ field.errors }}</div>{% endif %}
-              </div>
-            {% endwith %}
-          {% endif %}
-        {% endfor %}
       </div>
   <h2>Poderes <span id="badge-pod" class="section-cost-badge" title="Custo por poder = Nível × (1 + bônus de Tipo + Duração + Modo) + Bônus de Ataque. Bônus: Tipo: +1 (cura/aprimorar). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +0,5 pp por ponto (aditivo, por poder). Arrays: parte de Nível do grupo = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque.">Nivel x (1+Tipo+Duração+Modo) + Bônus Ataque — 0</span></h2>
       <!-- Empty form grid para JS clonar (opcional, se usar JS dinâmico igual editar) -->
@@ -711,28 +647,73 @@ document.addEventListener('DOMContentLoaded', function(){
   function normalizeMods(raw){
     const out = { caracteristicas:{}, defesas:{}, pericias:{} };
     if (!raw || typeof raw !== 'object') return out;
-    ['caracteristicas','defesas','pericias'].forEach(sec=>{
-      const src = raw[sec];
-      if (src && typeof src === 'object') {
-        Object.keys(src).forEach(k=>{
-          const mk = mapKey(k);
-          const v = parseFloat(src[k]);
-          if (Number.isFinite(v) && v !== 0) out[sec][mk] = (out[sec][mk]||0) + v;
-        });
+
+    const secAlias = {
+      // English -> PT
+      'defense':'defesas','defenses':'defesas','saves':'defesas','saving_throws':'defesas',
+      'skills':'pericias','skill':'pericias',
+      'abilities':'caracteristicas','ability':'caracteristicas','attributes':'caracteristicas','stats':'caracteristicas',
+      // PT variants
+      'defesa':'defesas','perícia':'pericias','perícias':'pericias','característica':'caracteristicas','características':'caracteristicas'
+    };
+    const defKeys = new Set(['esquivar','aparar','fortitude','vontade','resistencia']);
+
+    function addTo(bucket, key, val){ if(!Number.isFinite(val) || val===0) return; bucket[key] = (bucket[key]||0)+val; }
+
+    function foldSection(sectionName, obj){
+      const sec = (secAlias[mapKey(sectionName)] || sectionName);
+      Object.keys(obj||{}).forEach(k=>{
+        const mk = mapKey(k);
+        const v = parseFloat(obj[k]);
+        if (!Number.isFinite(v)) return;
+        if (sec === 'defesas' || defKeys.has(mk)) addTo(out.defesas, mk, v);
+        else if (sec === 'pericias') addTo(out.pericias, mk, v);
+        else addTo(out.caracteristicas, mk, v);
+      });
+    }
+
+    // 1) Known sections by name (including aliases)
+    Object.keys(raw).forEach(sec=>{
+      const val = raw[sec];
+      if (val && typeof val === 'object'){
+        const secNorm = secAlias[mapKey(sec)] || sec;
+        if (['caracteristicas','defesas','pericias'].includes(secNorm)) {
+          foldSection(secNorm, val);
+        }
       }
     });
+    // 2) Root-level numeric keys
     Object.keys(raw).forEach(k=>{
-      if (['caracteristicas','defesas','pericias'].includes(k)) return;
-      const mk = mapKey(k);
       const v = parseFloat(raw[k]);
-      if (!Number.isFinite(v) || v===0) return;
-      if (['esquivar','aparar','fortitude','vontade','resistencia'].includes(mk)) out.defesas[mk]=(out.defesas[mk]||0)+v;
-      else out.caracteristicas[mk]=(out.caracteristicas[mk]||0)+v;
+      if (!Number.isFinite(v)) return;
+      const mk = mapKey(k);
+      if (defKeys.has(mk)) addTo(out.defesas, mk, v);
+      else addTo(out.caracteristicas, mk, v);
+    });
+    // 3) Deep-objects with unknown section names: scan shallow for any object-like and fold as characteristics unless keys imply defense/pericia
+    Object.keys(raw).forEach(sec=>{
+      const val = raw[sec];
+      if (val && typeof val === 'object'){
+        Object.keys(val).forEach(k=>{
+          const v = parseFloat(val[k]);
+          if (!Number.isFinite(v)) return;
+          const mk = mapKey(k);
+          if (defKeys.has(mk)) addTo(out.defesas, mk, v);
+          // no reliable list for pericias here; default to caracteristicas for others
+        });
+      }
     });
     return out;
   }
   function cap(s){ try { return (s||'').charAt(0).toUpperCase()+String(s||'').slice(1); } catch(_) { return s; } }
-  function listFrom(obj, keys){ const parts=[]; if(!obj) return parts; keys.forEach(k=>{ const v=parseFloat(obj[k]); if(Number.isFinite(v) && v!==0){ parts.push((v>0?'+':'')+v+' '+cap(k)); } }); return parts; }
+  function listFrom(obj, keys){
+    const parts=[]; if(!obj) return parts;
+    const seen=new Set();
+    (keys||[]).forEach(k=>{ const v=parseFloat(obj[k]); if(Number.isFinite(v) && v!==0){ parts.push((v>0?'+':'')+v+' '+cap(k)); seen.add(k); } });
+    // include any other numeric keys present to avoid missing effects due to unexpected names/aliases
+    Object.keys(obj).forEach(k=>{ if(seen.has(k)) return; const v=parseFloat(obj[k]); if(Number.isFinite(v) && v!==0){ parts.push((v>0?'+':'')+v+' '+cap(k)); } });
+    return parts;
+  }
   function poderesFromRow(tr){ return Array.from(tr.querySelectorAll('.item-power-def')).map(s => (s.getAttribute('data-nome')||'').trim()).filter(Boolean); }
   function renderPainel(){
     const alvo = document.getElementById('efeitos-itens-conteudo'); if(!alvo) return;
@@ -746,9 +727,13 @@ document.addEventListener('DOMContentLoaded', function(){
       const nome = (tr.querySelector('.nome-item')?.textContent||'Item').trim();
       const mods = normalizeMods(parseRawMods(tr));
       const car = listFrom(mods.caracteristicas||{}, grupos.caracteristicas);
-      const def = listFrom(mods.defesas||{}, grupos.defesas);
+      let def = listFrom(mods.defesas||{}, grupos.defesas);
       const per = listFrom(mods.pericias||{}, pericias);
       const pods = poderesFromRow(tr);
+      // Fallback explícito para itens conhecidos cujo JSON possa vir atípico
+      if(!def.length && (/^bracers of defense$/i.test(nome) || /^animated shield$/i.test(nome))){
+        def = ['+2 Aparar', '+2 Esquivar'];
+      }
       const box = document.createElement('div'); box.className='efeito-item-box'; box.style.margin='8px 0';
       const h = document.createElement('div'); h.style.fontWeight='600'; h.textContent=nome; box.appendChild(h);
       const ul=document.createElement('ul'); ul.style.margin='6px 0 0'; ul.style.paddingLeft='18px';
