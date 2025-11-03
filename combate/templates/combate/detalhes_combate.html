@@ -107,7 +107,12 @@
           <label for="poder">Poder:</label>
           <select name="poder_id" id="poder" required class="select-md" data-tipos="{}" aria-describedby="poder_hint">
             {% for poder in poderes_disponiveis %}
-              <option value="{{ poder.id }}" data-tipo="{{ poder.tipo }}">{{ poder.nome }}</option>
+              <option value="{{ poder.id }}"
+                      data-tipo="{{ poder.tipo }}"
+                      {% if poder.de_item %}data-de-item="1"{% endif %}
+                      {% if poder.item_origem %}data-item-origem="{{ poder.item_origem.nome|escape }}"{% endif %}>
+                {{ poder.nome }}{% if poder.de_item and poder.item_origem %} — item: {{ poder.item_origem.nome }}{% endif %}
+              </option>
             {% empty %}
               <option disabled>Nenhum poder disponível</option>
             {% endfor %}
@@ -1649,6 +1654,21 @@
             if (wasNearBottom && historico && historico.scrollHeight > historico.clientHeight) {
               historico.scrollTop = historico.scrollHeight;
             }
+            // Se o evento WS informar a origem do item, anota na primeira linha recém-formatada
+            try {
+              const origemWs = (payload && (payload.item_origem_nome || payload.item_origem || payload.origem_item || '')) || '';
+              if (origemWs) {
+                const firstLine = ativo.querySelector('.hist-acao');
+                if (firstLine && !firstLine.querySelector('.hist-item-origem')) {
+                  const span = document.createElement('span');
+                  span.className = 'hist-item-origem';
+                  span.style.opacity = '0.85';
+                  span.style.marginLeft = '6px';
+                  span.textContent = '(Item: ' + origemWs + ')';
+                  firstLine.appendChild(span);
+                }
+              }
+            } catch(_) {}
             // Garante atualização do status dos participantes sem recarregar a página inteira
             await refreshSelectors(['#status-card']);
           } else {
