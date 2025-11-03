@@ -3,6 +3,11 @@
 
 {% block content %}
 <div class="ficha-center">
+  <style>
+    /* Forçar linhas com rótulo à esquerda e valor à direita nesta página */
+    .ficha-card .ficha-list li { display: flex; justify-content: space-between; align-items: center; }
+    .ficha-card .ficha-list .lbl { margin-right: 8px; }
+  </style>
   <div class="ficha-header">
     {% if personagem.foto %}
       <div class="ficha-foto-wrap">
@@ -200,7 +205,6 @@
     <a href="{% url 'listar_personagens' %}" class="btn btn-secondary">Voltar</a>
   </div>
 </div>
-{% endblock %}
 <script>
 // Renderiza efeitos dos itens na ficha (características, defesas, perícias e poderes)
 document.addEventListener('DOMContentLoaded', function(){
@@ -287,3 +291,4 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 });
 </script>
+{% endblock %}
