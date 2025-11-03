@@ -184,6 +184,34 @@
           </div>
         </div>
       </div>
+  <h2>Perícias <span id="badge-per" class="section-cost-badge" title="Cada ponto em Perícias custa +0,5 pp.">+0,5 pp — 0</span></h2>
+      <div style="margin-bottom:0.8rem;">
+        {{ form.especialidade_casting_ability.label_tag }} {{ form.especialidade_casting_ability }}
+      </div>
+      <div class="pericias-grid-4" style="display:grid; grid-template-columns:repeat(4, minmax(140px,1fr)); gap:1.4rem 2.2rem; justify-items:center; margin-bottom:2rem;">
+        {% for campo in pericias_col1 %}
+          {% if campo != 'combate_distancia' and campo != 'combate_corpo' %}
+            {% with field=form|lookup:campo %}
+              <div class="pericia-campo" style="display:flex; flex-direction:column; align-items:center;">
+                <label style="font-weight:bold; margin-bottom:0.25rem;">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}<div style="color:red;">{{ field.errors }}</div>{% endif %}
+              </div>
+            {% endwith %}
+          {% endif %}
+        {% endfor %}
+        {% for campo in pericias_col2 %}
+          {% if campo != 'combate_distancia' and campo != 'combate_corpo' %}
+            {% with field=form|lookup:campo %}
+              <div class="pericia-campo" style="display:flex; flex-direction:column; align-items:center;">
+                <label style="font-weight:bold; margin-bottom:0.25rem;">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}<div style="color:red;">{{ field.errors }}</div>{% endif %}
+              </div>
+            {% endwith %}
+          {% endif %}
+        {% endfor %}
+      </div>
   <h2>Poderes <span id="badge-pod" class="section-cost-badge" title="Custo por poder = Nível × (1 + bônus de Tipo + Duração + Modo) + Bônus de Ataque. Bônus: Tipo: +1 (cura/aprimorar). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +0,5 pp por ponto (aditivo, por poder). Arrays: parte de Nível do grupo = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque.">Nivel x (1+Tipo+Duração+Modo) + Bônus Ataque — 0</span></h2>
       <!-- Empty form grid para JS clonar (opcional, se usar JS dinâmico igual editar) -->
       <div id="empty-poder-form" style="display:none;">
