@@ -43,7 +43,7 @@
       <!-- Exibir em linhas únicas (sem colunas) -->
       <ul class="ficha-list">
         {% for campo in categorias.caracteristicas %}
-          <li><span class="lbl">{{ campo|capfirst }}</span><span class="val">{{ caracteristicas_totais|dict_get:campo }}</span></li>
+          <li><span class="lbl">{{ campo|capfirst }}</span><span class="val">{% total_from caracteristicas_totais personagem campo %}</span></li>
         {% endfor %}
       </ul>
     </section>
@@ -52,7 +52,7 @@
       <!-- Exibir em linhas únicas (sem colunas); marcar cada item com data-key para atualização via JS -->
       <ul class="ficha-list" id="defesas-list">
         {% for campo in categorias.defesas %}
-          <li data-key="{{ campo }}"><span class="lbl">{{ campo|capfirst }}</span><span class="val">{{ defesas_totais|default:{}|dict_get:campo|default:personagem|attr:campo }}</span></li>
+          <li data-key="{{ campo }}"><span class="lbl">{{ campo|capfirst }}</span><span class="val">{% total_from defesas_totais personagem campo %}</span></li>
         {% endfor %}
       </ul>
     </section>
@@ -61,7 +61,7 @@
       <!-- Exibir em linhas únicas (sem colunas) -->
       <ul class="ficha-list">
         {% for campo in categorias.pericias %}
-          <li><span class="lbl">{{ campo|capfirst }}</span><span class="val">{{ pericias_totais|dict_get:campo }}</span></li>
+          <li><span class="lbl">{{ campo|capfirst }}</span><span class="val">{% total_from pericias_totais personagem campo %}</span></li>
         {% endfor %}
       </ul>
     </section>

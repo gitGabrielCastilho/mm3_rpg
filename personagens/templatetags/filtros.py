@@ -18,6 +18,22 @@ def dict_get(d, key):
     except Exception:
         return None
 
+@register.simple_tag
+def total_from(totals, obj, key):
+    """Return totals[key] when available; otherwise getattr(obj, key, 0).
+
+    This avoids issues where 0 is treated as falsy by the default filter in templates.
+    """
+    try:
+        if isinstance(totals, dict) and key in totals:
+            return totals.get(key)
+    except Exception:
+        pass
+    try:
+        return getattr(obj, key, 0)
+    except Exception:
+        return 0
+
 @register.filter
 def lookup(form, campo):
     return form[campo]
