@@ -144,52 +144,49 @@
   <h2>Defesas <span id="badge-def" class="section-cost-badge" title="Cada ponto em Defesas custa +1 pp.">+1 pp — 0</span></h2>
       <div class="defesas-grid" style="display:grid; grid-template-columns:repeat(3, minmax(170px,1fr)); gap:1.8rem 3rem; justify-items:center; margin-bottom:2rem;">
         <!-- Linha 1: Aparar (Luta), Esquivar (Agilidade), Resistência (Vigor) -->
-        <div class="campo-def">
-          <label for="id_aparar">Aparar <small>(Luta)</small></label>
-          {{ form.aparar }}
-          <div class="defesa-total" data-defesa="aparar">Total: <span class="valor-total" id="total_aparar">0</span></div>
-          {% if form.aparar.errors %}<div style="color:red;">{{ form.aparar.errors }}</div>{% endif %}
-        </div>
-        <div class="campo-def">
-          <label for="id_esquivar">Esquivar <small>(Agilidade)</small></label>
-          {{ form.esquivar }}
-          <div class="defesa-total" data-defesa="esquivar">Total: <span class="valor-total" id="total_esquivar">0</span></div>
-          {% if form.esquivar.errors %}<div style="color:red;">{{ form.esquivar.errors }}</div>{% endif %}
-        </div>
-        <div class="campo-def">
-          <label for="id_resistencia">Resistência <small>(Vigor)</small></label>
-          {{ form.resistencia }}
-          <div class="defesa-total" data-defesa="resistencia">Total: <span class="valor-total" id="total_resistencia">0</span></div>
-          {% if form.resistencia.errors %}<div style="color:red;">{{ form.resistencia.errors }}</div>{% endif %}
-        </div>
-        <!-- Linha 2: Vontade (Prontidão), Fortitude (Vigor) -->
-        <div class="campo-def">
-          <label for="id_vontade">Vontade <small>(Prontidão)</small></label>
-          {{ form.vontade }}
-          <div class="defesa-total" data-defesa="vontade">Total: <span class="valor-total" id="total_vontade">0</span></div>
-          {% if form.vontade.errors %}<div style="color:red;">{{ form.vontade.errors }}</div>{% endif %}
-        </div>
-        <div class="campo-def">
-          <label for="id_fortitude">Fortitude <small>(Vigor)</small></label>
-          {{ form.fortitude }}
-          <div class="defesa-total" data-defesa="fortitude">Total: <span class="valor-total" id="total_fortitude">0</span></div>
-          {% if form.fortitude.errors %}<div style="color:red;">{{ form.fortitude.errors }}</div>{% endif %}
-        </div>
-        <div>
-          <div id="limites-defesas" style="font-size:0.8rem; line-height:1.3; text-align:left;">
-            <strong>Limites:</strong><br>
-            Esquivar + Resistência ≤ 2×NP<br>
-            Aparar + Resistência ≤ 2×NP<br>
-            Fortitude + Vontade ≤ 2×NP
-          </div>
-        </div>
-      </div>
-  <h2>Perícias <span id="badge-per" class="section-cost-badge" title="Cada ponto em Perícias custa +0,5 pp.">+0,5 pp — 0</span></h2>
-      <div>
-        {{ form.especialidade_casting_ability.label_tag }} {{ form.especialidade_casting_ability }}
-      </div>
-      <div class="pericias-grid-4" style="display:grid; grid-template-columns:repeat(4, minmax(140px,1fr)); gap:1.4rem 2.2rem; justify-items:center; margin-bottom:2rem;">
-        {% for campo in pericias_col1 %}
+        <script>
+        // Painel de Resumo: características, defesas, perícias e poderes concedidos pelos itens marcados
+        document.addEventListener('DOMContentLoaded', function(){
+          function parseRawMods(tr){ try { return JSON.parse(tr.getAttribute('data-mods')||'{}')||{}; } catch(_) { return {}; } }
+          function normKey(k){ return (k||'').toString().trim().toLowerCase(); }
+          function mapKey(k){
+            const n = normKey(k);
+            const aliases = {
+              // Características
+              'strength':'forca','stamina':'vigor','dexterity':'destreza','agility':'agilidade','fighting':'luta','intellect':'inteligencia','awareness':'prontidao','presence':'presenca',
+              // Defesas
+              'dodge':'esquivar','parry':'aparar','toughness':'resistencia','will':'vontade',
+              // Já no idioma alvo
+              'força':'forca','vigor':'vigor','destreza':'destreza','agilidade':'agilidade','luta':'luta','inteligência':'inteligencia','prontidão':'prontidao','presença':'presenca',
+              'esquiva':'esquivar','aparar':'aparar','resistência':'resistencia','vontade':'vontade',
+            };
+            return aliases[n] || n;
+          }
+          function normalizeMods(raw){
+            const out = { caracteristicas:{}, defesas:{}, pericias:{} };
+            if (!raw || typeof raw !== 'object') return out;
+            // Seções conhecidas
+            ['caracteristicas','defesas','pericias'].forEach(sec=>{
+              const src = raw[sec];
+              if (src && typeof src === 'object') {
+                Object.keys(src).forEach(k=>{
+                  const mk = mapKey(k);
+                  const v = parseFloat(src[k]);
+                  if (Number.isFinite(v) && v !== 0) out[sec][mk] = (out[sec][mk]||0) + v;
+                });
+              }
+            });
+            // Chaves soltas no nível raiz (compat inglês/PT-BR)
+            Object.keys(raw).forEach(k=>{
+              if (['caracteristicas','defesas','pericias'].includes(k)) return;
+              const mk = mapKey(k);
+              const v = parseFloat(raw[k]);
+              if (!Number.isFinite(v) || v===0) return;
+              if (['esquivar','aparar','fortitude','vontade','resistencia'].includes(mk)) out.defesas[mk]=(out.defesas[mk]||0)+v;
+              else out.caracteristicas[mk]=(out.caracteristicas[mk]||0)+v;
+            });
+            return out;
+          }
           {% if campo != 'combate_distancia' and campo != 'combate_corpo' %}
             {% with field=form|lookup:campo %}
               <div class="pericia-campo" style="display:flex; flex-direction:column; align-items:center;">
@@ -697,22 +694,48 @@ document.addEventListener('DOMContentLoaded', function(){
 <script>
 // Painel de Resumo: características, defesas, perícias e poderes concedidos pelos itens marcados
 document.addEventListener('DOMContentLoaded', function(){
-  function parseMods(tr){
-    try { return JSON.parse(tr.getAttribute('data-mods')||'{}')||{}; } catch(_) { return {}; }
+  function parseRawMods(tr){ try { return JSON.parse(tr.getAttribute('data-mods')||'{}')||{}; } catch(_) { return {}; } }
+  function normKey(k){ return (k||'').toString().trim().toLowerCase(); }
+  function mapKey(k){
+    const n = normKey(k);
+    const aliases = {
+      // Características
+      'strength':'forca','stamina':'vigor','dexterity':'destreza','agility':'agilidade','fighting':'luta','intellect':'inteligencia','awareness':'prontidao','presence':'presenca',
+      // Defesas
+      'dodge':'esquivar','parry':'aparar','toughness':'resistencia','will':'vontade',
+      // PT-BR com acentos
+      'força':'forca','inteligência':'inteligencia','prontidão':'prontidao','presença':'presenca','resistência':'resistencia','esquiva':'esquivar',
+    };
+    return aliases[n] || n;
+  }
+  function normalizeMods(raw){
+    const out = { caracteristicas:{}, defesas:{}, pericias:{} };
+    if (!raw || typeof raw !== 'object') return out;
+    ['caracteristicas','defesas','pericias'].forEach(sec=>{
+      const src = raw[sec];
+      if (src && typeof src === 'object') {
+        Object.keys(src).forEach(k=>{
+          const mk = mapKey(k);
+          const v = parseFloat(src[k]);
+          if (Number.isFinite(v) && v !== 0) out[sec][mk] = (out[sec][mk]||0) + v;
+        });
+      }
+    });
+    Object.keys(raw).forEach(k=>{
+      if (['caracteristicas','defesas','pericias'].includes(k)) return;
+      const mk = mapKey(k);
+      const v = parseFloat(raw[k]);
+      if (!Number.isFinite(v) || v===0) return;
+      if (['esquivar','aparar','fortitude','vontade','resistencia'].includes(mk)) out.defesas[mk]=(out.defesas[mk]||0)+v;
+      else out.caracteristicas[mk]=(out.caracteristicas[mk]||0)+v;
+    });
+    return out;
   }
   function cap(s){ try { return (s||'').charAt(0).toUpperCase()+String(s||'').slice(1); } catch(_) { return s; } }
-  function listFrom(obj, keys){
-    const parts=[]; if(!obj) return parts;
-    keys.forEach(k=>{ const v=parseFloat(obj[k]); if(Number.isFinite(v) && v!==0){ parts.push((v>0?'+':'')+v+' '+cap(k)); } });
-    return parts;
-  }
-  function poderesFromRow(tr){
-    const rows = Array.from(tr.querySelectorAll('.item-power-def'));
-    return rows.map(s => (s.getAttribute('data-nome')||'').trim()).filter(Boolean);
-  }
+  function listFrom(obj, keys){ const parts=[]; if(!obj) return parts; keys.forEach(k=>{ const v=parseFloat(obj[k]); if(Number.isFinite(v) && v!==0){ parts.push((v>0?'+':'')+v+' '+cap(k)); } }); return parts; }
+  function poderesFromRow(tr){ return Array.from(tr.querySelectorAll('.item-power-def')).map(s => (s.getAttribute('data-nome')||'').trim()).filter(Boolean); }
   function renderPainel(){
-    const alvo = document.getElementById('efeitos-itens-conteudo');
-    if(!alvo) return;
+    const alvo = document.getElementById('efeitos-itens-conteudo'); if(!alvo) return;
     const linhas = Array.from(document.querySelectorAll('#tabela-itens tbody tr'));
     const selecionados = linhas.filter(tr => tr.querySelector('input[type="checkbox"][name="itens"]')?.checked);
     if(selecionados.length===0){ alvo.innerHTML = '<em>Nenhum item selecionado.</em>'; return; }
@@ -721,30 +744,24 @@ document.addEventListener('DOMContentLoaded', function(){
     const frag = document.createDocumentFragment();
     selecionados.forEach(tr => {
       const nome = (tr.querySelector('.nome-item')?.textContent||'Item').trim();
-      const mods = parseMods(tr);
+      const mods = normalizeMods(parseRawMods(tr));
       const car = listFrom(mods.caracteristicas||{}, grupos.caracteristicas);
       const def = listFrom(mods.defesas||{}, grupos.defesas);
       const per = listFrom(mods.pericias||{}, pericias);
       const pods = poderesFromRow(tr);
-      const box = document.createElement('div');
-      box.className = 'efeito-item-box';
-      box.style.margin = '8px 0';
-      const h = document.createElement('div'); h.style.fontWeight = '600'; h.textContent = nome; box.appendChild(h);
-      const ul = document.createElement('ul'); ul.style.margin='6px 0 0'; ul.style.paddingLeft='18px';
-      if(car.length) { const li=document.createElement('li'); li.textContent = 'Características: ' + car.join(', '); ul.appendChild(li); }
-      if(def.length) { const li=document.createElement('li'); li.textContent = 'Defesas: ' + def.join(', '); ul.appendChild(li); }
-      if(per.length) { const li=document.createElement('li'); li.textContent = 'Perícias: ' + (per.length>10? per.slice(0,10).join(', ') + ` e +${per.length-10}` : per.join(', ')); ul.appendChild(li); }
-      if(pods.length){ const li=document.createElement('li'); li.textContent = 'Poderes: ' + pods.join(', '); ul.appendChild(li); }
-      if(!ul.children.length){ const li=document.createElement('li'); li.innerHTML = '<em>Sem efeitos diretos.</em>'; ul.appendChild(li); }
-      box.appendChild(ul);
-      frag.appendChild(box);
+      const box = document.createElement('div'); box.className='efeito-item-box'; box.style.margin='8px 0';
+      const h = document.createElement('div'); h.style.fontWeight='600'; h.textContent=nome; box.appendChild(h);
+      const ul=document.createElement('ul'); ul.style.margin='6px 0 0'; ul.style.paddingLeft='18px';
+      if(car.length){ const li=document.createElement('li'); li.textContent='Características: '+car.join(', '); ul.appendChild(li); }
+      if(def.length){ const li=document.createElement('li'); li.textContent='Defesas: '+def.join(', '); ul.appendChild(li); }
+      if(per.length){ const li=document.createElement('li'); li.textContent='Perícias: '+(per.length>10? per.slice(0,10).join(', ')+` e +${per.length-10}` : per.join(', ')); ul.appendChild(li); }
+      if(pods.length){ const li=document.createElement('li'); li.textContent='Poderes: '+pods.join(', '); ul.appendChild(li); }
+      if(!ul.children.length){ const li=document.createElement('li'); li.innerHTML='<em>Sem efeitos diretos.</em>'; ul.appendChild(li); }
+      box.appendChild(ul); frag.appendChild(box);
     });
-    alvo.innerHTML = '';
-    alvo.appendChild(frag);
+    alvo.innerHTML=''; alvo.appendChild(frag);
   }
-  // Bind nas mudanças de seleção de itens
   document.getElementById('tabela-itens')?.addEventListener('change', function(ev){ if(ev.target && ev.target.matches('input[type="checkbox"][name="itens"]')) renderPainel(); });
-  // Atualiza também após sincronização automática de poderes
   const _oldSync = window.atualizarCustos; window.atualizarCustos = function(){ if(typeof _oldSync==='function') _oldSync(); renderPainel(); };
   setTimeout(renderPainel, 60);
 });
