@@ -159,10 +159,10 @@
     <tbody>
       {% for item in itens %}
         <tr>
-          <td class="nome-item">{{ item.nome }}</td>
+          <td class="nome-item"><a href="{% url 'ficha_item' item.id %}">{{ item.nome }}</a></td>
           <td class="tipo-item">{{ item.tipo }}</td>
           <td class="raridade-item">{{ item.raridade }}</td>
-          <td>{{ item.descricao }}</td>
+          <td class="descricao-item">{{ item.descricao|linebreaksbr }}</td>
           <td>{{ item.preco }}</td>
           {% if is_gm %}
             <td>
@@ -282,5 +282,7 @@ document.addEventListener('DOMContentLoaded', function() {
 .pericias-grid-4 > div,
 .poder-form-grid > div { min-width: 0; }
 .add-btn-wrap .btn { float: none !important; margin: 0 auto; display: inline-block; }
+/* Preservar formatação do texto de descrição na listagem */
+.descricao-item { white-space: pre-wrap; word-break: break-word; }
 </style>
 {% endblock %}
