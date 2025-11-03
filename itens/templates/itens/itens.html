@@ -284,5 +284,9 @@ document.addEventListener('DOMContentLoaded', function() {
 .add-btn-wrap .btn { float: none !important; margin: 0 auto; display: inline-block; }
 /* Preservar formatação do texto de descrição na listagem */
 .descricao-item { white-space: pre-wrap; word-break: break-word; }
+/* Estilo dos links na tabela de itens (evita azul/roxo padrão) */
+#tabela-itens a { color: var(--gold); text-decoration: none; font-weight: 600; }
+#tabela-itens a:visited { color: var(--gold); }
+#tabela-itens a:hover, #tabela-itens a:focus { color: #fff; text-decoration: underline; }
 </style>
 {% endblock %}
