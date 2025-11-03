@@ -12,7 +12,11 @@ def field(form, field_name):
 
 @register.filter
 def dict_get(d, key):
-    return d.get(key)
+    """Safe dict getter for templates. Returns None when d is falsy or not a mapping."""
+    try:
+        return (d or {}).get(key)
+    except Exception:
+        return None
 
 @register.filter
 def lookup(form, campo):

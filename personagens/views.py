@@ -626,7 +626,14 @@ def ficha_personagem(request, personagem_id):
     if not sala_atual or personagem.sala_id != sala_atual.id or (not is_dono and not is_gm_da_sala):
         return redirect('listar_salas')
     poderes_de_item = poderes_de_item = personagem.poderes.filter(de_item=True)
-    # --- Agrega bônus de defesas vindos de itens do inventário (server-side, sem fallback por nome) ---
+    # Ordem e categorias para a ficha
+    pericias_sorted = _ordered_pericias_for_personagem(personagem)
+    categorias = {
+        'caracteristicas': ['forca', 'destreza', 'agilidade', 'luta', 'vigor', 'inteligencia', 'prontidao', 'presenca'],
+        'defesas': ['aparar', 'esquivar', 'fortitude', 'vontade', 'resistencia'],
+        'pericias': pericias_sorted
+    }
+    # --- Agrega bônus vindos de itens do inventário (server-side, sem fallback por nome) ---
     def _norm_key(k: str) -> str:
         n = (k or '').strip().lower()
         aliases = {
@@ -697,12 +704,6 @@ def ficha_personagem(request, personagem_id):
     defesas_totais = {k: (getattr(personagem, k, 0) or 0) + bonus_defesas_itens.get(k, 0) for k in bonus_defesas_itens.keys()}
     caracteristicas_totais = {k: (getattr(personagem, k, 0) or 0) + bonus_attr_itens.get(k, 0) for k in attr_keys}
     pericias_totais = {k: (getattr(personagem, k, 0) or 0) + bonus_pericias_itens.get(k, 0) for k in skill_keys}
-    pericias_sorted = _ordered_pericias_for_personagem(personagem)
-    categorias = {
-        'caracteristicas': ['forca', 'destreza', 'agilidade', 'luta', 'vigor', 'inteligencia', 'prontidao', 'presenca'],
-        'defesas': ['aparar', 'esquivar', 'fortitude', 'vontade', 'resistencia'],
-        'pericias': pericias_sorted
-    }
 
     return render(request, 'personagens/ficha_personagem.html', {
         'personagem': personagem,
