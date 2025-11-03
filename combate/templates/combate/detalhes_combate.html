@@ -319,6 +319,7 @@
       if (!poderSelect || !alvoSelect) return;
       const opt = poderSelect.options[poderSelect.selectedIndex];
       const tipo = opt ? (opt.dataset.tipo || '') : '';
+      const origemItem = opt ? (opt.dataset.itemOrigem || '') : '';
       if (tipo === 'descritivo') {
         alvoSelect.disabled = true;
         alvoSelect.required = false;
@@ -326,7 +327,10 @@
         if (form) form.setAttribute('novalidate', 'novalidate');
         if (btn) btn.setAttribute('formnovalidate', 'formnovalidate');
         if (hint) hint.textContent = 'Poder descritivo: não requer alvos.';
-        if (poderHint) poderHint.textContent = 'Rola d20 + nível do poder.';
+        if (poderHint) {
+          const base = 'Rola d20 + nível do poder.';
+          poderHint.textContent = origemItem ? (base + ' Origem: item ' + origemItem + '.') : base;
+        }
       } else {
         alvoSelect.disabled = false;
         alvoSelect.required = true;
@@ -334,7 +338,9 @@
         if (form) form.removeAttribute('novalidate');
         if (btn) btn.removeAttribute('formnovalidate');
         if (hint) hint.textContent = 'Segure Ctrl (Windows/Linux) ou Cmd (macOS) para selecionar múltiplos; use Shift para selecionar intervalos.';
-        if (poderHint) poderHint.textContent = '';
+        if (poderHint) {
+          poderHint.textContent = origemItem ? ('Origem: item ' + origemItem + '.') : '';
+        }
       }
     }
     function bindPoderStorageListener(){
@@ -456,10 +462,15 @@
               data.poderes.forEach(function(p) {
                 const opt = document.createElement('option');
                 opt.value = p.id; // representante
-                opt.textContent = p.nome;
+                // Exibe origem do item quando aplicável
+                const deItem = (p.de_item === true || p.de_item === '1');
+                const origem = (p.item_origem_nome || p.item_origem || '');
+                opt.textContent = deItem && origem ? (p.nome + ' — item: ' + origem) : p.nome;
                 if (p.tipo) opt.dataset.tipo = p.tipo;
                 if (p.duracao) opt.dataset.duracao = p.duracao;
                 if (p.equivalentes) opt.dataset.equivalentes = p.equivalentes.join(',');
+                if (deItem) opt.dataset.deItem = '1';
+                if (origem) opt.dataset.itemOrigem = origem;
                 // Prefer savedValue; depois tenta prevValue (qualquer equivalente também vale)
                 const eqSet = new Set([String(p.id)].concat((p.equivalentes||[]).map(String)));
                 if (!restored && savedValue && eqSet.has(String(savedValue))) { opt.selected = true; restored = true; }
@@ -1414,6 +1425,13 @@
           ['personagem_acao_hidden','personagem_acao_hidden_pericia','personagem_acao_hidden_caracteristica','personagem_acao_hidden_d20']
             .forEach(id => { const h = document.getElementById(id); if (h) h.value = val; });
         } catch(_) {}
+        // Captura contexto da origem do poder selecionado (para anotar no histórico pós-envio)
+        try {
+          const poderSel = form.querySelector('#poder');
+          const opt = poderSel ? poderSel.options[poderSel.selectedIndex] : null;
+          window._lastSubmitItemOrigem = opt ? (opt.dataset.itemOrigem || '') : '';
+          window._lastSubmitPoderNome = opt ? (opt.textContent || '').replace(/\s*—\s*item:.*$/, '') : '';
+        } catch(_) { window._lastSubmitItemOrigem=''; window._lastSubmitPoderNome=''; }
         let fd;
         try { fd = new FormData(form, submitter); }
         catch(_){ fd = new FormData(form); if (submitter && submitter.name) fd.append(submitter.name, submitter.value || '1'); }
@@ -1444,6 +1462,25 @@
             switch (data.evento) {
               case 'rolagem':
                 await refreshSelectors(['#historico-card', '#status-card']);
+                // Anota origem do item no último registro, quando conhecida
+                try {
+                  const origem = (window._lastSubmitItemOrigem || '').trim();
+                  if (origem) {
+                    const bloco = document.querySelector('.turnos-list .turno-item.ativo .turno-desc') || document.querySelector('.turnos-list .turno-item:first-child .turno-desc');
+                    if (bloco) {
+                      // Procura primeira linha de ação e acrescenta a origem
+                      const firstLine = bloco.querySelector('.hist-acao');
+                      if (firstLine && !firstLine.querySelector('.hist-item-origem')) {
+                        const span = document.createElement('span');
+                        span.className = 'hist-item-origem';
+                        span.style.opacity = '0.85';
+                        span.style.marginLeft = '6px';
+                        span.textContent = '(Item: ' + origem + ')';
+                        firstLine.appendChild(span);
+                      }
+                    }
+                  }
+                } catch(_) {}
                 break;
               case 'adicionar_participante':
                 // Atualização incremental sem recriar form completo

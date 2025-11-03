@@ -415,6 +415,13 @@
             </tbody>
           </table>
         </div>
+        <!-- Painel: Efeitos dos Itens Selecionados -->
+        <div id="painel-efeitos-itens" class="personagem-card" style="margin-top:1rem;">
+          <h3 class="personagem-subtitle" style="margin-top:0">Efeitos dos Itens Selecionados</h3>
+          <div id="efeitos-itens-conteudo" style="font-size:0.95rem; opacity:0.95;">
+            <em>Nenhum item selecionado.</em>
+          </div>
+        </div>
       </div>
       <div style="margin-top:2rem; text-align:center;">
         <input type="submit" value="Salvar" class="btn">
@@ -685,6 +692,61 @@ document.addEventListener('DOMContentLoaded', function(){
     }
   });
   setTimeout(syncAll, 40);
+});
+</script>
+<script>
+// Painel de Resumo: características, defesas, perícias e poderes concedidos pelos itens marcados
+document.addEventListener('DOMContentLoaded', function(){
+  function parseMods(tr){
+    try { return JSON.parse(tr.getAttribute('data-mods')||'{}')||{}; } catch(_) { return {}; }
+  }
+  function cap(s){ try { return (s||'').charAt(0).toUpperCase()+String(s||'').slice(1); } catch(_) { return s; } }
+  function listFrom(obj, keys){
+    const parts=[]; if(!obj) return parts;
+    keys.forEach(k=>{ const v=parseFloat(obj[k]); if(Number.isFinite(v) && v!==0){ parts.push((v>0?'+':'')+v+' '+cap(k)); } });
+    return parts;
+  }
+  function poderesFromRow(tr){
+    const rows = Array.from(tr.querySelectorAll('.item-power-def'));
+    return rows.map(s => (s.getAttribute('data-nome')||'').trim()).filter(Boolean);
+  }
+  function renderPainel(){
+    const alvo = document.getElementById('efeitos-itens-conteudo');
+    if(!alvo) return;
+    const linhas = Array.from(document.querySelectorAll('#tabela-itens tbody tr'));
+    const selecionados = linhas.filter(tr => tr.querySelector('input[type="checkbox"][name="itens"]')?.checked);
+    if(selecionados.length===0){ alvo.innerHTML = '<em>Nenhum item selecionado.</em>'; return; }
+    const grupos = {caracteristicas:['forca','vigor','destreza','agilidade','luta','inteligencia','prontidao','presenca'], defesas:['aparar','esquivar','fortitude','vontade','resistencia']};
+    const pericias = ['acrobacias','atletismo','combate_distancia','combate_corpo','enganacao','especialidade','furtividade','intimidacao','intuicao','investigacao','percepcao','persuasao','prestidigitacao','tecnologia','tratamento','veiculos','historia','sobrevivencia','arcana','religiao'];
+    const frag = document.createDocumentFragment();
+    selecionados.forEach(tr => {
+      const nome = (tr.querySelector('.nome-item')?.textContent||'Item').trim();
+      const mods = parseMods(tr);
+      const car = listFrom(mods.caracteristicas||{}, grupos.caracteristicas);
+      const def = listFrom(mods.defesas||{}, grupos.defesas);
+      const per = listFrom(mods.pericias||{}, pericias);
+      const pods = poderesFromRow(tr);
+      const box = document.createElement('div');
+      box.className = 'efeito-item-box';
+      box.style.margin = '8px 0';
+      const h = document.createElement('div'); h.style.fontWeight = '600'; h.textContent = nome; box.appendChild(h);
+      const ul = document.createElement('ul'); ul.style.margin='6px 0 0'; ul.style.paddingLeft='18px';
+      if(car.length) { const li=document.createElement('li'); li.textContent = 'Características: ' + car.join(', '); ul.appendChild(li); }
+      if(def.length) { const li=document.createElement('li'); li.textContent = 'Defesas: ' + def.join(', '); ul.appendChild(li); }
+      if(per.length) { const li=document.createElement('li'); li.textContent = 'Perícias: ' + (per.length>10? per.slice(0,10).join(', ') + ` e +${per.length-10}` : per.join(', ')); ul.appendChild(li); }
+      if(pods.length){ const li=document.createElement('li'); li.textContent = 'Poderes: ' + pods.join(', '); ul.appendChild(li); }
+      if(!ul.children.length){ const li=document.createElement('li'); li.innerHTML = '<em>Sem efeitos diretos.</em>'; ul.appendChild(li); }
+      box.appendChild(ul);
+      frag.appendChild(box);
+    });
+    alvo.innerHTML = '';
+    alvo.appendChild(frag);
+  }
+  // Bind nas mudanças de seleção de itens
+  document.getElementById('tabela-itens')?.addEventListener('change', function(ev){ if(ev.target && ev.target.matches('input[type="checkbox"][name="itens"]')) renderPainel(); });
+  // Atualiza também após sincronização automática de poderes
+  const _oldSync = window.atualizarCustos; window.atualizarCustos = function(){ if(typeof _oldSync==='function') _oldSync(); renderPainel(); };
+  setTimeout(renderPainel, 60);
 });
 </script>
 <!-- Cálculo de Ataque Total com Bônus compartilhado entre poderes ligados (nome+modo+duração) -->

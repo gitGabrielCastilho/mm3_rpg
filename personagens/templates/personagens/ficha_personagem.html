@@ -158,20 +158,30 @@
               <th>Raridade</th>
               <th>Descrição</th>
               <th>Preço</th>
+              <th>Efeitos</th>
             </tr>
           </thead>
           <tbody>
             {% for item in personagem.inventario.itens.all %}
-              <tr>
-                <td>{{ item.nome }}</td>
+              <tr data-mods="{{ item.mods|default:'{}'|escapejs }}">
+                <td class="nome-item">{{ item.nome }}</td>
                 <td>{{ item.tipo }}</td>
                 <td>{{ item.raridade }}</td>
                 <td>{{ item.descricao }}</td>
                 <td>{{ item.preco }}</td>
+                <td class="efeitos-item-cell">
+                  <!-- Preenchido por JS para uma visualização amigável -->
+                  <span class="efeitos-placeholder"><em>—</em></span>
+                  <span class="item-powers-defs" style="display:none;">
+                    {% for poder in item.poderes.all %}
+                      <span class="item-power-def" data-nome="{{ poder.nome|escape }}"></span>
+                    {% endfor %}
+                  </span>
+                </td>
               </tr>
             {% empty %}
               <tr>
-                <td colspan="5"><em>Nenhum item no inventário.</em></td>
+                <td colspan="6"><em>Nenhum item no inventário.</em></td>
               </tr>
             {% endfor %}
           </tbody>
@@ -188,3 +198,28 @@
   </div>
 </div>
 {% endblock %}
+<script>
+// Renderiza efeitos dos itens na ficha (características, defesas, perícias e poderes)
+document.addEventListener('DOMContentLoaded', function(){
+  function parseMods(tr){ try { return JSON.parse(tr.getAttribute('data-mods')||'{}')||{}; } catch(_) { return {}; } }
+  function cap(s){ try { return (s||'').charAt(0).toUpperCase()+String(s||'').slice(1); } catch(_) { return s; } }
+  function listFrom(obj, keys){ const parts=[]; if(!obj) return parts; keys.forEach(k=>{ const v=parseFloat(obj[k]); if(Number.isFinite(v) && v!==0){ parts.push((v>0?'+':'')+v+' '+cap(k)); } }); return parts; }
+  function poderesFromRow(tr){ return Array.from(tr.querySelectorAll('.item-power-def')).map(s => (s.getAttribute('data-nome')||'').trim()).filter(Boolean); }
+  const grupos = {caracteristicas:['forca','vigor','destreza','agilidade','luta','inteligencia','prontidao','presenca'], defesas:['aparar','esquivar','fortitude','vontade','resistencia']};
+  const pericias = ['acrobacias','atletismo','combate_distancia','combate_corpo','enganacao','especialidade','furtividade','intimidacao','intuicao','investigacao','percepcao','persuasao','prestidigitacao','tecnologia','tratamento','veiculos','historia','sobrevivencia','arcana','religiao'];
+  document.querySelectorAll('.ficha-inv-tabela tbody tr').forEach(tr => {
+    const alvo = tr.querySelector('.efeitos-item-cell'); if(!alvo) return;
+    const mods = parseMods(tr);
+    const car = listFrom(mods.caracteristicas||{}, grupos.caracteristicas);
+    const def = listFrom(mods.defesas||{}, grupos.defesas);
+    const per = listFrom(mods.pericias||{}, pericias);
+    const pods = poderesFromRow(tr);
+    const parts = [];
+    if (car.length) parts.push('Características: '+car.join(', '));
+    if (def.length) parts.push('Defesas: '+def.join(', '));
+    if (per.length) parts.push('Perícias: '+(per.length>10? per.slice(0,10).join(', ') + ` e +${per.length-10}` : per.join(', ')));
+    if (pods.length) parts.push('Poderes: '+pods.join(', '));
+    alvo.innerHTML = parts.length ? parts.map(p=>`<div>${p}</div>`).join('') : '<em>Sem efeitos diretos.</em>';
+  });
+});
+</script>
