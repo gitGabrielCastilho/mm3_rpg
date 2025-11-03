@@ -65,3 +65,26 @@ def get_perfil_de(usuario):
         except Exception:
                 return None
 
+# --- JSON helpers ---
+@register.filter
+def tojson(value):
+    """Serialize a Python value to a JSON string suitable for embedding.
+
+    This ensures dictionaries from JSONField render with double quotes so that
+    JSON.parse works in the browser. Falls back to '{}' on failure.
+    """
+    try:
+        import json
+        # If already a string, try to parse then dump to normalize quotes
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+                return json.dumps(parsed, ensure_ascii=False)
+            except Exception:
+                # If it's not valid JSON, treat as empty object to avoid breaking JS
+                return '{}'
+        # Default: dump as JSON
+        return json.dumps(value if value is not None else {}, ensure_ascii=False)
+    except Exception:
+        return '{}'
+

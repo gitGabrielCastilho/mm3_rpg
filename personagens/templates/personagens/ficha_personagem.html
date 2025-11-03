@@ -174,7 +174,7 @@
           </thead>
           <tbody>
             {% for item in personagem.inventario.itens.all %}
-              <tr data-mods="{{ item.mods|default:'{}'|escapejs }}">
+              <tr data-mods="{{ item.mods|tojson|escapejs }}">
                 <td class="nome-item"><a href="{% url 'ficha_item' item.id %}">{{ item.nome }}</a></td>
                 <td>{{ item.tipo }}</td>
                 <td>{{ item.raridade }}</td>
