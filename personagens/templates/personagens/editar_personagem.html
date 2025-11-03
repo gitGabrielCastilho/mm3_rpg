@@ -660,7 +660,13 @@ document.addEventListener('DOMContentLoaded', function(){
       // PT-BR com acentos/variações
       'força':'forca','inteligência':'inteligencia','prontidão':'prontidao','presença':'presenca','resistência':'resistencia','esquiva':'esquivar'
     };
-    return aliases[n] || n;
+    if (aliases[n]) return aliases[n];
+    // Heurística de tokens para chaves compostas (ex.: "Dexterity (Archery)")
+    const tokens = n.split(/[^a-záàâãéèêíïóôõöúüç]+/i).filter(Boolean);
+    for (const t of tokens){
+      if (aliases[t]) return aliases[t];
+    }
+    return n;
   }
   function normalizeMods(raw){
     const out = { caracteristicas:{}, defesas:{}, pericias:{} };
@@ -671,56 +677,54 @@ document.addEventListener('DOMContentLoaded', function(){
       'defense':'defesas','defenses':'defesas','saves':'defesas','saving_throws':'defesas',
       'skills':'pericias','skill':'pericias',
       'abilities':'caracteristicas','ability':'caracteristicas','attributes':'caracteristicas','stats':'caracteristicas',
+      // Common wrappers
+      'mods':'mods','modifiers':'mods','effects':'mods','bonuses':'mods','bonus':'mods',
       // PT variants
       'defesa':'defesas','perícia':'pericias','perícias':'pericias','característica':'caracteristicas','características':'caracteristicas'
     };
     const defKeys = new Set(['esquivar','aparar','fortitude','vontade','resistencia']);
+    const perKeys = new Set(['acrobacias','atletismo','combate_distancia','combate_corpo','enganacao','especialidade','furtividade','intimidacao','intuicao','investigacao','percepcao','persuasao','prestidigitacao','tecnologia','tratamento','veiculos','historia','sobrevivencia','arcana','religiao']);
 
     function addTo(bucket, key, val){ if(!Number.isFinite(val) || val===0) return; bucket[key] = (bucket[key]||0)+val; }
 
-    function foldSection(sectionName, obj){
-      const sec = (secAlias[mapKey(sectionName)] || sectionName);
-      Object.keys(obj||{}).forEach(k=>{
-        const mk = mapKey(k);
-        const v = parseFloat(obj[k]);
-        if (!Number.isFinite(v)) return;
-        if (sec === 'defesas' || defKeys.has(mk)) addTo(out.defesas, mk, v);
-        else if (sec === 'pericias') addTo(out.pericias, mk, v);
-        else addTo(out.caracteristicas, mk, v);
+    function walk(node, hint){
+      if (node==null) return;
+      if (Array.isArray(node)){ node.forEach(el=>walk(el, hint)); return; }
+      if (typeof node !== 'object') return;
+      Object.keys(node).forEach(key => {
+        const val = node[key];
+        const mk = mapKey(key);
+        const sec = secAlias[mk] || mk;
+        const num = parseFloat(val);
+        if (Number.isFinite(num)){
+          if (defKeys.has(mk) || hint==='defesas') addTo(out.defesas, mk, num);
+          else if (perKeys.has(mk) || hint==='pericias') addTo(out.pericias, mk, num);
+          else addTo(out.caracteristicas, mk, num);
+          return;
+        }
+        if (val && typeof val === 'object' && !Array.isArray(val)){
+          const nameKey = ['ability','stat','key','name','atributo','caracteristica','defense','skill'].find(k=>k in val);
+          const valueKey = ['value','bonus','amount','mod','modifier','valor'].find(k=>k in val);
+          if (nameKey && valueKey){
+            const mkName = mapKey(String(val[nameKey]));
+            const vnum = parseFloat(val[valueKey]);
+            if (Number.isFinite(vnum)){
+              if (defKeys.has(mkName) || mk==='defense' || mk==='defenses') addTo(out.defesas, mkName, vnum);
+              else if (perKeys.has(mkName) || mk==='skill' || mk==='skills') addTo(out.pericias, mkName, vnum);
+              else addTo(out.caracteristicas, mkName, vnum);
+              return;
+            }
+          }
+          let nextHint = hint;
+          if (sec==='defesas' || sec==='pericias' || sec==='caracteristicas') nextHint = sec;
+          walk(val, nextHint);
+          return;
+        }
+        if (Array.isArray(val)) { walk(val, sec==='defesas'||sec==='pericias'||sec==='caracteristicas'? sec : hint); return; }
       });
     }
 
-    // 1) Known sections (with aliases)
-    Object.keys(raw).forEach(sec=>{
-      const val = raw[sec];
-      if (val && typeof val === 'object'){
-        const secNorm = secAlias[mapKey(sec)] || sec;
-        if (['caracteristicas','defesas','pericias'].includes(secNorm)) {
-          foldSection(secNorm, val);
-        }
-      }
-    });
-    // 2) Root-level numeric keys
-    Object.keys(raw).forEach(k=>{
-      const v = parseFloat(raw[k]);
-      if (!Number.isFinite(v)) return;
-      const mk = mapKey(k);
-      if (defKeys.has(mk)) addTo(out.defesas, mk, v);
-      else addTo(out.caracteristicas, mk, v);
-    });
-    // 3) Shallow scan unknown-named nested objects; default to características
-    Object.keys(raw).forEach(sec=>{
-      const val = raw[sec];
-      if (val && typeof val === 'object'){
-        Object.keys(val).forEach(k=>{
-          const v = parseFloat(val[k]);
-          if (!Number.isFinite(v)) return;
-          const mk = mapKey(k);
-          if (defKeys.has(mk)) addTo(out.defesas, mk, v);
-          else addTo(out.caracteristicas, mk, v);
-        });
-      }
-    });
+    walk(raw, undefined);
     return out;
   }
   function cap(s){ try { return (s||'').charAt(0).toUpperCase()+String(s||'').slice(1); } catch(_) { return s; } }
@@ -743,17 +747,11 @@ document.addEventListener('DOMContentLoaded', function(){
     selecionados.forEach(tr => {
       const nome = (tr.querySelector('.nome-item')?.textContent||'Item').trim();
       const mods = normalizeMods(parseRawMods(tr));
-      const car = listFrom(mods.caracteristicas||{}, grupos.caracteristicas);
+      let car = listFrom(mods.caracteristicas||{}, grupos.caracteristicas);
       let def = listFrom(mods.defesas||{}, grupos.defesas);
       const per = listFrom(mods.pericias||{}, pericias);
       const pods = poderesFromRow(tr);
-      // Fallback explícito para itens conhecidos, caso o JSON venha fora do padrão
-      if(!def.length){
-        const nome = (tr.querySelector('.nome-item')?.textContent||'').trim();
-        if(/^bracers of defense$/i.test(nome) || /^animated shield$/i.test(nome)){
-          def = ['+2 Aparar', '+2 Esquivar'];
-        }
-      }
+      // Sem fallbacks específicos por item — tudo vem de mods normalizados
       const box = document.createElement('div'); box.className='efeito-item-box'; box.style.margin='8px 0';
       const h = document.createElement('div'); h.style.fontWeight='600'; h.textContent=nome; box.appendChild(h);
       const ul=document.createElement('ul'); ul.style.margin='6px 0 0'; ul.style.paddingLeft='18px';
