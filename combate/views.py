@@ -143,7 +143,13 @@ def poderes_personagem_ajax(request):
 
     # Agrupa poderes por nome para evitar duplicatas quando estão encadeados (ligados)
     # Regra: com a nova validação, somente poderes com MESMO nome podem estar ligados.
-    poderes_qs = Poder.objects.filter(personagem=personagem).prefetch_related('ligados')
+    # Inclui item_origem nos poderes e também nos ligados para evitar N+1
+    poderes_qs = (
+        Poder.objects
+        .filter(personagem=personagem)
+        .select_related('item_origem')
+        .prefetch_related('ligados', 'ligados__item_origem')
+    )
     grupos = {}
     for poder in poderes_qs:
         nome = poder.nome
@@ -154,22 +160,44 @@ def poderes_personagem_ajax(request):
                 'nome': nome,
                 'tipo': poder.tipo,
                 'duracao': poder.duracao,
-                'ids_equivalentes': set([poder.id])
+                'ids_equivalentes': set([poder.id]),
+                'de_item': bool(getattr(poder, 'de_item', False)),
+                'itens_origem': set([getattr(getattr(poder, 'item_origem', None), 'nome', '')]) if getattr(poder, 'de_item', False) and getattr(poder, 'item_origem', None) else set()
             }
         else:
             # Se já existe um representante, só agrega o id
             entry['ids_equivalentes'].add(poder.id)
+            # Propaga flags/itens de origem
+            if getattr(poder, 'de_item', False):
+                entry['de_item'] = True
+                if getattr(poder, 'item_origem', None) and getattr(poder.item_origem, 'nome', None):
+                    entry.setdefault('itens_origem', set()).add(poder.item_origem.nome)
         # Também adiciona ids dos ligados (mesmo nome pela validação)
         for ligado in poder.ligados.all():
             grupos[nome]['ids_equivalentes'].add(ligado.id)
+            # Abastece dados de origem dos ligados
+            if getattr(ligado, 'de_item', False):
+                grupos[nome]['de_item'] = True
+                if getattr(ligado, 'item_origem', None) and getattr(ligado.item_origem, 'nome', None):
+                    grupos[nome].setdefault('itens_origem', set()).add(ligado.item_origem.nome)
     poderes = []
     for g in grupos.values():
+        # Normaliza origem de item (nome único ou lista unida por " / ")
+        item_origem_nome = ''
+        try:
+            nomes_itens = sorted([n for n in (g.get('itens_origem') or set()) if n])
+            if nomes_itens:
+                item_origem_nome = nomes_itens[0] if len(nomes_itens) == 1 else " / ".join(nomes_itens)
+        except Exception:
+            item_origem_nome = ''
         poderes.append({
             'id': g['id'],
             'nome': g['nome'],
             'tipo': g['tipo'],
             'duracao': g['duracao'],
-            'equivalentes': list(sorted(g['ids_equivalentes']))
+            'equivalentes': list(sorted(g['ids_equivalentes'])),
+            'de_item': bool(g.get('de_item', False)),
+            'item_origem_nome': item_origem_nome,
         })
     poderes.sort(key=lambda x: x['nome'].lower())
     return JsonResponse({'poderes': poderes})
@@ -1432,8 +1460,17 @@ def realizar_ataque(request, combate_id):
             except Exception:
                 charges_val = 0
             charges_piece = (f" — Charges: {charges_val}" if charges_val > 0 else "")
+            # Indica origem de item no cabeçalho principal (idx == 0)
+            try:
+                origem_piece = ""
+                if idx == 0 and getattr(poder_atual, 'de_item', False) and getattr(poder_atual, 'item_origem', None):
+                    nome_item = getattr(poder_atual.item_origem, 'nome', '') or ''
+                    if nome_item:
+                        origem_piece = f" — item: {nome_item}"
+            except Exception:
+                origem_piece = ""
             cabecalho = (
-                f"{atacante.nome} usou {poder_atual.nome} — Duração: {duracao_label}{charges_piece}" if idx == 0
+                f"{atacante.nome} usou {poder_atual.nome} — Duração: {duracao_label}{charges_piece}{origem_piece}" if idx == 0
                 else f"[Encadeado] {atacante.nome} aplica {poder_atual.nome}{charges_piece}"
             )
             resultados.append(cabecalho)
