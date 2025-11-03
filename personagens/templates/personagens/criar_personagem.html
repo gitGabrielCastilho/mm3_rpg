@@ -144,6 +144,45 @@
   <h2>Defesas <span id="badge-def" class="section-cost-badge" title="Cada ponto em Defesas custa +1 pp.">+1 pp — 0</span></h2>
       <div class="defesas-grid" style="display:grid; grid-template-columns:repeat(3, minmax(170px,1fr)); gap:1.8rem 3rem; justify-items:center; margin-bottom:2rem;">
         <!-- Linha 1: Aparar (Luta), Esquivar (Agilidade), Resistência (Vigor) -->
+        <div class="campo-def">
+          <label for="id_aparar">Aparar <small>(Luta)</small></label>
+          {{ form.aparar }}
+          <div class="defesa-total" data-defesa="aparar">Total: <span class="valor-total" id="total_aparar">0</span></div>
+          {% if form.aparar.errors %}<div style="color:red;">{{ form.aparar.errors }}</div>{% endif %}
+        </div>
+        <div class="campo-def">
+          <label for="id_esquivar">Esquivar <small>(Agilidade)</small></label>
+          {{ form.esquivar }}
+          <div class="defesa-total" data-defesa="esquivar">Total: <span class="valor-total" id="total_esquivar">0</span></div>
+          {% if form.esquivar.errors %}<div style="color:red;">{{ form.esquivar.errors }}</div>{% endif %}
+        </div>
+        <div class="campo-def">
+          <label for="id_resistencia">Resistência <small>(Vigor)</small></label>
+          {{ form.resistencia }}
+          <div class="defesa-total" data-defesa="resistencia">Total: <span class="valor-total" id="total_resistencia">0</span></div>
+          {% if form.resistencia.errors %}<div style="color:red;">{{ form.resistencia.errors }}</div>{% endif %}
+        </div>
+        <!-- Linha 2: Vontade (Prontidão), Fortitude (Vigor) -->
+        <div class="campo-def">
+          <label for="id_vontade">Vontade <small>(Prontidão)</small></label>
+          {{ form.vontade }}
+          <div class="defesa-total" data-defesa="vontade">Total: <span class="valor-total" id="total_vontade">0</span></div>
+          {% if form.vontade.errors %}<div style="color:red;">{{ form.vontade.errors }}</div>{% endif %}
+        </div>
+        <div class="campo-def">
+          <label for="id_fortitude">Fortitude <small>(Vigor)</small></label>
+          {{ form.fortitude }}
+          <div class="defesa-total" data-defesa="fortitude">Total: <span class="valor-total" id="total_fortitude">0</span></div>
+          {% if form.fortitude.errors %}<div style="color:red;">{{ form.fortitude.errors }}</div>{% endif %}
+        </div>
+        <div>
+          <div id="limites-defesas" style="font-size:0.8rem; line-height:1.3; text-align:left;">
+            <strong>Limites:</strong><br>
+            Esquivar + Resistência ≤ 2×NP<br>
+            Aparar + Resistência ≤ 2×NP<br>
+            Fortitude + Vontade ≤ 2×NP
+          </div>
+        </div>
       </div>
   <h2>Poderes <span id="badge-pod" class="section-cost-badge" title="Custo por poder = Nível × (1 + bônus de Tipo + Duração + Modo) + Bônus de Ataque. Bônus: Tipo: +1 (cura/aprimorar). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +0,5 pp por ponto (aditivo, por poder). Arrays: parte de Nível do grupo = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque.">Nivel x (1+Tipo+Duração+Modo) + Bônus Ataque — 0</span></h2>
       <!-- Empty form grid para JS clonar (opcional, se usar JS dinâmico igual editar) -->

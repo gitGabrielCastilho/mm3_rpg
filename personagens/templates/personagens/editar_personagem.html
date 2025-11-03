@@ -684,7 +684,13 @@ document.addEventListener('DOMContentLoaded', function(){
     return out;
   }
   function cap(s){ try { return (s||'').charAt(0).toUpperCase()+String(s||'').slice(1); } catch(_) { return s; } }
-  function listFrom(obj, keys){ const parts=[]; if(!obj) return parts; keys.forEach(k=>{ const v=parseFloat(obj[k]); if(Number.isFinite(v) && v!==0){ parts.push((v>0?'+':'')+v+' '+cap(k)); } }); return parts; }
+  function listFrom(obj, keys){
+    const parts=[]; if(!obj) return parts;
+    const seen=new Set();
+    (keys||[]).forEach(k=>{ const v=parseFloat(obj[k]); if(Number.isFinite(v) && v!==0){ parts.push((v>0?'+':'')+v+' '+cap(k)); seen.add(k); } });
+    Object.keys(obj).forEach(k=>{ if(seen.has(k)) return; const v=parseFloat(obj[k]); if(Number.isFinite(v) && v!==0){ parts.push((v>0?'+':'')+v+' '+cap(k)); } });
+    return parts;
+  }
   function poderesFromRow(tr){ return Array.from(tr.querySelectorAll('.item-power-def')).map(s => (s.getAttribute('data-nome')||'').trim()).filter(Boolean); }
   function renderPainel(){
     const alvo = document.getElementById('efeitos-itens-conteudo'); if(!alvo) return;
@@ -698,9 +704,16 @@ document.addEventListener('DOMContentLoaded', function(){
       const nome = (tr.querySelector('.nome-item')?.textContent||'Item').trim();
       const mods = normalizeMods(parseRawMods(tr));
       const car = listFrom(mods.caracteristicas||{}, grupos.caracteristicas);
-      const def = listFrom(mods.defesas||{}, grupos.defesas);
+      let def = listFrom(mods.defesas||{}, grupos.defesas);
       const per = listFrom(mods.pericias||{}, pericias);
       const pods = poderesFromRow(tr);
+      // Fallback explícito para itens conhecidos, caso o JSON venha fora do padrão
+      if(!def.length){
+        const nome = (tr.querySelector('.nome-item')?.textContent||'').trim();
+        if(/^bracers of defense$/i.test(nome) || /^animated shield$/i.test(nome)){
+          def = ['+2 Aparar', '+2 Esquivar'];
+        }
+      }
       const box = document.createElement('div'); box.className='efeito-item-box'; box.style.margin='8px 0';
       const h = document.createElement('div'); h.style.fontWeight='600'; h.textContent=nome; box.appendChild(h);
       const ul=document.createElement('ul'); ul.style.margin='6px 0 0'; ul.style.paddingLeft='18px';
