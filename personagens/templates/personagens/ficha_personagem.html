@@ -7,6 +7,7 @@
     /* Forçar linhas com rótulo à esquerda e valor à direita nesta página */
     .ficha-card .ficha-list li { display: flex; justify-content: space-between; align-items: center; }
     .ficha-card .ficha-list .lbl { margin-right: 8px; }
+    .ficha-card .ficha-list .lbl::after { content: ':'; margin-left: 4px; }
   </style>
   <div class="ficha-header">
     {% if personagem.foto %}
@@ -42,7 +43,7 @@
       <!-- Exibir em linhas únicas (sem colunas) -->
       <ul class="ficha-list">
         {% for campo in categorias.caracteristicas %}
-          <li><span class="lbl">{{ campo|capfirst }}</span><span class="val">{{ personagem|attr:campo }}</span></li>
+          <li><span class="lbl">{{ campo|capfirst }}</span><span class="val">{{ caracteristicas_totais|dict_get:campo }}</span></li>
         {% endfor %}
       </ul>
     </section>
@@ -51,7 +52,7 @@
       <!-- Exibir em linhas únicas (sem colunas); marcar cada item com data-key para atualização via JS -->
       <ul class="ficha-list" id="defesas-list">
         {% for campo in categorias.defesas %}
-          <li data-key="{{ campo }}"><span class="lbl">{{ campo|capfirst }}</span><span class="val">{{ personagem|attr:campo }}</span></li>
+          <li data-key="{{ campo }}"><span class="lbl">{{ campo|capfirst }}</span><span class="val">{{ defesas_totais|default:{}|dict_get:campo|default:personagem|attr:campo }}</span></li>
         {% endfor %}
       </ul>
     </section>
@@ -60,7 +61,7 @@
       <!-- Exibir em linhas únicas (sem colunas) -->
       <ul class="ficha-list">
         {% for campo in categorias.pericias %}
-          <li><span class="lbl">{{ campo|capfirst }}</span><span class="val">{{ personagem|attr:campo }}</span></li>
+          <li><span class="lbl">{{ campo|capfirst }}</span><span class="val">{{ pericias_totais|dict_get:campo }}</span></li>
         {% endfor %}
       </ul>
     </section>
@@ -247,17 +248,9 @@ document.addEventListener('DOMContentLoaded', function(){
   function poderesFromRow(tr){ return Array.from(tr.querySelectorAll('.item-power-def')).map(s => (s.getAttribute('data-nome')||'').trim()).filter(Boolean); }
   const grupos = {caracteristicas:['forca','vigor','destreza','agilidade','luta','inteligencia','prontidao','presenca'], defesas:['aparar','esquivar','fortitude','vontade','resistencia']};
   const pericias = ['acrobacias','atletismo','combate_distancia','combate_corpo','enganacao','especialidade','furtividade','intimidacao','intuicao','investigacao','percepcao','persuasao','prestidigitacao','tecnologia','tratamento','veiculos','historia','sobrevivencia','arcana','religiao'];
-  const totDef = { aparar:0, esquivar:0, fortitude:0, vontade:0, resistencia:0 };
   document.querySelectorAll('.ficha-inv-tabela tbody tr').forEach(tr => {
     const alvo = tr.querySelector('.efeitos-item-cell'); if(!alvo) return;
     const mods = normalizeMods(parseRawMods(tr));
-    // Acumula bônus de defesas para refletir no card de Defesas
-    if (mods.defesas) {
-      Object.keys(mods.defesas).forEach(k => {
-        const mk = mapKey(k);
-        if (mk in totDef) totDef[mk] += Number(mods.defesas[k]) || 0;
-      });
-    }
     const car = listFrom(mods.caracteristicas||{}, grupos.caracteristicas);
     const def = listFrom(mods.defesas||{}, grupos.defesas);
     const per = listFrom(mods.pericias||{}, pericias);
@@ -270,25 +263,7 @@ document.addEventListener('DOMContentLoaded', function(){
     alvo.innerHTML = parts.length ? parts.map(p=>`<div>${p}</div>`).join('') : '<em>Sem efeitos diretos.</em>';
   });
 
-  // Atualiza o card de Defesas somando os bônus de itens
-  const defList = document.getElementById('defesas-list');
-  if (defList) {
-    const liNodes = defList.querySelectorAll('li[data-key]');
-    liNodes.forEach(li => {
-      const key = mapKey(li.getAttribute('data-key'));
-      const valEl = li.querySelector('.val');
-      if (!valEl) return;
-      const base = parseFloat((valEl.textContent||'0').replace(',', '.')) || 0;
-      const bonus = Number.isFinite(totDef[key]) ? totDef[key] : 0;
-      const total = base + bonus;
-      // Exibe como inteiro quando aplicável
-      valEl.textContent = Number.isInteger(total) ? total.toString() : total.toFixed(2);
-      if (bonus) {
-        // Opcional: título com detalhamento do bônus
-        li.title = `Base: ${base >= 0 ? base : 0}${bonus ? `, Itens: ${(bonus>0?'+':'')}${bonus}`:''}`;
-      }
-    });
-  }
+  // As defesas já vêm totalizadas do servidor; aqui não alteramos os valores do card.
 });
 </script>
 {% endblock %}

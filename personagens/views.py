@@ -626,6 +626,77 @@ def ficha_personagem(request, personagem_id):
     if not sala_atual or personagem.sala_id != sala_atual.id or (not is_dono and not is_gm_da_sala):
         return redirect('listar_salas')
     poderes_de_item = poderes_de_item = personagem.poderes.filter(de_item=True)
+    # --- Agrega bônus de defesas vindos de itens do inventário (server-side, sem fallback por nome) ---
+    def _norm_key(k: str) -> str:
+        n = (k or '').strip().lower()
+        aliases = {
+            'strength': 'forca', 'stamina': 'vigor', 'dexterity': 'destreza', 'agility': 'agilidade', 'fighting': 'luta',
+            'intellect': 'inteligencia', 'awareness': 'prontidao', 'presence': 'presenca',
+            'dodge': 'esquivar', 'parry': 'aparar', 'toughness': 'resistencia', 'will': 'vontade',
+            'força': 'forca', 'inteligência': 'inteligencia', 'prontidão': 'prontidao', 'presença': 'presenca', 'resistência': 'resistencia', 'esquiva': 'esquivar',
+        }
+        return aliases.get(n, n)
+
+    def _normalize_mods(raw) -> dict:
+        out = {'caracteristicas': {}, 'defesas': {}, 'pericias': {}}
+        if not isinstance(raw, dict):
+            return out
+        for sec in ('caracteristicas', 'defesas', 'pericias'):
+            src = raw.get(sec)
+            if isinstance(src, dict):
+                for k, v in src.items():
+                    mk = _norm_key(k)
+                    try:
+                        num = float(v)
+                    except Exception:
+                        continue
+                    if num:
+                        out[sec][mk] = out[sec].get(mk, 0) + num
+        # Chaves soltas no topo
+        for k, v in raw.items():
+            if k in ('caracteristicas', 'defesas', 'pericias'):
+                continue
+            mk = _norm_key(k)
+            try:
+                num = float(v)
+            except Exception:
+                continue
+            if not num:
+                continue
+            if mk in ('esquivar', 'aparar', 'fortitude', 'vontade', 'resistencia'):
+                out['defesas'][mk] = out['defesas'].get(mk, 0) + num
+            else:
+                out['caracteristicas'][mk] = out['caracteristicas'].get(mk, 0) + num
+        return out
+
+    # Listas base usadas para produzir dicionários completos (evita fallback em template)
+    attr_keys = ['forca', 'destreza', 'agilidade', 'luta', 'vigor', 'inteligencia', 'prontidao', 'presenca']
+    skill_keys = list(pericias_sorted)
+
+    bonus_defesas_itens = {k: 0 for k in ['aparar', 'esquivar', 'fortitude', 'vontade', 'resistencia']}
+    bonus_attr_itens = {k: 0 for k in attr_keys}
+    bonus_pericias_itens = {k: 0 for k in skill_keys}
+    inv = getattr(personagem, 'inventario', None)
+    itens = list(getattr(inv, 'itens', []).all()) if (inv and hasattr(inv, 'itens')) else []
+    for it in itens:
+        try:
+            mods = getattr(it, 'mods', {}) or {}
+            nmods = _normalize_mods(mods)
+            for k, v in (nmods.get('defesas') or {}).items():
+                if k in bonus_defesas_itens:
+                    bonus_defesas_itens[k] += float(v)
+            for k, v in (nmods.get('caracteristicas') or {}).items():
+                if k in bonus_attr_itens:
+                    bonus_attr_itens[k] += float(v)
+            for k, v in (nmods.get('pericias') or {}).items():
+                if k in bonus_pericias_itens:
+                    bonus_pericias_itens[k] += float(v)
+        except Exception:
+            # ignora itens malformados
+            continue
+    defesas_totais = {k: (getattr(personagem, k, 0) or 0) + bonus_defesas_itens.get(k, 0) for k in bonus_defesas_itens.keys()}
+    caracteristicas_totais = {k: (getattr(personagem, k, 0) or 0) + bonus_attr_itens.get(k, 0) for k in attr_keys}
+    pericias_totais = {k: (getattr(personagem, k, 0) or 0) + bonus_pericias_itens.get(k, 0) for k in skill_keys}
     pericias_sorted = _ordered_pericias_for_personagem(personagem)
     categorias = {
         'caracteristicas': ['forca', 'destreza', 'agilidade', 'luta', 'vigor', 'inteligencia', 'prontidao', 'presenca'],
@@ -637,6 +708,12 @@ def ficha_personagem(request, personagem_id):
         'personagem': personagem,
         'categorias': categorias,
         'poderes_de_item': poderes_de_item,
+        'bonus_defesas_itens': bonus_defesas_itens,
+        'defesas_totais': defesas_totais,
+        'bonus_caracteristicas_itens': bonus_attr_itens,
+        'caracteristicas_totais': caracteristicas_totais,
+        'bonus_pericias_itens': bonus_pericias_itens,
+        'pericias_totais': pericias_totais,
         'pode_editar': (is_dono or is_gm_da_sala),
     })
 
