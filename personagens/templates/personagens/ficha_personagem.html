@@ -3,7 +3,12 @@
 
 {% block content %}
 <div class="ficha-center">
-  
+  <style>
+    /* Forçar linhas com rótulo à esquerda e valor à direita nesta página */
+    .ficha-card .ficha-list li { display: flex; justify-content: space-between; align-items: center; }
+    .ficha-card .ficha-list .lbl { margin-right: 8px; }
+    .ficha-card .ficha-list .lbl::after { content: ':'; margin-left: 4px; }
+  </style>
   <div class="ficha-header">
     {% if personagem.foto %}
       <div class="ficha-foto-wrap">
@@ -23,7 +28,7 @@
     <section class="ficha-card">
       <h2 class="ficha-section-title">Custos</h2>
       {% with custos=personagem.custos_detalhados %}
-      <ul class="ficha-list cols-2">
+      <ul class="ficha-list">
         <li><span class="lbl">Características</span><span class="val">{{ custos.caracteristicas }}</span></li>
         <li><span class="lbl">Defesas</span><span class="val">{{ custos.defesas }}</span></li>
         <li><span class="lbl">Perícias</span><span class="val">{{ custos.pericias }}</span></li>
@@ -35,8 +40,8 @@
     </section>
     <section class="ficha-card">
       <h2 class="ficha-section-title">Habilidades</h2>
-      <!-- Exibir em colunas -->
-      <ul class="ficha-list cols-2">
+      <!-- Exibir em linhas únicas (sem colunas) -->
+      <ul class="ficha-list">
         {% for campo in categorias.caracteristicas %}
           <li><span class="lbl">{{ campo|capfirst }}</span><span class="val">{% total_from caracteristicas_totais personagem campo %}</span></li>
         {% endfor %}
@@ -44,8 +49,8 @@
     </section>
     <section class="ficha-card" id="defesas-card">
       <h2 class="ficha-section-title">Defesas</h2>
-      <!-- Exibir em colunas; marcar cada item com data-key para referência futura -->
-      <ul class="ficha-list cols-2" id="defesas-list">
+      <!-- Exibir em linhas únicas (sem colunas); marcar cada item com data-key para atualização via JS -->
+      <ul class="ficha-list" id="defesas-list">
         {% for campo in categorias.defesas %}
           <li data-key="{{ campo }}"><span class="lbl">{{ campo|capfirst }}</span><span class="val">{% total_from defesas_totais personagem campo %}</span></li>
         {% endfor %}
@@ -53,8 +58,8 @@
     </section>
     <section class="ficha-card">
       <h2 class="ficha-section-title">Perícias</h2>
-      <!-- Exibir em colunas -->
-      <ul class="ficha-list cols-3">
+      <!-- Exibir em linhas únicas (sem colunas) -->
+      <ul class="ficha-list">
         {% for campo in categorias.pericias %}
           <li><span class="lbl">{{ campo|capfirst }}</span><span class="val">{% total_from pericias_totais personagem campo %}</span></li>
         {% endfor %}
