@@ -4,9 +4,10 @@
 {% block content %}
 <div class="ficha-center">
   <style>
-    /* Layout parecido com a ficha do personagem: cards em coluna e pares label:valor próximos */
+    /* Layout em coluna; usa os mesmos tokens da ficha de personagem (tema escuro) */
     .ficha-sections-grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
-    .ficha-card { background: #fff; border-radius: 8px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    /* Não redefinimos .ficha-card globalmente; apenas garantimos padding semelhante */
+    .ficha-card { padding: 14px 16px; }
     .ficha-section-title { margin: 0 0 8px; font-size: 18px; }
     .ficha-subtitle { margin: 10px 0 6px; font-size: 16px; }
     .ficha-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
@@ -15,9 +16,10 @@
     .ficha-card .ficha-list.pares .lbl { margin-right: 0; }
     .ficha-card .ficha-list.pares .lbl::after { content: ':'; margin-left: 4px; }
     .ficha-card .ficha-list.pares .val { text-align: left; }
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background:#f2f2f2; font-size: 12px; }
-    .desc { color:#666; }
-    .efeito-pill { display:inline-block; padding:2px 6px; border-radius: 12px; font-size:12px; background:#f8f8f8; margin-right:6px; }
+    /* badge segue o estilo escuro (sem forçar branco) */
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background:#1c1c1c; color: var(--gold); border:1px solid #444; font-size: 12px; }
+    .desc { color:#bbb; }
+    .efeito-pill { display:inline-block; padding:2px 6px; border-radius: 12px; font-size:12px; background:#1e1e1e; color:#ddd; border:1px solid #444; margin-right:6px; }
     .props-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:8px 16px; }
   </style>
 
