@@ -706,8 +706,12 @@ document.addEventListener('DOMContentLoaded', function(){
       'strength':'forca','stamina':'vigor','dexterity':'destreza','agility':'agilidade','fighting':'luta','intellect':'inteligencia','awareness':'prontidao','presence':'presenca',
       // Abreviações comuns
       'str':'forca','sta':'vigor','dex':'destreza','agi':'agilidade','fgt':'luta','int':'inteligencia','awe':'prontidao','pre':'presenca','prs':'presenca',
+      // Abreviações PT
+      'for':'forca','vig':'vigor','des':'destreza','lut':'luta','pro':'prontidao',
       // Defesas
       'dodge':'esquivar','parry':'aparar','toughness':'resistencia','will':'vontade','willpower':'vontade',
+      // Classe de Armadura (mapeada como composto)
+      'ac':'ac','ca':'ac','armor_class':'ac','armorclass':'ac','classe_de_armadura':'ac',
       // PT-BR com acentos e variações
       'força':'forca','inteligência':'inteligencia','prontidão':'prontidao','presença':'presenca','resistência':'resistencia','esquiva':'esquivar'
     };
@@ -737,6 +741,11 @@ document.addEventListener('DOMContentLoaded', function(){
     const perKeys = new Set(['acrobacias','atletismo','combate_distancia','combate_corpo','enganacao','especialidade','furtividade','intimidacao','intuicao','investigacao','percepcao','persuasao','prestidigitacao','tecnologia','tratamento','veiculos','historia','sobrevivencia','arcana','religiao']);
 
     function addTo(bucket, key, val){ if(!Number.isFinite(val) || val===0) return; bucket[key] = (bucket[key]||0)+val; }
+    function addComposite(key, val){
+      // AC/CA afeta Esquivar e Aparar simultaneamente
+      if(key==='ac'){ addTo(out.defesas, 'esquivar', val); addTo(out.defesas, 'aparar', val); return true; }
+      return false;
+    }
 
     // Depth-first traversal: propagate a hint for current section bucket if we hit known section-aliases
     function walk(node, hint){
@@ -751,6 +760,7 @@ document.addEventListener('DOMContentLoaded', function(){
         // Numeric direct leaf
         const num = parseFloat(val);
         if (Number.isFinite(num)){
+          if (addComposite(mk, num)) return;
           if (defKeys.has(mk) || hint==='defesas') addTo(out.defesas, mk, num);
           else if (perKeys.has(mk) || hint==='pericias') addTo(out.pericias, mk, num);
           else addTo(out.caracteristicas, mk, num);
@@ -764,6 +774,7 @@ document.addEventListener('DOMContentLoaded', function(){
             const mkName = mapKey(String(val[nameKey]));
             const vnum = parseFloat(val[valueKey]);
             if (Number.isFinite(vnum)){
+              if (addComposite(mkName, vnum)) return;
               if (defKeys.has(mkName) || mk==='defense' || mk==='defenses') addTo(out.defesas, mkName, vnum);
               else if (perKeys.has(mkName) || mk==='skill' || mk==='skills') addTo(out.pericias, mkName, vnum);
               else addTo(out.caracteristicas, mkName, vnum);
@@ -930,18 +941,21 @@ document.addEventListener('DOMContentLoaded', function(){
   };
   function num(id){ const el=document.getElementById('id_'+id); if(!el) return 0; const v=parseFloat((el.value||'').toString().replace(',','.')); return isNaN(v)?0:v; }
   function sumItemMods(){
-    const out = { caracteristicas:{}, defesas:{}, pericias:{} };
+    // Usa o normalizador robusto do painel (inclui aliases como AC/CA)
+    const agg = { caracteristicas:{}, defesas:{}, pericias:{} };
+    function addAll(dst, src){ Object.keys(src||{}).forEach(k=>{ const v=parseFloat(src[k]); if(!isNaN(v)) dst[k]=(dst[k]||0)+v; }); }
     document.querySelectorAll('#tabela-itens tbody tr').forEach(tr=>{
       const cb = tr.querySelector('input[type="checkbox"][name="itens"]');
       if(!cb || !cb.checked) return;
-      let mods = {};
-      try { mods = JSON.parse(tr.getAttribute('data-mods') || '{}'); } catch(e){ mods = {}; }
-      ['caracteristicas','defesas','pericias'].forEach(sec=>{
-        const m = mods && mods[sec]; if(!m) return;
-        Object.keys(m).forEach(k=>{ const v=parseFloat(m[k]); if(!isNaN(v)){ out[sec][k] = (out[sec][k]||0) + v; } });
-      });
+      let raw={}; try{ raw = JSON.parse(tr.getAttribute('data-mods')||'{}')||{}; }catch(_){ raw={}; }
+      try{
+        const norm = (typeof normalizeMods==='function') ? normalizeMods(raw) : {caracteristicas:{},defesas:{},pericias:{}};
+        addAll(agg.caracteristicas, norm.caracteristicas);
+        addAll(agg.defesas, norm.defesas);
+        addAll(agg.pericias, norm.pericias);
+      }catch(e){ /* ignore */ }
     });
-    return out;
+    return agg;
   }
   function updateTotais(){
     const mods = sumItemMods();
