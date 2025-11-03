@@ -1155,6 +1155,8 @@ body {
 .ficha-inv-tabela { border-collapse:collapse; width:100%; font-size:0.85rem; }
 .ficha-inv-tabela th, .ficha-inv-tabela td { padding:0.55rem 0.7rem; border:1px solid #333; text-align:left; }
 .ficha-inv-tabela th { position:sticky; top:0; background:#232323; z-index:2; }
+.ficha-inv-tabela a { color: var(--gold); text-decoration: none; font-weight: 600; }
+.ficha-inv-tabela a:hover, .ficha-inv-tabela a:focus { color: #fff; text-decoration: underline; }
 .ficha-acoes { display:flex; gap:0.8rem; justify-content:flex-end; margin-top:2rem; }
 @media (max-width:860px){
   .ficha-sections-grid { grid-template-columns: 1fr; }

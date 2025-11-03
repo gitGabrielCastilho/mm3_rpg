@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load filtros %}
 
 {% block content %}
 <div class="ficha-center">
@@ -45,9 +46,11 @@
           <h3 class="ficha-subtitle">Características</h3>
           <ul class="ficha-list pares">
             {% for k in attr_keys %}
-              {% if mods.caracteristicas.k or mods.caracteristicas[k] %}
-                <li><span class="lbl">{{ k|capfirst }}</span><span class="val">{{ mods.caracteristicas[k] }}</span></li>
-              {% endif %}
+              {% with val=mods.caracteristicas|dict_get:k %}
+                {% if val %}
+                  <li><span class="lbl">{{ k|capfirst }}</span><span class="val">{{ val }}</span></li>
+                {% endif %}
+              {% endwith %}
             {% endfor %}
           </ul>
         {% endif %}
@@ -55,9 +58,11 @@
           <h3 class="ficha-subtitle">Defesas</h3>
           <ul class="ficha-list pares">
             {% for k in def_keys %}
-              {% if mods.defesas.k or mods.defesas[k] %}
-                <li><span class="lbl">{{ k|capfirst }}</span><span class="val">{{ mods.defesas[k] }}</span></li>
-              {% endif %}
+              {% with val=mods.defesas|dict_get:k %}
+                {% if val %}
+                  <li><span class="lbl">{{ k|capfirst }}</span><span class="val">{{ val }}</span></li>
+                {% endif %}
+              {% endwith %}
             {% endfor %}
           </ul>
         {% endif %}
@@ -65,7 +70,11 @@
           <h3 class="ficha-subtitle">Perícias</h3>
           <ul class="ficha-list pares">
             {% for k in skills_order %}
-              <li><span class="lbl">{{ k|capfirst }}</span><span class="val">{{ mods.pericias[k] }}</span></li>
+              {% with val=mods.pericias|dict_get:k %}
+                {% if val %}
+                  <li><span class="lbl">{{ k|capfirst }}</span><span class="val">{{ val }}</span></li>
+                {% endif %}
+              {% endwith %}
             {% endfor %}
           </ul>
         {% endif %}
