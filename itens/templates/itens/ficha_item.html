@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="ficha-center">
+  <style>
+    /* Layout parecido com a ficha do personagem: cards em coluna e pares label:valor próximos */
+    .ficha-sections-grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
+    .ficha-card { background: #fff; border-radius: 8px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .ficha-section-title { margin: 0 0 8px; font-size: 18px; }
+    .ficha-subtitle { margin: 10px 0 6px; font-size: 16px; }
+    .ficha-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+    .ficha-card .ficha-list.pares { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px 18px; }
+    .ficha-card .ficha-list.pares li { display: grid; grid-template-columns: auto max-content; align-items: center; gap: 8px; }
+    .ficha-card .ficha-list.pares .lbl { margin-right: 0; }
+    .ficha-card .ficha-list.pares .lbl::after { content: ':'; margin-left: 4px; }
+    .ficha-card .ficha-list.pares .val { text-align: left; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background:#f2f2f2; font-size: 12px; }
+    .desc { color:#666; }
+    .efeito-pill { display:inline-block; padding:2px 6px; border-radius: 12px; font-size:12px; background:#f8f8f8; margin-right:6px; }
+    .props-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:8px 16px; }
+  </style>
+
+  <div class="ficha-header">
+    <div class="ficha-header-info">
+      <h1 class="ficha-title">Item: {{ item.nome }}</h1>
+      <div class="ficha-meta">
+        {% if item.tipo %}<span class="badge">{{ item.tipo }}</span>{% endif %}
+        {% if item.raridade %}<span class="badge">{{ item.raridade }}</span>{% endif %}
+        <span class="badge">Preço: {{ item.preco }}</span>
+        {% if item.sala %}<span class="badge">Sala: {{ item.sala.nome }}</span>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="ficha-sections-grid">
+    <section class="ficha-card">
+      <h2 class="ficha-section-title">Descrição</h2>
+      <div class="desc">{{ item.descricao|linebreaks }}</div>
+    </section>
+
+    <section class="ficha-card">
+      <h2 class="ficha-section-title">Modificadores</h2>
+      {% if mods.caracteristicas or mods.defesas or mods.pericias %}
+        {% if mods.caracteristicas %}
+          <h3 class="ficha-subtitle">Características</h3>
+          <ul class="ficha-list pares">
+            {% for k in attr_keys %}
+              {% if mods.caracteristicas.k or mods.caracteristicas[k] %}
+                <li><span class="lbl">{{ k|capfirst }}</span><span class="val">{{ mods.caracteristicas[k] }}</span></li>
+              {% endif %}
+            {% endfor %}
+          </ul>
+        {% endif %}
+        {% if mods.defesas %}
+          <h3 class="ficha-subtitle">Defesas</h3>
+          <ul class="ficha-list pares">
+            {% for k in def_keys %}
+              {% if mods.defesas.k or mods.defesas[k] %}
+                <li><span class="lbl">{{ k|capfirst }}</span><span class="val">{{ mods.defesas[k] }}</span></li>
+              {% endif %}
+            {% endfor %}
+          </ul>
+        {% endif %}
+        {% if mods.pericias %}
+          <h3 class="ficha-subtitle">Perícias</h3>
+          <ul class="ficha-list pares">
+            {% for k in skills_order %}
+              <li><span class="lbl">{{ k|capfirst }}</span><span class="val">{{ mods.pericias[k] }}</span></li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      {% else %}
+        <em>Sem modificadores diretos.</em>
+      {% endif %}
+    </section>
+
+    <section class="ficha-card">
+      <h2 class="ficha-section-title">Poderes do Item</h2>
+      {% if item.poderes.all %}
+        <ul class="ficha-list">
+          {% for p in item.poderes.all %}
+            <li>
+              <div class="props-grid">
+                <div><strong>{{ p.nome }}</strong></div>
+                <div><span class="efeito-pill">Tipo: {{ p.tipo }}</span></div>
+                <div><span class="efeito-pill">Modo: {{ p.modo }}</span></div>
+                <div><span class="efeito-pill">Duração: {{ p.duracao }}</span></div>
+                <div><span class="efeito-pill">Nível/Efeito: {{ p.nivel_efeito }}</span></div>
+                <div><span class="efeito-pill">Bônus Ataque: {{ p.bonus_ataque }}</span></div>
+                <div><span class="efeito-pill">Defesa Ativa: {{ p.defesa_ativa }}</span></div>
+                <div><span class="efeito-pill">Defesa Passiva: {{ p.defesa_passiva }}</span></div>
+                <div><span class="efeito-pill">Atributo Base: {{ p.casting_ability }}</span></div>
+                {% if p.charges %}<div><span class="efeito-pill">Charges: {{ p.charges }}</span></div>{% endif %}
+                {% if p.array %}<div><span class="efeito-pill">Array: {{ p.array }}</span></div>{% endif %}
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <em>Este item não possui poderes.</em>
+      {% endif %}
+    </section>
+  </div>
+
+  <div class="ficha-acoes" style="margin-top:12px; display:flex; gap:8px;">
+    <a href="{% url 'itens' %}" class="btn btn-secondary">Voltar</a>
+  </div>
+</div>
+{% endblock %}
