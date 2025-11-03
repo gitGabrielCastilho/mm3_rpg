@@ -697,7 +697,17 @@ document.addEventListener('DOMContentLoaded', function(){
 <script>
 // Painel de Resumo: características, defesas, perícias e poderes concedidos pelos itens marcados
 document.addEventListener('DOMContentLoaded', function(){
-  function parseRawMods(tr){ try { return JSON.parse(tr.getAttribute('data-mods')||'{}')||{}; } catch(_) { return {}; } }
+  function parseRawMods(tr){
+    try {
+      let txt = tr.getAttribute('data-mods') || '{}';
+      txt = txt.replace(/&quot;/g,'"').replace(/&#34;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&amp;/g,'&');
+      let obj = JSON.parse(txt);
+      if (typeof obj === 'string') {
+        try { obj = JSON.parse(obj); } catch(e) { /* ignore */ }
+      }
+      return obj || {};
+    } catch(_) { return {}; }
+  }
   function normKey(k){ return (k||'').toString().trim().toLowerCase(); }
   function mapKey(k){
     const n = normKey(k);
