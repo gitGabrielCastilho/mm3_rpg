@@ -7,6 +7,9 @@
     {{ form.as_p }}
     <button type="submit" class="btn btn-primary">Entrar</button>
   </form>
+  <p class="auth-alt-link" style="margin-top: 0.5rem;">
+    <a href="{% url 'password_reset' %}">Esqueci minha senha</a>
+  </p>
   <p class="auth-alt-link">Não tem uma conta? <a href="{% url 'cadastrar_usuario' %}">Cadastre-se</a></p>
 </div>
 {% endblock %}
