@@ -4,7 +4,15 @@
   <h2>Login</h2>
   <form method="post" class="auth-form">
     {% csrf_token %}
-    {{ form.as_p }}
+    {{ form.non_field_errors }}
+    <p>
+      <label for="id_login">Usuário ou e-mail:</label>
+      <input type="text" name="username" id="id_login" required>
+    </p>
+    <p>
+      <label for="id_password">Senha:</label>
+      <input type="password" name="password" id="id_password" required>
+    </p>
     <button type="submit" class="btn btn-primary">Entrar</button>
   </form>
   <p class="auth-alt-link" style="margin-top: 0.5rem;">
