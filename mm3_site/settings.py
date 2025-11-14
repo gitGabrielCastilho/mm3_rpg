@@ -236,10 +236,22 @@ WHITENOISE_KEEP_ONLY_HASHED_FILES = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Authentication redirects
 LOGIN_REDIRECT_URL = '/personagens/meus/'
 LOGOUT_REDIRECT_URL = '/'
+
+# Media
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Email configuration: Gmail SMTP with app password
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_HOST_USER = "rpgfantasyground@gmail.com"
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = True
+DEFAULT_FROM_EMAIL = "MM3 RPG <rpgfantasyground@gmail.com>"
 
 """
 Optional: Use Cloudinary for persistent media in production.
