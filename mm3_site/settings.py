@@ -77,6 +77,10 @@ INSTALLED_APPS = [
     'channels',
 ]
 
+AUTHENTICATION_BACKENDS = [
+    'mm3_site.auth_backends.UsernameOrEmailBackend',
+]
+
 ASGI_APPLICATION = "mm3_site.asgi.application"
 
 MIDDLEWARE = [

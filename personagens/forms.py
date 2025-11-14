@@ -6,6 +6,14 @@ from .models import Personagem, Poder, Inventario, Vantagem
 
 
 class CadastroForm(UserCreationForm):
+    def clean_email(self):
+        email = self.cleaned_data.get("email", "").strip().lower()
+        if not email:
+            return email
+        if User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError("Já existe um usuário com este e-mail.")
+        return email
+
     class Meta:
         model = User
         fields = ['username', 'email', 'password1', 'password2']
