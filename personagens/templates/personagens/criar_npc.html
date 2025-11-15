@@ -203,9 +203,12 @@
         <button type="button" class="btn btn-danger" onclick="adicionarPoder()">Adicionar Poder</button>
         <button type="button" class="btn btn-danger" onclick="removerPoder()">Remover Último Poder</button>
       </div>
-
+      <div id="npc-rule-violations" class="form-rule-errors" style="display:none; margin-top:1.5rem;">
+        <strong>Avisos de referência de regras (não bloqueiam salvar):</strong>
+        <ul id="npc-rule-violations-list"></ul>
+      </div>
       <div style="margin-top:2rem; text-align:center;">
-        <input type="submit" value="Salvar NPC" class="btn">
+        <input type="submit" value="Salvar NPC" class="btn" id="submit-npc">
       </div>
     </div>
   </form>
@@ -327,7 +330,28 @@ document.addEventListener('DOMContentLoaded', function(){
   function efetivoNivel(div){ const tipo=div.querySelector('[name$="-tipo"]'); const modo=div.querySelector('[name$="-modo"]'); const soma=div.querySelector('[name$="-somar_forca_no_nivel"]'); const nivel=div.querySelector('[name$="-nivel_efeito"]'); let n=0; if(nivel){ const v=parseFloat((nivel.value||'').toString().replace(',','.')); n=isNaN(v)?0:Math.abs(v);} if(tipo&&modo&&soma&&soma.checked && tipo.value==='dano' && modo.value==='melee'){ const fEl=document.getElementById('id_forca'); const f=fEl?parseFloat((fEl.value||'').toString().replace(',','.'))||0:0; n += Math.abs(f);} return n; }
   function toggleSomarForca(div){ const tipo=div.querySelector('[name$="-tipo"]'); const modo=div.querySelector('[name$="-modo"]'); const wrap=div.querySelector('.somar-forca-wrap'); if(!wrap) return; wrap.style.display = (tipo&&modo&&tipo.value==='dano'&&modo.value==='melee')? '' : 'none'; }
   function proc(div){ const modo=div.querySelector('[name$="-modo"]'); const bonus=div.querySelector('[name$="-bonus_ataque"]'); const nivel=div.querySelector('[name$="-nivel_efeito"]'); const nome=div.querySelector('[name$="-nome"]'); const dur=div.querySelector('[name$="-duracao"]'); const span=div.querySelector('.linha-ataque-info .valor-ataque-total'); const danoSpan=div.querySelector('.somar-forca-wrap .valor-dano-total'); if(!modo||!bonus||!nivel||!span||!nome||!dur) return; const mk=kind(modo); toggleSomarForca(div); let base=0; if(mk==='melee') base=num(luta); else if(mk==='ranged') base=num(des); const useB=(mk==='other')? num(bonus) : maxBonus(norm(nome.value), mk, norm(dur.value)); const atk=base+useB; span.textContent=atk; if(danoSpan){ let nEf=Math.abs(num(nivel)); const tipo=div.querySelector('[name$="-tipo"]'); if(tipo && tipo.value==='dano'){ nEf = efetivoNivel(div); } danoSpan.textContent=nEf; } const limite=2*Math.abs(num(np)); const viol=(useB+efetivoNivel(div))>limite; span.classList.toggle('violacao-ataque',viol); }
-  function atualizar(){ document.querySelectorAll('.poder-form').forEach(proc); }
+  function atualizar(){
+    let temViol = false;
+    document.querySelectorAll('.poder-form').forEach(div=>{
+      proc(div);
+      if (div.querySelector('.linha-ataque-info .valor-ataque-total.violacao-ataque')) temViol = true;
+    });
+    const box = document.getElementById('npc-rule-violations');
+    const list = document.getElementById('npc-rule-violations-list');
+    const submitBtn = document.getElementById('submit-npc');
+    if (box && list) {
+      list.innerHTML = '';
+      if (temViol) {
+        const li = document.createElement('li');
+        li.textContent = 'Há poderes com Ataque Total + Nível de Efeito acima da referência de 2×NP (valores em laranja).';
+        list.appendChild(li);
+        box.style.display = '';
+      } else {
+        box.style.display = 'none';
+      }
+    }
+    if (submitBtn) submitBtn.disabled = false;
+  }
   ['luta','destreza','nivel_poder'].forEach(id=>{ const el=document.getElementById('id_'+id); if(el){ el.addEventListener('input',atualizar); el.addEventListener('change',atualizar);} });
   function bind(){ document.querySelectorAll('.poder-form [name$="-modo"], .poder-form [name$="-bonus_ataque"], .poder-form [name$="-nivel_efeito"], .poder-form [name$="-nome"], .poder-form [name$="-duracao"], .poder-form [name$="-tipo"], .poder-form [name$="-somar_forca_no_nivel"]').forEach(el=>{ el.addEventListener('input',atualizar); el.addEventListener('change',atualizar); }); }
   bind();

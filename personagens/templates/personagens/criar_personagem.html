@@ -7,6 +7,21 @@
   <h1 class="personagem-form-title">Criar Personagem</h1>
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
+    {% if form.non_field_errors or inventario_form.non_field_errors or form.errors or inventario_form.errors or formset.non_form_errors %}
+      <div class="form-rule-errors">
+        <strong>Erros no formulário:</strong>
+        <ul>
+          {% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}
+          {% for e in formset.non_form_errors %}<li>{{ e }}</li>{% endfor %}
+          {% for name, errs in form.errors.items %}
+            {% for e in errs %}<li>{{ name }}: {{ e }}</li>{% endfor %}
+          {% endfor %}
+          {% for name, errs in inventario_form.errors.items %}
+            {% for e in errs %}<li>inventário.{{ name }}: {{ e }}</li>{% endfor %}
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
     <div class="personagem-form-fields">
       <div id="painel-custos" style="background:#1e1e28; border:1px solid #444; padding:0.8rem 1rem; margin-bottom:1.2rem; font-size:0.95rem; line-height:1.3;">
         <strong>Custos (dinâmico):</strong>
@@ -423,8 +438,12 @@
           </div>
         </div>
       </div>
+      <div id="rule-violations" class="form-rule-errors" style="display:none;">
+        <strong>Corrija antes de salvar:</strong>
+        <ul id="rule-violations-list"></ul>
+      </div>
       <div style="margin-top:2rem; text-align:center;">
-        <input type="submit" value="Salvar" class="btn">
+        <input type="submit" value="Salvar" class="btn" id="submit-personagem">
       </div>
     </div>
   </form>
@@ -923,11 +942,35 @@ document.addEventListener('DOMContentLoaded', function(){
     // Regra: no máximo 1 poder com charges>0 por Array
     let violChargesArr = false;
     arrCharges.forEach((cnt) => { if (cnt > 1) violChargesArr = true; });
-    const submitBtn = document.querySelector('form input[type="submit"]');
-    if(submitBtn){
-      const violDef = !!document.querySelector('.violacao-limite');
-      if(viol || violDef || violChargesArr){ submitBtn.disabled = true; submitBtn.title='Corrija limites (defesas/poderes/charges) para salvar.'; }
-      else { submitBtn.disabled = false; if(!document.querySelector('.violacao-limite')) submitBtn.title=''; }
+    const submitBtn = document.getElementById('submit-personagem');
+    const box = document.getElementById('rule-violations');
+    const list = document.getElementById('rule-violations-list');
+    if(submitBtn && box && list){
+      list.innerHTML = '';
+      const messages = [];
+      if(document.querySelector('.violacao-limite')){
+        messages.push('Defesas excedendo os limites de 2×NP.');
+      }
+      if(viol){
+        messages.push('Pelo menos um poder com Ataque Total + Nível de Efeito acima do limite permitido.');
+      }
+      if(violChargesArr){
+        messages.push('Mais de um poder com Charges (>0) no mesmo Array.');
+      }
+      if(messages.length){
+        submitBtn.disabled = true;
+        submitBtn.title = 'Corrija os problemas listados acima para salvar.';
+        box.style.display = '';
+        messages.forEach(function(m){
+          var li = document.createElement('li');
+          li.textContent = m;
+          list.appendChild(li);
+        });
+      } else {
+        submitBtn.disabled = false;
+        submitBtn.title = '';
+        box.style.display = 'none';
+      }
     }
   }
   window.recalcAtaquesSimples = recalcAtaques;
