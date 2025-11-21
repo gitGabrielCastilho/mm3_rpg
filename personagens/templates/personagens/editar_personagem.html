@@ -170,76 +170,7 @@
       </div>
 
   <h2>Poderes <span id="badge-pod" class="section-cost-badge" title="Custo por poder = Nível × (1 + bônus de Tipo + Duração + Modo) + Bônus de Ataque. Bônus: Tipo: +1 (cura/aprimorar). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +0,5 pp por ponto (aditivo, por poder). Arrays: parte de Nível do grupo = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque.">Nivel x (1+Tipo+Duração+Modo) + Bônus Ataque — 0</span></h2>
-      <div id="empty-item-poder-form" style="display:none;">
-        <div class="poder-form poder-form-grid item-power" style="border:1px dashed #555; width:100%; position: relative;">
-          <div style="display:none;">
-            {{ formset.empty_form.id }}
-            {{ formset.empty_form.DELETE }}
-          </div>
-          <div class="campo-poder">{{ formset.empty_form.nome.label_tag }}{{ formset.empty_form.nome }}</div>
-          <div class="campo-poder">{{ formset.empty_form.array.label_tag }}{{ formset.empty_form.array }}</div>
-          <div class="campo-poder">{{ formset.empty_form.tipo.label_tag }}{{ formset.empty_form.tipo }}</div>
-          <div class="campo-poder">{{ formset.empty_form.modo.label_tag }}{{ formset.empty_form.modo }}</div>
-          <div class="campo-poder somar-forca-wrap span-2" title="Se marcado e for Dano Corpo a Corpo, o nível de efeito soma a Força.">
-            <div class="somar-forca-left">
-              <label for="{{ formset.empty_form.somar_forca_no_nivel.id_for_label }}">
-                {{ formset.empty_form.somar_forca_no_nivel }} Somar Força ao Nível (melee)
-              </label>
-            </div>
-            <div class="somar-forca-right"><span class="label-total-dano">Total Dano:</span> <span class="valor-dano-total">0</span></div>
-          </div>
-          <div class="campo-poder">{{ formset.empty_form.duracao.label_tag }}{{ formset.empty_form.duracao }}</div>
-          <div class="campo-poder">{{ formset.empty_form.casting_ability.label_tag }}{{ formset.empty_form.casting_ability }}</div>
-          <div class="campo-poder">{{ formset.empty_form.nivel_efeito.label_tag }}{{ formset.empty_form.nivel_efeito }}</div>
-          <div class="campo-poder">{{ formset.empty_form.charges.label_tag }}{{ formset.empty_form.charges }}</div>
-          <div class="campo-poder">{{ formset.empty_form.bonus_ataque.label_tag }}{{ formset.empty_form.bonus_ataque }}</div>
-          <div class="linha-ataque-info" style="grid-column:1/-1; font-size:0.7rem; display:flex; justify-content:space-between; align-items:center; margin-top:0.2rem; gap:1rem;">
-            <span class="hint-bonus-ataque">ⓘ Poder de Item</span>
-            <span>Total Ataque: <span class="valor-ataque-total">0</span></span>
-          </div>
-          <div class="campo-poder">{{ formset.empty_form.defesa_ativa.label_tag }}{{ formset.empty_form.defesa_ativa }}</div>
-          <div class="campo-poder">{{ formset.empty_form.defesa_passiva.label_tag }}{{ formset.empty_form.defesa_passiva }}</div>
-          <div class="campo-poder">{{ formset.empty_form.item_origem.label_tag }}{{ formset.empty_form.item_origem }}</div>
-          <input type="hidden" name="poder_set-__prefix__-de_item" value="on">
-          <div class="campo-poder span-2">
-            <div class="helptext">Poder de Item: não conta para custo/limites.</div>
-          </div>
-          <div class="span-2" style="margin-top:0.4rem; text-align:right; display:flex; gap:0.7rem; justify-content:flex-end;">
-            <span style="display:none;">{{ formset.empty_form.DELETE }}</span>
-            <button type="button" class="btn btn-danger" onclick="removerPoderItemLinha(this)">Remover</button>
-          </div>
-        </div>
-      </div>
-      <div id="poderes-itens-list" style="display:flex; flex-direction:column; gap:1rem; align-items:center;">
-        {% for form in formset %}
-          {% if form.instance.de_item %}
-            <div class="poder-form poder-form-grid item-power" style="border:1px dashed #555; width:100%; position: relative;">
-              <div style="display:none;">{% for h in form.hidden_fields %}{{ h }}{% endfor %}{% if form.instance.pk %}<input type="hidden" name="{{ form.prefix }}-id" value="{{ form.instance.pk }}">{% endif %}{{ form.DELETE }}</div>
-              <div class="campo-poder">{{ form.nome.label_tag }}{{ form.nome }}</div>
-              <div class="campo-poder">{{ form.array.label_tag }}{{ form.array }}</div>
-              <div class="campo-poder">{{ form.tipo.label_tag }}{{ form.tipo }}</div>
-              <div class="campo-poder">{{ form.modo.label_tag }}{{ form.modo }}</div>
-              <div class="campo-poder somar-forca-wrap span-2"><div class="somar-forca-left"><label for="{{ form.somar_forca_no_nivel.id_for_label }}">{{ form.somar_forca_no_nivel }} Somar Força ao Nível (melee)</label></div><div class="somar-forca-right"><span class="label-total-dano">Total Dano:</span> <span class="valor-dano-total">0</span></div></div>
-              <div class="campo-poder">{{ form.duracao.label_tag }}{{ form.duracao }}</div>
-              <div class="campo-poder">{{ form.casting_ability.label_tag }}{{ form.casting_ability }}</div>
-              <div class="campo-poder">{{ form.nivel_efeito.label_tag }}{{ form.nivel_efeito }}</div>
-              <div class="campo-poder">{{ form.charges.label_tag }}{{ form.charges }}</div>
-              <div class="campo-poder">{{ form.bonus_ataque.label_tag }}{{ form.bonus_ataque }}</div>
-              <div class="linha-ataque-info" style="grid-column:1/-1; font-size:0.7rem; display:flex; justify-content:space-between; align-items:center; margin-top:0.2rem; gap:1rem;"><span class="hint-bonus-ataque">ⓘ Poder de Item</span><span>Total Ataque: <span class="valor-ataque-total">0</span></span></div>
-              <div class="campo-poder">{{ form.defesa_ativa.label_tag }}{{ form.defesa_ativa }}</div>
-              <div class="campo-poder">{{ form.defesa_passiva.label_tag }}{{ form.defesa_passiva }}</div>
-              <div class="campo-poder">{{ form.item_origem.label_tag }}{{ form.item_origem }}</div>
-              <input type="hidden" name="{{ form.prefix }}-de_item" value="on">
-              <div class="span-2" style="margin-top:0.4rem; text-align:right; display:flex; gap:0.7rem; justify-content:flex-end;">
-                <button type="button" class="btn btn-danger" onclick="removerPoderItemLinha(this)">Remover</button>
-              </div>
-            </div>
-          {% endif %}
-        {% endfor %}
-      </div>
-      <div style="margin-top:0.8rem; display:flex; gap:1rem; justify-content:center;">
-        <button type="button" class="btn btn-danger" onclick="adicionarPoderItem()">Adicionar Poder de Item</button>
-      </div>
+      {# Bloco visual de "Poderes de Itens" removido na edição; poderes vêm só da lista principal #}
       <div id="empty-poder-form" style="display:none;">
         <div class="poder-form poder-form-grid" style="border:1px solid #444; width:100%; position: relative;">
           <div style="display:none;">
@@ -464,99 +395,10 @@
         <ul id="rule-violations-list"></ul>
       </div>
       <div style="margin-top:2rem; text-align:center;">
-        <input type="submit" value="Salvar" class="btn" id="submit-personagem">
+        <input type="submit" value="Salvar" class="btn">Salvar Personagem</input>
       </div>
-
-    </div>
-  </form>
-</div>
-
-<script>
-// Remove uma linha específica (botão dentro do bloco)
-function removerPoderLinha(botao) {
-  const formDiv = botao.closest('.poder-form');
-  if (!formDiv) return;
-  const deleteCheckbox = formDiv.querySelector('input[type="checkbox"][name$="-DELETE"]');
-  const totalFormsInput = document.getElementById('id_poder_set-TOTAL_FORMS');
-  if (!totalFormsInput) return;
-
-  if (deleteCheckbox) {
-    deleteCheckbox.checked = true;
-    formDiv.style.display = 'none';
-  } else {
-    formDiv.remove();
-    reindexarPoderes();
-  }
-  function reindexarPoderes() {
-    const forms = document.querySelectorAll('#poderes-formset .poder-form');
-    forms.forEach((div, idx) => {
-      div.querySelectorAll('[name]').forEach(el => {
-        if (el.name.includes('poder_set-')) {
-          el.name = el.name.replace(/poder_set-(\d+)-/, 'poder_set-' + idx + '-');
-        }
-      });
-      div.querySelectorAll('[id]').forEach(el => {
-        if (el.id && el.id.includes('poder_set-')) {
-          el.id = el.id.replace(/poder_set-(\d+)-/, 'poder_set-' + idx + '-');
-        }
-      });
-      div.querySelectorAll('label[for]').forEach(label => {
-        if (label.htmlFor && label.htmlFor.includes('poder_set-')) {
-          label.htmlFor = label.htmlFor.replace(/poder_set-(\d+)-/, 'poder_set-' + idx + '-');
-        }
-      });
-      const hiddenId = div.querySelector('input[type="hidden"][name$="-id"]');
-      if (hiddenId && hiddenId.name.includes('poder_set-')) {
-        hiddenId.name = hiddenId.name.replace(/poder_set-(\d+)-/, 'poder_set-' + idx + '-');
-        if (!hiddenId.value) hiddenId.value = '';
-      }
-    });
-    totalFormsInput.value = forms.length;
-  }
-}
-
-function adicionarPoder() {
-  const formsetDiv = document.getElementById('poderes-formset');
-  const poderesContainer = formsetDiv.querySelector('div[style*="flex-direction: column"]');
-  const totalFormsInput = document.getElementById('id_poder_set-TOTAL_FORMS');
-  if (!totalFormsInput) {
-    console.error('TOTAL_FORMS não encontrado.');
-    return;
-  }
-  const formIdx = parseInt(totalFormsInput.value);
-  const emptyDiv = document.getElementById('empty-poder-form').firstElementChild.cloneNode(true);
-  emptyDiv.innerHTML = emptyDiv.innerHTML.replace(/__prefix__/g, formIdx);
-  const hId = emptyDiv.querySelector('input[type="hidden"][name$="-id"]');
-  if (hId) hId.value = '';
-  if (poderesContainer) {
-    poderesContainer.appendChild(emptyDiv);
-  } else {
-    formsetDiv.appendChild(emptyDiv);
-  }
-  totalFormsInput.value = formIdx + 1;
-  if (typeof window.atualizarCamposOrigem === 'function') {
-    try { window.atualizarCamposOrigem(emptyDiv); } catch(e) { /* noop */ }
-  }
-}
-
-function removerPoder() {
-  const formsetDiv = document.getElementById('poderes-formset');
-  const totalFormsInput = document.getElementById('id_poder_set-TOTAL_FORMS');
-  const poderForms = formsetDiv.querySelectorAll('.poder-form');
-  const formCount = parseInt(totalFormsInput.value);
-  if (formCount > 0) {
-    const lastForm = poderForms[poderForms.length - 1];
-    const deleteCheckbox = lastForm.querySelector('input[type="checkbox"][name$="DELETE"]');
-    if (deleteCheckbox) {
-      deleteCheckbox.checked = true;
-      lastForm.style.display = 'none';
-    } else {
-      formsetDiv.removeChild(lastForm);
-      totalFormsInput.value = formCount - 1;
-    }
-  }
-}
-</script>
+    </form>
+  </div>
 <script>
 // Sincroniza automaticamente Poderes de Itens com os itens marcados no inventário
 document.addEventListener('DOMContentLoaded', function(){
@@ -797,53 +639,7 @@ document.addEventListener('DOMContentLoaded', function(){
   setTimeout(renderPainel, 60);
 });
 </script>
-<script>
-// Adicionar/Remover Poder de Item (edição)
-function adicionarPoderItem(){
-  const totalFormsInput = document.getElementById('id_poder_set-TOTAL_FORMS');
-  const lista = document.getElementById('poderes-itens-list');
-  const emptyWrap = document.getElementById('empty-item-poder-form');
-  if(!totalFormsInput || !lista || !emptyWrap){ console.error('Estruturas de formset para Poder de Item não encontradas.'); return; }
-  const idx = parseInt(totalFormsInput.value||'0',10);
-  const clone = emptyWrap.firstElementChild.cloneNode(true);
-  clone.innerHTML = clone.innerHTML.replace(/__prefix__/g, String(idx));
-  // zera id oculto se existir
-  const hidId = clone.querySelector('input[type="hidden"][name$="-id"]');
-  if(hidId) hidId.value = '';
-  lista.appendChild(clone);
-  totalFormsInput.value = idx + 1;
-  // pós-binding
-  setTimeout(function(){
-    if(typeof window.atualizarCustos==='function') try{ window.atualizarCustos(); }catch(e){}
-    if(typeof window.updateBadges==='function') try{ window.updateBadges(); }catch(e){}
-    if(typeof window._updateChargesMax==='function') try{ window._updateChargesMax(); }catch(e){}
-  }, 40);
-}
-
-function removerPoderItemLinha(btn){
-  const div = btn.closest('.poder-form');
-  if(!div) return;
-  const del = div.querySelector('input[type="checkbox"][name$="-DELETE"]');
-  const totalFormsInput = document.getElementById('id_poder_set-TOTAL_FORMS');
-  if(del){ del.checked = true; div.style.display='none'; }
-  else {
-    div.remove();
-    // reindexa todos (main + itens)
-    const forms = document.querySelectorAll('#poderes-formset .poder-form');
-    forms.forEach((d, i)=>{
-      d.querySelectorAll('[name]').forEach(el=>{ if(el.name&&el.name.includes('poder_set-')) el.name = el.name.replace(/poder_set-(\d+)-/, 'poder_set-'+i+'-'); });
-      d.querySelectorAll('[id]').forEach(el=>{ if(el.id&&el.id.includes('poder_set-')) el.id = el.id.replace(/poder_set-(\d+)-/, 'poder_set-'+i+'-'); });
-      d.querySelectorAll('label[for]').forEach(l=>{ if(l.htmlFor&&l.htmlFor.includes('poder_set-')) l.htmlFor = l.htmlFor.replace(/poder_set-(\d+)-/, 'poder_set-'+i+'-'); });
-    });
-    if(totalFormsInput) totalFormsInput.value = forms.length;
-  }
-  setTimeout(function(){
-    if(typeof window.atualizarCustos==='function') try{ window.atualizarCustos(); }catch(e){}
-    if(typeof window.updateBadges==='function') try{ window.updateBadges(); }catch(e){}
-    if(typeof window._updateChargesMax==='function') try{ window._updateChargesMax(); }catch(e){}
-  }, 30);
-}
-</script>
+{# Funções de adicionar/remover poder de item removidas; só existem poderes normais agora #}
 <script>
 // ---- Totais de Defesas (editar personagem) com bônus de Itens ----
 document.addEventListener('DOMContentLoaded', function(){
