@@ -34,13 +34,40 @@ def _expects_json(request) -> bool:
 
 """Endpoints e views do combate."""
 
-# --- Helpers para Aprimorar ---
+# --- Helpers para Aprimorar + Itens ---
+def _item_bonus(personagem: Personagem, categoria: str, chave: str) -> int:
+    """Retorna o bônus total de itens para uma chave em mods[categoria].
+    categorias: 'caracteristicas', 'defesas'. Silencioso para qualquer erro/ausência.
+    """
+    try:
+        inventario = getattr(personagem, 'inventario', None)
+        if inventario is None:
+            return 0
+        total = 0
+        for item in inventario.itens.all():
+            mods = getattr(item, 'mods', {}) or {}
+            if not isinstance(mods, dict):
+                continue
+            cat = mods.get(categoria) or {}
+            if not isinstance(cat, dict):
+                continue
+            try:
+                total += int(cat.get(chave, 0) or 0)
+            except Exception:
+                continue
+        return int(total)
+    except Exception:
+        return 0
+
+
 def _atributo_efetivo(personagem: Personagem, participante: Participante, atributo: str, combate_id: int) -> int:
-    """Retorna o valor do atributo considerando efeitos Aprimorar ativos para este alvo no combate.
-    Regra: soma todos os nivel_efeito de poderes do tipo 'aprimorar' com casting_ability == atributo e ativos
-    sobre este participante. Pode ultrapassar limites.
+    """Retorna o valor do atributo considerando:
+    - valor base do Personagem
+    - bônus de itens (mods.caracteristicas[atributo])
+    - efeitos Aprimorar/Reduzir ativos para este alvo no combate
     """
     base = getattr(personagem, atributo, 0)
+    bonus_item = _item_bonus(personagem, 'caracteristicas', atributo)
     try:
         efeitos = (
             EfeitoConcentracao.objects
@@ -48,9 +75,9 @@ def _atributo_efetivo(personagem: Personagem, participante: Participante, atribu
             .select_related('poder')
         )
         bonus = sum(getattr(e.poder, 'nivel_efeito', 0) or 0 for e in efeitos)
-        return base + int(bonus)
+        return base + bonus_item + int(bonus)
     except Exception:
-        return base
+        return base + bonus_item
 
 # --- Helpers de defesa: inclui característica associada (aparar+luta, esquivar+agilidade, fortitude+vigor, resistencia+vigor, vontade+prontidao)
 _DEFESA_ASSOC_MAP = {
@@ -64,9 +91,21 @@ _DEFESA_ASSOC_MAP = {
 def _defesa_efetiva(personagem: Personagem, participante: Participante, defesa: str, combate_id: int) -> int:
     """Retorna o valor da defesa somando a característica associada.
     Ex.: Resistência = resistencia + vigor; Aparar = aparar + luta; Esquivar = esquivar + agilidade; etc.
-    Ambos componentes consideram Aprimorar/Reduzir ativos.
+    Ambos componentes consideram:
+    - bônus de itens (mods.defesas / mods.caracteristicas)
+    - efeitos Aprimorar/Reduzir ativos
     """
-    val_def = _atributo_efetivo(personagem, participante, defesa, combate_id)
+    # Defesa em si (inclui bônus de item em defesas via _item_bonus + aprimorar)
+    val_def = getattr(personagem, defesa, 0) + _item_bonus(personagem, 'defesas', defesa)
+    try:
+        efeitos = (
+            EfeitoConcentracao.objects
+            .filter(combate_id=combate_id, alvo_participante=participante, ativo=True, poder__tipo='aprimorar', poder__casting_ability=defesa)
+            .select_related('poder')
+        )
+        val_def += sum(getattr(e.poder, 'nivel_efeito', 0) or 0 for e in efeitos)
+    except Exception:
+        pass
     assoc = _DEFESA_ASSOC_MAP.get(defesa)
     if assoc:
         val_def += _atributo_efetivo(personagem, participante, assoc, combate_id)
