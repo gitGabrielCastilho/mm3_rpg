@@ -727,6 +727,86 @@ document.addEventListener('DOMContentLoaded', function(){
 
 <script>
 // ---- Ataque Total (Editar Personagem) com Bônus compartilhado entre ligados (nome+modo+duração) ----
+// Funções base de adicionar/remover poderes (compartilhadas com outros wrappers)
+if (!window._poderBaseOpsInit) {
+  window._poderBaseOpsInit = true;
+
+  window.adicionarPoderBase = function adicionarPoderBase() {
+    const formsetDiv = document.getElementById('poderes-formset');
+    if (!formsetDiv) return;
+    const poderesContainer = formsetDiv.querySelector('#poderes-main-list') || formsetDiv;
+    const totalFormsInput = document.getElementById('id_poder_set-TOTAL_FORMS');
+    if (!totalFormsInput) return;
+    const formIdx = parseInt(totalFormsInput.value) || 0;
+    const emptyRoot = document.getElementById('empty-poder-form');
+    if (!emptyRoot || !emptyRoot.firstElementChild) return;
+    const emptyDiv = emptyRoot.firstElementChild.cloneNode(true);
+    emptyDiv.innerHTML = emptyDiv.innerHTML.replace(/__prefix__/g, formIdx);
+    poderesContainer.appendChild(emptyDiv);
+    totalFormsInput.value = formIdx + 1;
+    if (typeof window.atualizarCamposOrigem === 'function') {
+      try { window.atualizarCamposOrigem(emptyDiv); } catch(e) {}
+    }
+  };
+
+  window.removerPoderLinhaBase = function removerPoderLinhaBase(botaoOuDiv) {
+    const formDiv = botaoOuDiv.closest ? botaoOuDiv.closest('.poder-form') : botaoOuDiv;
+    if (!formDiv) return;
+    const deleteCheckbox = formDiv.querySelector('input[type="checkbox"][name$="-DELETE"]');
+    const totalFormsInput = document.getElementById('id_poder_set-TOTAL_FORMS');
+    if (!totalFormsInput) return;
+
+    if (deleteCheckbox) {
+      deleteCheckbox.checked = true;
+      formDiv.style.display = 'none';
+    } else {
+      formDiv.remove();
+      const forms = document.querySelectorAll('#poderes-formset .poder-form');
+      forms.forEach((div, idx) => {
+        div.querySelectorAll('[name]').forEach(el => {
+          if (el.name.includes('poder_set-')) {
+            el.name = el.name.replace(/poder_set-(\d+)-/, 'poder_set-' + idx + '-');
+          }
+        });
+        div.querySelectorAll('[id]').forEach(el => {
+          if (el.id.includes('poder_set-')) {
+            el.id = el.id.replace(/poder_set-(\d+)-/, 'poder_set-' + idx + '-');
+          }
+        });
+        div.querySelectorAll('label[for]').forEach(label => {
+          if (label.htmlFor && label.htmlFor.includes('poder_set-')) {
+            label.htmlFor = label.htmlFor.replace(/poder_set-(\d+)-/, 'poder_set-' + idx + '-');
+          }
+        });
+      });
+      totalFormsInput.value = forms.length;
+    }
+  };
+
+  window.removerPoderBase = function removerPoderBase() {
+    const formsetDiv = document.getElementById('poderes-formset');
+    const totalFormsInput = document.getElementById('id_poder_set-TOTAL_FORMS');
+    if (!formsetDiv || !totalFormsInput) return;
+    const poderForms = formsetDiv.querySelectorAll('#poderes-main-list .poder-form, .poder-item-outer .poder-form');
+    const formCount = parseInt(totalFormsInput.value) || 0;
+    if (formCount <= 0 || poderForms.length === 0) return;
+    const lastForm = poderForms[poderForms.length - 1];
+    const deleteCheckbox = lastForm.querySelector('input[type="checkbox"][name$="DELETE"]');
+    if (deleteCheckbox) {
+      deleteCheckbox.checked = true;
+      lastForm.style.display = 'none';
+    } else {
+      formsetDiv.removeChild(lastForm);
+      totalFormsInput.value = formCount - 1;
+    }
+  };
+
+  // API pública padrão
+  window.adicionarPoder = function(){ window.adicionarPoderBase(); };
+  window.removerPoderLinha = function(btn){ window.removerPoderLinhaBase(btn); };
+  window.removerPoder = function(){ window.removerPoderBase(); };
+}
+
 document.addEventListener('DOMContentLoaded', function(){
   // Dinâmica de max para Charges: max = floor(NP/2), min=1; desabilita quando max<1
   function updateChargesMaxEdit(){
@@ -846,9 +926,9 @@ document.addEventListener('DOMContentLoaded', function(){
   // Inicializa visibilidade do checkbox de Somar Força
   document.querySelectorAll('.poder-form').forEach(div=>toggleSomarForca(div));
   updateChargesMaxEdit();
-  const oldAdd=window.adicionarPoder; window.adicionarPoder=function(){ if(oldAdd) oldAdd(); setTimeout(()=>{ bind(document); atualizar(); },80); };
-  const oldRem=window.removerPoderLinha; window.removerPoderLinha=function(btn){ if(oldRem) oldRem(btn); setTimeout(()=>{ atualizar(); updateChargesMaxEdit(); },40); };
-  const oldRemUlt=window.removerPoder; window.removerPoder=function(){ if(oldRemUlt) oldRemUlt(); setTimeout(()=>{ atualizar(); updateChargesMaxEdit(); },40); };
+  const oldAdd=window.adicionarPoder; window.adicionarPoder=function(){ window.adicionarPoderBase(); if(oldAdd && oldAdd!==window.adicionarPoderBase) oldAdd(); setTimeout(()=>{ bind(document); atualizar(); updateChargesMaxEdit(); },80); };
+  const oldRem=window.removerPoderLinha; window.removerPoderLinha=function(btn){ window.removerPoderLinhaBase(btn); if(oldRem && oldRem!==window.removerPoderLinhaBase) oldRem(btn); setTimeout(()=>{ atualizar(); updateChargesMaxEdit(); },40); };
+  const oldRemUlt=window.removerPoder; window.removerPoder=function(){ window.removerPoderBase(); if(oldRemUlt && oldRemUlt!==window.removerPoderBase) oldRemUlt(); setTimeout(()=>{ atualizar(); updateChargesMaxEdit(); },40); };
   const oldCustos=window.atualizarCustos; window.atualizarCustos=function(){ if(oldCustos) oldCustos(); atualizar(); updateChargesMaxEdit(); };
   setTimeout(atualizar,60); atualizar();
 });
