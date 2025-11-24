@@ -1263,15 +1263,37 @@ def realizar_ataque(request, combate_id):
                 base_name = caracteristica_base
                 valor_caracteristica = _atributo_efetivo(atacante, participante_atacante, caracteristica_base, combate_id)
 
+            # --- Bônus de perícia vindos de itens equipados (mods.pericias) ---
+            pericia_bonus_itens = 0
+            try:
+                inventario = getattr(atacante, 'inventario', None)
+                if inventario is not None:
+                    # Reaproveita a estrutura dos mods de itens: cada Item.mods é um JSON
+                    # como {"caracteristicas": {...}, "defesas": {...}, "pericias": {...}}
+                    for item in inventario.itens.all():
+                        mods = getattr(item, 'mods', {}) or {}
+                        if not isinstance(mods, dict):
+                            continue
+                        per = mods.get('pericias') or {}
+                        try:
+                            pericia_bonus_itens += int(per.get(pericia_escolhida, 0) or 0)
+                        except Exception:
+                            # Se algo estiver estranho no JSON desse item, ignora-o silenciosamente
+                            continue
+            except Exception:
+                pericia_bonus_itens = 0
+
             # Bônus específico para próxima rolagem desse atributo (Aprimorar instantâneo)
             attr_bonus_map = participante_atacante.proximo_bonus_por_atributo or {}
             attr_next_bonus = int(attr_bonus_map.get(base_name, 0)) if base_name else 0
             if valor_pericia is not None:
                 rolagem_base = random.randint(1, 20)
-                total = rolagem_base + valor_pericia + valor_caracteristica + attr_next_bonus + buff - debuff
+                total = rolagem_base + valor_pericia + pericia_bonus_itens + valor_caracteristica + attr_next_bonus + buff - debuff
                 attr_piece = (f" + {attr_next_bonus}" if attr_next_bonus > 0 else (f" - {abs(attr_next_bonus)}" if attr_next_bonus < 0 else ""))
                 resultados.append(
-                    f"{atacante.nome} rolou {pericia_escolhida.capitalize()}: {rolagem_base} + {valor_pericia} (perícia) + {valor_caracteristica} ({str(base_name).replace('_', ' ').capitalize()})"
+                    f"{atacante.nome} rolou {pericia_escolhida.capitalize()}: {rolagem_base} + {valor_pericia} (perícia)"
+                    f"{' + ' + str(pericia_bonus_itens) + ' (itens)' if pericia_bonus_itens else ''}"
+                    f" + {valor_caracteristica} ({str(base_name).replace('_', ' ').capitalize()})"
                     f"{' + ' + str(buff) if buff else ''}"
                     f"{' - ' + str(debuff) if debuff else ''}"
                     f"{attr_piece} = <b>{total}</b>"
