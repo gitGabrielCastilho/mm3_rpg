@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from salas.models import Sala
 from itens.models import Item
+from itens.models import ItemPoder
 
 CASTING_ABILITY_CHOICES = [
     ('forca', 'Força'),
@@ -322,6 +323,78 @@ class Inventario(models.Model):
     itens = models.ManyToManyField(Item, blank=True)
     ouro = models.PositiveIntegerField(default=0)
     dragon_shard = models.PositiveIntegerField(default=0)
+
+    def sync_item_powers(self):
+        """Sincroniza poderes de item (ItemPoder) com Poder do personagem.
+
+        Regra:
+        - Para cada Item atualmente no inventário, garante que exista um Poder
+          correspondente para cada ItemPoder daquele item, marcado como de_item=True
+          e com item_origem=item.
+        - Remove quaisquer Poder(de_item=True) cujo item_origem não esteja mais
+          no inventário ou cujo template ItemPoder correspondente tenha sido removido.
+        """
+        personagem = getattr(self, 'personagem', None)
+        personagem_id = getattr(personagem, 'id', None)
+        if not personagem_id:
+            return
+        # Conjunto de itens atuais
+        itens_qs = self.itens.all().only('id')
+        item_ids = set(itens_qs.values_list('id', flat=True))
+
+        # Remove poderes de item órfãos (item fora do inventário)
+        from .models import Poder  # import local para evitar ciclos
+        poderes_qs = Poder.objects.filter(personagem_id=personagem_id, de_item=True)
+        poderes_qs.exclude(item_origem_id__in=item_ids).delete()
+
+        # Para cada item e seus ItemPoder, garante espelho em Poder
+        for item in itens_qs:
+            templates = list(ItemPoder.objects.filter(item=item))
+            if not templates:
+                continue
+            existentes = {
+                (p.nome, p.tipo, p.modo, p.duracao, p.nivel_efeito, p.bonus_ataque,
+                 p.somar_forca_no_nivel, p.defesa_ativa, p.defesa_passiva, p.casting_ability,
+                 p.charges, (p.array or ""))
+                for p in Poder.objects.filter(personagem_id=personagem_id, de_item=True, item_origem=item)
+            }
+            novos = []
+            for tpl in templates:
+                chave = (
+                    tpl.nome,
+                    tpl.tipo,
+                    tpl.modo,
+                    tpl.duracao,
+                    tpl.nivel_efeito,
+                    tpl.bonus_ataque,
+                    tpl.somar_forca_no_nivel,
+                    tpl.defesa_ativa,
+                    tpl.defesa_passiva,
+                    tpl.casting_ability,
+                    tpl.charges,
+                    (tpl.array or ""),
+                )
+                if chave in existentes:
+                    continue
+                novos.append(Poder(
+                    personagem_id=personagem_id,
+                    nome=tpl.nome,
+                    tipo=tpl.tipo,
+                    modo=tpl.modo,
+                    duracao=tpl.duracao,
+                    nivel_efeito=tpl.nivel_efeito,
+                    bonus_ataque=tpl.bonus_ataque,
+                    somar_forca_no_nivel=tpl.somar_forca_no_nivel,
+                    defesa_ativa=tpl.defesa_ativa,
+                    defesa_passiva=tpl.defesa_passiva,
+                    casting_ability=tpl.casting_ability,
+                    charges=tpl.charges,
+                    array=tpl.array or "",
+                    de_item=True,
+                    item_origem=item,
+                ))
+            if novos:
+                Poder.objects.bulk_create(novos)
 
 class Vantagem(models.Model):
     nome = models.CharField(max_length=100, unique=True)

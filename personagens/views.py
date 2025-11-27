@@ -131,6 +131,11 @@ def criar_personagem(request):
             inventario.personagem = personagem
             inventario.save()
             inventario_form.save_m2m()
+            # Após salvar itens, sincroniza poderes de item a partir do inventário
+            try:
+                inventario.sync_item_powers()
+            except Exception as e:
+                logger.warning("[criar_personagem] sync_item_powers falhou: %s", e)
             poderes = formset.save(commit=False)
 
             # Coleta vantagens selecionadas manualmente
@@ -457,6 +462,12 @@ def editar_personagem(request, personagem_id):
                 # Adiciona item ao inventário se for poder de item
                 if getattr(poder, 'de_item', False) and getattr(poder, 'item_origem', None):
                     inv.itens.add(poder.item_origem)
+
+            # Após salvar/remontar itens, sincroniza poderes de item
+            try:
+                inv.sync_item_powers()
+            except Exception as e:
+                logger.warning("[editar_personagem] sync_item_powers falhou: %s", e)
 
             # Processa exclusões do formset
             for obj in formset.deleted_objects:
