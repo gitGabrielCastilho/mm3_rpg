@@ -184,7 +184,7 @@
             <div class="somar-forca-right"><span class="label-total-dano">Total Dano:</span> <span class="valor-dano-total">0</span></div>
           </div>
           <div class="campo-poder">{{ formset.empty_form.duracao.label_tag }}{{ formset.empty_form.duracao }}</div>
-          <div class="campo-poder">{{ formset.empty_form.casting_ability.label_tag }}{{ formset.empty_form.casting_ability }}</div>
+          <div class="campo-poder campo-atributo-afetado">{{ formset.empty_form.casting_ability.label_tag }}{{ formset.empty_form.casting_ability }}</div>
           <div class="campo-poder">{{ formset.empty_form.nivel_efeito.label_tag }}{{ formset.empty_form.nivel_efeito }}</div>
           <div class="campo-poder">{{ formset.empty_form.charges.label_tag }}{{ formset.empty_form.charges }}</div>
           <div class="campo-poder">{{ formset.empty_form.bonus_ataque.label_tag }}{{ formset.empty_form.bonus_ataque }}</div>
@@ -227,7 +227,7 @@
                   <div class="somar-forca-right"><span class="label-total-dano">Total Dano:</span> <span class="valor-dano-total">0</span></div>
                 </div>
                 <div class="campo-poder">{{ form.duracao.label_tag }}{{ form.duracao }}</div>
-                <div class="campo-poder">{{ form.casting_ability.label_tag }}{{ form.casting_ability }}</div>
+                <div class="campo-poder campo-atributo-afetado">{{ form.casting_ability.label_tag }}{{ form.casting_ability }}</div>
                 <div class="campo-poder">{{ form.nivel_efeito.label_tag }}{{ form.nivel_efeito }}</div>
                 <div class="campo-poder">{{ form.charges.label_tag }}{{ form.charges }}</div>
                 <div class="campo-poder">{{ form.bonus_ataque.label_tag }}{{ form.bonus_ataque }}</div>
@@ -416,6 +416,16 @@ document.addEventListener('DOMContentLoaded', function() {
   // Expor globalmente para outros scripts
   window.nivelEfeitoEfetivoPorDiv = nivelEfeitoEfetivoPorDiv;
   window.toggleSomarForcaPoder = toggleSomarForca;
+  // Mostrar/esconder "Atributo Afetado" apenas quando Tipo = Aprimorar/Reduzir
+  function toggleAtributoAfetado(div){
+    if(!div) return;
+    const tipoEl = div.querySelector('[name$="-tipo"]');
+    const wrap = div.querySelector('.campo-atributo-afetado');
+    if(!wrap) return;
+    const show = tipoEl && tipoEl.value === 'aprimorar';
+    wrap.style.display = show ? '' : 'none';
+  }
+  window.toggleAtributoAfetado = toggleAtributoAfetado;
   const camposCaracteristicas = ['forca','vigor','destreza','agilidade','luta','inteligencia','prontidao','presenca'];
   const camposDefesas = ['aparar','esquivar','fortitude','vontade','resistencia'];
   const camposPericias = ['acrobacias','atletismo','combate_distancia','combate_corpo','enganacao','especialidade','furtividade','intimidacao','intuicao','investigacao','percepcao','persuasao','prestidigitacao','tecnologia','tratamento','veiculos','historia','sobrevivencia','arcana','religiao'];
@@ -478,6 +488,9 @@ document.addEventListener('DOMContentLoaded', function() {
       if ((chItem && chItem.checked) || (chVant && chVant.checked)) return;
     const base = custoPoderDiv(div);
     // Atualiza visibilidade do checkbox de Somar Força
+    toggleSomarForca(div);
+    // Atualiza visibilidade do campo Atributo Afetado
+    toggleAtributoAfetado(div);
     toggleSomarForca(div);
       const bAtk = custoBonusAtaque(div);
       const arrName = (div.querySelector('[name$="-array"]')?.value || '').trim().toLowerCase();
@@ -836,7 +849,7 @@ document.addEventListener('DOMContentLoaded', function(){
   }
   window.recalcAtaquesSimples = recalcAtaques;
   document.addEventListener('input', ev=>{ if(ev.target.closest('#poderes-main-list .poder-form') || ['id_luta','id_destreza','id_nivel_poder','id_forca'].includes(ev.target.id)) { try{ window.toggleSomarForcaPoder(ev.target.closest('.poder-form')); }catch(e){} recalcAtaques(); } });
-  document.addEventListener('change', ev=>{ if(ev.target.closest('#poderes-main-list .poder-form') || ['id_luta','id_destreza','id_nivel_poder','id_forca'].includes(ev.target.id)) { try{ window.toggleSomarForcaPoder(ev.target.closest('.poder-form')); }catch(e){} recalcAtaques(); } });
+  document.addEventListener('change', ev=>{ if(ev.target.closest('#poderes-main-list .poder-form') || ['id_luta','id_destreza','id_nivel_poder','id_forca'].includes(ev.target.id)) { const div = ev.target.closest('.poder-form'); if(div){ try{ window.toggleSomarForcaPoder(div); }catch(e){} try{ window.toggleAtributoAfetado(div); }catch(e){} } recalcAtaques(); } });
   const oldAdd = window.adicionarPoder; window.adicionarPoder = function(){ if(oldAdd) oldAdd(); setTimeout(recalcAtaques, 80); };
   const oldRem = window.removerPoderLinha; window.removerPoderLinha = function(btn){ if(oldRem) oldRem(btn); setTimeout(recalcAtaques, 40); };
   const oldRemUlt = window.removerPoder; window.removerPoder = function(){ if(oldRemUlt) oldRemUlt(); setTimeout(recalcAtaques, 40); };
