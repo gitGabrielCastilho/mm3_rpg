@@ -64,6 +64,11 @@ class Item(models.Model):
 
 # Poderes que pertencem a um Item (template), usados para gerar poderes de item no personagem quando equipado
 class ItemPoder(models.Model):
+    CAMINHO_AFLICAO_CHOICES = [
+        ('fisico', 'Físico'),
+        ('mental', 'Mental'),
+        ('misto', 'Misto'),
+    ]
     TIPO_CHOICES = [
         ('descritivo', 'Descritivo'),
         ('aflicao', 'Aflição'),
@@ -116,6 +121,12 @@ class ItemPoder(models.Model):
     nivel_efeito = models.IntegerField(default=0)
     bonus_ataque = models.IntegerField(default=0)
     somar_forca_no_nivel = models.BooleanField(default=False)
+    caminho_aflicao = models.CharField(
+        max_length=20,
+        choices=CAMINHO_AFLICAO_CHOICES,
+        blank=True,
+        default='',
+    )
     defesa_ativa = models.CharField(max_length=20, choices=DEFESA_ATIVA_CHOICES, default='aparar')
     defesa_passiva = models.CharField(max_length=20, choices=DEFESA_PASSIVA_CHOICES, default='resistencia')
     casting_ability = models.CharField(max_length=20, choices=CASTING_ABILITY_CHOICES, default='inteligencia')
