@@ -336,7 +336,8 @@ class PoderNPCForm(forms.ModelForm):
     class Meta:
         model = Poder
         fields = [
-            'nome', 'array', 'tipo', 'modo', 'duracao', 'nivel_efeito', 'bonus_ataque', 'somar_forca_no_nivel', 'charges',
+            'nome', 'array', 'tipo', 'caminho_aflicao', 'modo', 'duracao', 'nivel_efeito',
+            'bonus_ataque', 'somar_forca_no_nivel', 'charges',
             'defesa_ativa', 'defesa_passiva', 'casting_ability', 'ligados'
         ]
 
