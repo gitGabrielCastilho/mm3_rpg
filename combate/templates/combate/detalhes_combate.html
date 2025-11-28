@@ -214,26 +214,21 @@
   {% endif %}
             {% for posicao in posicoes %}
               {% if posicao.mapa.id == mapa.id %}
-                {% with nome=posicao.participante.personagem.nome %}
-                  {% with prefix=nome|slice:"0:2"|upper %}
-                    {% if posicao.participante.personagem.foto %}
-         <div id="token-{{ posicao.id }}" class="mapa-token mapa-token-com-label"
+                {% if posicao.participante.personagem.foto %}
+         <img src="{{ posicao.participante.personagem.foto.url }}" title="{{ posicao.participante.personagem.foto.url }}"
+           id="token-{{ posicao.id }}"
+           class="mapa-token"
            style="left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:{{ posicao.token_size|default:40 }}px; height:{{ posicao.token_size|default:40 }}px;"
            draggable="true"
            ondragstart="drag(event, {{ posicao.id }})">
-           <img src="{{ posicao.participante.personagem.foto.url }}" alt="{{ nome }}" class="mapa-token-img">
-           <span class="mapa-token-label">{{ prefix }}</span>
-         </div>
-                    {% else %}
-         <div id="token-{{ posicao.id }}" class="mapa-token token-fallback mapa-token-com-label"
+                {% else %}
+         <div id="token-{{ posicao.id }}" class="mapa-token token-fallback"
            style="left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:{{ posicao.token_size|default:40 }}px; height:{{ posicao.token_size|default:40 }}px;"
            draggable="true"
            ondragstart="drag(event, {{ posicao.id }})">
-                    <span class="mapa-token-fallback-text">{{ prefix }}</span>
+                    {{ posicao.participante.personagem.nome|slice:"0:2"|upper }}
                   </div>
-                    {% endif %}
-                  {% endwith %}
-                {% endwith %}
+                {% endif %}
               {% endif %}
             {% endfor %}
               </div>
