@@ -221,7 +221,7 @@ function removerPoderItemLinha(btn){
 <script>
 // Mostrar "Caminho de Aflição" apenas quando Tipo == Aflição (criar/editar Item)
 document.addEventListener('DOMContentLoaded', function() {
-  function atualizarCaminhoAflicaoItem(div){
+  function atualizarCaminhoAflicao(div){
     if (!div) return;
     const tipoEl = div.querySelector('[name$="-tipo"]');
     const wrap = div.querySelector('.campo-caminho-aflicao');
@@ -229,9 +229,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const v = (tipoEl && (tipoEl.value || '') || '').toLowerCase();
     wrap.style.display = v === 'aflicao' ? '' : 'none';
   }
-  if (!window.atualizarCaminhoAflicao) {
-    window.atualizarCaminhoAflicao = atualizarCaminhoAflicaoItem;
-  }
+  window.atualizarCaminhoAflicao = atualizarCaminhoAflicao;
   function toggleAtributoAfetadoItem(div){
     if (!div) return;
     const tipoEl = div.querySelector('[name$="-tipo"]');
@@ -245,22 +243,29 @@ document.addEventListener('DOMContentLoaded', function() {
       if (el.dataset.caminhoBound) return;
       el.addEventListener('change', function(){
         const div = el.closest('.poder-form');
-        window.atualizarCaminhoAflicao(div);
+        atualizarCaminhoAflicao(div);
         toggleAtributoAfetadoItem(div);
       });
       el.addEventListener('input', function(){
         const div = el.closest('.poder-form');
-        window.atualizarCaminhoAflicao(div);
+        atualizarCaminhoAflicao(div);
         toggleAtributoAfetadoItem(div);
       });
       el.dataset.caminhoBound = '1';
     });
     (scope || document).querySelectorAll('#item-poderes-list .poder-form').forEach(div => {
-      window.atualizarCaminhoAflicao(div);
+      atualizarCaminhoAflicao(div);
       toggleAtributoAfetadoItem(div);
     });
   }
   bind(document);
+
+  // Reaplicar bind após adicionar um novo poder de item
+  const oldAdd = window.adicionarPoderItemTemplate;
+  window.adicionarPoderItemTemplate = function(){
+    if (typeof oldAdd === 'function') oldAdd();
+    setTimeout(() => bind(document), 60);
+  };
 });
 </script>
 

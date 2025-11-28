@@ -302,7 +302,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script>
 // Mostrar "Caminho de Aflição" apenas quando Tipo == Aflição (criar NPC)
 document.addEventListener('DOMContentLoaded', function() {
-  function atualizarCaminhoAflicaoNPC(div){
+  function atualizarCaminhoAflicao(div){
     if (!div) return;
     const tipoEl = div.querySelector('[name$="-tipo"]');
     const wrap = div.querySelector('.campo-caminho-aflicao');
@@ -310,16 +310,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const v = (tipoEl && (tipoEl.value || '') || '').toLowerCase();
     wrap.style.display = v === 'aflicao' ? '' : 'none';
   }
-  window.atualizarCaminhoAflicaoNPC = atualizarCaminhoAflicaoNPC;
-  window.atualizarCaminhoAflicao = atualizarCaminhoAflicaoNPC;
+  window.atualizarCaminhoAflicao = atualizarCaminhoAflicao;
   function bind(scope){
     (scope || document).querySelectorAll('.poder-form [name$="-tipo"]').forEach(el => {
       if (el.dataset.caminhoBound) return;
-      el.addEventListener('change', function(){ window.atualizarCaminhoAflicaoNPC(el.closest('.poder-form')); });
-      el.addEventListener('input', function(){ window.atualizarCaminhoAflicaoNPC(el.closest('.poder-form')); });
+      el.addEventListener('change', function(){ atualizarCaminhoAflicao(el.closest('.poder-form')); });
+      el.addEventListener('input', function(){ atualizarCaminhoAflicao(el.closest('.poder-form')); });
       el.dataset.caminhoBound = '1';
     });
-    (scope || document).querySelectorAll('.poder-form').forEach(div => window.atualizarCaminhoAflicaoNPC(div));
+    (scope || document).querySelectorAll('.poder-form').forEach(div => atualizarCaminhoAflicao(div));
   }
   bind(document);
   const oldAdd = window.adicionarPoder;
