@@ -73,9 +73,10 @@
             <div class="campo-poder">{{ formset.empty_form.nome.label_tag }}{{ formset.empty_form.nome }}</div>
             <div class="campo-poder">{{ formset.empty_form.array.label_tag }}{{ formset.empty_form.array }}</div>
             <div class="campo-poder">{{ formset.empty_form.tipo.label_tag }}{{ formset.empty_form.tipo }}</div>
+            <div class="campo-poder campo-caminho-aflicao">{{ formset.empty_form.caminho_aflicao.label_tag }}{{ formset.empty_form.caminho_aflicao }}</div>
             <div class="campo-poder">{{ formset.empty_form.modo.label_tag }}{{ formset.empty_form.modo }}</div>
             <div class="campo-poder">{{ formset.empty_form.duracao.label_tag }}{{ formset.empty_form.duracao }}</div>
-            <div class="campo-poder">{{ formset.empty_form.casting_ability.label_tag }}{{ formset.empty_form.casting_ability }}</div>
+            <div class="campo-poder campo-atributo-afetado">{{ formset.empty_form.casting_ability.label_tag }}{{ formset.empty_form.casting_ability }}</div>
             <div class="campo-poder">{{ formset.empty_form.nivel_efeito.label_tag }}{{ formset.empty_form.nivel_efeito }}</div>
             <div class="campo-poder">{{ formset.empty_form.charges.label_tag }}{{ formset.empty_form.charges }}</div>
             <div class="campo-poder">{{ formset.empty_form.bonus_ataque.label_tag }}{{ formset.empty_form.bonus_ataque }}</div>
@@ -93,9 +94,10 @@
               <div class="campo-poder">{{ f.nome.label_tag }}{{ f.nome }}</div>
               <div class="campo-poder">{{ f.array.label_tag }}{{ f.array }}</div>
               <div class="campo-poder">{{ f.tipo.label_tag }}{{ f.tipo }}</div>
+              <div class="campo-poder campo-caminho-aflicao">{{ f.caminho_aflicao.label_tag }}{{ f.caminho_aflicao }}</div>
               <div class="campo-poder">{{ f.modo.label_tag }}{{ f.modo }}</div>
               <div class="campo-poder">{{ f.duracao.label_tag }}{{ f.duracao }}</div>
-              <div class="campo-poder">{{ f.casting_ability.label_tag }}{{ f.casting_ability }}</div>
+              <div class="campo-poder campo-atributo-afetado">{{ f.casting_ability.label_tag }}{{ f.casting_ability }}</div>
               <div class="campo-poder">{{ f.nivel_efeito.label_tag }}{{ f.nivel_efeito }}</div>
               <div class="campo-poder">{{ f.charges.label_tag }}{{ f.charges }}</div>
               <div class="campo-poder">{{ f.bonus_ataque.label_tag }}{{ f.bonus_ataque }}</div>
@@ -194,6 +196,9 @@ function adicionarPoderItemTemplate(){
   clone.innerHTML = clone.innerHTML.replace(/__prefix__/g, String(idx));
   list.appendChild(clone);
   totalEl.value = idx + 1;
+  if (typeof window.atualizarCaminhoAflicao === 'function') {
+    try { window.atualizarCaminhoAflicao(clone); } catch(e) {}
+  }
 }
 function removerPoderItemLinha(btn){
   const div = btn.closest('.poder-form');
@@ -211,6 +216,52 @@ function removerPoderItemLinha(btn){
   });
   if(totalEl) totalEl.value = forms.length;
 }
+</script>
+
+<script>
+// Mostrar "Caminho de Aflição" apenas quando Tipo == Aflição (criar/editar Item)
+document.addEventListener('DOMContentLoaded', function() {
+  function atualizarCaminhoAflicaoItem(div){
+    if (!div) return;
+    const tipoEl = div.querySelector('[name$="-tipo"]');
+    const wrap = div.querySelector('.campo-caminho-aflicao');
+    if (!wrap) return;
+    const v = (tipoEl && (tipoEl.value || '') || '').toLowerCase();
+    wrap.style.display = v === 'aflicao' ? '' : 'none';
+  }
+  if (!window.atualizarCaminhoAflicao) {
+    window.atualizarCaminhoAflicao = atualizarCaminhoAflicaoItem;
+  }
+  function toggleAtributoAfetadoItem(div){
+    if (!div) return;
+    const tipoEl = div.querySelector('[name$="-tipo"]');
+    const wrap = div.querySelector('.campo-atributo-afetado');
+    if (!wrap) return;
+    const show = tipoEl && (tipoEl.value === 'aprimorar' || tipoEl.value === 'reduzir');
+    wrap.style.display = show ? '' : 'none';
+  }
+  function bind(scope){
+    (scope || document).querySelectorAll('#item-poderes-list .poder-form [name$="-tipo"]').forEach(el => {
+      if (el.dataset.caminhoBound) return;
+      el.addEventListener('change', function(){
+        const div = el.closest('.poder-form');
+        window.atualizarCaminhoAflicao(div);
+        toggleAtributoAfetadoItem(div);
+      });
+      el.addEventListener('input', function(){
+        const div = el.closest('.poder-form');
+        window.atualizarCaminhoAflicao(div);
+        toggleAtributoAfetadoItem(div);
+      });
+      el.dataset.caminhoBound = '1';
+    });
+    (scope || document).querySelectorAll('#item-poderes-list .poder-form').forEach(div => {
+      window.atualizarCaminhoAflicao(div);
+      toggleAtributoAfetadoItem(div);
+    });
+  }
+  bind(document);
+});
 </script>
 
 <script>

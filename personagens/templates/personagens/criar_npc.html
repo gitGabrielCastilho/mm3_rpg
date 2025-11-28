@@ -128,6 +128,7 @@
           <div class="campo-poder">{{ formset.empty_form.nome.label_tag }}{{ formset.empty_form.nome }}</div>
           <div class="campo-poder">{{ formset.empty_form.array.label_tag }}{{ formset.empty_form.array }}</div>
           <div class="campo-poder">{{ formset.empty_form.tipo.label_tag }}{{ formset.empty_form.tipo }}</div>
+          <div class="campo-poder campo-caminho-aflicao">{{ formset.empty_form.caminho_aflicao.label_tag }}{{ formset.empty_form.caminho_aflicao }}</div>
           <div class="campo-poder">{{ formset.empty_form.modo.label_tag }}{{ formset.empty_form.modo }}</div>
           <div class="campo-poder somar-forca-wrap span-2" title="Se marcado e for Dano Corpo a Corpo, o nível de efeito soma a Força.">
             <label for="{{ formset.empty_form.somar_forca_no_nivel.id_for_label }}">
@@ -296,6 +297,35 @@ document.addEventListener('DOMContentLoaded', function() {
   const oldRemLinha = window.removerPoderLinha; window.removerPoderLinha = function(btn){ oldRemLinha(btn); atualizar(); };
   const oldRem = window.removerPoder; window.removerPoder = function(){ oldRem(); atualizar(); };
   atualizar();
+});
+</script>
+<script>
+// Mostrar "Caminho de Aflição" apenas quando Tipo == Aflição (criar NPC)
+document.addEventListener('DOMContentLoaded', function() {
+  function atualizarCaminhoAflicaoNPC(div){
+    if (!div) return;
+    const tipoEl = div.querySelector('[name$="-tipo"]');
+    const wrap = div.querySelector('.campo-caminho-aflicao');
+    if (!wrap) return;
+    const v = (tipoEl && (tipoEl.value || '') || '').toLowerCase();
+    wrap.style.display = v === 'aflicao' ? '' : 'none';
+  }
+  // reutiliza função global se já existir, senão define
+  if (!window.atualizarCaminhoAflicao) {
+    window.atualizarCaminhoAflicao = atualizarCaminhoAflicaoNPC;
+  }
+  function bind(scope){
+    (scope || document).querySelectorAll('.poder-form [name$="-tipo"]').forEach(el => {
+      if (el.dataset.caminhoBound) return;
+      el.addEventListener('change', function(){ window.atualizarCaminhoAflicao(el.closest('.poder-form')); });
+      el.addEventListener('input', function(){ window.atualizarCaminhoAflicao(el.closest('.poder-form')); });
+      el.dataset.caminhoBound = '1';
+    });
+    (scope || document).querySelectorAll('.poder-form').forEach(div => window.atualizarCaminhoAflicao(div));
+  }
+  bind(document);
+  const oldAdd = window.adicionarPoder;
+  window.adicionarPoder = function(){ if (typeof oldAdd === 'function') oldAdd(); setTimeout(()=>bind(document),60); };
 });
 </script>
 <script>
