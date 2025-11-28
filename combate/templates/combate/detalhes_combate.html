@@ -96,9 +96,10 @@
           Segure Ctrl (Windows/Linux) ou Cmd (macOS) para selecionar múltiplos; use Shift para selecionar intervalos.
         </small>
   <select id="alvo" name="alvo_id" multiple size="4" class="multiselect-alvos" aria-describedby="alvo_hint" title="Segure Ctrl (Windows/Linux) ou Cmd (macOS) para seleção múltipla; Shift para intervalos.">
-          {% for p in participantes %}
+          {# Ordena por iniciativa (maior primeiro) e exibe a iniciativa no texto #}
+          {% for p in participantes|dictsortreversed:"iniciativa" %}
             {% if p.personagem.id in allowed_personagem_ids %}
-              <option value="{{ p.id }}">{{ p.display_nome|default:p.personagem.nome }}</option>
+              <option value="{{ p.id }}">[Init {{ p.iniciativa }}] {{ p.display_nome|default:p.personagem.nome }}</option>
             {% endif %}
           {% endfor %}
         </select>
