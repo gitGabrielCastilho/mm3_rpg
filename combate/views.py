@@ -645,8 +645,8 @@ def iniciar_turno(request, combate_id):
                     novo = max(0, antigo - 1)
                     alvo_part.aflicao = novo
                     alvo_part.save(update_fields=['aflicao'])
-                    cond_antiga = _aflicao_condicao(getattr(efeito.poder, 'caminho_aflicao', ''), antigo)
-                    cond_nova = _aflicao_condicao(getattr(efeito.poder, 'caminho_aflicao', ''), novo)
+                    cond_antiga = _aflicao_condicao(getattr(efeito_afl.poder, 'caminho_aflicao', ''), antigo)
+                    cond_nova = _aflicao_condicao(getattr(efeito_afl.poder, 'caminho_aflicao', ''), novo)
                     if cond_antiga or cond_nova:
                         mensagens_tick.append(
                             f"[Aflição] {alvo.nome} reduziu sua Aflição (nível {antigo} -> {novo}; "
@@ -659,7 +659,7 @@ def iniciar_turno(request, combate_id):
                             f"em teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl}."
                         )
             else:
-                cond_atual = _aflicao_condicao(getattr(efeito.poder, 'caminho_aflicao', ''), int(getattr(alvo_part, 'aflicao', 0) or 0))
+                cond_atual = _aflicao_condicao(getattr(efeito_afl.poder, 'caminho_aflicao', ''), int(getattr(alvo_part, 'aflicao', 0) or 0))
                 if cond_atual:
                     mensagens_tick.append(
                         f"[Aflição] {alvo.nome} falhou o teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl} "
@@ -741,14 +741,37 @@ def iniciar_turno(request, combate_id):
                 if total_def < cd:
                     diff = cd - total_def
                     degree = _calc_fail_degree(poder.tipo, diff)
+                    antigo_af = int(getattr(alvo_part, 'aflicao', 0) or 0) if poder.tipo == 'aflicao' else None
                     aplicou, incap = _aplicar_falha_salvamento(alvo_part, poder.tipo, degree)
-                    efeitos_txt = ["Ferimentos +1 (penalidade cumulativa em salvamentos)"]
-                    if aplicou:
-                        efeitos_txt.append("+1 de " + ("dano" if poder.tipo=='dano' else "aflição"))
-                    if incap:
-                        efeitos_txt.append("INCAPACITADO")
+                    efeitos_txt = []
+                    if poder.tipo == 'dano':
+                        efeitos_txt.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
+                        if aplicou:
+                            efeitos_txt.append("+1 de dano (acima do patamar atual)")
+                        if incap:
+                            efeitos_txt.append("INCAPACITADO (dano 4)")
+                    else:
+                        novo_af = int(getattr(alvo_part, 'aflicao', 0) or 0)
+                        if antigo_af is not None and novo_af != antigo_af:
+                            try:
+                                cond_old = _aflicao_condicao(getattr(poder, 'caminho_aflicao', ''), antigo_af)
+                                cond_new = _aflicao_condicao(getattr(poder, 'caminho_aflicao', ''), novo_af)
+                            except Exception:
+                                cond_old = cond_new = ''
+                            if cond_old or cond_new:
+                                efeitos_txt.append(
+                                    f"Aflição grau {degree}: nível {antigo_af} -> {novo_af}; condição {cond_old or '-'} -> {cond_new or '-'}"
+                                )
+                            else:
+                                efeitos_txt.append(
+                                    f"Aflição grau {degree}: nível {antigo_af} -> {novo_af}"
+                                )
+                        else:
+                            efeitos_txt.append(f"Aflição grau {degree}: sem alteração de nível (atual {alvo_part.aflicao})")
+
                     mensagens_tick.append(
-                        f"{tick_label} {poder.nome} afeta {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — " + ", ".join(efeitos_txt) + "."
+                        f"{tick_label} {poder.nome} afeta {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — "
+                        f"falha de grau {degree}; " + ", ".join(efeitos_txt) + "."
                     )
                     # Teste de Vigor CD 15: apenas se o alvo mantém efeitos próprios (como conjurador)
                     if EfeitoConcentracao.objects.filter(combate=combate, ativo=True, aplicador=alvo).exists():
@@ -1020,8 +1043,8 @@ def avancar_turno(request, combate_id):
                         novo = max(0, antigo - 1)
                         alvo_part.aflicao = novo
                         alvo_part.save(update_fields=['aflicao'])
-                        cond_antiga = _aflicao_condicao(getattr(efeito.poder, 'caminho_aflicao', ''), antigo)
-                        cond_nova = _aflicao_condicao(getattr(efeito.poder, 'caminho_aflicao', ''), novo)
+                        cond_antiga = _aflicao_condicao(getattr(efeito_afl.poder, 'caminho_aflicao', ''), antigo)
+                        cond_nova = _aflicao_condicao(getattr(efeito_afl.poder, 'caminho_aflicao', ''), novo)
                         if cond_antiga or cond_nova:
                             mensagens_tick.append(
                                 f"[Aflição] {alvo.nome} reduziu sua Aflição (nível {antigo} -> {novo}; "
@@ -1034,7 +1057,7 @@ def avancar_turno(request, combate_id):
                                 f"em teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl}."
                             )
                 else:
-                    cond_atual = _aflicao_condicao(getattr(efeito.poder, 'caminho_aflicao', ''), int(getattr(alvo_part, 'aflicao', 0) or 0))
+                    cond_atual = _aflicao_condicao(getattr(efeito_afl.poder, 'caminho_aflicao', ''), int(getattr(alvo_part, 'aflicao', 0) or 0))
                     if cond_atual:
                         mensagens_tick.append(
                             f"[Aflição] {alvo.nome} falhou o teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl} "
@@ -1090,16 +1113,42 @@ def avancar_turno(request, combate_id):
                     a_piece = (f" + {a_next}" if a_next > 0 else (f" - {abs(a_next)}" if a_next < 0 else ""))
                     pen_piece = f" - {salv_pen}" if salv_pen else ""
                     msg_def = f"{base} + {val}{' + ' + str(buff) if buff else ''}{' - ' + str(debuff) if debuff else ''}{a_piece}{pen_piece} = {total}"
+                    # Teste de dano/aflição persistente por concentração/sustentado
                     if total < cd:
                         diff = cd - total
                         degree = _calc_fail_degree(poder.tipo, diff)
+                        antigo_af = int(getattr(alvo_part, 'aflicao', 0) or 0) if poder.tipo == 'aflicao' else None
                         aplicou, incap = _aplicar_falha_salvamento(alvo_part, poder.tipo, degree)
-                        efeitos_txt = ["Ferimentos +1 (penalidade cumulativa em salvamentos)"]
-                        if aplicou:
-                            efeitos_txt.append("+1 de " + ("dano" if poder.tipo=='dano' else "aflição"))
-                        if incap:
-                            efeitos_txt.append("INCAPACITADO")
-                        mensagens_tick.append(f"{label} {poder.nome} afeta {alvo.nome}: teste de {defesa_attr} ({msg_def}) contra CD {cd} — " + ", ".join(efeitos_txt) + ".")
+                        efeitos_txt = []
+                        if poder.tipo == 'dano':
+                            efeitos_txt.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
+                            if aplicou:
+                                efeitos_txt.append("+1 de dano (acima do patamar atual)")
+                            if incap:
+                                efeitos_txt.append("INCAPACITADO (dano 4)")
+                        else:
+                            novo_af = int(getattr(alvo_part, 'aflicao', 0) or 0)
+                            if antigo_af is not None and novo_af != antigo_af:
+                                try:
+                                    cond_old = _aflicao_condicao(getattr(poder, 'caminho_aflicao', ''), antigo_af)
+                                    cond_new = _aflicao_condicao(getattr(poder, 'caminho_aflicao', ''), novo_af)
+                                except Exception:
+                                    cond_old = cond_new = ''
+                                if cond_old or cond_new:
+                                    efeitos_txt.append(
+                                        f"Aflição grau {degree}: nível {antigo_af} -> {novo_af}; condição {cond_old or '-'} -> {cond_new or '-'}"
+                                    )
+                                else:
+                                    efeitos_txt.append(
+                                        f"Aflição grau {degree}: nível {antigo_af} -> {novo_af}"
+                                    )
+                            else:
+                                efeitos_txt.append(f"Aflição grau {degree}: sem alteração de nível (atual {alvo_part.aflicao})")
+
+                        mensagens_tick.append(
+                            f"{label} {poder.nome} afeta {alvo.nome}: teste de {defesa_attr} ({msg_def}) contra CD {cd} — "
+                            f"falha de grau {degree}; " + ", ".join(efeitos_txt) + "."
+                        )
                         if EfeitoConcentracao.objects.filter(combate=combate, ativo=True, aplicador=alvo).exists():
                             vigor = _atributo_efetivo(alvo, alvo_part, 'vigor', combate.id)
                             b = random.randint(1, 20)
@@ -2294,18 +2343,43 @@ def realizar_ataque(request, combate_id):
                         if total < cd:
                             diff = cd - total
                             degree = _calc_fail_degree(tipo, diff)
+                            antigo_af = int(getattr(participante_alvo, 'aflicao', 0) or 0) if tipo == 'aflicao' else None
                             aplicou, incap = _aplicar_falha_salvamento(participante_alvo, tipo, degree)
                             if duracao_raw in ('concentracao', 'sustentado'):
                                 EfeitoConcentracao.objects.create(
                                     combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
                                     poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
                                 )
-                                efeitos = ["Ferimentos +1 (penalidade cumulativa em salvamentos)"]
-                            if aplicou:
-                                efeitos.append("+1 de " + ("dano" if tipo=='dano' else "aflição"))
-                            if incap:
-                                efeitos.append("INCAPACITADO")
-                            resultado = f"{alvo.nome} teste {defesa_attr} ({defesa_msg}) vs CD {cd}: " + ", ".join(efeitos) + f" ({poder_atual.nome})"
+                            efeitos = []
+                            if tipo == 'dano':
+                                efeitos.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
+                                if aplicou:
+                                    efeitos.append("+1 de dano (acima do patamar atual)")
+                                if incap:
+                                    efeitos.append("INCAPACITADO (dano 4)")
+                            else:
+                                novo_af = int(getattr(participante_alvo, 'aflicao', 0) or 0)
+                                if antigo_af is not None and novo_af != antigo_af:
+                                    try:
+                                        cond_old = _aflicao_condicao(getattr(poder_atual, 'caminho_aflicao', ''), antigo_af)
+                                        cond_new = _aflicao_condicao(getattr(poder_atual, 'caminho_aflicao', ''), novo_af)
+                                    except Exception:
+                                        cond_old = cond_new = ''
+                                    if cond_old or cond_new:
+                                        efeitos.append(
+                                            f"Aflição grau {degree}: nível {antigo_af} -> {novo_af}; condição {cond_old or '-'} -> {cond_new or '-'}"
+                                        )
+                                    else:
+                                        efeitos.append(
+                                            f"Aflição grau {degree}: nível {antigo_af} -> {novo_af}"
+                                        )
+                                else:
+                                    efeitos.append(f"Aflição grau {degree}: sem alteração de nível (atual {participante_alvo.aflicao})")
+
+                            resultado = (
+                                f"{alvo.nome} teste {defesa_attr} ({defesa_msg}) vs CD {cd}: falha de grau {degree}; "
+                                + ", ".join(efeitos) + f" ({poder_atual.nome})"
+                            )
                             manter_concentracao_apos_sofrer(participante_alvo)
                         else:
                             resultado = f"{alvo.nome} teste {defesa_attr} ({defesa_msg}) vs CD {cd}: sem efeito ({poder_atual.nome})"
@@ -2369,22 +2443,50 @@ def realizar_ataque(request, combate_id):
                             if d_total < cd:
                                 diff = cd - d_total
                                 degree = _calc_fail_degree(tipo, diff)
+                                antigo_af = int(getattr(participante_alvo, 'aflicao', 0) or 0) if tipo == 'aflicao' else None
                                 aplicou, incap = _aplicar_falha_salvamento(participante_alvo, tipo, degree)
                                 if duracao_raw in ('concentracao', 'sustentado'):
                                     EfeitoConcentracao.objects.create(
                                         combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
                                         poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
                                     )
-                                efeitos = ["Ferimentos +1 (penalidade cumulativa em salvamentos)"]
-                                if aplicou:
-                                    efeitos.append("+1 de " + ("dano" if tipo=='dano' else "aflição"))
-                                if incap:
-                                    efeitos.append("INCAPACITADO")
+                                efeitos = []
+                                if tipo == 'dano':
+                                    efeitos.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
+                                    if aplicou:
+                                        efeitos.append("+1 de dano (acima do patamar atual)")
+                                    if incap:
+                                        efeitos.append("INCAPACITADO (dano 4)")
+                                else:
+                                    novo_af = int(getattr(participante_alvo, 'aflicao', 0) or 0)
+                                    if antigo_af is not None and novo_af != antigo_af:
+                                        try:
+                                            cond_old = _aflicao_condicao(getattr(poder_atual, 'caminho_aflicao', ''), antigo_af)
+                                            cond_new = _aflicao_condicao(getattr(poder_atual, 'caminho_aflicao', ''), novo_af)
+                                        except Exception:
+                                            cond_old = cond_new = ''
+                                        if cond_old or cond_new:
+                                            efeitos.append(
+                                                f"Aflição grau {degree}: nível {antigo_af} -> {novo_af}; condição {cond_old or '-'} -> {cond_new or '-'}"
+                                            )
+                                        else:
+                                            efeitos.append(
+                                                f"Aflição grau {degree}: nível {antigo_af} -> {novo_af}"
+                                            )
+                                    else:
+                                        efeitos.append(f"Aflição grau {degree}: sem alteração de nível (atual {participante_alvo.aflicao})")
+
                                 if not st[logged_flag]:
-                                    resultado = f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {defesa_mov_val}) {defesa_attr} ({defesa_msg}) CD {cd} " + ", ".join(efeitos) + f" ({poder_atual.nome})"
+                                    resultado = (
+                                        f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {defesa_mov_val}) {defesa_attr} ({defesa_msg}) CD {cd} — "
+                                        f"falha de grau {degree}; " + ", ".join(efeitos) + f" ({poder_atual.nome})"
+                                    )
                                     st[logged_flag] = True
                                 else:
-                                    resultado = f"{atacante.nome} acertou {alvo.nome} {defesa_attr} ({defesa_msg}) CD {cd} " + ", ".join(efeitos) + f" ({poder_atual.nome})"
+                                    resultado = (
+                                        f"{atacante.nome} acertou {alvo.nome} {defesa_attr} ({defesa_msg}) CD {cd} — "
+                                        f"falha de grau {degree}; " + ", ".join(efeitos) + f" ({poder_atual.nome})"
+                                    )
                                 manter_concentracao_apos_sofrer(participante_alvo)
                             else:
                                 if not st[logged_flag]:
