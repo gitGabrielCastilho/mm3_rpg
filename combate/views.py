@@ -590,7 +590,7 @@ def iniciar_turno(request, combate_id):
     try:
         # Resumo de efeitos ativos (Sustentado e Concentração) no início do turno
         mensagens_tick = []
-        # 1) Teste de recuperação de Aflição para todos os participantes aflitos
+        # 1) Teste de recuperação de Aflição para todos os participantes aflitos (sempre, independente de efeitos ativos)
         participantes_aflitos = (
             Participante.objects
             .filter(combate=combate, aflicao__gte=1)
@@ -598,22 +598,9 @@ def iniciar_turno(request, combate_id):
         )
         for alvo_part in participantes_aflitos:
             alvo = alvo_part.personagem
-            # Usa um poder de Aflição ativo que esteja afetando este alvo (se houver)
-            efeito_afl = (
-                EfeitoConcentracao.objects
-                .filter(combate=combate, ativo=True, alvo_participante=alvo_part, poder__tipo='aflicao')
-                .select_related('poder')
-                .first()
-            )
-            if not efeito_afl:
-                continue
-            poder_afl = efeito_afl.poder
-            try:
-                n_eff = int(getattr(poder_afl, 'nivel_efeito', 0) or 0)
-            except Exception:
-                n_eff = int(getattr(poder_afl, 'nivel_efeito', 0) or 0)
-            cd_afl = 10 + n_eff
-            defesa_attr = getattr(poder_afl, 'defesa_passiva', 'vontade') or 'vontade'
+            # Regra simplificada: CD fixa baseada apenas no nível atual de Aflição
+            cd_afl = 10 + int(getattr(alvo_part, 'aflicao', 0) or 0)
+            defesa_attr = 'vontade'
             defesa_valor = _defesa_efetiva(alvo, alvo_part, defesa_attr, combate.id)
             attr_bonus_map = alvo_part.proximo_bonus_por_atributo or {}
             attr_next_bonus = int(attr_bonus_map.get(defesa_attr, 0))
@@ -645,31 +632,16 @@ def iniciar_turno(request, combate_id):
                     novo = max(0, antigo - 1)
                     alvo_part.aflicao = novo
                     alvo_part.save(update_fields=['aflicao'])
-                    cond_antiga = _aflicao_condicao(getattr(efeito_afl.poder, 'caminho_aflicao', ''), antigo)
-                    cond_nova = _aflicao_condicao(getattr(efeito_afl.poder, 'caminho_aflicao', ''), novo)
-                    if cond_antiga or cond_nova:
-                        mensagens_tick.append(
-                            f"[Aflição] {alvo.nome} reduziu sua Aflição (nível {antigo} -> {novo}; "
-                            f"condição {cond_antiga or '-'} -> {cond_nova or '-'}) "
-                            f"em teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl}."
-                        )
-                    else:
-                        mensagens_tick.append(
-                            f"[Aflição] {alvo.nome} reduziu sua Aflição (nível {antigo} -> {novo}) "
-                            f"em teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl}."
-                        )
+                    # Sem caminho específico aqui: mostramos apenas níveis
+                    mensagens_tick.append(
+                        f"[Aflição] {alvo.nome} reduziu sua Aflição (nível {antigo} -> {novo}) "
+                        f"em teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl}."
+                    )
             else:
-                cond_atual = _aflicao_condicao(getattr(efeito_afl.poder, 'caminho_aflicao', ''), int(getattr(alvo_part, 'aflicao', 0) or 0))
-                if cond_atual:
-                    mensagens_tick.append(
-                        f"[Aflição] {alvo.nome} falhou o teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl} "
-                        f"e mantém sua Aflição em nível {alvo_part.aflicao} ({cond_atual})."
-                    )
-                else:
-                    mensagens_tick.append(
-                        f"[Aflição] {alvo.nome} falhou o teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl} "
-                        f"e mantém o nível de Aflição atual ({alvo_part.aflicao})."
-                    )
+                mensagens_tick.append(
+                    f"[Aflição] {alvo.nome} falhou o teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl} "
+                    f"e mantém o nível de Aflição atual ({alvo_part.aflicao})."
+                )
         ativos_qs = (
             EfeitoConcentracao.objects
             .filter(combate=combate, aplicador=primeiro_participante.personagem, ativo=True)
@@ -992,7 +964,7 @@ def avancar_turno(request, combate_id):
                 .select_related('alvo_participante', 'alvo_participante__personagem', 'poder')
             )
             mensagens_tick = []
-            # Teste de recuperação de Aflição para todos os participantes aflitos
+            # Teste de recuperação de Aflição para todos os participantes aflitos (sempre, independente de efeitos ativos)
             participantes_aflitos = (
                 Participante.objects
                 .filter(combate=combate, aflicao__gte=1)
@@ -1000,21 +972,8 @@ def avancar_turno(request, combate_id):
             )
             for alvo_part in participantes_aflitos:
                 alvo = alvo_part.personagem
-                efeito_afl = (
-                    EfeitoConcentracao.objects
-                    .filter(combate=combate, ativo=True, alvo_participante=alvo_part, poder__tipo='aflicao')
-                    .select_related('poder')
-                    .first()
-                )
-                if not efeito_afl:
-                    continue
-                poder_afl = efeito_afl.poder
-                try:
-                    n_eff = int(getattr(poder_afl, 'nivel_efeito', 0) or 0)
-                except Exception:
-                    n_eff = int(getattr(poder_afl, 'nivel_efeito', 0) or 0)
-                cd_afl = 10 + n_eff
-                defesa_attr = getattr(poder_afl, 'defesa_passiva', 'vontade') or 'vontade'
+                cd_afl = 10 + int(getattr(alvo_part, 'aflicao', 0) or 0)
+                defesa_attr = 'vontade'
                 defesa_valor = _defesa_efetiva(alvo, alvo_part, defesa_attr, combate.id)
                 attr_bonus_map = alvo_part.proximo_bonus_por_atributo or {}
                 attr_next_bonus = int(attr_bonus_map.get(defesa_attr, 0))
@@ -1043,31 +1002,15 @@ def avancar_turno(request, combate_id):
                         novo = max(0, antigo - 1)
                         alvo_part.aflicao = novo
                         alvo_part.save(update_fields=['aflicao'])
-                        cond_antiga = _aflicao_condicao(getattr(efeito_afl.poder, 'caminho_aflicao', ''), antigo)
-                        cond_nova = _aflicao_condicao(getattr(efeito_afl.poder, 'caminho_aflicao', ''), novo)
-                        if cond_antiga or cond_nova:
-                            mensagens_tick.append(
-                                f"[Aflição] {alvo.nome} reduziu sua Aflição (nível {antigo} -> {novo}; "
-                                f"condição {cond_antiga or '-'} -> {cond_nova or '-'}) "
-                                f"em teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl}."
-                            )
-                        else:
-                            mensagens_tick.append(
-                                f"[Aflição] {alvo.nome} reduziu sua Aflição (nível {antigo} -> {novo}) "
-                                f"em teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl}."
-                            )
+                        mensagens_tick.append(
+                            f"[Aflição] {alvo.nome} reduziu sua Aflição (nível {antigo} -> {novo}) "
+                            f"em teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl}."
+                        )
                 else:
-                    cond_atual = _aflicao_condicao(getattr(efeito_afl.poder, 'caminho_aflicao', ''), int(getattr(alvo_part, 'aflicao', 0) or 0))
-                    if cond_atual:
-                        mensagens_tick.append(
-                            f"[Aflição] {alvo.nome} falhou o teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl} "
-                            f"e mantém sua Aflição em nível {alvo_part.aflicao} ({cond_atual})."
-                        )
-                    else:
-                        mensagens_tick.append(
-                            f"[Aflição] {alvo.nome} falhou o teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl} "
-                            f"e mantém o nível de Aflição atual ({alvo_part.aflicao})."
-                        )
+                    mensagens_tick.append(
+                        f"[Aflição] {alvo.nome} falhou o teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl} "
+                        f"e mantém o nível de Aflição atual ({alvo_part.aflicao})."
+                    )
             sust = [f"• <b>{ef.poder.nome}</b> em {ef.alvo_participante.personagem.nome}" for ef in ativos if getattr(ef.poder, 'duracao', '') == 'sustentado']
             conc = [f"• <b>{ef.poder.nome}</b> em {ef.alvo_participante.personagem.nome}" for ef in ativos if getattr(ef.poder, 'duracao', '') == 'concentracao']
             if sust:
