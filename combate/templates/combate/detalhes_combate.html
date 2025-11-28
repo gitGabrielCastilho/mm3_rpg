@@ -212,48 +212,26 @@
   {% if combate.sala.game_master == user %}
     <div class="mapa-debug-url" style="font-size:12px;color:#888;margin-top:4px;word-break:break-all;">URL: {{ mapa.imagem.url }}</div>
   {% endif %}
-            {% comment %}
-              Para diferenciar múltiplos participantes com o mesmo nome no mapa, geramos
-              um índice por nome dentro deste loop: "Nome", "Nome (2)", "Nome (3)", ...
-            {% endcomment %}
-            {% with name_counts={} %}
-              {% for posicao in posicoes %}
-                {% if posicao.mapa.id == mapa.id %}
-                  {% with base_name=posicao.participante.personagem.nome %}
-                    {% if base_name in name_counts %}
-                      {% with new_index=name_counts|dict_get:base_name|add:1 %}
-                        {% with dummy=name_counts.update|default:'' %}{% endwith %}
-                      {% endwith %}
-                    {% else %}
-                      {% with dummy=name_counts.update|default:'' %}{% endwith %}
-                    {% endif %}
-                  {% endwith %}
-                {% endif %}
-              {% endfor %}
-            {% endwith %}
-
             {% for posicao in posicoes %}
               {% if posicao.mapa.id == mapa.id %}
                 {% with nome=posicao.participante.personagem.nome %}
                   {% with prefix=nome|slice:"0:2"|upper %}
-                    {% with instance_index=forloop.counter %}
-                      {% if posicao.participante.personagem.foto %}
+                    {% if posicao.participante.personagem.foto %}
          <div id="token-{{ posicao.id }}" class="mapa-token mapa-token-com-label"
            style="left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:{{ posicao.token_size|default:40 }}px; height:{{ posicao.token_size|default:40 }}px;"
            draggable="true"
            ondragstart="drag(event, {{ posicao.id }})">
            <img src="{{ posicao.participante.personagem.foto.url }}" alt="{{ nome }}" class="mapa-token-img">
-           <span class="mapa-token-label">{% if instance_index > 1 %}{{ prefix }}#{{ instance_index }}{% else %}{{ prefix }}{% endif %}</span>
+           <span class="mapa-token-label">{{ prefix }}</span>
          </div>
-                      {% else %}
+                    {% else %}
          <div id="token-{{ posicao.id }}" class="mapa-token token-fallback mapa-token-com-label"
            style="left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:{{ posicao.token_size|default:40 }}px; height:{{ posicao.token_size|default:40 }}px;"
            draggable="true"
            ondragstart="drag(event, {{ posicao.id }})">
-                    <span class="mapa-token-fallback-text">{% if instance_index > 1 %}{{ prefix }}#{{ instance_index }}{% else %}{{ prefix }}{% endif %}</span>
+                    <span class="mapa-token-fallback-text">{{ prefix }}</span>
                   </div>
-                      {% endif %}
-                    {% endwith %}
+                    {% endif %}
                   {% endwith %}
                 {% endwith %}
               {% endif %}
