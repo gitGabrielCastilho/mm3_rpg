@@ -65,9 +65,9 @@ class Item(models.Model):
 # Poderes que pertencem a um Item (template), usados para gerar poderes de item no personagem quando equipado
 class ItemPoder(models.Model):
     CAMINHO_AFLICAO_CHOICES = [
-        ('fisico', 'Físico'),
-        ('mental', 'Mental'),
-        ('misto', 'Misto'),
+        ('controle_mental', 'Controle mental/comportamento'),
+        ('restricao_fisica', 'Restrição física/movimentação'),
+        ('debilitacao', 'Debilitação/consciência'),
     ]
     TIPO_CHOICES = [
         ('descritivo', 'Descritivo'),
