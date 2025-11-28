@@ -310,18 +310,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const v = (tipoEl && (tipoEl.value || '') || '').toLowerCase();
     wrap.style.display = v === 'aflicao' ? '' : 'none';
   }
-  // reutiliza função global se já existir, senão define
-  if (!window.atualizarCaminhoAflicao) {
-    window.atualizarCaminhoAflicao = atualizarCaminhoAflicaoNPC;
-  }
+  window.atualizarCaminhoAflicaoNPC = atualizarCaminhoAflicaoNPC;
+  window.atualizarCaminhoAflicao = atualizarCaminhoAflicaoNPC;
   function bind(scope){
     (scope || document).querySelectorAll('.poder-form [name$="-tipo"]').forEach(el => {
       if (el.dataset.caminhoBound) return;
-      el.addEventListener('change', function(){ window.atualizarCaminhoAflicao(el.closest('.poder-form')); });
-      el.addEventListener('input', function(){ window.atualizarCaminhoAflicao(el.closest('.poder-form')); });
+      el.addEventListener('change', function(){ window.atualizarCaminhoAflicaoNPC(el.closest('.poder-form')); });
+      el.addEventListener('input', function(){ window.atualizarCaminhoAflicaoNPC(el.closest('.poder-form')); });
       el.dataset.caminhoBound = '1';
     });
-    (scope || document).querySelectorAll('.poder-form').forEach(div => window.atualizarCaminhoAflicao(div));
+    (scope || document).querySelectorAll('.poder-form').forEach(div => window.atualizarCaminhoAflicaoNPC(div));
   }
   bind(document);
   const oldAdd = window.adicionarPoder;
