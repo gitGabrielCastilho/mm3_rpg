@@ -590,16 +590,29 @@ def iniciar_turno(request, combate_id):
     try:
         # Resumo de efeitos ativos (Sustentado e Concentração) no início do turno
         mensagens_tick = []
-        # 1) Teste de recuperação de Aflição para todos os participantes aflitos (sempre, independente de efeitos ativos)
-        participantes_aflitos = (
-            Participante.objects
-            .filter(combate=combate, aflicao__gte=1)
-            .select_related('personagem')
-        )
-        for alvo_part in participantes_aflitos:
+        # 1) Teste de recuperação de Aflição APENAS para o participante do turno, se estiver aflito.
+        if primeiro_participante.aflicao >= 1:
+            alvo_part = primeiro_participante
             alvo = alvo_part.personagem
-            # Regra simplificada: CD fixa baseada apenas no nível atual de Aflição
-            cd_afl = 10 + int(getattr(alvo_part, 'aflicao', 0) or 0)
+            # CD da recuperação: mesmo CD da Aflição que o afligiu.
+            # Heurística: usa o maior nivel_efeito dentre efeitos de tipo 'aflicao' ativos contra este alvo.
+            efeito_afl = (
+                EfeitoConcentracao.objects
+                .filter(combate=combate, ativo=True, alvo_participante=alvo_part, poder__tipo='aflicao')
+                .select_related('poder')
+                .order_by('-poder__nivel_efeito')
+                .first()
+            )
+            if efeito_afl and getattr(efeito_afl.poder, 'nivel_efeito', None) is not None:
+                try:
+                    n_eff = int(getattr(efeito_afl.poder, 'nivel_efeito', 0) or 0)
+                except Exception:
+                    n_eff = int(getattr(efeito_afl.poder, 'nivel_efeito', 0) or 0)
+                cd_afl = 10 + n_eff
+            else:
+                # Fallback: usa o nível atual de Aflição como base (não bloqueia o jogo).
+                cd_afl = 10 + int(getattr(alvo_part, 'aflicao', 0) or 0)
+
             defesa_attr = 'vontade'
             defesa_valor = _defesa_efetiva(alvo, alvo_part, defesa_attr, combate.id)
             attr_bonus_map = alvo_part.proximo_bonus_por_atributo or {}
@@ -632,7 +645,6 @@ def iniciar_turno(request, combate_id):
                     novo = max(0, antigo - 1)
                     alvo_part.aflicao = novo
                     alvo_part.save(update_fields=['aflicao'])
-                    # Sem caminho específico aqui: mostramos apenas níveis
                     mensagens_tick.append(
                         f"[Aflição] {alvo.nome} reduziu sua Aflição (nível {antigo} -> {novo}) "
                         f"em teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl}."
@@ -964,15 +976,27 @@ def avancar_turno(request, combate_id):
                 .select_related('alvo_participante', 'alvo_participante__personagem', 'poder')
             )
             mensagens_tick = []
-            # Teste de recuperação de Aflição para todos os participantes aflitos (sempre, independente de efeitos ativos)
-            participantes_aflitos = (
-                Participante.objects
-                .filter(combate=combate, aflicao__gte=1)
-                .select_related('personagem')
-            )
-            for alvo_part in participantes_aflitos:
+            # Teste de recuperação de Aflição APENAS para o participante do turno, se estiver aflito.
+            if participantes[proximo_idx].aflicao >= 1:
+                alvo_part = participantes[proximo_idx]
                 alvo = alvo_part.personagem
-                cd_afl = 10 + int(getattr(alvo_part, 'aflicao', 0) or 0)
+                # CD da recuperação: mesmo CD da Aflição que o afligiu.
+                efeito_afl = (
+                    EfeitoConcentracao.objects
+                    .filter(combate=combate, ativo=True, alvo_participante=alvo_part, poder__tipo='aflicao')
+                    .select_related('poder')
+                    .order_by('-poder__nivel_efeito')
+                    .first()
+                )
+                if efeito_afl and getattr(efeito_afl.poder, 'nivel_efeito', None) is not None:
+                    try:
+                        n_eff = int(getattr(efeito_afl.poder, 'nivel_efeito', 0) or 0)
+                    except Exception:
+                        n_eff = int(getattr(efeito_afl.poder, 'nivel_efeito', 0) or 0)
+                    cd_afl = 10 + n_eff
+                else:
+                    cd_afl = 10 + int(getattr(alvo_part, 'aflicao', 0) or 0)
+
                 defesa_attr = 'vontade'
                 defesa_valor = _defesa_efetiva(alvo, alvo_part, defesa_attr, combate.id)
                 attr_bonus_map = alvo_part.proximo_bonus_por_atributo or {}
