@@ -215,18 +215,19 @@
             {% for posicao in posicoes %}
               {% if posicao.mapa.id == mapa.id %}
                 {% if posicao.participante.personagem.foto %}
-         <img src="{{ posicao.participante.personagem.foto.url }}" title="{{ posicao.participante.personagem.foto.url }}"
-           id="token-{{ posicao.id }}"
-           class="mapa-token"
+         <div id="token-{{ posicao.id }}" class="mapa-token mapa-token-com-label"
            style="left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:{{ posicao.token_size|default:40 }}px; height:{{ posicao.token_size|default:40 }}px;"
            draggable="true"
            ondragstart="drag(event, {{ posicao.id }})">
+           <img src="{{ posicao.participante.personagem.foto.url }}" alt="{{ posicao.participante.personagem.nome }}" class="mapa-token-img">
+           <span class="mapa-token-label">#{{ posicao.participante.id }}</span>
+         </div>
                 {% else %}
          <div id="token-{{ posicao.id }}" class="mapa-token token-fallback"
            style="left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:{{ posicao.token_size|default:40 }}px; height:{{ posicao.token_size|default:40 }}px;"
            draggable="true"
            ondragstart="drag(event, {{ posicao.id }})">
-                    {{ posicao.participante.personagem.nome|slice:"0:2"|upper }}
+                    {{ posicao.participante.personagem.nome|slice:"0:2"|upper }}#{{ posicao.participante.id }}
                   </div>
                 {% endif %}
               {% endif %}
