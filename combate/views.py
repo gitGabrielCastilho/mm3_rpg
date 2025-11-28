@@ -159,7 +159,7 @@ def _calc_fail_degree(tipo: str, diff: int) -> int:
     degree = 1 + min(cap - 1, diff // 5)
     return degree
 
-def _aplicar_falha_salvamento(alvo_part: Participante, tipo: str, degree: int) -> tuple[bool, bool]:
+def _aplicar_falha_salvamento(alvo_part: Participante, tipo: str, degree: int, cd_usado: int | None = None) -> tuple[bool, bool]:
     """Aplica efeitos de falha no salvamento.
 
     Dano:
@@ -209,6 +209,12 @@ def _aplicar_falha_salvamento(alvo_part: Participante, tipo: str, degree: int) -
                 novo_nivel = 3
             if novo_nivel != cur:
                 alvo_part.aflicao = novo_nivel
+                # Se recebendo Aflição agora, congela o CD de origem, se informado
+                if cd_usado is not None and cd_usado > 0:
+                    try:
+                        alvo_part.cd_aflicao_origem = int(cd_usado)
+                    except Exception:
+                        alvo_part.cd_aflicao_origem = cd_usado
                 aplicou_pontuacao = True
         # "Incapacitado" por Aflição (grau 3 do caminho) é derivado fora desta função,
         # a partir do nível e do caminho da Aflição; aqui não marcamos incapacitação.
@@ -594,23 +600,11 @@ def iniciar_turno(request, combate_id):
         if primeiro_participante.aflicao >= 1:
             alvo_part = primeiro_participante
             alvo = alvo_part.personagem
-            # CD da recuperação: mesmo CD da Aflição que o afligiu.
-            # Heurística: usa o maior nivel_efeito dentre efeitos de tipo 'aflicao' ativos contra este alvo.
-            efeito_afl = (
-                EfeitoConcentracao.objects
-                .filter(combate=combate, ativo=True, alvo_participante=alvo_part, poder__tipo='aflicao')
-                .select_related('poder')
-                .order_by('-poder__nivel_efeito')
-                .first()
-            )
-            if efeito_afl and getattr(efeito_afl.poder, 'nivel_efeito', None) is not None:
-                try:
-                    n_eff = int(getattr(efeito_afl.poder, 'nivel_efeito', 0) or 0)
-                except Exception:
-                    n_eff = int(getattr(efeito_afl.poder, 'nivel_efeito', 0) or 0)
-                cd_afl = 10 + n_eff
+            # CD da recuperação: usa o CD fixo que causou a Aflição, se existir.
+            if int(getattr(alvo_part, 'cd_aflicao_origem', 0) or 0) > 0:
+                cd_afl = int(getattr(alvo_part, 'cd_aflicao_origem', 0) or 0)
             else:
-                # Fallback: usa o nível atual de Aflição como base (não bloqueia o jogo).
+                # Fallback: se ainda não há CD salvo (combates antigos), usa 10 + nível de Aflição.
                 cd_afl = 10 + int(getattr(alvo_part, 'aflicao', 0) or 0)
 
             defesa_attr = 'vontade'
@@ -726,7 +720,7 @@ def iniciar_turno(request, combate_id):
                     diff = cd - total_def
                     degree = _calc_fail_degree(poder.tipo, diff)
                     antigo_af = int(getattr(alvo_part, 'aflicao', 0) or 0) if poder.tipo == 'aflicao' else None
-                    aplicou, incap = _aplicar_falha_salvamento(alvo_part, poder.tipo, degree)
+                    aplicou, incap = _aplicar_falha_salvamento(alvo_part, poder.tipo, degree, cd if poder.tipo == 'aflicao' else None)
                     efeitos_txt = []
                     if poder.tipo == 'dano':
                         efeitos_txt.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
@@ -980,20 +974,9 @@ def avancar_turno(request, combate_id):
             if participantes[proximo_idx].aflicao >= 1:
                 alvo_part = participantes[proximo_idx]
                 alvo = alvo_part.personagem
-                # CD da recuperação: mesmo CD da Aflição que o afligiu.
-                efeito_afl = (
-                    EfeitoConcentracao.objects
-                    .filter(combate=combate, ativo=True, alvo_participante=alvo_part, poder__tipo='aflicao')
-                    .select_related('poder')
-                    .order_by('-poder__nivel_efeito')
-                    .first()
-                )
-                if efeito_afl and getattr(efeito_afl.poder, 'nivel_efeito', None) is not None:
-                    try:
-                        n_eff = int(getattr(efeito_afl.poder, 'nivel_efeito', 0) or 0)
-                    except Exception:
-                        n_eff = int(getattr(efeito_afl.poder, 'nivel_efeito', 0) or 0)
-                    cd_afl = 10 + n_eff
+                # CD da recuperação: usa o CD fixo que causou a Aflição, se existir.
+                if int(getattr(alvo_part, 'cd_aflicao_origem', 0) or 0) > 0:
+                    cd_afl = int(getattr(alvo_part, 'cd_aflicao_origem', 0) or 0)
                 else:
                     cd_afl = 10 + int(getattr(alvo_part, 'aflicao', 0) or 0)
 
@@ -1085,7 +1068,7 @@ def avancar_turno(request, combate_id):
                         diff = cd - total
                         degree = _calc_fail_degree(poder.tipo, diff)
                         antigo_af = int(getattr(alvo_part, 'aflicao', 0) or 0) if poder.tipo == 'aflicao' else None
-                        aplicou, incap = _aplicar_falha_salvamento(alvo_part, poder.tipo, degree)
+                        aplicou, incap = _aplicar_falha_salvamento(alvo_part, poder.tipo, degree, cd if poder.tipo == 'aflicao' else None)
                         efeitos_txt = []
                         if poder.tipo == 'dano':
                             efeitos_txt.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
@@ -2207,7 +2190,7 @@ def realizar_ataque(request, combate_id):
                             if d_total < cd:
                                 diff = cd - d_total
                                 degree = _calc_fail_degree(tipo, diff)
-                                aplicou, incap = _aplicar_falha_salvamento(participante_alvo, tipo, degree)
+                                aplicou, incap = _aplicar_falha_salvamento(participante_alvo, tipo, degree, cd if tipo == 'aflicao' else None)
                                 if duracao_raw in ('concentracao', 'sustentado'):
                                     EfeitoConcentracao.objects.create(
                                         combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
@@ -2260,7 +2243,7 @@ def realizar_ataque(request, combate_id):
                             if d_total < cd_sucesso:
                                 diff = cd_sucesso - d_total
                                 degree = _calc_fail_degree(tipo, diff)
-                                aplicou, incap = _aplicar_falha_salvamento(participante_alvo, tipo, degree)
+                                aplicou, incap = _aplicar_falha_salvamento(participante_alvo, tipo, degree, cd if tipo == 'aflicao' else None)
                                 if duracao_raw in ('concentracao', 'sustentado'):
                                     EfeitoConcentracao.objects.create(
                                         combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
@@ -2311,7 +2294,7 @@ def realizar_ataque(request, combate_id):
                             diff = cd - total
                             degree = _calc_fail_degree(tipo, diff)
                             antigo_af = int(getattr(participante_alvo, 'aflicao', 0) or 0) if tipo == 'aflicao' else None
-                            aplicou, incap = _aplicar_falha_salvamento(participante_alvo, tipo, degree)
+                            aplicou, incap = _aplicar_falha_salvamento(participante_alvo, tipo, degree, cd if tipo == 'aflicao' else None)
                             if duracao_raw in ('concentracao', 'sustentado'):
                                 EfeitoConcentracao.objects.create(
                                     combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
@@ -2411,7 +2394,7 @@ def realizar_ataque(request, combate_id):
                                 diff = cd - d_total
                                 degree = _calc_fail_degree(tipo, diff)
                                 antigo_af = int(getattr(participante_alvo, 'aflicao', 0) or 0) if tipo == 'aflicao' else None
-                                aplicou, incap = _aplicar_falha_salvamento(participante_alvo, tipo, degree)
+                                aplicou, incap = _aplicar_falha_salvamento(participante_alvo, tipo, degree, cd if tipo == 'aflicao' else None)
                                 if duracao_raw in ('concentracao', 'sustentado'):
                                     EfeitoConcentracao.objects.create(
                                         combate=combate, aplicador=atacante, alvo_participante=participante_alvo,

@@ -22,6 +22,8 @@ class Participante(models.Model):
     proximo_bonus_por_atributo = models.JSONField(default=dict, blank=True)
     # Ferimentos: penalidade cumulativa única em salvamentos contra Dano e Aflição
     ferimentos = models.IntegerField(default=0)
+    # CD fixo usado para reduzir Aflição (mesmo CD que a causou)
+    cd_aflicao_origem = models.IntegerField(default=0)
 
     def __str__(self):
         return f"{self.personagem.nome} (Iniciativa {self.iniciativa})"
