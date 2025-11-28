@@ -214,21 +214,35 @@
   {% endif %}
             {% for posicao in posicoes %}
               {% if posicao.mapa.id == mapa.id %}
-                {% if posicao.participante.personagem.foto %}
-         <img src="{{ posicao.participante.personagem.foto.url }}" title="{{ posicao.participante.personagem.foto.url }}"
-           id="token-{{ posicao.id }}"
-           class="mapa-token"
-           style="left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:{{ posicao.token_size|default:40 }}px; height:{{ posicao.token_size|default:40 }}px;"
-           draggable="true"
-           ondragstart="drag(event, {{ posicao.id }})">
-                {% else %}
-         <div id="token-{{ posicao.id }}" class="mapa-token token-fallback"
-           style="left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:{{ posicao.token_size|default:40 }}px; height:{{ posicao.token_size|default:40 }}px;"
-           draggable="true"
-           ondragstart="drag(event, {{ posicao.id }})">
-                    {{ posicao.participante.personagem.nome|slice:"0:2"|upper }}
-                  </div>
-                {% endif %}
+                {% with base_label=posicao.participante.personagem.nome|slice:"0:2"|upper %}
+                {% with index=forloop.counter %}
+                  {% if posicao.participante.personagem.foto %}
+          <div class="mapa-token-wrapper" style="position:absolute; left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:{{ posicao.token_size|default:40 }}px; text-align:center; pointer-events:none;">
+            <img src="{{ posicao.participante.personagem.foto.url }}" title="{{ posicao.participante.personagem.foto.url }}"
+                 id="token-{{ posicao.id }}"
+                 class="mapa-token"
+                 style="position:absolute; left:0; top:0; width:{{ posicao.token_size|default:40 }}px; height:{{ posicao.token_size|default:40 }}px; pointer-events:auto;"
+                 draggable="true"
+                 ondragstart="drag(event, {{ posicao.id }})">
+            <div class="mapa-token-label" style="position:absolute; left:50%; top:100%; transform:translateX(-50%); font-size:11px; line-height:1.1; color:#fff; text-shadow:0 0 2px #000,0 0 3px #000; white-space:nowrap; pointer-events:none;">
+              {{ base_label }}#{{ index }}
+            </div>
+          </div>
+                  {% else %}
+          <div class="mapa-token-wrapper" style="position:absolute; left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:{{ posicao.token_size|default:40 }}px; text-align:center; pointer-events:none;">
+            <div id="token-{{ posicao.id }}" class="mapa-token token-fallback"
+                 style="position:absolute; left:0; top:0; width:{{ posicao.token_size|default:40 }}px; height:{{ posicao.token_size|default:40 }}px;"
+                 draggable="true"
+                 ondragstart="drag(event, {{ posicao.id }})">
+              {{ base_label }}
+            </div>
+            <div class="mapa-token-label" style="position:absolute; left:50%; top:100%; transform:translateX(-50%); font-size:11px; line-height:1.1; color:#fff; text-shadow:0 0 2px #000,0 0 3px #000; white-space:nowrap; pointer-events:none;">
+              {{ base_label }}#{{ index }}
+            </div>
+          </div>
+                  {% endif %}
+                {% endwith %}
+                {% endwith %}
               {% endif %}
             {% endfor %}
               </div>
