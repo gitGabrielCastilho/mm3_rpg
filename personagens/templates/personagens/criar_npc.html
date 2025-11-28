@@ -165,6 +165,7 @@
                 <div class="campo-poder">{{ form.nome.label_tag }}{{ form.nome }}</div>
                 <div class="campo-poder">{{ form.array.label_tag }}{{ form.array }}</div>
                 <div class="campo-poder">{{ form.tipo.label_tag }}{{ form.tipo }}</div>
+                <div class="campo-poder campo-caminho-aflicao">{{ form.caminho_aflicao.label_tag }}{{ form.caminho_aflicao }}</div>
                 <div class="campo-poder">{{ form.modo.label_tag }}{{ form.modo }}</div>
                 <div class="campo-poder somar-forca-wrap span-2" title="Se marcado e for Dano Corpo a Corpo, o nível de efeito soma a Força.">
                   <label for="{{ form.somar_forca_no_nivel.id_for_label }}">
@@ -336,6 +337,7 @@ document.addEventListener('DOMContentLoaded', function(){
     document.querySelectorAll('.poder-form').forEach(div=>{
       proc(div);
       toggleAtributoAfetado(div);
+      if (typeof window.atualizarCaminhoAflicao === 'function') window.atualizarCaminhoAflicao(div);
       if (div.querySelector('.linha-ataque-info .valor-ataque-total.violacao-ataque')) temViol = true;
     });
     const box = document.getElementById('npc-rule-violations');
@@ -357,7 +359,7 @@ document.addEventListener('DOMContentLoaded', function(){
   ['luta','destreza','nivel_poder'].forEach(id=>{ const el=document.getElementById('id_'+id); if(el){ el.addEventListener('input',atualizar); el.addEventListener('change',atualizar);} });
   function bind(){ document.querySelectorAll('.poder-form [name$="-modo"], .poder-form [name$="-bonus_ataque"], .poder-form [name$="-nivel_efeito"], .poder-form [name$="-nome"], .poder-form [name$="-duracao"], .poder-form [name$="-tipo"], .poder-form [name$="-somar_forca_no_nivel"]').forEach(el=>{ el.addEventListener('input',atualizar); el.addEventListener('change',atualizar); }); }
   bind();
-  document.querySelectorAll('.poder-form').forEach(div=>toggleAtributoAfetado(div));
+  document.querySelectorAll('.poder-form').forEach(div=>{ toggleAtributoAfetado(div); if (typeof window.atualizarCaminhoAflicao === 'function') window.atualizarCaminhoAflicao(div); });
   const oldAdd=window.adicionarPoder; window.adicionarPoder=function(){ if(oldAdd) oldAdd(); setTimeout(()=>{ bind(); atualizar(); },80); };
   const oldRem=window.removerPoderLinha; window.removerPoderLinha=function(btn){ if(oldRem) oldRem(btn); setTimeout(atualizar,40); };
   const oldRemUlt=window.removerPoder; window.removerPoder=function(){ if(oldRemUlt) oldRemUlt(); setTimeout(atualizar,40); };

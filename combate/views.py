@@ -111,6 +111,41 @@ def _defesa_efetiva(personagem: Personagem, participante: Participante, defesa: 
         val_def += _atributo_efetivo(personagem, participante, assoc, combate_id)
     return val_def
 
+
+def _aflicao_condicao(caminho: str, nivel: int) -> str:
+    """Mapeia caminho de Aflição + nível (1–3) para condição textual.
+
+    Caminho 'mental':
+        1 -> Transe, 2 -> Compelido, 3 -> Controlado
+    Caminho 'restricao':
+        1 -> Impedido, 2 -> Imóvel, 3 -> Incapacitado
+    Caminho 'debilitacao':
+        1 -> Tonto, 2 -> Atordoado, 3 -> Paralizado
+    """
+    if nivel <= 0:
+        return ""
+    tabela = {
+        'mental': {
+            1: 'Transe',
+            2: 'Compelido',
+            3: 'Controlado',
+        },
+        'restricao': {
+            1: 'Impedido',
+            2: 'Imóvel',
+            3: 'Incapacitado',
+        },
+        'debilitacao': {
+            1: 'Tonto',
+            2: 'Atordoado',
+            3: 'Paralizado',
+        },
+    }
+    try:
+        return tabela.get(caminho, {}).get(nivel, '')
+    except Exception:
+        return ""
+
 # --- Regras de falha por grau (Dano/Aflição) ---
 def _calc_fail_degree(tipo: str, diff: int) -> int:
     """Calcula o grau de falha a partir da diferença (CD - total) > 0.
@@ -125,18 +160,32 @@ def _calc_fail_degree(tipo: str, diff: int) -> int:
     return degree
 
 def _aplicar_falha_salvamento(alvo_part: Participante, tipo: str, degree: int) -> tuple[bool, bool]:
-    """Aplica efeitos de falha no salvamento conforme novo sistema.
-    - Sempre incrementa a penalidade acumulativa daquele tipo em 1.
-    - Incrementa Dano/Aflição em +1 APENAS se o valor atual for menor que o grau atingido.
+    """Aplica efeitos de falha no salvamento.
+
+    Dano:
+        - Sempre acumula Ferimentos em +1 por falha.
+        - Incrementa `dano` em +1 APENAS se o valor atual for menor que o grau atingido.
+        - "Incapacitado" é retornado quando `dano >= 4`.
+
+    Aflição (regras atualizadas):
+        - NÃO gera Ferimentos nem Dano.
+        - Em uma falha de grau N (>0), concede níveis de Aflição:
+              grau 1 -> +1 nível
+              grau 2 -> +2 níveis
+              grau 3+ -> +3 níveis
+        - O total de Aflição é truncado em 3 (0–3), sem estoques acima disso.
+        - A condição exata (Transe/Compelido/etc.) é derivada em outro lugar a partir do nível.
+
     Retorna (aplicou_pontuacao, incapacitado)
     """
     aplicou_pontuacao = False
     incapacitado = False
     if degree <= 0:
         return aplicou_pontuacao, incapacitado
-    # Sempre acumula Ferimentos em falhas
-    alvo_part.ferimentos = int(getattr(alvo_part, 'ferimentos', 0) or 0) + 1
+
     if tipo == 'dano':
+        # Sempre acumula Ferimentos em falhas de Dano
+        alvo_part.ferimentos = int(getattr(alvo_part, 'ferimentos', 0) or 0) + 1
         cur = int(getattr(alvo_part, 'dano', 0) or 0)
         if cur < degree:
             alvo_part.dano = cur + 1
@@ -144,12 +193,26 @@ def _aplicar_falha_salvamento(alvo_part: Participante, tipo: str, degree: int) -
             if alvo_part.dano >= 4:
                 incapacitado = True
     else:  # aflição
+        # Nova regra: Aflição não causa Ferimentos/Dano, só níveis de aflição (0–3)
         cur = int(getattr(alvo_part, 'aflicao', 0) or 0)
-        if cur < degree:
-            alvo_part.aflicao = cur + 1
-            aplicou_pontuacao = True
-            if alvo_part.aflicao >= 3:
-                incapacitado = True
+        # Converte grau de falha em níveis concedidos, capando em 3
+        granted = 0
+        if degree == 1:
+            granted = 1
+        elif degree == 2:
+            granted = 2
+        elif degree >= 3:
+            granted = 3
+        if granted > 0:
+            novo_nivel = cur + granted
+            if novo_nivel > 3:
+                novo_nivel = 3
+            if novo_nivel != cur:
+                alvo_part.aflicao = novo_nivel
+                aplicou_pontuacao = True
+        # "Incapacitado" por Aflição (grau 3 do caminho) é derivado fora desta função,
+        # a partir do nível e do caminho da Aflição; aqui não marcamos incapacitação.
+
     # Salva alterações
     try:
         alvo_part.save()
@@ -527,6 +590,86 @@ def iniciar_turno(request, combate_id):
     try:
         # Resumo de efeitos ativos (Sustentado e Concentração) no início do turno
         mensagens_tick = []
+        # 1) Teste de recuperação de Aflição para todos os participantes aflitos
+        participantes_aflitos = (
+            Participante.objects
+            .filter(combate=combate, aflicao__gte=1)
+            .select_related('personagem')
+        )
+        for alvo_part in participantes_aflitos:
+            alvo = alvo_part.personagem
+            # Usa um poder de Aflição ativo que esteja afetando este alvo (se houver)
+            efeito_afl = (
+                EfeitoConcentracao.objects
+                .filter(combate=combate, ativo=True, alvo_participante=alvo_part, poder__tipo='aflicao')
+                .select_related('poder')
+                .first()
+            )
+            if not efeito_afl:
+                continue
+            poder_afl = efeito_afl.poder
+            try:
+                n_eff = int(getattr(poder_afl, 'nivel_efeito', 0) or 0)
+            except Exception:
+                n_eff = int(getattr(poder_afl, 'nivel_efeito', 0) or 0)
+            cd_afl = 10 + n_eff
+            defesa_attr = getattr(poder_afl, 'defesa_passiva', 'vontade') or 'vontade'
+            defesa_valor = _defesa_efetiva(alvo, alvo_part, defesa_attr, combate.id)
+            attr_bonus_map = alvo_part.proximo_bonus_por_atributo or {}
+            attr_next_bonus = int(attr_bonus_map.get(defesa_attr, 0))
+            buff = alvo_part.bonus_temporario
+            debuff = alvo_part.penalidade_temporaria
+            rolagem_base = random.randint(1, 20)
+            # Aflição não usa Ferimentos para este teste de recuperação
+            total_def = rolagem_base + defesa_valor + attr_next_bonus + buff - debuff
+            # Consome buff/debuff
+            Participante.objects.filter(pk=alvo_part.pk).update(bonus_temporario=0, penalidade_temporaria=0)
+            # Consome bônus específico por defesa
+            if attr_next_bonus:
+                try:
+                    del attr_bonus_map[defesa_attr]
+                except Exception:
+                    attr_bonus_map[defesa_attr] = 0
+                alvo_part.proximo_bonus_por_atributo = attr_bonus_map
+                alvo_part.save()
+            attr_piece = (f" + {attr_next_bonus}" if attr_next_bonus > 0 else (f" - {abs(attr_next_bonus)}" if attr_next_bonus < 0 else ""))
+            defesa_msg = (
+                f"{rolagem_base} + {defesa_valor}"
+                f"{' + ' + str(buff) if buff else ''}"
+                f"{' - ' + str(debuff) if debuff else ''}"
+                f"{attr_piece} = {total_def}"
+            )
+            if total_def >= cd_afl:
+                antigo = int(getattr(alvo_part, 'aflicao', 0) or 0)
+                if antigo > 0:
+                    novo = max(0, antigo - 1)
+                    alvo_part.aflicao = novo
+                    alvo_part.save(update_fields=['aflicao'])
+                    cond_antiga = _aflicao_condicao(getattr(efeito.poder, 'caminho_aflicao', ''), antigo)
+                    cond_nova = _aflicao_condicao(getattr(efeito.poder, 'caminho_aflicao', ''), novo)
+                    if cond_antiga or cond_nova:
+                        mensagens_tick.append(
+                            f"[Aflição] {alvo.nome} reduziu sua Aflição (nível {antigo} -> {novo}; "
+                            f"condição {cond_antiga or '-'} -> {cond_nova or '-'}) "
+                            f"em teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl}."
+                        )
+                    else:
+                        mensagens_tick.append(
+                            f"[Aflição] {alvo.nome} reduziu sua Aflição (nível {antigo} -> {novo}) "
+                            f"em teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl}."
+                        )
+            else:
+                cond_atual = _aflicao_condicao(getattr(efeito.poder, 'caminho_aflicao', ''), int(getattr(alvo_part, 'aflicao', 0) or 0))
+                if cond_atual:
+                    mensagens_tick.append(
+                        f"[Aflição] {alvo.nome} falhou o teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl} "
+                        f"e mantém sua Aflição em nível {alvo_part.aflicao} ({cond_atual})."
+                    )
+                else:
+                    mensagens_tick.append(
+                        f"[Aflição] {alvo.nome} falhou o teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl} "
+                        f"e mantém o nível de Aflição atual ({alvo_part.aflicao})."
+                    )
         ativos_qs = (
             EfeitoConcentracao.objects
             .filter(combate=combate, aplicador=primeiro_participante.personagem, ativo=True)
@@ -826,6 +969,82 @@ def avancar_turno(request, combate_id):
                 .select_related('alvo_participante', 'alvo_participante__personagem', 'poder')
             )
             mensagens_tick = []
+            # Teste de recuperação de Aflição para todos os participantes aflitos
+            participantes_aflitos = (
+                Participante.objects
+                .filter(combate=combate, aflicao__gte=1)
+                .select_related('personagem')
+            )
+            for alvo_part in participantes_aflitos:
+                alvo = alvo_part.personagem
+                efeito_afl = (
+                    EfeitoConcentracao.objects
+                    .filter(combate=combate, ativo=True, alvo_participante=alvo_part, poder__tipo='aflicao')
+                    .select_related('poder')
+                    .first()
+                )
+                if not efeito_afl:
+                    continue
+                poder_afl = efeito_afl.poder
+                try:
+                    n_eff = int(getattr(poder_afl, 'nivel_efeito', 0) or 0)
+                except Exception:
+                    n_eff = int(getattr(poder_afl, 'nivel_efeito', 0) or 0)
+                cd_afl = 10 + n_eff
+                defesa_attr = getattr(poder_afl, 'defesa_passiva', 'vontade') or 'vontade'
+                defesa_valor = _defesa_efetiva(alvo, alvo_part, defesa_attr, combate.id)
+                attr_bonus_map = alvo_part.proximo_bonus_por_atributo or {}
+                attr_next_bonus = int(attr_bonus_map.get(defesa_attr, 0))
+                buff = alvo_part.bonus_temporario
+                debuff = alvo_part.penalidade_temporaria
+                rolagem_base = random.randint(1, 20)
+                total_def = rolagem_base + defesa_valor + attr_next_bonus + buff - debuff
+                Participante.objects.filter(pk=alvo_part.pk).update(bonus_temporario=0, penalidade_temporaria=0)
+                if attr_next_bonus:
+                    try:
+                        del attr_bonus_map[defesa_attr]
+                    except Exception:
+                        attr_bonus_map[defesa_attr] = 0
+                    alvo_part.proximo_bonus_por_atributo = attr_bonus_map
+                    alvo_part.save()
+                attr_piece = (f" + {attr_next_bonus}" if attr_next_bonus > 0 else (f" - {abs(attr_next_bonus)}" if attr_next_bonus < 0 else ""))
+                defesa_msg = (
+                    f"{rolagem_base} + {defesa_valor}"
+                    f"{' + ' + str(buff) if buff else ''}"
+                    f"{' - ' + str(debuff) if debuff else ''}"
+                    f"{attr_piece} = {total_def}"
+                )
+                if total_def >= cd_afl:
+                    antigo = int(getattr(alvo_part, 'aflicao', 0) or 0)
+                    if antigo > 0:
+                        novo = max(0, antigo - 1)
+                        alvo_part.aflicao = novo
+                        alvo_part.save(update_fields=['aflicao'])
+                        cond_antiga = _aflicao_condicao(getattr(efeito.poder, 'caminho_aflicao', ''), antigo)
+                        cond_nova = _aflicao_condicao(getattr(efeito.poder, 'caminho_aflicao', ''), novo)
+                        if cond_antiga or cond_nova:
+                            mensagens_tick.append(
+                                f"[Aflição] {alvo.nome} reduziu sua Aflição (nível {antigo} -> {novo}; "
+                                f"condição {cond_antiga or '-'} -> {cond_nova or '-'}) "
+                                f"em teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl}."
+                            )
+                        else:
+                            mensagens_tick.append(
+                                f"[Aflição] {alvo.nome} reduziu sua Aflição (nível {antigo} -> {novo}) "
+                                f"em teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl}."
+                            )
+                else:
+                    cond_atual = _aflicao_condicao(getattr(efeito.poder, 'caminho_aflicao', ''), int(getattr(alvo_part, 'aflicao', 0) or 0))
+                    if cond_atual:
+                        mensagens_tick.append(
+                            f"[Aflição] {alvo.nome} falhou o teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl} "
+                            f"e mantém sua Aflição em nível {alvo_part.aflicao} ({cond_atual})."
+                        )
+                    else:
+                        mensagens_tick.append(
+                            f"[Aflição] {alvo.nome} falhou o teste de {defesa_attr} ({defesa_msg}) contra CD {cd_afl} "
+                            f"e mantém o nível de Aflição atual ({alvo_part.aflicao})."
+                        )
             sust = [f"• <b>{ef.poder.nome}</b> em {ef.alvo_participante.personagem.nome}" for ef in ativos if getattr(ef.poder, 'duracao', '') == 'sustentado']
             conc = [f"• <b>{ef.poder.nome}</b> em {ef.alvo_participante.personagem.nome}" for ef in ativos if getattr(ef.poder, 'duracao', '') == 'concentracao']
             if sust:

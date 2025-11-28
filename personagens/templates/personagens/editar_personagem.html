@@ -180,6 +180,7 @@
           <div class="campo-poder">{{ formset.empty_form.nome.label_tag }}{{ formset.empty_form.nome }}</div>
           <div class="campo-poder">{{ formset.empty_form.array.label_tag }}{{ formset.empty_form.array }}</div>
           <div class="campo-poder">{{ formset.empty_form.tipo.label_tag }}{{ formset.empty_form.tipo }}</div>
+          <div class="campo-poder campo-caminho-aflicao">{{ formset.empty_form.caminho_aflicao.label_tag }}{{ formset.empty_form.caminho_aflicao }}</div>
           <div class="campo-poder">{{ formset.empty_form.modo.label_tag }}{{ formset.empty_form.modo }}</div>
           <div class="campo-poder somar-forca-wrap span-2" title="Se marcado e for Dano Corpo a Corpo, o nível de efeito soma a Força.">
             <div class="somar-forca-left">
@@ -228,6 +229,7 @@
                 <div class="campo-poder">{{ form.nome.label_tag }}{{ form.nome }}</div>
                 <div class="campo-poder">{{ form.array.label_tag }}{{ form.array }}</div>
                 <div class="campo-poder">{{ form.tipo.label_tag }}{{ form.tipo }}</div>
+                <div class="campo-poder campo-caminho-aflicao">{{ form.caminho_aflicao.label_tag }}{{ form.caminho_aflicao }}</div>
                 <div class="campo-poder">{{ form.modo.label_tag }}{{ form.modo }}</div>
                 <div class="campo-poder somar-forca-wrap span-2" title="Se marcado e for Dano Corpo a Corpo, o nível de efeito soma a Força.">
                   <div class="somar-forca-left">
@@ -932,8 +934,8 @@ document.addEventListener('DOMContentLoaded', function(){
   ['luta','destreza','nivel_poder','forca'].forEach(id=>{ const el=document.getElementById('id_'+id); if(el){ el.addEventListener('input',atualizar); el.addEventListener('change',atualizar);} });
   function bind(scope){ (scope||document).querySelectorAll('.poder-form [name$="-modo"], .poder-form [name$="-bonus_ataque"], .poder-form [name$="-nivel_efeito"], .poder-form [name$="-nome"], .poder-form [name$="-duracao"], .poder-form [name$="-tipo"], .poder-form [name$="-somar_forca_no_nivel"], .poder-form [name$="-charges"]').forEach(el=>{ el.addEventListener('input',()=>{ atualizar(); updateChargesMaxEdit(); }); el.addEventListener('change',()=>{ atualizar(); updateChargesMaxEdit(); }); }); }
   bind(document);
-  // Inicializa visibilidade do checkbox de Somar Força e do Atributo Afetado
-  document.querySelectorAll('.poder-form').forEach(div=>{ toggleSomarForca(div); toggleAtributoAfetado(div); });
+  // Inicializa visibilidade do checkbox de Somar Força, do Atributo Afetado e do Caminho de Aflição
+  document.querySelectorAll('.poder-form').forEach(div=>{ toggleSomarForca(div); toggleAtributoAfetado(div); if (typeof window.atualizarCaminhoAflicao==='function') window.atualizarCaminhoAflicao(div); });
   updateChargesMaxEdit();
   const oldAdd=window.adicionarPoder; window.adicionarPoder=function(){ window.adicionarPoderBase(); if(oldAdd && oldAdd!==window.adicionarPoderBase) oldAdd(); setTimeout(()=>{ bind(document); atualizar(); updateChargesMaxEdit(); },80); };
   const oldRem=window.removerPoderLinha; window.removerPoderLinha=function(btn){ window.removerPoderLinhaBase(btn); if(oldRem && oldRem!==window.removerPoderLinhaBase) oldRem(btn); setTimeout(()=>{ atualizar(); updateChargesMaxEdit(); },40); };
@@ -944,6 +946,31 @@ document.addEventListener('DOMContentLoaded', function(){
 </script>
 <!-- Fallback simples -->
 <script>(function(){ if(window._atkEditFallback) return; window._atkEditFallback=true; document.addEventListener('input',e=>{ if(e.target.closest('#poderes-main-list .poder-form')){ if(typeof window.atualizarCustos==='function') window.atualizarCustos(); }}); })();</script>
+
+<script>
+// Mostrar "Caminho de Aflição" apenas quando Tipo == Aflição
+document.addEventListener('DOMContentLoaded', function() {
+  function atualizarCaminhoAflicao(div){
+    if (!div) return;
+    const tipoEl = div.querySelector('[name$="-tipo"]');
+    const wrap = div.querySelector('.campo-caminho-aflicao');
+    if (!wrap) return;
+    const v = (tipoEl && (tipoEl.value || '') || '').toLowerCase();
+    wrap.style.display = v === 'aflicao' ? '' : 'none';
+  }
+  window.atualizarCaminhoAflicao = atualizarCaminhoAflicao;
+  function bind(scope){
+    (scope || document).querySelectorAll('.poder-form [name$="-tipo"]').forEach(el=>{
+      if (el.dataset.caminhoBound) return;
+      el.addEventListener('change', function(){ atualizarCaminhoAflicao(el.closest('.poder-form')); });
+      el.addEventListener('input', function(){ atualizarCaminhoAflicao(el.closest('.poder-form')); });
+      el.dataset.caminhoBound = '1';
+    });
+    (scope || document).querySelectorAll('.poder-form').forEach(div=>atualizarCaminhoAflicao(div));
+  }
+  bind(document);
+});
+</script>
 
 <script>
 // Filtros de Inventário

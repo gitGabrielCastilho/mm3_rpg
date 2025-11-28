@@ -76,6 +76,20 @@ class ItemPoderForm(forms.ModelForm):
         model = ItemPoder
         exclude = ['item']
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Se o modelo subjacente tiver caminho_aflicao (Poder ligado ao item), exponha o campo.
+        try:
+            if hasattr(self.instance, 'poder') and hasattr(self.instance.poder, 'caminho_aflicao'):
+                # Garante que o campo exista nos fields do form (ModelForm já deve criá-lo se o FK incluir Poder)
+                fld = self.fields.get('poder')
+                if fld is not None:
+                    # Nada especial aqui; a escolha do caminho é feita no form de Poder do personagem.
+                    # Este form continua apenas escolhendo qual Poder o item concede.
+                    pass
+        except Exception:
+            pass
+
 
 ItemPoderFormSet = inlineformset_factory(
     Item,

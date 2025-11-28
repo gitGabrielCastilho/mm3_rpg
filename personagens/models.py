@@ -173,6 +173,11 @@ class Poder(models.Model):
         ('vontade', 'Vontade'),
     
     ]
+    AFLICAO_CAMINHO_CHOICES = [
+        ('mental', 'Controle mental/comportamento'),
+        ('restricao', 'Restrição física/movimentação'),
+        ('debilitacao', 'Debilitação/consciência'),
+    ]
     casting_ability = models.CharField(
         max_length=20,
         choices=POWER_CASTING_ABILITY_CHOICES,
@@ -194,6 +199,17 @@ class Poder(models.Model):
     )
     defesa_ativa = models.CharField(max_length=20, choices=DEFESA_ATIVA_CHOICES, default='aparar')
     defesa_passiva = models.CharField(max_length=20, choices=DEFESA_PASSIVA_CHOICES, default='resistencia')
+    # Caminho de Aflição (apenas relevante quando tipo == 'aflicao')
+    caminho_aflicao = models.CharField(
+        max_length=20,
+        choices=AFLICAO_CAMINHO_CHOICES,
+        default='mental',
+        blank=True,
+        help_text=(
+            "Define o caminho da Aflição: mental (Transe/Compelido/Controlado), "
+            "restricao (Impedido/Imóvel/Incapacitado) ou debilitacao (Tonto/Atordoado/Paralizado)."
+        ),
+    )
     de_item = models.BooleanField("Poder de Item?", default=False)
     item_origem = models.ForeignKey(
         'itens.Item', on_delete=models.SET_NULL, null=True, blank=True,

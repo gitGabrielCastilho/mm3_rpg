@@ -173,6 +173,7 @@
           <div class="campo-poder">{{ formset.empty_form.nome.label_tag }}{{ formset.empty_form.nome }}</div>
           <div class="campo-poder">{{ formset.empty_form.array.label_tag }}{{ formset.empty_form.array }}</div>
           <div class="campo-poder">{{ formset.empty_form.tipo.label_tag }}{{ formset.empty_form.tipo }}</div>
+          <div class="campo-poder campo-caminho-aflicao">{{ formset.empty_form.caminho_aflicao.label_tag }}{{ formset.empty_form.caminho_aflicao }}</div>
           <div class="campo-poder">{{ formset.empty_form.modo.label_tag }}{{ formset.empty_form.modo }}</div>
           <div class="campo-poder somar-forca-wrap span-2" title="Se marcado e for Dano Corpo a Corpo, o nível de efeito soma a Força.">
             <div class="somar-forca-left">
@@ -216,6 +217,7 @@
                 <div class="campo-poder">{{ form.nome.label_tag }}{{ form.nome }}</div>
                 <div class="campo-poder">{{ form.array.label_tag }}{{ form.array }}</div>
                 <div class="campo-poder">{{ form.tipo.label_tag }}{{ form.tipo }}</div>
+                <div class="campo-poder campo-caminho-aflicao">{{ form.caminho_aflicao.label_tag }}{{ form.caminho_aflicao }}</div>
                 <div class="campo-poder">{{ form.modo.label_tag }}{{ form.modo }}</div>
                 <div class="campo-poder somar-forca-wrap span-2" title="Se marcado e for Dano Corpo a Corpo, o nível de efeito soma a Força.">
                   <div class="somar-forca-left">
@@ -1131,6 +1133,32 @@ document.addEventListener('DOMContentLoaded', function() {
     if (deItem) deItem.addEventListener('change', function() { if (typeof window.atualizarCamposOrigem === 'function') window.atualizarCamposOrigem(poderForm); });
     if (deVantagem) deVantagem.addEventListener('change', function() { if (typeof window.atualizarCamposOrigem === 'function') window.atualizarCamposOrigem(poderForm); });
   });
+});
+</script>
+<script>
+// Mostrar "Caminho de Aflição" apenas quando Tipo == Aflição (criar personagem)
+document.addEventListener('DOMContentLoaded', function() {
+  function atualizarCaminhoAflicao(div){
+    if (!div) return;
+    const tipoEl = div.querySelector('[name$="-tipo"]');
+    const wrap = div.querySelector('.campo-caminho-aflicao');
+    if (!wrap) return;
+    const v = (tipoEl && (tipoEl.value || '') || '').toLowerCase();
+    wrap.style.display = v === 'aflicao' ? '' : 'none';
+  }
+  window.atualizarCaminhoAflicao = atualizarCaminhoAflicao;
+  function bind(scope){
+    (scope || document).querySelectorAll('#poderes-main-list .poder-form [name$="-tipo"]').forEach(el=>{
+      if (el.dataset.caminhoBound) return;
+      el.addEventListener('change', function(){ atualizarCaminhoAflicao(el.closest('.poder-form')); });
+      el.addEventListener('input', function(){ atualizarCaminhoAflicao(el.closest('.poder-form')); });
+      el.dataset.caminhoBound = '1';
+    });
+    (scope || document).querySelectorAll('#poderes-main-list .poder-form').forEach(div=>atualizarCaminhoAflicao(div));
+  }
+  bind(document);
+  const oldAdd = window.adicionarPoder;
+  window.adicionarPoder = function(){ if (typeof oldAdd === 'function') oldAdd(); setTimeout(()=>bind(document),60); };
 });
 </script>
 <script>

@@ -82,27 +82,25 @@ def main():
     check("Dano deg4 -> dano 4 (incapacitado), fer=5", part_tgt.dano == 4 and part_tgt.ferimentos == 5 and incapac,
           f"got dano={part_tgt.dano}, fer={part_tgt.ferimentos}, incap={incapac}")
 
-    # 2) Aflição progression and incapacitation at 3
+    # 2) Aflição progression with new rules (no Ferimentos, cap 3, multi-level)
     reset_part(part_tgt)
+    # degree 1 -> +1 nível (0 -> 1), sem ferimentos
     _aplicar_falha_salvamento(part_tgt, 'aflicao', 1)
     part_tgt.refresh_from_db()
-    check("Aflição deg1 -> af=1, fer=1", part_tgt.aflicao == 1 and part_tgt.ferimentos == 1,
+    check("Aflição deg1 -> af=1, fer=0", part_tgt.aflicao == 1 and part_tgt.ferimentos == 0,
           f"got af={part_tgt.aflicao}, fer={part_tgt.ferimentos}")
 
-    _aplicar_falha_salvamento(part_tgt, 'aflicao', 1)
+    # novo teste degree 2 (+2 níveis): 1 -> 3 (capado), sem ferimentos
+    _aplicar_falha_salvamento(part_tgt, 'aflicao', 2)
     part_tgt.refresh_from_db()
-    check("Aflição deg1 again -> af stays 1, fer=2", part_tgt.aflicao == 1 and part_tgt.ferimentos == 2,
+    check("Aflição deg2 from 1 -> af=3, fer=0", part_tgt.aflicao == 3 and part_tgt.ferimentos == 0,
           f"got af={part_tgt.aflicao}, fer={part_tgt.ferimentos}")
 
+    # outro teste degree 3 não ultrapassa 3
     _aplicar_falha_salvamento(part_tgt, 'aflicao', 3)
     part_tgt.refresh_from_db()
-    check("Aflição deg3 -> af=2, fer=3", part_tgt.aflicao == 2 and part_tgt.ferimentos == 3,
+    check("Aflição deg3 at max -> af=3, fer=0", part_tgt.aflicao == 3 and part_tgt.ferimentos == 0,
           f"got af={part_tgt.aflicao}, fer={part_tgt.ferimentos}")
-
-    _, incapac2 = _aplicar_falha_salvamento(part_tgt, 'aflicao', 3)
-    part_tgt.refresh_from_db()
-    check("Aflição deg3 again -> af=3 (incapacitado), fer=4", part_tgt.aflicao == 3 and part_tgt.ferimentos == 4 and incapac2,
-          f"got af={part_tgt.aflicao}, fer={part_tgt.ferimentos}, incap={incapac2}")
 
     # 3) Cura CD and reset ferimentos when fully healed
     reset_part(part_tgt)
