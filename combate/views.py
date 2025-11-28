@@ -337,6 +337,7 @@ def participantes_json(request, combate_id):
             'id': p.id,
             'personagem_id': p.personagem_id,
             'nome': display_nome,
+            'iniciativa': p.iniciativa,
         })
     return JsonResponse({'participantes': data})
 
