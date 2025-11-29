@@ -217,19 +217,14 @@
                 {% with base_nome=posicao.participante.personagem.nome base_iniciais=base_nome|slice:"0:2"|upper %}
                 {#
                   display_nome já traz sufixos como "(2)" quando há duplicados.
-                  Usamos isso para gerar um label curto no token, ex: "AB", "AB#2".
+                  Para evitar lógica complexa no template, usamos:
+                  - duas primeiras letras sempre
+                  - se houver "(" no display_nome (ex: "Aberrant Mutant (2)"),
+                    apenas acrescentamos um marcador "*" para indicar que é variante.
                 #}
                 {% with label_base=posicao.participante.display_nome|default:base_nome %}
-                  {% if label_base|regex_search:"\\([0-9]+\\)$" %}
-                    {% with numero=label_base|regex_search:"\\([0-9]+\\)$" %}
-                      {% with numero_limpo=numero.0|default:"" %}
-                        {% if numero_limpo %}
-                          {% with token_label=base_iniciais|add:"#"|add:numero_limpo %}
-                        {% else %}
-                          {% with token_label=base_iniciais %}
-                        {% endif %}
-                      {% endwith %}
-                    {% endwith %}
+                  {% if "(" in label_base %}
+                    {% with token_label=base_iniciais|add:"*" %}
                   {% else %}
                     {% with token_label=base_iniciais %}
                   {% endif %}
