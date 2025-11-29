@@ -214,22 +214,8 @@
   {% endif %}
             {% for posicao in posicoes %}
               {% if posicao.mapa.id == mapa.id %}
-                {% with base_nome=posicao.participante.personagem.nome base_iniciais=base_nome|slice:"0:2"|upper %}
-                {#
-                  display_nome já traz sufixos como "(2)" quando há duplicados.
-                  Para evitar lógica complexa no template, usamos:
-                  - duas primeiras letras sempre
-                  - se houver "(" no display_nome (ex: "Aberrant Mutant (2)"),
-                    apenas acrescentamos um marcador "*" para indicar que é variante.
-                #}
-                {% with label_base=posicao.participante.display_nome|default:base_nome %}
-                  {% if "(" in label_base %}
-                    {% with token_label=base_iniciais|add:"*" %}
-                  {% else %}
-                    {% with token_label=base_iniciais %}
-                  {% endif %}
-                {% endwith %}
-
+                {% with base_nome=posicao.participante.personagem.nome %}
+                {% with token_label=base_nome|slice:"0:2"|upper %}
                 {% if posicao.participante.personagem.foto %}
          <div id="token-{{ posicao.id }}"
            class="mapa-token mapa-token-wrap"
@@ -251,6 +237,7 @@
                     {{ token_label }}
                   </div>
                 {% endif %}
+                {% endwith %}
                 {% endwith %}
               {% endif %}
             {% endfor %}
