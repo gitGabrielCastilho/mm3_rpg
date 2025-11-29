@@ -214,21 +214,49 @@
   {% endif %}
             {% for posicao in posicoes %}
               {% if posicao.mapa.id == mapa.id %}
+                {% with base_nome=posicao.participante.personagem.nome base_iniciais=base_nome|slice:"0:2"|upper %}
+                {#
+                  display_nome já traz sufixos como "(2)" quando há duplicados.
+                  Usamos isso para gerar um label curto no token, ex: "AB", "AB#2".
+                #}
+                {% with label_base=posicao.participante.display_nome|default:base_nome %}
+                  {% if label_base|regex_search:"\\([0-9]+\\)$" %}
+                    {% with numero=label_base|regex_search:"\\([0-9]+\\)$" %}
+                      {% with numero_limpo=numero.0|default:"" %}
+                        {% if numero_limpo %}
+                          {% with token_label=base_iniciais|add:"#"|add:numero_limpo %}
+                        {% else %}
+                          {% with token_label=base_iniciais %}
+                        {% endif %}
+                      {% endwith %}
+                    {% endwith %}
+                  {% else %}
+                    {% with token_label=base_iniciais %}
+                  {% endif %}
+                {% endwith %}
+
                 {% if posicao.participante.personagem.foto %}
-         <img src="{{ posicao.participante.personagem.foto.url }}" title="{{ posicao.participante.personagem.foto.url }}"
-           id="token-{{ posicao.id }}"
-           class="mapa-token"
+         <div id="token-{{ posicao.id }}"
+           class="mapa-token mapa-token-wrap"
            style="left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:{{ posicao.token_size|default:40 }}px; height:{{ posicao.token_size|default:40 }}px;"
            draggable="true"
-           ondragstart="drag(event, {{ posicao.id }})">
+           ondragstart="drag(event, {{ posicao.id }})"
+           title="{{ posicao.participante.display_nome|default:posicao.participante.personagem.nome }}">
+           <img src="{{ posicao.participante.personagem.foto.url }}"
+                alt="{{ posicao.participante.display_nome|default:posicao.participante.personagem.nome }}"
+                class="mapa-token-img">
+           <div class="mapa-token-label">{{ token_label }}</div>
+         </div>
                 {% else %}
-         <div id="token-{{ posicao.id }}" class="mapa-token token-fallback"
+         <div id="token-{{ posicao.id }}" class="mapa-token token-fallback mapa-token-wrap"
            style="left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:{{ posicao.token_size|default:40 }}px; height:{{ posicao.token_size|default:40 }}px;"
            draggable="true"
-           ondragstart="drag(event, {{ posicao.id }})">
-                    {{ posicao.participante.personagem.nome|slice:"0:2"|upper }}
+           ondragstart="drag(event, {{ posicao.id }})"
+           title="{{ posicao.participante.display_nome|default:posicao.participante.personagem.nome }}">
+                    {{ token_label }}
                   </div>
                 {% endif %}
+                {% endwith %}
               {% endif %}
             {% endfor %}
               </div>
