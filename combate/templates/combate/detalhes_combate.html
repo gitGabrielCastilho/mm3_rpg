@@ -224,7 +224,7 @@
               draggable="true"
               ondragstart="drag(event, {{ posicao.id }})">
                 {% else %}
-         {% with label=posicao.participante.token_label|default:posicao.participante.personagem.nome|slice:"0:2"|upper %}
+         {% with label=posicao.participante.display_nome|default:posicao.participante.personagem.nome %}
          <div id="token-{{ posicao.id }}" class="mapa-token token-fallback"
            style="left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:{{ posicao.token_size|default:40 }}px; height:{{ posicao.token_size|default:40 }}px;"
            draggable="true"
