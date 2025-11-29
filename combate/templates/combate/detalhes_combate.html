@@ -214,10 +214,10 @@
   {% endif %}
             {% for posicao in posicoes %}
               {% if posicao.mapa.id == mapa.id %}
-                {% if posicao.participante.personagem.foto %}
-         <img src="{{ posicao.participante.personagem.foto.url }}"
-              alt="{{ posicao.participante.display_nome|default:posicao.participante.personagem.nome }}"
-              title="{% if posicao.participante.display_nome %}{{ posicao.participante.display_nome }}{% else %}{{ posicao.participante.personagem.nome }}{% endif %}{% if posicao.participante.token_label %} — {{ posicao.participante.token_label }}{% endif %}"
+                 {% if posicao.participante.personagem.foto %}
+                <img src="{{ posicao.participante.personagem.foto.url }}"
+                  alt="{{ posicao.participante.display_nome|default:posicao.participante.personagem.nome }}"
+                  title="{{ posicao.participante.display_nome|default:posicao.participante.personagem.nome }}"
               id="token-{{ posicao.id }}"
               class="mapa-token"
               style="left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:{{ posicao.token_size|default:40 }}px; height:{{ posicao.token_size|default:40 }}px;"
@@ -229,7 +229,7 @@
            style="left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:{{ posicao.token_size|default:40 }}px; height:{{ posicao.token_size|default:40 }}px;"
            draggable="true"
            ondragstart="drag(event, {{ posicao.id }})"
-           title="{% if posicao.participante.display_nome %}{{ posicao.participante.display_nome }}{% else %}{{ posicao.participante.personagem.nome }}{% endif %}{% if label %} — {{ label }}{% endif %}">
+           title="{{ posicao.participante.display_nome|default:posicao.participante.personagem.nome }}">
                     {{ label }}
                   </div>
          {% endwith %}
