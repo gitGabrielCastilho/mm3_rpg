@@ -400,7 +400,7 @@ def detalhes_combate(request, combate_id):
     turno_ativo = turnos.filter(ativo=True).first()
     mapas_globais = Mapa.objects.filter(combate__isnull=True, criado_por=request.user).order_by('-id')
     mapa = combate.mapas.first()
-    posicoes = PosicaoPersonagem.objects.filter(mapa=mapa) if mapa else []
+    posicoes = PosicaoPersonagem.objects.filter(mapa=mapa).select_related('participante__personagem') if mapa else []
 
     # Não pré-carrega poderes do turno_ativo para evitar alternância no formulário.
     # O frontend busca via AJAX conforme o participante selecionado em "Ações de".
@@ -436,6 +436,19 @@ def detalhes_combate(request, combate_id):
             p.token_label = f"{iniciais}({counts[pid]})"
         else:
             p.token_label = iniciais
+
+    # Gera label por POSIÇÃO (token) para diferenciar múltiplos tokens
+    # do mesmo personagem no mapa, independente de quantos participantes existam.
+    pos_counts = {}
+    for pos in posicoes:
+        pid = pos.participante.personagem_id
+        pos_counts[pid] = pos_counts.get(pid, 0) + 1
+        idx = pos_counts[pid]
+        base_nome = pos.participante.display_nome if hasattr(pos.participante, 'display_nome') else pos.participante.personagem.nome
+        if idx > 1:
+            pos.display_label = f"{base_nome} ({idx})"
+        else:
+            pos.display_label = base_nome
 
     personagens_no_combate_ids = list(participantes.values_list('personagem_id', flat=True))
     if hasattr(request.user, 'perfilusuario') and request.user.perfilusuario.sala_atual and request.user.perfilusuario.sala_atual.game_master == request.user:
