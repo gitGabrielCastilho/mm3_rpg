@@ -420,6 +420,7 @@ def detalhes_combate(request, combate_id):
     ]
 
     # Gera nomes exibidos com numeração para participantes duplicados
+    # e um label curto específico para o token no mapa (ex.: AB, AB(2)).
     counts = {}
     for p in participantes:
         pid = p.personagem_id
@@ -428,6 +429,13 @@ def detalhes_combate(request, combate_id):
             p.display_nome = f"{p.personagem.nome} ({counts[pid]})"
         else:
             p.display_nome = p.personagem.nome
+        # Label curto para o token: iniciais do nome + sufixo de índice, ex.: AB(2)
+        base_nome = p.personagem.nome or "?"
+        iniciais = (base_nome[:2] if len(base_nome) >= 2 else base_nome).upper()
+        if counts[pid] > 1:
+            p.token_label = f"{iniciais}({counts[pid]})"
+        else:
+            p.token_label = iniciais
 
     personagens_no_combate_ids = list(participantes.values_list('personagem_id', flat=True))
     if hasattr(request.user, 'perfilusuario') and request.user.perfilusuario.sala_atual and request.user.perfilusuario.sala_atual.game_master == request.user:

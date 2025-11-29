@@ -214,8 +214,6 @@
   {% endif %}
             {% for posicao in posicoes %}
               {% if posicao.mapa.id == mapa.id %}
-                {% with base_nome=posicao.participante.personagem.nome %}
-                {% with token_label=base_nome|slice:"0:2"|upper %}
                 {% if posicao.participante.personagem.foto %}
          <div id="token-{{ posicao.id }}"
            class="mapa-token mapa-token-wrap"
@@ -226,7 +224,7 @@
            <img src="{{ posicao.participante.personagem.foto.url }}"
                 alt="{{ posicao.participante.display_nome|default:posicao.participante.personagem.nome }}"
                 class="mapa-token-img">
-           <div class="mapa-token-label">{{ token_label }}</div>
+           <div class="mapa-token-label">{{ posicao.participante.token_label }}</div>
          </div>
                 {% else %}
          <div id="token-{{ posicao.id }}" class="mapa-token token-fallback mapa-token-wrap"
@@ -234,11 +232,9 @@
            draggable="true"
            ondragstart="drag(event, {{ posicao.id }})"
            title="{{ posicao.participante.display_nome|default:posicao.participante.personagem.nome }}">
-                    {{ token_label }}
+                    {{ posicao.participante.token_label }}
                   </div>
                 {% endif %}
-                {% endwith %}
-                {% endwith %}
               {% endif %}
             {% endfor %}
               </div>
