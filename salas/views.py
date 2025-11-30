@@ -1,4 +1,4 @@
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 # View para detalhes da sala
 from django.contrib.auth.decorators import login_required
 @login_required
@@ -10,7 +10,8 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.db import transaction
 from django.contrib.auth.decorators import login_required
-from .models import Sala
+from django.views.decorators.http import require_POST
+from .models import Sala, NotaSessao
 from django.db.models import Q
 from django import forms
 from personagens.models import PerfilUsuario
@@ -81,6 +82,16 @@ def listar_salas(request):
         perfil, _ = PerfilUsuario.objects.get_or_create(user=request.user, defaults={'tipo': 'jogador'})
         sala_atual = getattr(perfil, 'sala_atual', None)
     return render(request, 'salas/listar_salas.html', {'salas': salas, 'sala_atual': sala_atual, 'query': query})
+
+
+@login_required
+def notas_sala(request, sala_id):
+    sala = get_object_or_404(Sala, id=sala_id)
+    notas = sala.notas.select_related('usuario').all()
+    return render(request, 'salas/notas_sala.html', {
+        'sala': sala,
+        'notas': notas,
+    })
 
 @login_required
 def excluir_sala(request, sala_id):
@@ -181,5 +192,55 @@ def editar_senha_sala(request, sala_id):
         sala.save()
         return redirect('listar_salas')
     return render(request, 'salas/editar_senha.html', {'sala': sala})
+
+
+@login_required
+@require_POST
+def criar_nota_sala(request, sala_id):
+    sala = get_object_or_404(Sala, id=sala_id)
+
+    conteudo = request.POST.get('conteudo', '').strip()
+    if not conteudo:
+        return JsonResponse({'ok': False, 'erro': 'Conteúdo vazio.'}, status=400)
+
+    nota = NotaSessao.objects.create(
+        sala=sala,
+        usuario=request.user,
+        nome_usuario=request.user.get_username(),
+        conteudo=conteudo,
+    )
+
+    # Broadcast via Channels para o grupo da sala
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'sala_{sala.id}',
+            {
+                'type': 'sala_message',
+                'message': {
+                    'tipo': 'nota',
+                    'id': nota.id,
+                    'sala_id': sala.id,
+                    'usuario_id': nota.usuario_id,
+                    'nome_usuario': nota.nome_usuario,
+                    'conteudo': nota.conteudo,
+                    'criada_em': nota.criada_em.isoformat(),
+                }
+            }
+        )
+    except Exception:
+        logger.warning("Falha ao enviar nota via Channels (ignorado)", exc_info=True)
+
+    return JsonResponse({
+        'ok': True,
+        'nota': {
+            'id': nota.id,
+            'sala_id': sala.id,
+            'usuario_id': nota.usuario_id,
+            'nome_usuario': nota.nome_usuario,
+            'conteudo': nota.conteudo,
+            'criada_em': nota.criada_em.isoformat(),
+        }
+    })
 
 

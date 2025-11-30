@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<h2>Notas da Sessão – {{ sala.nome }} ({{ sala.codigo }})</h2>
+
+<div id="notas-lista">
+  {% for nota in notas %}
+    <div class="nota-item" data-id="{{ nota.id }}">
+      <strong>{{ nota.nome_usuario }}</strong>
+      <small>{{ nota.criada_em|date:"d/m H:i" }}</small>
+      <p>{{ nota.conteudo|linebreaksbr }}</p>
+      <hr>
+    </div>
+  {% empty %}
+    <p>Nenhuma nota ainda. Seja o primeiro a anotar!</p>
+  {% endfor %}
+</div>
+
+<form id="form-nota" method="post" action="{% url 'criar_nota_sala' sala.id %}">
+  {% csrf_token %}
+  <textarea name="conteudo" id="id_conteudo" rows="3" class="form-control"
+            placeholder="Escreva uma nota sobre a sessão..."></textarea>
+  <button type="submit" class="btn btn-primary mt-2">Adicionar nota</button>
+</form>
+
+{{ sala.id|json_script:"sala-id" }}
+
+<script>
+  const salaId = JSON.parse(document.getElementById('sala-id').textContent);
+
+  // AJAX para criar nota
+  const form = document.getElementById('form-nota');
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(form);
+    fetch(form.action, {
+      method: 'POST',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) {
+        alert(data.erro || 'Erro ao criar nota.');
+        return;
+      }
+      form.reset();
+      // A nota também virá por WebSocket; opcionalmente poderíamos inserir aqui.
+    })
+    .catch(() => alert('Erro de comunicação ao criar nota.'));
+  });
+
+  // WebSocket para receber notas em tempo real
+  const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  const wsUrl = `${scheme}://${window.location.host}/ws/sala/${salaId}/`;
+  const socket = new WebSocket(wsUrl);
+
+  socket.onmessage = function(e) {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.tipo === 'nota') {
+        appendNota(msg);
+      }
+    } catch (err) {
+      console.error('Erro ao processar mensagem WS', err);
+    }
+  };
+
+  function appendNota(nota) {
+    const lista = document.getElementById('notas-lista');
+    const div = document.createElement('div');
+    div.className = 'nota-item';
+    div.dataset.id = nota.id;
+    div.innerHTML = `
+      <strong>${nota.nome_usuario}</strong>
+      <small>${formatData(nota.criada_em)}</small>
+      <p>${escapeHtml(nota.conteudo).replace(/\n/g, '<br>')}</p>
+      <hr>
+    `;
+    lista.appendChild(div);
+  }
+
+  function formatData(iso) {
+    try {
+      const d = new Date(iso);
+      const dia = String(d.getDate()).padStart(2, '0');
+      const mes = String(d.getMonth() + 1).padStart(2, '0');
+      const hora = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      return `${dia}/${mes} ${hora}:${min}`;
+    } catch {
+      return '';
+    }
+  }
+
+  function escapeHtml(text) {
+    const map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+  }
+</script>
+{% endblock %}

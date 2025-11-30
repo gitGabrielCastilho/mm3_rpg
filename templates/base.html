@@ -55,6 +55,7 @@
             {% endif %}
           </div>
         </div>
+        <a href="{% url 'notas_sala' perfil.sala_atual.id %}">Notas da Sessão</a>
       {% endif %}
     {% else %}
       <a href="{% url 'listar_salas' %}">Salas</a>
