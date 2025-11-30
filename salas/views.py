@@ -321,6 +321,10 @@ def deletar_nota_sala(request, sala_id, nota_id):
     except Exception:
         logger.warning("Falha ao enviar nota_deletada via Channels (ignorado)", exc_info=True)
 
-    return JsonResponse({'ok': True, 'id': nota_id_val})
+    # Se for AJAX, retorna JSON; caso contrário, redireciona para a página de notas
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'ok': True, 'id': nota_id_val})
+    from django.shortcuts import redirect
+    return redirect('notas_sala', sala_id=sala.id)
 
 

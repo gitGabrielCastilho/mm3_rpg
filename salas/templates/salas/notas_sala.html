@@ -15,13 +15,7 @@
         <p class="nota-conteudo">{{ nota.conteudo|linebreaksbr }}</p>
         {% if nota.usuario_id == user.id %}
           <button type="button" class="btn btn-sm btn-secondary" onclick="abrirEdicaoNota({{ nota.id }})">Editar</button>
-          <form method="post"
-                action="{% url 'deletar_nota_sala' sala.id nota.id %}"
-                style="display:inline"
-                onsubmit="return confirm('Tem certeza que deseja excluir esta nota?');">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
-          </form>
+          <button type="button" class="btn btn-sm btn-danger" onclick="deletarNota({{ nota.id }})">Excluir</button>
         {% endif %}
       </div>
       <hr>
@@ -44,6 +38,7 @@
   const salaId = JSON.parse(document.getElementById('sala-id').textContent);
   // Usamos um placeholder fixo (999999) e substituímos pelo ID real da nota
   const editarUrlTemplate = "{% url 'editar_nota_sala' sala.id 999999 %}";
+  const deletarUrlTemplate = "{% url 'deletar_nota_sala' sala.id 999999 %}";
 
   // AJAX para criar nota
   const form = document.getElementById('form-nota');
@@ -103,6 +98,7 @@
         <p class="nota-conteudo">${escapeHtml(nota.conteudo).replace(/\n/g, '<br>')}</p>
         ${nota.usuario_id === {{ user.id|default:'0' }} ? `
           <button type="button" class="btn btn-sm btn-secondary" onclick="abrirEdicaoNota(${nota.id})">Editar</button>
+          <button type="button" class="btn btn-sm btn-danger" onclick="deletarNota(${nota.id})">Excluir</button>
         ` : ''}
       </div>
       <hr>
@@ -174,6 +170,41 @@
       }
     })
     .catch(() => alert('Erro de comunicação ao editar nota.'));
+  };
+
+  window.deletarNota = function(id) {
+    if (!confirm('Tem certeza que deseja excluir esta nota?')) return;
+    const formData = new FormData();
+    const url = deletarUrlTemplate.replace('999999', id);
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRFToken': document.querySelector('input[name="csrfmiddlewaretoken"]').value,
+      },
+      body: formData,
+    })
+    .then(async (r) => {
+      let data = null;
+      try {
+        data = await r.json();
+      } catch (e) {
+        if (r.ok) {
+          removerNota(id);
+          return;
+        }
+        throw e;
+      }
+      if (!data || !data.ok) {
+        alert((data && data.erro) || 'Erro ao deletar nota.');
+        return;
+      }
+      removerNota(id);
+    })
+    .catch((err) => {
+      console.error('Erro ao deletar nota:', err);
+      alert('Erro de comunicação ao deletar nota.');
+    });
   };
 </script>
 {% endblock %}
