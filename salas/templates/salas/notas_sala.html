@@ -36,8 +36,9 @@
 
 <script>
   const salaId = JSON.parse(document.getElementById('sala-id').textContent);
-  const editarUrlTemplate = "{% url 'editar_nota_sala' sala.id 0 %}".replace(/0\/$/, '');
-  const deletarUrlTemplate = "{% url 'deletar_nota_sala' sala.id 0 %}".replace(/0\/$/, '');
+  // Usamos um placeholder fixo (999999) e substituímos pelo ID real da nota
+  const editarUrlTemplate = "{% url 'editar_nota_sala' sala.id 999999 %}";
+  const deletarUrlTemplate = "{% url 'deletar_nota_sala' sala.id 999999 %}";
 
   // AJAX para criar nota
   const form = document.getElementById('form-nota');
@@ -153,7 +154,7 @@
     if (novoTexto === null) return;
     const formData = new FormData();
     formData.append('conteudo', novoTexto);
-    const url = `${editarUrlTemplate}/${id}/`;
+    const url = editarUrlTemplate.replace('999999', id);
     fetch(url, {
       method: 'POST',
       headers: {
@@ -174,7 +175,7 @@
   window.deletarNota = function(id) {
     if (!confirm('Tem certeza que deseja excluir esta nota?')) return;
     const formData = new FormData();
-    const url = `${deletarUrlTemplate}/${id}/`;
+    const url = deletarUrlTemplate.replace('999999', id);
     fetch(url, {
       method: 'POST',
       headers: {
