@@ -7,9 +7,17 @@
 <div id="notas-lista">
   {% for nota in notas %}
     <div class="nota-item" data-id="{{ nota.id }}">
-      <strong>{{ nota.nome_usuario }}</strong>
-      <small>{{ nota.criada_em|date:"d/m H:i" }}</small>
-      <p>{{ nota.conteudo|linebreaksbr }}</p>
+      <div class="nota-header">
+        <strong>{{ nota.nome_usuario }}</strong>
+        <small>{{ nota.criada_em|date:"d/m H:i" }}</small>
+      </div>
+      <div class="nota-body">
+        <p class="nota-conteudo">{{ nota.conteudo|linebreaksbr }}</p>
+        {% if nota.usuario_id == user.id %}
+          <button type="button" class="btn btn-sm btn-secondary" onclick="abrirEdicaoNota({{ nota.id }})">Editar</button>
+          <button type="button" class="btn btn-sm btn-danger" onclick="deletarNota({{ nota.id }})">Excluir</button>
+        {% endif %}
+      </div>
       <hr>
     </div>
   {% empty %}
@@ -28,6 +36,8 @@
 
 <script>
   const salaId = JSON.parse(document.getElementById('sala-id').textContent);
+  const editarUrlTemplate = "{% url 'editar_nota_sala' sala.id 0 %}".replace(/0\/$/, '');
+  const deletarUrlTemplate = "{% url 'deletar_nota_sala' sala.id 0 %}".replace(/0\/$/, '');
 
   // AJAX para criar nota
   const form = document.getElementById('form-nota');
@@ -63,6 +73,10 @@
       const msg = JSON.parse(e.data);
       if (msg.tipo === 'nota') {
         appendNota(msg);
+      } else if (msg.tipo === 'nota_editada') {
+        atualizarNota(msg);
+      } else if (msg.tipo === 'nota_deletada') {
+        removerNota(msg.id);
       }
     } catch (err) {
       console.error('Erro ao processar mensagem WS', err);
@@ -75,12 +89,34 @@
     div.className = 'nota-item';
     div.dataset.id = nota.id;
     div.innerHTML = `
-      <strong>${nota.nome_usuario}</strong>
-      <small>${formatData(nota.criada_em)}</small>
-      <p>${escapeHtml(nota.conteudo).replace(/\n/g, '<br>')}</p>
+      <div class="nota-header">
+        <strong>${nota.nome_usuario}</strong>
+        <small>${formatData(nota.criada_em)}</small>
+      </div>
+      <div class="nota-body">
+        <p class="nota-conteudo">${escapeHtml(nota.conteudo).replace(/\n/g, '<br>')}</p>
+        ${nota.usuario_id === {{ user.id|default:'0' }} ? `
+          <button type="button" class="btn btn-sm btn-secondary" onclick="abrirEdicaoNota(${nota.id})">Editar</button>
+          <button type="button" class="btn btn-sm btn-danger" onclick="deletarNota(${nota.id})">Excluir</button>
+        ` : ''}
+      </div>
       <hr>
     `;
     lista.appendChild(div);
+  }
+
+  function atualizarNota(nota) {
+    const el = document.querySelector(`.nota-item[data-id="${nota.id}"] .nota-conteudo`);
+    if (el) {
+      el.innerHTML = escapeHtml(nota.conteudo).replace(/\n/g, '<br>');
+    }
+  }
+
+  function removerNota(id) {
+    const item = document.querySelector(`.nota-item[data-id="${id}"]`);
+    if (item && item.parentNode) {
+      item.parentNode.removeChild(item);
+    }
   }
 
   function formatData(iso) {
@@ -106,5 +142,56 @@
     };
     return text.replace(/[&<>"']/g, function(m) { return map[m]; });
   }
+
+  window.abrirEdicaoNota = function(id) {
+    const item = document.querySelector(`.nota-item[data-id="${id}"]`);
+    if (!item) return;
+    const conteudoEl = item.querySelector('.nota-conteudo');
+    if (!conteudoEl) return;
+    const textoAtual = conteudoEl.innerText || '';
+    const novoTexto = prompt('Edite a nota:', textoAtual);
+    if (novoTexto === null) return;
+    const formData = new FormData();
+    formData.append('conteudo', novoTexto);
+    const url = `${editarUrlTemplate}/${id}/`;
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRFToken': document.querySelector('input[name="csrfmiddlewaretoken"]').value,
+      },
+      body: formData,
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) {
+        alert(data.erro || 'Erro ao editar nota.');
+      }
+    })
+    .catch(() => alert('Erro de comunicação ao editar nota.'));
+  };
+
+  window.deletarNota = function(id) {
+    if (!confirm('Tem certeza que deseja excluir esta nota?')) return;
+    const formData = new FormData();
+    const url = `${deletarUrlTemplate}/${id}/`;
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRFToken': document.querySelector('input[name="csrfmiddlewaretoken"]').value,
+      },
+      body: formData,
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) {
+        alert(data.erro || 'Erro ao deletar nota.');
+        return;
+      }
+      removerNota(id);
+    })
+    .catch(() => alert('Erro de comunicação ao deletar nota.'));
+  };
 </script>
 {% endblock %}

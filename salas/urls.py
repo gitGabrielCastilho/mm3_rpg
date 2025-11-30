@@ -9,6 +9,8 @@ from .views import (
     editar_senha_sala,
     notas_sala,
     criar_nota_sala,
+    editar_nota_sala,
+    deletar_nota_sala,
 )
 from . import views_ajax
 
@@ -22,5 +24,7 @@ urlpatterns = [
     path('editar-senha/<int:sala_id>/', editar_senha_sala, name='editar_senha_sala'),
     path('<int:sala_id>/notas/', notas_sala, name='notas_sala'),
     path('<int:sala_id>/notas/criar/', criar_nota_sala, name='criar_nota_sala'),
+    path('<int:sala_id>/notas/<int:nota_id>/editar/', editar_nota_sala, name='editar_nota_sala'),
+    path('<int:sala_id>/notas/<int:nota_id>/deletar/', deletar_nota_sala, name='deletar_nota_sala'),
     path('sidebar_participantes/<int:sala_id>/', views_ajax.participantes_sidebar, name='sidebar_participantes'),
 ]

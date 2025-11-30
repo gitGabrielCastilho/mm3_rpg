@@ -244,3 +244,83 @@ def criar_nota_sala(request, sala_id):
     })
 
 
+@login_required
+@require_POST
+def editar_nota_sala(request, sala_id, nota_id):
+    sala = get_object_or_404(Sala, id=sala_id)
+    nota = get_object_or_404(NotaSessao, id=nota_id, sala=sala)
+
+    if nota.usuario_id != request.user.id:
+        return JsonResponse({'ok': False, 'erro': 'Sem permissão para editar esta nota.'}, status=403)
+
+    conteudo = request.POST.get('conteudo', '').strip()
+    if not conteudo:
+        return JsonResponse({'ok': False, 'erro': 'Conteúdo vazio.'}, status=400)
+
+    nota.conteudo = conteudo
+    nota.save(update_fields=['conteudo'])
+
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'sala_{sala.id}',
+            {
+                'type': 'sala_message',
+                'message': {
+                    'tipo': 'nota_editada',
+                    'id': nota.id,
+                    'sala_id': sala.id,
+                    'usuario_id': nota.usuario_id,
+                    'nome_usuario': nota.nome_usuario,
+                    'conteudo': nota.conteudo,
+                    'criada_em': nota.criada_em.isoformat(),
+                }
+            }
+        )
+    except Exception:
+        logger.warning("Falha ao enviar nota_editada via Channels (ignorado)", exc_info=True)
+
+    return JsonResponse({
+        'ok': True,
+        'nota': {
+            'id': nota.id,
+            'sala_id': sala.id,
+            'usuario_id': nota.usuario_id,
+            'nome_usuario': nota.nome_usuario,
+            'conteudo': nota.conteudo,
+            'criada_em': nota.criada_em.isoformat(),
+        }
+    })
+
+
+@login_required
+@require_POST
+def deletar_nota_sala(request, sala_id, nota_id):
+    sala = get_object_or_404(Sala, id=sala_id)
+    nota = get_object_or_404(NotaSessao, id=nota_id, sala=sala)
+
+    if nota.usuario_id != request.user.id:
+        return JsonResponse({'ok': False, 'erro': 'Sem permissão para deletar esta nota.'}, status=403)
+
+    nota_id_val = nota.id
+    nota.delete()
+
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'sala_{sala.id}',
+            {
+                'type': 'sala_message',
+                'message': {
+                    'tipo': 'nota_deletada',
+                    'id': nota_id_val,
+                    'sala_id': sala.id,
+                }
+            }
+        )
+    except Exception:
+        logger.warning("Falha ao enviar nota_deletada via Channels (ignorado)", exc_info=True)
+
+    return JsonResponse({'ok': True, 'id': nota_id_val})
+
+
