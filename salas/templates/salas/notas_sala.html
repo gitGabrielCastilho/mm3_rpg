@@ -216,27 +216,30 @@
 
   window.deletarNota = function(id) {
     if (!confirm('Tem certeza que deseja excluir esta nota?')) return;
-    const formData = new FormData();
+    const params = new URLSearchParams();
+    params.append('csrfmiddlewaretoken', document.querySelector('input[name="csrfmiddlewaretoken"]').value);
     const url = deletarUrlTemplate.replace('999999', id);
     fetch(url, {
       method: 'POST',
       headers: {
-        'X-Requested-With': 'XMLHttpRequest',
-        'X-CSRFToken': document.querySelector('input[name="csrfmiddlewaretoken"]').value,
+        'X-Requested-With': 'XMLHttpRequest'
       },
-      body: formData,
+      body: params
     })
-    .then(async (r) => {
+    .then(function(r) {
       if (!r.ok) {
-        alert('Erro ao deletar nota no servidor.');
+        r.json().then(function(data) {
+          let msg = 'Erro ao deletar nota no servidor.';
+          if (data && data.erro) msg = data.erro;
+          alert(msg);
+        }).catch(function() {
+          alert('Erro ao deletar nota no servidor.');
+        });
         return;
       }
-      let data = null;
-      try { data = await r.json(); } catch (e) {}
-      // Remove do DOM mesmo se não vier JSON, desde que o backend respondeu 2xx
       removerNota(id);
     })
-    .catch(() => {
+    .catch(function() {
       alert('Erro de comunicação ao deletar nota.');
     });
   };
