@@ -83,16 +83,6 @@ def listar_salas(request):
         sala_atual = getattr(perfil, 'sala_atual', None)
     return render(request, 'salas/listar_salas.html', {'salas': salas, 'sala_atual': sala_atual, 'query': query})
 
-
-@login_required
-def notas_sala(request, sala_id):
-    sala = get_object_or_404(Sala, id=sala_id)
-    notas = sala.notas.select_related('usuario').all()
-    return render(request, 'salas/notas_sala.html', {
-        'sala': sala,
-        'notas': notas,
-    })
-
 @login_required
 def excluir_sala(request, sala_id):
     sala = get_object_or_404(Sala, id=sala_id, game_master=request.user)
@@ -195,9 +185,21 @@ def editar_senha_sala(request, sala_id):
 
 
 @login_required
+def notas_sala(request, sala_id):
+    sala = get_object_or_404(Sala, id=sala_id)
+    # Permissão básica: qualquer participante da sala pode ver/anotar
+    if request.user not in sala.participantes.all():
+        return redirect('listar_salas')
+    notas = sala.notas.select_related('usuario').all()
+    return render(request, 'salas/notas_sala.html', {'sala': sala, 'notas': notas})
+
+
+@login_required
 @require_POST
 def criar_nota_sala(request, sala_id):
     sala = get_object_or_404(Sala, id=sala_id)
+    if request.user not in sala.participantes.all():
+        return JsonResponse({'ok': False, 'erro': 'Permissão negada.'}, status=403)
 
     conteudo = request.POST.get('conteudo', '').strip()
     if not conteudo:
@@ -210,38 +212,43 @@ def criar_nota_sala(request, sala_id):
         conteudo=conteudo,
     )
 
-    # Broadcast via Channels para o grupo da sala
+    payload = {
+        'tipo': 'nota',
+        'id': nota.id,
+        'sala_id': sala.id,
+        'usuario_id': nota.usuario_id,
+        'nome_usuario': nota.nome_usuario,
+        'conteudo': nota.conteudo,
+        'criada_em': nota.criada_em.isoformat(),
+    }
+
+    # Broadcast via Channels para o grupo da sala (melhor esforço)
     try:
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             f'sala_{sala.id}',
             {
                 'type': 'sala_message',
-                'message': {
-                    'tipo': 'nota',
-                    'id': nota.id,
-                    'sala_id': sala.id,
-                    'usuario_id': nota.usuario_id,
-                    'nome_usuario': nota.nome_usuario,
-                    'conteudo': nota.conteudo,
-                    'criada_em': nota.criada_em.isoformat(),
-                }
-            }
+                'message': payload,
+            },
         )
     except Exception:
-        logger.warning("Falha ao enviar nota via Channels (ignorado)", exc_info=True)
+        logger.warning('Falha ao enviar evento de nota via Channels (ignorado).', exc_info=True)
 
-    return JsonResponse({
-        'ok': True,
-        'nota': {
-            'id': nota.id,
-            'sala_id': sala.id,
-            'usuario_id': nota.usuario_id,
-            'nome_usuario': nota.nome_usuario,
-            'conteudo': nota.conteudo,
-            'criada_em': nota.criada_em.isoformat(),
-        }
-    })
+    return JsonResponse({'ok': True, 'nota': payload})
+
+
+def _pode_gerenciar_nota(user, nota):
+    """Retorna True se o usuário pode editar/apagar a nota.
+
+    Regras:
+    - Autor da nota pode editar/apagar.
+    - GM da sala pode editar/apagar qualquer nota.
+    """
+    if user == nota.usuario:
+        return True
+    sala = nota.sala
+    return sala.game_master == user
 
 
 @login_required
@@ -250,8 +257,8 @@ def editar_nota_sala(request, sala_id, nota_id):
     sala = get_object_or_404(Sala, id=sala_id)
     nota = get_object_or_404(NotaSessao, id=nota_id, sala=sala)
 
-    if nota.usuario_id != request.user.id:
-        return JsonResponse({'ok': False, 'erro': 'Sem permissão para editar esta nota.'}, status=403)
+    if not _pode_gerenciar_nota(request.user, nota):
+        return JsonResponse({'ok': False, 'erro': 'Permissão negada.'}, status=403)
 
     conteudo = request.POST.get('conteudo', '').strip()
     if not conteudo:
@@ -260,37 +267,29 @@ def editar_nota_sala(request, sala_id, nota_id):
     nota.conteudo = conteudo
     nota.save(update_fields=['conteudo'])
 
+    payload = {
+        'tipo': 'nota_editada',
+        'id': nota.id,
+        'sala_id': sala.id,
+        'usuario_id': nota.usuario_id,
+        'nome_usuario': nota.nome_usuario,
+        'conteudo': nota.conteudo,
+        'criada_em': nota.criada_em.isoformat(),
+    }
+
     try:
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             f'sala_{sala.id}',
             {
                 'type': 'sala_message',
-                'message': {
-                    'tipo': 'nota_editada',
-                    'id': nota.id,
-                    'sala_id': sala.id,
-                    'usuario_id': nota.usuario_id,
-                    'nome_usuario': nota.nome_usuario,
-                    'conteudo': nota.conteudo,
-                    'criada_em': nota.criada_em.isoformat(),
-                }
-            }
+                'message': payload,
+            },
         )
     except Exception:
-        logger.warning("Falha ao enviar nota_editada via Channels (ignorado)", exc_info=True)
+        logger.warning('Falha ao enviar evento de nota_editada via Channels (ignorado).', exc_info=True)
 
-    return JsonResponse({
-        'ok': True,
-        'nota': {
-            'id': nota.id,
-            'sala_id': sala.id,
-            'usuario_id': nota.usuario_id,
-            'nome_usuario': nota.nome_usuario,
-            'conteudo': nota.conteudo,
-            'criada_em': nota.criada_em.isoformat(),
-        }
-    })
+    return JsonResponse({'ok': True, 'nota': payload})
 
 
 @login_required
@@ -299,11 +298,17 @@ def deletar_nota_sala(request, sala_id, nota_id):
     sala = get_object_or_404(Sala, id=sala_id)
     nota = get_object_or_404(NotaSessao, id=nota_id, sala=sala)
 
-    if nota.usuario_id != request.user.id:
-        return JsonResponse({'ok': False, 'erro': 'Sem permissão para deletar esta nota.'}, status=403)
+    if not _pode_gerenciar_nota(request.user, nota):
+        return JsonResponse({'ok': False, 'erro': 'Permissão negada.'}, status=403)
 
-    nota_id_val = nota.id
+    nota_id_local = nota.id
     nota.delete()
+
+    payload = {
+        'tipo': 'nota_deletada',
+        'id': nota_id_local,
+        'sala_id': sala.id,
+    }
 
     try:
         channel_layer = get_channel_layer()
@@ -311,20 +316,12 @@ def deletar_nota_sala(request, sala_id, nota_id):
             f'sala_{sala.id}',
             {
                 'type': 'sala_message',
-                'message': {
-                    'tipo': 'nota_deletada',
-                    'id': nota_id_val,
-                    'sala_id': sala.id,
-                }
-            }
+                'message': payload,
+            },
         )
     except Exception:
-        logger.warning("Falha ao enviar nota_deletada via Channels (ignorado)", exc_info=True)
+        logger.warning('Falha ao enviar evento de nota_deletada via Channels (ignorado).', exc_info=True)
 
-    # Se for AJAX, retorna JSON; caso contrário, redireciona para a página de notas
-    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        return JsonResponse({'ok': True, 'id': nota_id_val})
-    from django.shortcuts import redirect
-    return redirect('notas_sala', sala_id=sala.id)
+    return JsonResponse({'ok': True, 'id': nota_id_local})
 
 
