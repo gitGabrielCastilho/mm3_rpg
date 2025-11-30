@@ -199,16 +199,21 @@
       body: formData,
     })
     .then(async (r) => {
+      // Se o servidor devolver 4xx/5xx, não tentamos ler JSON.
+      if (!r.ok) {
+        console.error('Falha HTTP ao deletar nota:', r.status, url);
+        alert('Erro ao deletar nota no servidor.');
+        return;
+      }
+
+      // Para 2xx tentamos JSON, mas se vier vazio/HTML, ainda assim
+      // consideramos sucesso local e removemos a nota da tela.
       let data = null;
       try {
         data = await r.json();
       } catch (e) {
-        if (r.ok) {
-          removerNota(id);
-          return;
-        }
-        console.error('Resposta não-JSON ao deletar nota:', r.status, e);
-        alert('Erro ao deletar nota (resposta inválida do servidor).');
+        console.warn('Resposta OK mas não-JSON ao deletar nota:', r.status, url);
+        removerNota(id);
         return;
       }
       if (!data || !data.ok) {
