@@ -197,6 +197,9 @@
     .then(data => {
       if (!data.ok) {
         alert(data.erro || 'Erro ao editar nota.');
+      } else {
+        // Atualiza imediatamente no DOM
+        atualizarNota({id, conteudo: novoTexto});
       }
     })
     .catch(() => alert('Erro de comunicação ao editar nota.'));
