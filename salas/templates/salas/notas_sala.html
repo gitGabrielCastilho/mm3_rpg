@@ -28,8 +28,8 @@
 
   <form id="form-nota" method="post" action="{% url 'criar_nota_sala' sala.id %}" style="margin-top: 16px;">
     {% csrf_token %}
-    <textarea name="conteudo" id="id_conteudo" rows="3" class="form-control"
-              placeholder="Escreva uma nota sobre a sessão..."></textarea>
+    <textarea name="conteudo" id="id_conteudo" rows="6" class="form-control" style="width:100%; max-width:100%; min-width:100%; font-size:1.15rem;"
+          placeholder="Escreva uma nota sobre a sessão..."></textarea>
     <button type="submit" class="btn btn-primary mt-2">Adicionar nota</button>
   </form>
 </div>
@@ -140,13 +140,47 @@
     return text.replace(/[&<>"']/g, function(m) { return map[m]; });
   }
 
-  window.abrirEdicaoNota = function(id) {
-    const item = document.querySelector(`.nota-item[data-id="${id}"]`);
-    if (!item) return;
-    const conteudoEl = item.querySelector('.nota-conteudo');
-    if (!conteudoEl) return;
-    const textoAtual = conteudoEl.innerText || '';
-    const novoTexto = prompt('Edite a nota:', textoAtual);
+  // Modal de edição de nota
+  function criarModalEdicaoNota(id, textoAtual) {
+    let modal = document.getElementById('modal-editar-nota');
+    if (modal) modal.remove();
+    modal = document.createElement('div');
+    modal.id = 'modal-editar-nota';
+    modal.innerHTML = `
+      <div class="modal-bg"></div>
+      <div class="modal-content">
+        <h3 style="margin-top:0">Editar nota</h3>
+        <textarea id="modal-editar-textarea" rows="6" style="width:96%;max-width:96%;min-width:96%;font-size:1.1rem;margin-bottom:12px;box-sizing:border-box;">${textoAtual.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>
+        <div style="text-align:right">
+          <button id="modal-editar-cancelar" class="btn btn-secondary" type="button">Cancelar</button>
+          <button id="modal-editar-salvar" class="btn btn-primary" type="button">Salvar</button>
+        </div>
+      </div>
+    `;
+    Object.assign(modal.style, {
+      position: 'fixed', left:0, top:0, width:'100vw', height:'100vh', zIndex:10000
+    });
+    document.body.appendChild(modal);
+    // Fundo escuro
+    const bg = modal.querySelector('.modal-bg');
+    Object.assign(bg.style, {
+      position:'absolute',left:0,top:0,width:'100vw',height:'100vh',background:'rgba(0,0,0,0.5)'
+    });
+    // Conteúdo central
+    const content = modal.querySelector('.modal-content');
+    Object.assign(content.style, {
+      position:'relative',margin:'60px auto',background:'#222',color:'#fff',borderRadius:'12px',padding:'24px',maxWidth:'480px',boxShadow:'0 4px 32px #0007',zIndex:10001
+    });
+    // Botões
+    modal.querySelector('#modal-editar-cancelar').onclick = function(){ modal.remove(); };
+    modal.querySelector('#modal-editar-salvar').onclick = function(){
+      const novoTexto = modal.querySelector('#modal-editar-textarea').value;
+      modal.remove();
+      enviarEdicaoNota(id, novoTexto);
+    };
+  }
+
+  function enviarEdicaoNota(id, novoTexto) {
     if (novoTexto === null) return;
     const formData = new FormData();
     formData.append('conteudo', novoTexto);
@@ -166,6 +200,15 @@
       }
     })
     .catch(() => alert('Erro de comunicação ao editar nota.'));
+  }
+
+  window.abrirEdicaoNota = function(id) {
+    const item = document.querySelector(`.nota-item[data-id="${id}"]`);
+    if (!item) return;
+    const conteudoEl = item.querySelector('.nota-conteudo');
+    if (!conteudoEl) return;
+    const textoAtual = conteudoEl.innerText || '';
+    criarModalEdicaoNota(id, textoAtual);
   };
 
   window.deletarNota = function(id) {
