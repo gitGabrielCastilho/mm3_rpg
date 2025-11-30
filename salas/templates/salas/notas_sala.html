@@ -228,25 +228,15 @@
     })
     .then(async (r) => {
       if (!r.ok) {
-        console.error('Falha HTTP ao deletar nota:', r.status, url);
         alert('Erro ao deletar nota no servidor.');
         return;
       }
       let data = null;
-      try { data = await r.json(); }
-      catch (e) {
-        console.warn('Resposta OK mas não-JSON ao deletar nota:', r.status, url);
-        removerNota(id);
-        return;
-      }
-      if (!data || !data.ok) {
-        alert((data && data.erro) || 'Erro ao deletar nota.');
-        return;
-      }
+      try { data = await r.json(); } catch (e) {}
+      // Remove do DOM mesmo se não vier JSON, desde que o backend respondeu 2xx
       removerNota(id);
     })
-    .catch((err) => {
-      console.error('Erro de rede ao deletar nota:', err);
+    .catch(() => {
       alert('Erro de comunicação ao deletar nota.');
     });
   };
