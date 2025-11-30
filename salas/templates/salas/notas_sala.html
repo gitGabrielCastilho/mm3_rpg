@@ -52,16 +52,30 @@
       },
       body: formData
     })
-    .then(r => r.json())
-    .then(data => {
-      if (!data.ok) {
-        alert(data.erro || 'Erro ao criar nota.');
+    .then(async (r) => {
+      let data = null;
+      try {
+        data = await r.json();
+      } catch (e) {
+        // Se não vier JSON mas a resposta for 2xx, apenas limpa o formulário
+        if (r.ok) {
+          form.reset();
+          return;
+        }
+        throw e;
+      }
+      if (!data || !data.ok) {
+        alert((data && data.erro) || 'Erro ao criar nota.');
         return;
       }
       form.reset();
-      // A nota também virá por WebSocket; opcionalmente poderíamos inserir aqui.
+      // Mostra imediatamente para quem criou
+      appendNota(data.nota);
     })
-    .catch(() => alert('Erro de comunicação ao criar nota.'));
+    .catch((err) => {
+      console.error('Erro ao criar nota:', err);
+      alert('Erro de comunicação ao criar nota.');
+    });
   });
 
   // WebSocket para receber notas em tempo real
@@ -193,7 +207,9 @@
           removerNota(id);
           return;
         }
-        throw e;
+        console.error('Resposta não-JSON ao deletar nota:', r.status, e);
+        alert('Erro ao deletar nota (resposta inválida do servidor).');
+        return;
       }
       if (!data || !data.ok) {
         alert((data && data.erro) || 'Erro ao deletar nota.');
@@ -202,7 +218,7 @@
       removerNota(id);
     })
     .catch((err) => {
-      console.error('Erro ao deletar nota:', err);
+      console.error('Erro de rede ao deletar nota:', err);
       alert('Erro de comunicação ao deletar nota.');
     });
   };
