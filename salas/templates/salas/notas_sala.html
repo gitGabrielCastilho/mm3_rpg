@@ -184,15 +184,28 @@
       },
       body: formData,
     })
-    .then(r => r.json())
-    .then(data => {
-      if (!data.ok) {
-        alert(data.erro || 'Erro ao deletar nota.');
+    .then(async (r) => {
+      let data = null;
+      try {
+        data = await r.json();
+      } catch (e) {
+        // Se não vier JSON mas a resposta for 2xx, assume sucesso
+        if (r.ok) {
+          removerNota(id);
+          return;
+        }
+        throw e;
+      }
+      if (!data || !data.ok) {
+        alert((data && data.erro) || 'Erro ao deletar nota.');
         return;
       }
       removerNota(id);
     })
-    .catch(() => alert('Erro de comunicação ao deletar nota.'));
+    .catch((err) => {
+      console.error('Erro ao deletar nota:', err);
+      alert('Erro de comunicação ao deletar nota.');
+    });
   };
 </script>
 {% endblock %}
