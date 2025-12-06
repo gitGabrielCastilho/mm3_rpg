@@ -439,16 +439,15 @@ def detalhes_combate(request, combate_id):
 
     # Gera label por POSIÇÃO (token) para diferenciar múltiplos tokens
     # do mesmo personagem no mapa, independente de quantos participantes existam.
+    # Deterministic ordering per personagem: stable indices across renders
     pos_counts = {}
-    for pos in posicoes:
+    sorted_pos = sorted(posicoes, key=lambda pp: (pp.participante.personagem_id or 0, pp.id or 0))
+    for pos in sorted_pos:
         pid = pos.participante.personagem_id
         pos_counts[pid] = pos_counts.get(pid, 0) + 1
         idx = pos_counts[pid]
-        base_nome = pos.participante.display_nome if hasattr(pos.participante, 'display_nome') else pos.participante.personagem.nome
-        if idx > 1:
-            pos.display_label = f"{base_nome} ({idx})"
-        else:
-            pos.display_label = base_nome
+        base_nome = getattr(pos.participante, 'display_nome', None) or pos.participante.personagem.nome
+        pos.display_label = f"{base_nome} ({idx})" if idx > 1 else base_nome
 
     personagens_no_combate_ids = list(participantes.values_list('personagem_id', flat=True))
     if hasattr(request.user, 'perfilusuario') and request.user.perfilusuario.sala_atual and request.user.perfilusuario.sala_atual.game_master == request.user:
