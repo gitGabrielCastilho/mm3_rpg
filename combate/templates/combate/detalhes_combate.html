@@ -203,6 +203,31 @@
         </div>
         {% endif %}
       </div>
+      <div class="mapa-draw-toolbar">
+        <div class="mdt-group">
+          <button type="button" data-draw-mode="pen" class="mdt-btn active">Lápis</button>
+          <button type="button" data-draw-mode="eraser" class="mdt-btn">Borracha</button>
+          <button type="button" data-draw-mode="rect" class="mdt-btn">Retângulo</button>
+          <button type="button" data-draw-mode="circle" class="mdt-btn">Círculo</button>
+        </div>
+        <div class="mdt-group mdt-colors">
+          <button type="button" data-draw-color="#d33" style="background:#d33"></button>
+          <button type="button" data-draw-color="#1e88e5" style="background:#1e88e5"></button>
+          <button type="button" data-draw-color="#2e7d32" style="background:#2e7d32"></button>
+          <button type="button" data-draw-color="#f9a825" style="background:#f9a825"></button>
+          <button type="button" data-draw-color="#000000" style="background:#000000"></button>
+          <button type="button" data-draw-color="#ffffff" style="background:#ffffff; border:1px solid #ccc"></button>
+        </div>
+        <div class="mdt-group">
+          <select id="mdt-size">
+            <option value="2">2px</option>
+            <option value="4" selected>4px</option>
+            <option value="6">6px</option>
+            <option value="10">10px</option>
+          </select>
+          <button type="button" id="mdt-clear" class="mdt-btn">Limpar</button>
+        </div>
+      </div>
       {% if combate.mapas.all %}
         {% for mapa in combate.mapas.all %}
           <div class="mapa-wrapper">
@@ -366,6 +391,25 @@
       });
       poderSelect.dataset.boundStorage = '1';
     }
+      <style>
+        .mapa-draw-toolbar{
+          display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:8px 0 4px;
+          padding:6px 8px; background:#f7f7f7; border:1px solid #e1e1e1; border-radius:6px;
+        }
+        .mdt-group{display:flex; gap:4px; align-items:center;}
+        .mdt-btn{
+          padding:4px 8px; border:1px solid #ccc; border-radius:4px; background:#fff; cursor:pointer; font-size:12px;
+        }
+        .mdt-btn.active{background:#e8f0fe; border-color:#8ab4f8;}
+        .mdt-colors button{
+          width:20px; height:20px; border-radius:50%; border:1px solid #bbb; cursor:pointer; padding:0;
+        }
+        canvas.mapa-draw-layer,
+        canvas.mapa-draw-preview{
+          position:absolute; left:0; top:0; pointer-events:none; z-index:6;
+        }
+      </style>
+
     function restoreSkillAndTrait(personagemId){
       try {
         const perSel = document.getElementById('pericia_rolar');
@@ -826,6 +870,235 @@
     function ensureAllAreasMinScale(){
       document.querySelectorAll("[id^='mapa-area-']").forEach(ensureMinScaleForArea);
     }
+
+    // ====== Camada de desenho livre (local, sem persistir) ======
+    (function(){
+      const DRAW_COLORS = ['#d33','#1e88e5','#2e7d32','#f9a825','#000000','#ffffff'];
+      let currentMode = 'pen';
+      let currentColor = DRAW_COLORS[0];
+      let currentSize = 4;
+
+      function setActiveMode(btn){
+        document.querySelectorAll('.mapa-draw-toolbar .mdt-btn[data-draw-mode]').forEach(b=>b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+      }
+
+      function resizeCanvasPair(mapaArea, canvas, preview){
+        const img = mapaArea.querySelector('.mapa-img');
+        const scale = parseFloat(mapaArea.dataset.scale || '1') || 1;
+        const baseW = img ? (img.naturalWidth || img.clientWidth || mapaArea.clientWidth) : mapaArea.clientWidth;
+        const baseH = img ? (img.naturalHeight || img.clientHeight || mapaArea.clientHeight) : mapaArea.clientHeight;
+        [canvas, preview].forEach(cv => {
+          if (!cv) return;
+          cv.width = baseW;
+          cv.height = baseH;
+          cv.style.width = (baseW * scale) + 'px';
+          cv.style.height = (baseH * scale) + 'px';
+          cv.style.transformOrigin = 'top left';
+          cv.style.transform = `scale(${scale})`;
+        });
+      }
+
+      function ensureDrawLayer(mapaArea){
+        if (!mapaArea) return;
+        let canvas = mapaArea.querySelector('.mapa-draw-layer');
+        let preview = mapaArea.querySelector('.mapa-draw-preview');
+        if (!canvas) {
+          canvas = document.createElement('canvas');
+          canvas.className = 'mapa-draw-layer';
+          preview = document.createElement('canvas');
+          preview.className = 'mapa-draw-preview';
+          const holder = mapaArea.querySelector('.mapa-canvas') || mapaArea;
+          holder.appendChild(canvas);
+          holder.appendChild(preview);
+        }
+        resizeCanvasPair(mapaArea, canvas, preview);
+        bindDrawing(mapaArea, canvas, preview);
+      }
+
+      function toCoord(e, mapaArea){
+        const canvas = mapaArea.querySelector('.mapa-draw-layer');
+        const scale = parseFloat(mapaArea.dataset.scale || '1') || 1;
+        const rect = mapaArea.getBoundingClientRect();
+        return {
+          x: (e.clientX - rect.left + mapaArea.scrollLeft) / scale,
+          y: (e.clientY - rect.top + mapaArea.scrollTop) / scale,
+          canvas
+        };
+      }
+
+      function bindDrawing(mapaArea, canvas, preview){
+        if (!canvas || !preview || mapaArea.dataset.drawBound) return;
+        const ctx = canvas.getContext('2d');
+        const ctxPrev = preview.getContext('2d');
+        let drawing = false;
+        let start = {x:0, y:0};
+
+        function strokeLine(from, to, mode){
+          ctx.save();
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.lineWidth = currentSize;
+          if (mode === 'eraser') {
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.strokeStyle = 'rgba(0,0,0,1)';
+          } else {
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.strokeStyle = currentColor;
+          }
+          ctx.beginPath();
+          ctx.moveTo(from.x, from.y);
+          ctx.lineTo(to.x, to.y);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        function drawShape(shape, from, to){
+          ctxPrev.clearRect(0,0,preview.width,preview.height);
+          if (!shape) return;
+          const w = to.x - from.x;
+          const h = to.y - from.y;
+          ctxPrev.save();
+          ctxPrev.lineWidth = currentSize;
+          ctxPrev.strokeStyle = shape === 'eraser' ? '#000' : currentColor;
+          ctxPrev.setLineDash([5,3]);
+          ctxPrev.beginPath();
+          if (shape === 'rect') ctxPrev.rect(from.x, from.y, w, h);
+          else if (shape === 'circle') {
+            const r = Math.sqrt(w*w + h*h);
+            ctxPrev.arc(from.x, from.y, r, 0, Math.PI * 2);
+          }
+          ctxPrev.stroke();
+          ctxPrev.restore();
+        }
+
+        function commitShape(shape, from, to){
+          ctxPrev.clearRect(0,0,preview.width,preview.height);
+          const w = to.x - from.x;
+          const h = to.y - from.y;
+          ctx.save();
+          ctx.lineWidth = currentSize;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          if (shape === 'eraser') {
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.strokeStyle = '#000';
+          } else {
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.strokeStyle = currentColor;
+          }
+          ctx.beginPath();
+          if (shape === 'rect') ctx.rect(from.x, from.y, w, h);
+          else if (shape === 'circle') {
+            const r = Math.sqrt(w*w + h*h);
+            ctx.arc(from.x, from.y, r, 0, Math.PI * 2);
+          }
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        function onDown(e){
+          if (e.button !== 0) return; // only main button
+          if (e.target && e.target.closest && e.target.closest('.mapa-token')) return; // não interfere no arrasto de token
+          drawing = true;
+          start = toCoord(e, mapaArea);
+        }
+
+        function onMove(e){
+          if (!drawing) return;
+          const pos = toCoord(e, mapaArea);
+          if (currentMode === 'pen' || currentMode === 'eraser') {
+            strokeLine(start, pos, currentMode);
+            start = pos;
+          } else {
+            drawShape(currentMode, start, pos);
+          }
+        }
+
+        function onUp(e){
+          if (!drawing) return;
+          const pos = toCoord(e, mapaArea);
+          if (currentMode === 'pen' || currentMode === 'eraser') {
+            strokeLine(start, pos, currentMode);
+          } else {
+            commitShape(currentMode, start, pos);
+          }
+          drawing = false;
+        }
+
+        ['pointerdown','pointermove','pointerup','pointercancel','pointerleave'].forEach(ev => {
+          mapaArea.addEventListener(ev, function(evt){
+            if (ev === 'pointerdown') onDown(evt);
+            else if (ev === 'pointermove') onMove(evt);
+            else onUp(evt);
+          }, true);
+        });
+
+        mapaArea.dataset.drawBound = '1';
+      }
+
+      function ensureDrawLayersAll(){
+        document.querySelectorAll("[id^='mapa-area-']").forEach(ensureDrawLayer);
+      }
+
+      function updateDrawLayerSizes(){
+        document.querySelectorAll("[id^='mapa-area-']").forEach(mapaArea => {
+          const c = mapaArea.querySelector('.mapa-draw-layer');
+          const p = mapaArea.querySelector('.mapa-draw-preview');
+          if (c && p) resizeCanvasPair(mapaArea, c, p);
+        });
+      }
+      // Exposto para callbacks externos (zoom/pan)
+      window.updateDrawLayerSizes = updateDrawLayerSizes;
+      window.ensureDrawLayersAll = ensureDrawLayersAll;
+
+      function clearAllDrawings(){
+        document.querySelectorAll('.mapa-draw-layer').forEach(cv => cv.getContext('2d').clearRect(0,0,cv.width,cv.height));
+        document.querySelectorAll('.mapa-draw-preview').forEach(cv => cv.getContext('2d').clearRect(0,0,cv.width,cv.height));
+      }
+
+      function setupToolbar(){
+        const tb = document.querySelector('.mapa-draw-toolbar');
+        if (!tb || tb.dataset.bound) return;
+        const firstColor = tb.querySelector(`[data-draw-color="${currentColor}"]`) || tb.querySelector('[data-draw-color]');
+        if (firstColor) firstColor.classList.add('active');
+        tb.addEventListener('click', (e)=>{
+          const modeBtn = e.target.closest('[data-draw-mode]');
+          const colorBtn = e.target.closest('[data-draw-color]');
+          if (modeBtn){
+            currentMode = modeBtn.dataset.drawMode;
+            setActiveMode(modeBtn);
+          }
+          if (colorBtn){
+            currentColor = colorBtn.dataset.drawColor;
+            tb.querySelectorAll('[data-draw-color]').forEach(b=>b.classList.remove('active'));
+            colorBtn.classList.add('active');
+          }
+        });
+        const sizeSel = tb.querySelector('#mdt-size');
+        if (sizeSel) sizeSel.addEventListener('change', ()=>{ currentSize = parseInt(sizeSel.value, 10) || 4; });
+        const clearBtn = tb.querySelector('#mdt-clear');
+        if (clearBtn) clearBtn.addEventListener('click', clearAllDrawings);
+        tb.dataset.bound = '1';
+      }
+
+      window.setupMapDrawToolbar = setupToolbar;
+
+      document.addEventListener('DOMContentLoaded', function(){
+        setupToolbar();
+        ensureDrawLayersAll();
+        updateDrawLayerSizes();
+      });
+
+      window.addEventListener('resize', updateDrawLayerSizes);
+
+      // Hook nas funções existentes de resize/zoom
+      const prevEnsure = window.ensureAllAreasMinScale;
+      window.ensureAllAreasMinScale = function(){
+        if (typeof prevEnsure === 'function') prevEnsure();
+        updateDrawLayerSizes();
+      };
+    })();
     // ====== Persistência do tamanho dos tokens (Ctrl + Scroll) ======
     function tokenSizeKey(posicaoId){ return `combate:${combateId}:token:${posicaoId}:size`; }
     function persistTokenSize(tokenEl){
@@ -945,9 +1218,10 @@
     }
   async function refreshSelectors(selectors) {
       try {
-        // Guarda posição global de scroll para evitar "pulos" ao fim da página
+        // Guarda posição global de scroll para evitar "pulos" após refresh
         const prevDocHeight = document.body.scrollHeight;
-        const prevBottomGap = Math.max(0, prevDocHeight - (window.scrollY + window.innerHeight));
+        const prevScrollY = window.scrollY;
+        const prevBottomGap = Math.max(0, prevDocHeight - (prevScrollY + window.innerHeight));
         const wasDocNearBottom = prevBottomGap < 32; // 32px do fim consideramos "no fundo"
         // Garante que a preferência atual da grade não se perca durante o refresh
         persistGridState();
@@ -1048,6 +1322,8 @@
   // Rebind e atualizar grade
   setupGridControls();
   updateAllGrids();
+  if (window.setupMapDrawToolbar) window.setupMapDrawToolbar();
+  if (window.ensureDrawLayersAll) window.ensureDrawLayersAll();
   // Após re-render, restaura tamanhos salvos dos tokens
   try { restoreTokenSizes(document); } catch(_) {}
   // Rebind dos formulários para evitar navegação
@@ -1073,12 +1349,16 @@
       }
     }
   } catch(_) {}
-        // Restaura posição de scroll global se estava próximo ao fim
+        // Restaura posição de scroll global
         try {
           const newDocHeight = document.body.scrollHeight;
-          const targetGap = wasDocNearBottom ? 0 : prevBottomGap;
-          const targetY = Math.max(0, newDocHeight - window.innerHeight - targetGap);
-          window.scrollTo({ top: targetY, behavior: 'auto' });
+          if (wasDocNearBottom) {
+            const targetY = Math.max(0, newDocHeight - window.innerHeight);
+            window.scrollTo({ top: targetY, behavior: 'auto' });
+          } else {
+            const maxY = Math.max(0, newDocHeight - window.innerHeight);
+            window.scrollTo({ top: Math.min(prevScrollY, maxY), behavior: 'auto' });
+          }
         } catch(_) {}
       } catch (err) {
         console.warn('Refresh parcial falhou, mantendo página:', err);
@@ -1181,6 +1461,7 @@
           canvas.style.minHeight = (baseH * newScale) + 'px';
           // Atualiza grade com novo zoom
           updateGridForArea(mapaArea);
+          if (window.updateDrawLayerSizes) window.updateDrawLayerSizes();
 
           // Preserve focal point under cursor if event provided
           if (pivotEvent) {
@@ -1997,6 +2278,7 @@
               canvas.style.minWidth = (baseW * newScale) + 'px';
               canvas.style.minHeight = (baseH * newScale) + 'px';
               if (window.updateGridForArea) { window.updateGridForArea(mapaArea); }
+              if (window.updateDrawLayerSizes) window.updateDrawLayerSizes();
             };
             setScaleLocal(scale);
           });
@@ -2063,6 +2345,7 @@
           canvas.style.minWidth = (baseW * scale) + 'px';
           canvas.style.minHeight = (baseH * scale) + 'px';
           mapaArea.dataset.scale = String(scale);
+          if (window.updateDrawLayerSizes) window.updateDrawLayerSizes();
           const sx = mapaArea.scrollLeft;
           const sy = mapaArea.scrollTop;
           const nx = (sx + pointerX) * (scale / oldScale) - pointerX;
