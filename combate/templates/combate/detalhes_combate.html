@@ -897,13 +897,14 @@
         const img = mapaArea.querySelector('.mapa-img');
         const holder = mapaArea.querySelector('.mapa-canvas') || mapaArea;
         const rect = holder.getBoundingClientRect();
-        const baseW = holder.scrollWidth || rect.width || mapaArea.clientWidth;
-        const baseH = holder.scrollHeight || rect.height || mapaArea.clientHeight;
+        const scale = parseFloat(mapaArea.dataset.scale || '1') || 1;
+        const baseW = (img && img.naturalWidth) ? img.naturalWidth : ((rect.width || mapaArea.clientWidth) / scale);
+        const baseH = (img && img.naturalHeight) ? img.naturalHeight : ((rect.height || mapaArea.clientHeight) / scale);
         [canvas, preview].forEach(cv => {
           if (!cv) return;
           cv.width = baseW;
           cv.height = baseH;
-          cv.style.width = baseW + 'px';
+          cv.style.width = baseW + 'px'; // parent transform handles scale
           cv.style.height = baseH + 'px';
           cv.style.transformOrigin = 'top left';
           cv.style.transform = 'none';
@@ -933,9 +934,10 @@
       function toCoord(e, mapaArea){
         const canvas = mapaArea.querySelector('.mapa-draw-layer');
         const rect = canvas ? canvas.getBoundingClientRect() : mapaArea.getBoundingClientRect();
+        const scale = parseFloat(mapaArea.dataset.scale || '1') || 1;
         return {
-          x: (e.clientX - rect.left + mapaArea.scrollLeft),
-          y: (e.clientY - rect.top + mapaArea.scrollTop),
+          x: (e.clientX - rect.left + mapaArea.scrollLeft) / scale,
+          y: (e.clientY - rect.top + mapaArea.scrollTop) / scale,
           canvas
         };
       }
