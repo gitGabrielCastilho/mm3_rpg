@@ -400,13 +400,13 @@
         .mdt-btn{
           padding:4px 8px; border:1px solid #ccc; border-radius:4px; background:#fff; cursor:pointer; font-size:12px;
         }
-        .mdt-btn.active{background:#e8f0fe; border-color:#8ab4f8;}
+        .mdt-btn.active{background:#0d6efd; border-color:#0d6efd; color:#fff;}
         .mdt-colors button{
           width:20px; height:20px; border-radius:50%; border:1px solid #bbb; cursor:pointer; padding:0;
         }
         canvas.mapa-draw-layer,
         canvas.mapa-draw-preview{
-          position:absolute; left:0; top:0; pointer-events:auto; z-index:8; touch-action:none;
+          position:absolute; left:0; top:0; pointer-events:auto; z-index:50; touch-action:none;
         }
         .mapa-draw-layer{ cursor: crosshair; }
         .mapa-canvas, .mapa-img, canvas.mapa-draw-layer, canvas.mapa-draw-preview { user-select:none; }
@@ -868,6 +868,7 @@
         canvas.style.minWidth = (baseW * cur) + 'px';
         canvas.style.minHeight = (baseH * cur) + 'px';
         updateGridForArea(mapaArea);
+        if (window.updateDrawLayerSizes) window.updateDrawLayerSizes();
       }
     }
     function ensureAllAreasMinScale(){
@@ -894,11 +895,10 @@
 
       function resizeCanvasPair(mapaArea, canvas, preview){
         const img = mapaArea.querySelector('.mapa-img');
-        const scale = parseFloat(mapaArea.dataset.scale || '1') || 1;
         const holder = mapaArea.querySelector('.mapa-canvas') || mapaArea;
         const rect = holder.getBoundingClientRect();
-        const baseW = img ? (img.naturalWidth || img.clientWidth || rect.width || mapaArea.clientWidth) : (rect.width || mapaArea.clientWidth);
-        const baseH = img ? (img.naturalHeight || img.clientHeight || rect.height || mapaArea.clientHeight) : (rect.height || mapaArea.clientHeight);
+        const baseW = holder.scrollWidth || rect.width || mapaArea.clientWidth;
+        const baseH = holder.scrollHeight || rect.height || mapaArea.clientHeight;
         [canvas, preview].forEach(cv => {
           if (!cv) return;
           cv.width = baseW;
@@ -933,10 +933,9 @@
       function toCoord(e, mapaArea){
         const canvas = mapaArea.querySelector('.mapa-draw-layer');
         const rect = canvas ? canvas.getBoundingClientRect() : mapaArea.getBoundingClientRect();
-        const scale = parseFloat(mapaArea.dataset.scale || '1') || 1;
         return {
-          x: (e.clientX - rect.left + mapaArea.scrollLeft) / scale,
-          y: (e.clientY - rect.top + mapaArea.scrollTop) / scale,
+          x: (e.clientX - rect.left + mapaArea.scrollLeft),
+          y: (e.clientY - rect.top + mapaArea.scrollTop),
           canvas
         };
       }
@@ -1020,6 +1019,8 @@
           start = toCoord(e, mapaArea);
           mapaArea.dataset.drawing = '1';
           canvas.setPointerCapture(e.pointerId);
+          // desenha um ponto imediato para feedback
+          strokeLine(start, start, currentMode);
         }
 
         function onMove(e){
