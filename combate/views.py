@@ -249,6 +249,15 @@ def poderes_personagem_ajax(request):
         # Não revelar poderes de outros personagens para jogadores
         return JsonResponse({'poderes': []})
 
+    # Garante que poderes de itens equipados estejam materializados no personagem
+    # mesmo que o inventário tenha sido atualizado fora dos formulários (admin/import/etc.).
+    try:
+        inv = getattr(personagem, 'inventario', None)
+        if inv:
+            inv.sync_item_powers()
+    except Exception:
+        logger.warning("[poderes_personagem_ajax] sync_item_powers falhou", exc_info=True)
+
     # Agrupa poderes por nome para evitar duplicatas quando estão encadeados (ligados)
     # Regra: com a nova validação, somente poderes com MESMO nome podem estar ligados.
     # Inclui item_origem nos poderes e também nos ligados para evitar N+1
