@@ -406,7 +406,7 @@
         }
         canvas.mapa-draw-layer,
         canvas.mapa-draw-preview{
-          position:absolute; left:0; top:0; pointer-events:auto; z-index:6;
+          position:absolute; left:0; top:0; pointer-events:auto; z-index:8;
         }
       </style>
 
@@ -886,8 +886,10 @@
       function resizeCanvasPair(mapaArea, canvas, preview){
         const img = mapaArea.querySelector('.mapa-img');
         const scale = parseFloat(mapaArea.dataset.scale || '1') || 1;
-        const baseW = img ? (img.naturalWidth || img.clientWidth || mapaArea.clientWidth) : mapaArea.clientWidth;
-        const baseH = img ? (img.naturalHeight || img.clientHeight || mapaArea.clientHeight) : mapaArea.clientHeight;
+        const holder = mapaArea.querySelector('.mapa-canvas') || mapaArea;
+        const rect = holder.getBoundingClientRect();
+        const baseW = img ? (img.naturalWidth || img.clientWidth || rect.width || mapaArea.clientWidth) : (rect.width || mapaArea.clientWidth);
+        const baseH = img ? (img.naturalHeight || img.clientHeight || rect.height || mapaArea.clientHeight) : (rect.height || mapaArea.clientHeight);
         [canvas, preview].forEach(cv => {
           if (!cv) return;
           cv.width = baseW;
@@ -1101,6 +1103,10 @@
         setupToolbar();
         ensureDrawLayersAll();
         updateDrawLayerSizes();
+        document.querySelectorAll('.mapa-img').forEach(img => {
+          if (img.complete) { ensureDrawLayersAll(); updateDrawLayerSizes(); return; }
+          img.addEventListener('load', function(){ ensureDrawLayersAll(); updateDrawLayerSizes(); }, { once:true });
+        });
       });
 
       window.addEventListener('resize', updateDrawLayerSizes);
