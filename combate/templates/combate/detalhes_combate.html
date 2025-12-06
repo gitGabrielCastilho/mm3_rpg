@@ -1349,15 +1349,12 @@
       }
     }
   } catch(_) {}
-        // Restaura posição de scroll global
+        // Só ajusta scroll se o usuário estava perto do fim; caso contrário, não toca no scroll
         try {
-          const newDocHeight = document.body.scrollHeight;
           if (wasDocNearBottom) {
+            const newDocHeight = document.body.scrollHeight;
             const targetY = Math.max(0, newDocHeight - window.innerHeight);
             window.scrollTo({ top: targetY, behavior: 'auto' });
-          } else {
-            const maxY = Math.max(0, newDocHeight - window.innerHeight);
-            window.scrollTo({ top: Math.min(prevScrollY, maxY), behavior: 'auto' });
           }
         } catch(_) {}
       } catch (err) {
