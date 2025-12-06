@@ -332,21 +332,17 @@ def participantes_json(request, combate_id):
         .select_related('personagem')
         .order_by('-iniciativa')
     )
-    # Gera display_nome (mesma lógica de duplicados usada em detalhes_combate)
-    counts = {}
     data = []
     for p in participantes:
-        pid = p.personagem_id
-        counts[pid] = counts.get(pid, 0) + 1
-        if counts[pid] > 1:
-            display_nome = f"{p.personagem.nome} ({counts[pid]})"
-        else:
-            display_nome = p.personagem.nome
+        idx = getattr(p, 'nome_ordem', 1) or 1
+        base_nome = p.personagem.nome or "?"
+        display_nome = f"{base_nome} ({idx})" if idx > 1 else base_nome
         data.append({
             'id': p.id,
             'personagem_id': p.personagem_id,
             'nome': display_nome,
             'iniciativa': p.iniciativa,
+            'nome_ordem': idx,
         })
     return JsonResponse({'participantes': data})
 
