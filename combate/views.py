@@ -430,12 +430,16 @@ def detalhes_combate(request, combate_id):
     ]
 
     # Gera nomes exibidos com índice persistente salvo em nome_ordem
+    name_map = {}
+    token_map = {}
     for p in participantes:
         idx = getattr(p, 'nome_ordem', 1) or 1
         base_nome = p.personagem.nome or "?"
         p.display_nome = f"{base_nome} ({idx})" if idx > 1 else base_nome
         iniciais = (base_nome[:2] if len(base_nome) >= 2 else base_nome).upper()
         p.token_label = f"{iniciais}({idx})" if idx > 1 else iniciais
+        name_map[p.id] = p.display_nome
+        token_map[p.id] = p.token_label
 
     # Label por POSIÇÃO (token) para diferenciar múltiplos tokens do MESMO participante
     # (ex.: mesmo GM com dois tokens). Ordenação determinística: participante_id, posicao.id.
@@ -445,7 +449,7 @@ def detalhes_combate(request, combate_id):
         part_id = pos.participante_id
         pos_counts[part_id] = pos_counts.get(part_id, 0) + 1
         idx = pos_counts[part_id]
-        base_nome = getattr(pos.participante, 'display_nome', None) or pos.participante.personagem.nome
+        base_nome = name_map.get(part_id) or getattr(pos.participante, 'display_nome', None) or pos.participante.personagem.nome
         # First token of a participant uses the participant's display (already includes nome_ordem when >1)
         if idx == 1:
             pos.display_label = base_nome
