@@ -10,7 +10,7 @@ import random
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from .models import Mapa, PosicaoPersonagem, EfeitoConcentracao
-from django.db.models import Q, F
+from django.db.models import Q, F, Max
 from .forms import MapaForm, AtaqueForm
 from salas.models import Sala
 import json
@@ -364,7 +364,8 @@ def criar_combate(request, sala_id):
         ordem = []
         for personagem in personagens:
             iniciativa = random.randint(1, 20) + personagem.prontidao
-            p = Participante.objects.create(personagem=personagem, combate=combate, iniciativa=iniciativa)
+            max_idx = Participante.objects.filter(combate=combate, personagem=personagem).aggregate(Max('nome_ordem')).get('nome_ordem__max') or 0
+            p = Participante.objects.create(personagem=personagem, combate=combate, iniciativa=iniciativa, nome_ordem=max_idx + 1)
             ordem.append((p, iniciativa))
 
         # Notifica todos os participantes sobre o novo combate
@@ -428,33 +429,22 @@ def detalhes_combate(request, combate_id):
         'forca', 'vigor', 'destreza', 'agilidade', 'luta', 'inteligencia', 'prontidao', 'presenca'
     ]
 
-    # Gera nomes exibidos com numeração para participantes duplicados
-    # e um label curto específico para o token no mapa (ex.: AB, AB(2)).
-    counts = {}
+    # Gera nomes exibidos com índice persistente salvo em nome_ordem
     for p in participantes:
-        pid = p.personagem_id
-        counts[pid] = counts.get(pid, 0) + 1
-        if counts[pid] > 1:
-            p.display_nome = f"{p.personagem.nome} ({counts[pid]})"
-        else:
-            p.display_nome = p.personagem.nome
-        # Label curto para o token: iniciais do nome + sufixo de índice, ex.: AB(2)
+        idx = getattr(p, 'nome_ordem', 1) or 1
         base_nome = p.personagem.nome or "?"
+        p.display_nome = f"{base_nome} ({idx})" if idx > 1 else base_nome
         iniciais = (base_nome[:2] if len(base_nome) >= 2 else base_nome).upper()
-        if counts[pid] > 1:
-            p.token_label = f"{iniciais}({counts[pid]})"
-        else:
-            p.token_label = iniciais
+        p.token_label = f"{iniciais}({idx})" if idx > 1 else iniciais
 
-    # Gera label por POSIÇÃO (token) para diferenciar múltiplos tokens
-    # do mesmo personagem no mapa, independente de quantos participantes existam.
-    # Deterministic ordering per personagem: stable indices across renders
+    # Label por POSIÇÃO (token) para diferenciar múltiplos tokens do MESMO participante
+    # (ex.: mesmo GM com dois tokens). Ordenação determinística: participante_id, posicao.id.
     pos_counts = {}
-    sorted_pos = sorted(posicoes, key=lambda pp: (pp.participante.personagem_id or 0, pp.id or 0))
+    sorted_pos = sorted(posicoes, key=lambda pp: (pp.participante_id or 0, pp.id or 0))
     for pos in sorted_pos:
-        pid = pos.participante.personagem_id
-        pos_counts[pid] = pos_counts.get(pid, 0) + 1
-        idx = pos_counts[pid]
+        part_id = pos.participante_id
+        pos_counts[part_id] = pos_counts.get(part_id, 0) + 1
+        idx = pos_counts[part_id]
         base_nome = getattr(pos.participante, 'display_nome', None) or pos.participante.personagem.nome
         pos.display_label = f"{base_nome} ({idx})" if idx > 1 else base_nome
 
@@ -2674,7 +2664,8 @@ def adicionar_npc_participante(request, combate_id):
     npc_id = request.POST.get('npc_id')
     npc = get_object_or_404(Personagem, id=npc_id, usuario=request.user, is_npc=True)
     iniciativa = random.randint(1, 20) + npc.prontidao
-    participante = Participante.objects.create(personagem=npc, combate=combate, iniciativa=iniciativa)
+    max_idx = Participante.objects.filter(combate=combate, personagem=npc).aggregate(Max('nome_ordem')).get('nome_ordem__max') or 0
+    participante = Participante.objects.create(personagem=npc, combate=combate, iniciativa=iniciativa, nome_ordem=max_idx + 1)
     mapa = combate.mapas.first()
     if mapa:
         PosicaoPersonagem.objects.create(mapa=mapa, participante=participante, x=10, y=10)
@@ -2736,7 +2727,8 @@ def adicionar_participante(request, combate_id):
     if Participante.objects.filter(combate=combate, personagem=personagem).exists():
         return redirect('detalhes_combate', combate_id=combate_id)
     iniciativa = random.randint(1, 20) + personagem.prontidao
-    participante = Participante.objects.create(personagem=personagem, combate=combate, iniciativa=iniciativa)
+    max_idx = Participante.objects.filter(combate=combate, personagem=personagem).aggregate(Max('nome_ordem')).get('nome_ordem__max') or 0
+    participante = Participante.objects.create(personagem=personagem, combate=combate, iniciativa=iniciativa, nome_ordem=max_idx + 1)
     # Cria token inicial em todos os mapas
     for mapa in combate.mapas.all():
         if not PosicaoPersonagem.objects.filter(mapa=mapa, participante=participante).exists():

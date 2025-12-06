@@ -13,6 +13,7 @@ class Combate(models.Model):
 class Participante(models.Model):
     personagem = models.ForeignKey(Personagem, on_delete=models.CASCADE)
     combate = models.ForeignKey(Combate, on_delete=models.CASCADE)
+    nome_ordem = models.PositiveIntegerField(default=1)
     iniciativa = models.IntegerField()
     dano = models.IntegerField(default=0)
     aflicao = models.IntegerField(default=0)
