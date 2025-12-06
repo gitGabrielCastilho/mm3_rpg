@@ -446,7 +446,11 @@ def detalhes_combate(request, combate_id):
         pos_counts[part_id] = pos_counts.get(part_id, 0) + 1
         idx = pos_counts[part_id]
         base_nome = getattr(pos.participante, 'display_nome', None) or pos.participante.personagem.nome
-        pos.display_label = f"{base_nome} ({idx})" if idx > 1 else base_nome
+        # First token of a participant uses the participant's display (already includes nome_ordem when >1)
+        if idx == 1:
+            pos.display_label = base_nome
+        else:
+            pos.display_label = f"{base_nome} ({idx})"
 
     personagens_no_combate_ids = list(participantes.values_list('personagem_id', flat=True))
     if hasattr(request.user, 'perfilusuario') and request.user.perfilusuario.sala_atual and request.user.perfilusuario.sala_atual.game_master == request.user:
