@@ -408,6 +408,7 @@
         canvas.mapa-draw-preview{
           position:absolute; left:0; top:0; pointer-events:auto; z-index:8; touch-action:none;
         }
+        .mapa-draw-layer{ cursor: crosshair; }
         .mapa-canvas, .mapa-img, canvas.mapa-draw-layer, canvas.mapa-draw-preview { user-select:none; }
         .mapa-canvas { position: relative; }
       </style>
@@ -881,8 +882,14 @@
       let currentSize = 4;
 
       function setActiveMode(btn){
-        document.querySelectorAll('.mapa-draw-toolbar .mdt-btn[data-draw-mode]').forEach(b=>b.classList.remove('active'));
-        if (btn) btn.classList.add('active');
+        document.querySelectorAll('.mapa-draw-toolbar .mdt-btn[data-draw-mode]').forEach(b=>{
+          b.classList.remove('active');
+          b.setAttribute('aria-pressed','false');
+        });
+        if (btn) {
+          btn.classList.add('active');
+          btn.setAttribute('aria-pressed','true');
+        }
       }
 
       function resizeCanvasPair(mapaArea, canvas, preview){
@@ -896,10 +903,10 @@
           if (!cv) return;
           cv.width = baseW;
           cv.height = baseH;
-          cv.style.width = (baseW * scale) + 'px';
-          cv.style.height = (baseH * scale) + 'px';
+          cv.style.width = baseW + 'px';
+          cv.style.height = baseH + 'px';
           cv.style.transformOrigin = 'top left';
-          cv.style.transform = `scale(${scale})`;
+          cv.style.transform = 'none';
         });
       }
 
@@ -925,8 +932,8 @@
 
       function toCoord(e, mapaArea){
         const canvas = mapaArea.querySelector('.mapa-draw-layer');
+        const rect = canvas ? canvas.getBoundingClientRect() : mapaArea.getBoundingClientRect();
         const scale = parseFloat(mapaArea.dataset.scale || '1') || 1;
-        const rect = mapaArea.getBoundingClientRect();
         return {
           x: (e.clientX - rect.left + mapaArea.scrollLeft) / scale,
           y: (e.clientY - rect.top + mapaArea.scrollTop) / scale,
@@ -1012,6 +1019,7 @@
           drawing = true;
           start = toCoord(e, mapaArea);
           mapaArea.dataset.drawing = '1';
+          canvas.setPointerCapture(e.pointerId);
         }
 
         function onMove(e){
@@ -1039,6 +1047,7 @@
           }
           drawing = false;
           delete mapaArea.dataset.drawing;
+          try { canvas.releasePointerCapture(e.pointerId); } catch(_){ }
         }
 
         [canvas, preview].forEach(layer => {
@@ -1082,6 +1091,7 @@
         if (!tb || tb.dataset.bound) return;
         const firstColor = tb.querySelector(`[data-draw-color="${currentColor}"]`) || tb.querySelector('[data-draw-color]');
         if (firstColor) firstColor.classList.add('active');
+        setActiveMode(tb.querySelector('[data-draw-mode="pen"]'));
         tb.addEventListener('click', (e)=>{
           const modeBtn = e.target.closest('[data-draw-mode]');
           const colorBtn = e.target.closest('[data-draw-color]');
@@ -1121,6 +1131,7 @@
       window.ensureAllAreasMinScale = function(){
         if (typeof prevEnsure === 'function') prevEnsure();
         updateDrawLayerSizes();
+        ensureDrawLayersAll();
       };
     })();
     // ====== Persistência do tamanho dos tokens (Ctrl + Scroll) ======
