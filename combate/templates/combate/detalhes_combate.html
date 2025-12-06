@@ -945,6 +945,10 @@
     }
   async function refreshSelectors(selectors) {
       try {
+        // Guarda posição global de scroll para evitar "pulos" ao fim da página
+        const prevDocHeight = document.body.scrollHeight;
+        const prevBottomGap = Math.max(0, prevDocHeight - (window.scrollY + window.innerHeight));
+        const wasDocNearBottom = prevBottomGap < 32; // 32px do fim consideramos "no fundo"
         // Garante que a preferência atual da grade não se perca durante o refresh
         persistGridState();
         // Salva estados atuais do mapa (zoom/scroll) para restaurar após troca
@@ -1069,6 +1073,13 @@
       }
     }
   } catch(_) {}
+        // Restaura posição de scroll global se estava próximo ao fim
+        try {
+          const newDocHeight = document.body.scrollHeight;
+          const targetGap = wasDocNearBottom ? 0 : prevBottomGap;
+          const targetY = Math.max(0, newDocHeight - window.innerHeight - targetGap);
+          window.scrollTo({ top: targetY, behavior: 'auto' });
+        } catch(_) {}
       } catch (err) {
         console.warn('Refresh parcial falhou, mantendo página:', err);
       }
