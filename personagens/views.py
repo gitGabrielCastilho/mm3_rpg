@@ -417,6 +417,7 @@ def editar_personagem(request, personagem_id):
         return redirect('listar_salas')
     inventario, created = Inventario.objects.get_or_create(personagem=personagem)
     if request.method == 'POST':
+        poderes_queryset = personagem.poderes.filter(de_item=False).order_by('pk')
         # Garante que ids dos poderes existentes estejam presentes no POST (workaround de template/JS)
         data = request.POST.copy() if not isinstance(request.POST, QueryDict) else request.POST.copy()
         try:
@@ -424,7 +425,7 @@ def editar_personagem(request, personagem_id):
         except Exception:
             initial_forms = 0
         # Usa ordem determinística por pk
-        existing_pks = list(personagem.poderes.order_by('pk').values_list('pk', flat=True))
+        existing_pks = list(poderes_queryset.values_list('pk', flat=True))
         for i in range(min(initial_forms, len(existing_pks))):
             key = f'poder_set-{i}-id'
             if not data.get(key):
@@ -432,7 +433,13 @@ def editar_personagem(request, personagem_id):
 
         form = PersonagemForm(data, request.FILES, instance=personagem)
         inventario_form = InventarioForm(data, instance=inventario)
-        formset = PoderFormSet(data, request.FILES, instance=personagem, prefix='poder_set')
+        formset = PoderFormSet(
+            data,
+            request.FILES,
+            instance=personagem,
+            prefix='poder_set',
+            queryset=poderes_queryset,
+        )
         if form.is_valid() and inventario_form.is_valid() and formset.is_valid():
             personagem = form.save(commit=False)
             personagem.sala = sala_atual
@@ -565,10 +572,15 @@ def editar_personagem(request, personagem_id):
                 else:
                     messages.error(request, f'Erros ao salvar: {total_err}. Verifique os destaques no formulário abaixo.')
     else:
+        poderes_queryset = personagem.poderes.filter(de_item=False).order_by('pk')
         # GET: prepara formulários preenchidos
         form = PersonagemForm(instance=personagem)
         inventario_form = InventarioForm(instance=inventario)
-        formset = PoderFormSet(instance=personagem, prefix='poder_set')
+        formset = PoderFormSet(
+            instance=personagem,
+            prefix='poder_set',
+            queryset=poderes_queryset,
+        )
 
     pericias = _ordered_pericias_for_form(form)
     meio = len(pericias) // 2 + len(pericias) % 2
