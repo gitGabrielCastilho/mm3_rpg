@@ -406,7 +406,7 @@
         }
         canvas.mapa-draw-layer,
         canvas.mapa-draw-preview{
-          position:absolute; left:0; top:0; pointer-events:none; z-index:6;
+          position:absolute; left:0; top:0; pointer-events:auto; z-index:6;
         }
       </style>
 
@@ -904,6 +904,9 @@
         let canvas = mapaArea.querySelector('.mapa-draw-layer');
         let preview = mapaArea.querySelector('.mapa-draw-preview');
         if (!canvas) {
+          const overlay = mapaArea.querySelector('.mapa-draw-layer');
+          const overlayPrev = mapaArea.querySelector('.mapa-draw-preview');
+          if (overlay && overlayPrev) resizeCanvasPair(mapaArea, overlay, overlayPrev);
           canvas = document.createElement('canvas');
           canvas.className = 'mapa-draw-layer';
           preview = document.createElement('canvas');
@@ -1000,12 +1003,17 @@
         function onDown(e){
           if (e.button !== 0) return; // only main button
           if (e.target && e.target.closest && e.target.closest('.mapa-token')) return; // não interfere no arrasto de token
+          e.preventDefault();
+          e.stopPropagation();
           drawing = true;
           start = toCoord(e, mapaArea);
+          mapaArea.dataset.drawing = '1';
         }
 
         function onMove(e){
           if (!drawing) return;
+          e.preventDefault();
+          e.stopPropagation();
           const pos = toCoord(e, mapaArea);
           if (currentMode === 'pen' || currentMode === 'eraser') {
             strokeLine(start, pos, currentMode);
@@ -1017,6 +1025,8 @@
 
         function onUp(e){
           if (!drawing) return;
+          e.preventDefault();
+          e.stopPropagation();
           const pos = toCoord(e, mapaArea);
           if (currentMode === 'pen' || currentMode === 'eraser') {
             strokeLine(start, pos, currentMode);
@@ -1024,14 +1034,17 @@
             commitShape(currentMode, start, pos);
           }
           drawing = false;
+          delete mapaArea.dataset.drawing;
         }
 
-        ['pointerdown','pointermove','pointerup','pointercancel','pointerleave'].forEach(ev => {
-          mapaArea.addEventListener(ev, function(evt){
+        [canvas, preview].forEach(layer => {
+          ['pointerdown','pointermove','pointerup','pointercancel','pointerleave'].forEach(ev => {
+            layer.addEventListener(ev, function(evt){
             if (ev === 'pointerdown') onDown(evt);
             else if (ev === 'pointermove') onMove(evt);
             else onUp(evt);
-          }, true);
+            }, true);
+          });
         });
 
         mapaArea.dataset.drawBound = '1';
@@ -1435,6 +1448,8 @@
           const canvas = mapaArea.querySelector('.mapa-canvas');
           const img = canvas ? canvas.querySelector('.mapa-img') : null;
           if (!canvas || !img) return;
+          const overlay = mapaArea.querySelector('.mapa-draw-layer');
+          const overlayPrev = mapaArea.querySelector('.mapa-draw-preview');
           const oldScale = parseFloat(mapaArea.dataset.scale || '1');
           const rect = canvas.getBoundingClientRect();
           // Base (natural) size
@@ -1456,6 +1471,7 @@
           canvas.style.minHeight = (baseH * newScale) + 'px';
           // Atualiza grade com novo zoom
           updateGridForArea(mapaArea);
+          if (overlay && overlayPrev) resizeCanvasPair(mapaArea, overlay, overlayPrev);
           if (window.updateDrawLayerSizes) window.updateDrawLayerSizes();
 
           // Preserve focal point under cursor if event provided
@@ -1554,6 +1570,7 @@
             window.removeEventListener('mouseup', endPan, true);
           }
           mapaArea.addEventListener('mousedown', function(ev){
+            if (mapaArea.dataset.drawing === '1') return; // não pan enquanto desenhando
             const isMiddle = ev.button === 1;
             const isSpaceDrag = ev.button === 0 && window._mapSpacePressed;
             if (!isMiddle && !isSpaceDrag) return;
@@ -2306,6 +2323,7 @@
           function onMove(ev){ if (!panning) return; const dx = ev.clientX - startX; const dy = ev.clientY - startY; mapaArea.scrollLeft = startL - dx; mapaArea.scrollTop = startT - dy; clampScrollToBounds(); }
           function endPan(){ if (!panning) return; panning = false; mapaArea.classList.remove('panning'); window.removeEventListener('mousemove', onMove, true); window.removeEventListener('mouseup', endPan, true); }
           mapaArea.addEventListener('mousedown', function(ev){ const isMiddle = ev.button === 1; const isSpaceDrag = ev.button === 0 && window._mapSpacePressed; if (!isMiddle && !isSpaceDrag) return; ev.preventDefault(); ev.stopPropagation(); panning = true; startX = ev.clientX; startY = ev.clientY; startL = mapaArea.scrollLeft; startT = mapaArea.scrollTop; mapaArea.classList.add('panning'); window.addEventListener('mousemove', onMove, true); window.addEventListener('mouseup', endPan, true); }, { capture:true });
+          mapaArea.addEventListener('mousedown', function(ev){ if (mapaArea.dataset.drawing === '1') { ev.stopPropagation(); return; } }, { capture:true });
           mapaArea.addEventListener('dragstart', function(ev){ if (window._mapSpacePressed) { ev.preventDefault(); ev.stopImmediatePropagation(); } }, true);
           mapaArea.dataset.panBound = '1';
         }
