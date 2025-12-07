@@ -1053,11 +1053,16 @@
         }
 
         function onDown(e){
+          console.log('onDown triggered', e.target, e.target.className);
           if (e.button !== 0) return; // only main button
           // Check if clicking on a token - if so, ignore and let token drag happen
           const target = e.target;
-          if (target && target.closest && target.closest('.mapa-token')) return;
+          if (target && target.closest && target.closest('.mapa-token')) {
+            console.log('Click on token, ignoring');
+            return;
+          }
           
+          console.log('Starting drawing', currentMode, currentColor);
           e.preventDefault();
           e.stopPropagation();
           drawing = true;
