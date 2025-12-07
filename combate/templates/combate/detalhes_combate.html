@@ -955,10 +955,6 @@
         if (!mapaArea) return;
         let canvas = mapaArea.querySelector('.mapa-draw-layer');
         let preview = mapaArea.querySelector('.mapa-draw-preview');
-        
-        // Initially set pointer-events to none so tokens can be dragged
-        if (canvas) canvas.style.pointerEvents = 'none';
-        if (preview) preview.style.pointerEvents = 'none';
         if (!canvas) {
           const overlay = mapaArea.querySelector('.mapa-draw-layer');
           const overlayPrev = mapaArea.querySelector('.mapa-draw-preview');
@@ -1153,27 +1149,18 @@
         const savedModeBtn = tb.querySelector(`[data-draw-mode="${currentMode}"]`);
         setActiveMode(savedModeBtn || tb.querySelector('[data-draw-mode="pen"]'));
         
-        // Enable canvas drawing when user interacts with toolbar
-        function enableDrawing() {
-          document.querySelectorAll('.mapa-draw-layer, .mapa-draw-preview').forEach(cv => {
-            cv.style.pointerEvents = 'auto';
-          });
-        }
-        
         tb.addEventListener('click', (e)=>{
           const modeBtn = e.target.closest('[data-draw-mode]');
           const colorBtn = e.target.closest('[data-draw-color]');
           if (modeBtn){
             currentMode = modeBtn.dataset.drawMode;
             setActiveMode(modeBtn);
-            enableDrawing(); // Enable canvas when mode is selected
             try { localStorage.setItem(DRAW_MODE_KEY, currentMode); } catch(_) {}
           }
           if (colorBtn){
             currentColor = colorBtn.dataset.drawColor;
             tb.querySelectorAll('[data-draw-color]').forEach(b=>b.classList.remove('active'));
             colorBtn.classList.add('active');
-            enableDrawing(); // Enable canvas when color is selected
             try { localStorage.setItem(DRAW_COLOR_KEY, currentColor); } catch(_) {}
           }
         });
