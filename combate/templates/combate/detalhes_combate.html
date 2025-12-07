@@ -1118,18 +1118,37 @@
         }
 
         // Only canvas (not preview) captures pointer events for drawing
-        canvas.addEventListener('pointerdown', function(e){
-          console.log('CANVAS pointerdown fired!', e);
+        function wrapDown(e) {
+          console.log('Event wrapper fired!', e.type, 'target:', e.target.className);
           onDown(e);
-        }, false);
+        }
+        
+        canvas.addEventListener('pointerdown', wrapDown, false);
+        canvas.addEventListener('mousedown', wrapDown, false);
+        canvas.addEventListener('touchstart', wrapDown, false);
+        
         canvas.addEventListener('pointermove', function(e){
           console.log('CANVAS pointermove fired!');
           onMove(e);
         }, false);
+        canvas.addEventListener('mousemove', function(e){
+          onMove(e);
+        }, false);
+        canvas.addEventListener('touchmove', function(e){
+          onMove(e);
+        }, false);
+        
         canvas.addEventListener('pointerup', function(e){
           console.log('CANVAS pointerup fired!');
           onUp(e);
         }, false);
+        canvas.addEventListener('mouseup', function(e){
+          onUp(e);
+        }, false);
+        canvas.addEventListener('touchend', function(e){
+          onUp(e);
+        }, false);
+        
         canvas.addEventListener('pointercancel', function(e){
           console.log('CANVAS pointercancel fired!');
           onUp(e);
