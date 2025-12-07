@@ -391,7 +391,6 @@
       });
       poderSelect.dataset.boundStorage = '1';
     }
-    }
 
   </script>
   <style>
@@ -907,15 +906,37 @@
         const scale = parseFloat(mapaArea.dataset.scale || '1') || 1;
         const baseW = (img && img.naturalWidth) ? img.naturalWidth : ((rect.width || mapaArea.clientWidth) / scale);
         const baseH = (img && img.naturalHeight) ? img.naturalHeight : ((rect.height || mapaArea.clientHeight) / scale);
+        const targetW = baseW;
+        const targetH = baseH;
+
+        // If size is unchanged, avoid resetting the canvas (which would erase drawings)
+        const needsResize = !canvas || canvas.width !== targetW || canvas.height !== targetH;
+        // Preserve current drawings before resizing
+        let savedImage = null;
+        if (canvas && needsResize) {
+          const temp = document.createElement('canvas');
+          temp.width = canvas.width;
+          temp.height = canvas.height;
+          const tctx = temp.getContext('2d');
+          tctx.drawImage(canvas, 0, 0);
+          savedImage = temp;
+        }
+
         [canvas, preview].forEach(cv => {
           if (!cv) return;
-          cv.width = baseW;
-          cv.height = baseH;
-          cv.style.width = baseW + 'px'; // parent transform handles scale
-          cv.style.height = baseH + 'px';
+          cv.width = targetW;
+          cv.height = targetH;
+          cv.style.width = targetW + 'px'; // parent transform handles scale
+          cv.style.height = targetH + 'px';
           cv.style.transformOrigin = 'top left';
           cv.style.transform = 'none';
         });
+
+        // Restore drawings after resize
+        if (savedImage && canvas) {
+          const cctx = canvas.getContext('2d');
+          cctx.drawImage(savedImage, 0, 0, savedImage.width, savedImage.height);
+        }
       }
 
       // Expose so zoom/pan handlers outside this IIFE can reuse it safely
