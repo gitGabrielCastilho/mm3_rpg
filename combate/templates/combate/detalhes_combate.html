@@ -2267,9 +2267,6 @@
 
   function drag(event, id) {
     event.dataTransfer.setData("tokenId", id);
-    const newSelect = select.cloneNode(true);
-    // Mark this select as already bound to avoid future unnecessary rebinds
-    try { newSelect.dataset.boundSync = '1'; } catch(_) {}
   }
 
   document.addEventListener("DOMContentLoaded", function() {
