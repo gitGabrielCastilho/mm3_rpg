@@ -392,30 +392,6 @@
       poderSelect.dataset.boundStorage = '1';
     }
 
-  </script>
-  <style>
-    .mapa-draw-toolbar{
-      display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:8px 0 4px;
-      padding:6px 8px; background:#f7f7f7; border:1px solid #e1e1e1; border-radius:6px;
-    }
-    .mdt-group{display:flex; gap:4px; align-items:center;}
-    .mdt-btn{
-      padding:4px 8px; border:1px solid #ccc; border-radius:4px; background:#fff; cursor:pointer; font-size:12px;
-    }
-    .mdt-btn.active{background:#0d6efd; border-color:#0d6efd; color:#fff;}
-    .mdt-colors button{
-      width:20px; height:20px; border-radius:50%; border:1px solid #bbb; cursor:pointer; padding:0;
-    }
-    canvas.mapa-draw-layer,
-    canvas.mapa-draw-preview{
-      position:absolute; left:0; top:0; pointer-events:auto; z-index:50; touch-action:none;
-    }
-    .mapa-draw-layer{ cursor: crosshair; }
-    .mapa-canvas, .mapa-img, canvas.mapa-draw-layer, canvas.mapa-draw-preview { user-select:none; }
-    .mapa-canvas { position: relative; }
-  </style>
-  <script>
-
     function restoreSkillAndTrait(personagemId){
       try {
         const perSel = document.getElementById('pericia_rolar');
@@ -645,6 +621,28 @@
     window.bindPersonagemAcaoSync = bindPersonagemAcaoSync;
   })();
   </script>
+
+  <style>
+    .mapa-draw-toolbar{
+      display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:8px 0 4px;
+      padding:6px 8px; background:#f7f7f7; border:1px solid #e1e1e1; border-radius:6px;
+    }
+    .mdt-group{display:flex; gap:4px; align-items:center;}
+    .mdt-btn{
+      padding:4px 8px; border:1px solid #ccc; border-radius:4px; background:#fff; cursor:pointer; font-size:12px;
+    }
+    .mdt-btn.active{background:#0d6efd; border-color:#0d6efd; color:#fff;}
+    .mdt-colors button{
+      width:20px; height:20px; border-radius:50%; border:1px solid #bbb; cursor:pointer; padding:0;
+    }
+    canvas.mapa-draw-layer,
+    canvas.mapa-draw-preview{
+      position:absolute; left:0; top:0; pointer-events:auto; z-index:50; touch-action:none;
+    }
+    .mapa-draw-layer{ cursor: crosshair; }
+    .mapa-canvas, .mapa-img, canvas.mapa-draw-layer, canvas.mapa-draw-preview { user-select:none; }
+    .mapa-canvas { position: relative; }
+  </style>
 
   
 </div>
