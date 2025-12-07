@@ -1209,6 +1209,11 @@
           if (img.complete) { ensureDrawLayersAll(); updateDrawLayerSizes(); return; }
           img.addEventListener('load', function(){ ensureDrawLayersAll(); updateDrawLayerSizes(); }, { once:true });
         });
+        
+        // DEBUG: Add click listener to entire document
+        document.addEventListener('click', function(e) {
+          console.log('Document click on:', e.target.tagName, e.target.className, 'closest canvas:', e.target.closest('.mapa-draw-layer'));
+        }, true);
       });
 
       window.addEventListener('resize', updateDrawLayerSizes);
