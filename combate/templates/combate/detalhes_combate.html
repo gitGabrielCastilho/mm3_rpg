@@ -1210,9 +1210,12 @@
           img.addEventListener('load', function(){ ensureDrawLayersAll(); updateDrawLayerSizes(); }, { once:true });
         });
         
-        // DEBUG: Add click listener to entire document
-        document.addEventListener('click', function(e) {
-          console.log('Document click on:', e.target.tagName, e.target.className, 'closest canvas:', e.target.closest('.mapa-draw-layer'));
+        // DEBUG: Add pointer/mouse listener to entire document
+        document.addEventListener('pointerdown', function(e) {
+          console.log('Document pointerdown on:', e.target.tagName, e.target.className);
+        }, true);
+        document.addEventListener('mousedown', function(e) {
+          console.log('Document mousedown on:', e.target.tagName, e.target.className);
         }, true);
       });
 
