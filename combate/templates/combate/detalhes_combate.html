@@ -987,6 +987,8 @@
           return;
         }
         
+        console.log('BINDING DRAWING - Canvas:', canvas, 'dimensions:', canvas.width, 'x', canvas.height);
+        
         const ctx = canvas.getContext('2d');
         const ctxPrev = preview.getContext('2d');
         let drawing = false;
@@ -1101,21 +1103,21 @@
 
         // Only canvas (not preview) captures pointer events for drawing
         function wrapDown(e) {
-          console.log('Click event received on target:', e.target.tagName, e.target.className);
+          console.log('CLICK DETECTED!', e.type, 'on', e.target.tagName);
           onDown(e);
         }
         
         canvas.addEventListener('pointerdown', wrapDown, false);
         canvas.addEventListener('mousedown', wrapDown, false);
-        canvas.addEventListener('touchstart', wrapDown, false);
+        canvas.addEventListener('touchstart', wrapDown, { passive: false });
         
         canvas.addEventListener('pointermove', onMove, false);
         canvas.addEventListener('mousemove', onMove, false);
-        canvas.addEventListener('touchmove', onMove, false);
+        canvas.addEventListener('touchmove', onMove, { passive: false });
         
         canvas.addEventListener('pointerup', onUp, false);
         canvas.addEventListener('mouseup', onUp, false);
-        canvas.addEventListener('touchend', onUp, false);
+        canvas.addEventListener('touchend', onUp, { passive: false });
         
         canvas.addEventListener('pointercancel', onUp, false);
         canvas.addEventListener('pointerleave', function(e){
