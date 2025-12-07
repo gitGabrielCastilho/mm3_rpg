@@ -637,6 +637,9 @@
       }, true);
       document._acoesDeChangeDelegated = true;
     }
+  
+    // Expõe bindPersonagemAcaoSync ao window para callbacks externos
+    window.bindPersonagemAcaoSync = bindPersonagemAcaoSync;
   })();
   </script>
 
@@ -1056,9 +1059,9 @@
         [canvas, preview].forEach(layer => {
           ['pointerdown','pointermove','pointerup','pointercancel','pointerleave'].forEach(ev => {
             layer.addEventListener(ev, function(evt){
-            if (ev === 'pointerdown') onDown(evt);
-            else if (ev === 'pointermove') onMove(evt);
-            else onUp(evt);
+              if (ev === 'pointerdown') onDown(evt);
+              else if (ev === 'pointermove') onMove(evt);
+              else onUp(evt);
             }, true);
           });
 
