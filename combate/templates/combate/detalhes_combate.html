@@ -962,9 +962,9 @@
           preview = document.createElement('canvas');
           preview.className = 'mapa-draw-preview';
           preview.style.pointerEvents = 'auto';
-          const holder = mapaArea.querySelector('.mapa-canvas') || mapaArea;
-          holder.appendChild(canvas);
-          holder.appendChild(preview);
+          // Append to mapaArea directly, not to .mapa-canvas
+          mapaArea.appendChild(canvas);
+          mapaArea.appendChild(preview);
         }
         resizeCanvasPair(mapaArea, canvas, preview);
         // Always rebind - don't skip
