@@ -1210,13 +1210,18 @@
           img.addEventListener('load', function(){ ensureDrawLayersAll(); updateDrawLayerSizes(); }, { once:true });
         });
         
-        // DEBUG: Add pointer/mouse listener to entire document
-        document.addEventListener('pointerdown', function(e) {
-          console.log('Document pointerdown on:', e.target.tagName, e.target.className);
-        }, true);
-        document.addEventListener('mousedown', function(e) {
-          console.log('Document mousedown on:', e.target.tagName, e.target.className);
-        }, true);
+        // DEBUG: Check mapa-area properties
+        setTimeout(function() {
+          const mapaAreas = document.querySelectorAll('[id^="mapa-area-"]');
+          console.log('Found mapa-areas:', mapaAreas.length);
+          mapaAreas.forEach(area => {
+            console.log('Mapa area:', area.id, 'visible:', area.offsetHeight > 0, 'size:', area.offsetWidth, 'x', area.offsetHeight);
+            const canvas = area.querySelector('.mapa-draw-layer');
+            console.log('Canvas in area:', canvas ? 'YES' : 'NO', canvas ? 'size: ' + canvas.width + 'x' + canvas.height : '');
+            const rect = area.getBoundingClientRect();
+            console.log('Area rect:', 'left:', rect.left, 'top:', rect.top, 'width:', rect.width, 'height:', rect.height);
+          });
+        }, 500);
       });
 
       window.addEventListener('resize', updateDrawLayerSizes);
