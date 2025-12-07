@@ -953,9 +953,11 @@
 
       function ensureDrawLayer(mapaArea){
         if (!mapaArea) return;
+        console.log('ensureDrawLayer called for', mapaArea.id);
         let canvas = mapaArea.querySelector('.mapa-draw-layer');
         let preview = mapaArea.querySelector('.mapa-draw-preview');
         if (!canvas) {
+          console.log('Canvas not found, creating...');
           const overlay = mapaArea.querySelector('.mapa-draw-layer');
           const overlayPrev = mapaArea.querySelector('.mapa-draw-preview');
           if (overlay && overlayPrev) resizeCanvasPair(mapaArea, overlay, overlayPrev);
@@ -964,9 +966,11 @@
           preview = document.createElement('canvas');
           preview.className = 'mapa-draw-preview';
           const holder = mapaArea.querySelector('.mapa-canvas') || mapaArea;
+          console.log('Appending canvas to holder:', holder.className);
           holder.appendChild(canvas);
           holder.appendChild(preview);
         }
+        console.log('Canvas element:', canvas, 'width:', canvas.width, 'height:', canvas.height);
         resizeCanvasPair(mapaArea, canvas, preview);
         bindDrawing(mapaArea, canvas, preview);
       }
@@ -983,7 +987,11 @@
       }
 
       function bindDrawing(mapaArea, canvas, preview){
-        if (!canvas || !preview || mapaArea.dataset.drawBound) return;
+        if (!canvas || !preview || mapaArea.dataset.drawBound) {
+          console.log('bindDrawing skipped - already bound or missing canvas/preview');
+          return;
+        }
+        console.log('bindDrawing called, attaching event listeners to canvas');
         const ctx = canvas.getContext('2d');
         const ctxPrev = preview.getContext('2d');
         let drawing = false;
