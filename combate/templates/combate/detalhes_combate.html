@@ -955,6 +955,10 @@
         if (!mapaArea) return;
         let canvas = mapaArea.querySelector('.mapa-draw-layer');
         let preview = mapaArea.querySelector('.mapa-draw-preview');
+        
+        // Initially set pointer-events to none so tokens can be dragged
+        if (canvas) canvas.style.pointerEvents = 'none';
+        if (preview) preview.style.pointerEvents = 'none';
         if (!canvas) {
           const overlay = mapaArea.querySelector('.mapa-draw-layer');
           const overlayPrev = mapaArea.querySelector('.mapa-draw-preview');
@@ -1054,7 +1058,10 @@
 
         function onDown(e){
           if (e.button !== 0) return; // only main button
-          if (e.target && e.target.closest && e.target.closest('.mapa-token')) return; // não interfere no arrasto de token
+          // Check if clicking on a token - if so, ignore and let token drag happen
+          const target = e.target;
+          if (target && target.closest && target.closest('.mapa-token')) return;
+          
           e.preventDefault();
           e.stopPropagation();
           drawing = true;
@@ -1093,18 +1100,23 @@
           try { canvas.releasePointerCapture(e.pointerId); } catch(_){ }
         }
 
-        [canvas, preview].forEach(layer => {
-          ['pointerdown','pointermove','pointerup','pointercancel','pointerleave'].forEach(ev => {
-            layer.addEventListener(ev, function(evt){
-              if (ev === 'pointerdown') onDown(evt);
-              else if (ev === 'pointermove') onMove(evt);
-              else onUp(evt);
-            }, true);
-          });
-
-          // Bloqueia scroll wheel ao desenhar para não mover o mapa
-          layer.addEventListener('wheel', function(e){ if (drawing) { e.preventDefault(); e.stopPropagation(); } }, { passive:false });
-        });
+        // Only canvas (not preview) captures pointer events for drawing
+        canvas.addEventListener('pointerdown', onDown, true);
+        canvas.addEventListener('pointermove', onMove, true);
+        canvas.addEventListener('pointerup', onUp, true);
+        canvas.addEventListener('pointercancel', onUp, true);
+        canvas.addEventListener('pointerleave', function(e){
+          // Only end drawing if we leave the canvas while drawing
+          if (drawing) onUp(e);
+        }, true);
+        
+        // Bloqueia scroll wheel ao desenhar para não mover o mapa
+        canvas.addEventListener('wheel', function(e){ 
+          if (drawing) { 
+            e.preventDefault(); 
+            e.stopPropagation(); 
+          } 
+        }, { passive:false });
 
         mapaArea.dataset.drawBound = '1';
       }
@@ -1141,18 +1153,27 @@
         const savedModeBtn = tb.querySelector(`[data-draw-mode="${currentMode}"]`);
         setActiveMode(savedModeBtn || tb.querySelector('[data-draw-mode="pen"]'));
         
+        // Enable canvas drawing when user interacts with toolbar
+        function enableDrawing() {
+          document.querySelectorAll('.mapa-draw-layer, .mapa-draw-preview').forEach(cv => {
+            cv.style.pointerEvents = 'auto';
+          });
+        }
+        
         tb.addEventListener('click', (e)=>{
           const modeBtn = e.target.closest('[data-draw-mode]');
           const colorBtn = e.target.closest('[data-draw-color]');
           if (modeBtn){
             currentMode = modeBtn.dataset.drawMode;
             setActiveMode(modeBtn);
+            enableDrawing(); // Enable canvas when mode is selected
             try { localStorage.setItem(DRAW_MODE_KEY, currentMode); } catch(_) {}
           }
           if (colorBtn){
             currentColor = colorBtn.dataset.drawColor;
             tb.querySelectorAll('[data-draw-color]').forEach(b=>b.classList.remove('active'));
             colorBtn.classList.add('active');
+            enableDrawing(); // Enable canvas when color is selected
             try { localStorage.setItem(DRAW_COLOR_KEY, currentColor); } catch(_) {}
           }
         });
