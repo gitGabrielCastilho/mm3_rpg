@@ -1110,14 +1110,27 @@
         }
 
         // Only canvas (not preview) captures pointer events for drawing
-        canvas.addEventListener('pointerdown', onDown, true);
-        canvas.addEventListener('pointermove', onMove, true);
-        canvas.addEventListener('pointerup', onUp, true);
-        canvas.addEventListener('pointercancel', onUp, true);
+        canvas.addEventListener('pointerdown', function(e){
+          console.log('CANVAS pointerdown fired!', e);
+          onDown(e);
+        }, false);
+        canvas.addEventListener('pointermove', function(e){
+          console.log('CANVAS pointermove fired!');
+          onMove(e);
+        }, false);
+        canvas.addEventListener('pointerup', function(e){
+          console.log('CANVAS pointerup fired!');
+          onUp(e);
+        }, false);
+        canvas.addEventListener('pointercancel', function(e){
+          console.log('CANVAS pointercancel fired!');
+          onUp(e);
+        }, false);
         canvas.addEventListener('pointerleave', function(e){
+          console.log('CANVAS pointerleave fired!');
           // Only end drawing if we leave the canvas while drawing
           if (drawing) onUp(e);
-        }, true);
+        }, false);
         
         // Bloqueia scroll wheel ao desenhar para não mover o mapa
         canvas.addEventListener('wheel', function(e){ 
