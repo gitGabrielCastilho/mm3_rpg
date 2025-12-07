@@ -967,6 +967,7 @@
           holder.appendChild(preview);
         }
         resizeCanvasPair(mapaArea, canvas, preview);
+        // Always rebind - don't skip
         bindDrawing(mapaArea, canvas, preview);
       }
 
@@ -985,12 +986,7 @@
         if (!canvas || !preview) {
           return;
         }
-        if (canvas.dataset.drawingBound) {
-          return;
-        }
-        if (mapaArea.dataset.drawBound) {
-          return;
-        }
+        
         const ctx = canvas.getContext('2d');
         const ctxPrev = preview.getContext('2d');
         let drawing = false;
@@ -1137,6 +1133,14 @@
 
         canvas.dataset.drawingBound = '1';
         mapaArea.dataset.drawBound = '1';
+      }
+      
+      // Helper to clone and replace canvas to remove all event listeners
+      function resetCanvasEventListeners(canvas) {
+        const newCanvas = canvas.cloneNode(true);
+        newCanvas.dataset.drawingBound = '';  // Clear the flag
+        canvas.parentNode.replaceChild(newCanvas, canvas);
+        return newCanvas;
       }
 
       function ensureDrawLayersAll(){
