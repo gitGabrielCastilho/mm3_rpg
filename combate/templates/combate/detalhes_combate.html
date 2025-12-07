@@ -746,7 +746,7 @@
         const hc = document.getElementById('historico-card');
         const userReading = (()=>{ try { return hc && (hc.scrollHeight - hc.scrollTop - hc.clientHeight) >= 24; } catch(_) { return false; } })();
         if (tick === 0) {
-          const sels = ['.turno-topbar', '.combate-col-right'];
+          const sels = ['.turno-topbar', '#status-card'];
           if (!userReading) sels.splice(1, 0, '#historico-card');
           if (wsDown) tryUpdateTargetsLight();
           refreshSelectors(sels).catch(()=>{});
@@ -778,7 +778,7 @@
           } catch(_) {}
           const hc = document.getElementById('historico-card');
           const userReading = (()=>{ try { return hc && (hc.scrollHeight - hc.scrollTop - hc.clientHeight) >= 24; } catch(_) { return false; } })();
-          const sels = ['.turno-topbar', '.combate-col-right', '#status-card'];
+          const sels = ['.turno-topbar', '#status-card'];
           if (!userReading) sels.splice(1, 0, '#historico-card');
           refreshSelectors(sels).catch(()=>{});
         }
@@ -882,8 +882,19 @@
     // ====== Camada de desenho livre (local, sem persistir) ======
     (function(){
       const DRAW_COLORS = ['#d33','#1e88e5','#2e7d32','#f9a825','#000000','#ffffff'];
+      const DRAW_MODE_KEY = `combate:${combateId}:drawMode`;
+      const DRAW_COLOR_KEY = `combate:${combateId}:drawColor`;
+      
+      // Restore saved mode/color or default
       let currentMode = 'pen';
       let currentColor = DRAW_COLORS[0];
+      try {
+        const savedMode = localStorage.getItem(DRAW_MODE_KEY);
+        if (savedMode && ['pen','eraser','rect','circle'].includes(savedMode)) currentMode = savedMode;
+        const savedColor = localStorage.getItem(DRAW_COLOR_KEY);
+        if (savedColor && DRAW_COLORS.includes(savedColor)) currentColor = savedColor;
+      } catch(_) {}
+      
       let currentSize = 4;
 
       function setActiveMode(btn){
@@ -1121,20 +1132,28 @@
       function setupToolbar(){
         const tb = document.querySelector('.mapa-draw-toolbar');
         if (!tb || tb.dataset.bound) return;
+        
+        // Restore saved color selection
         const firstColor = tb.querySelector(`[data-draw-color="${currentColor}"]`) || tb.querySelector('[data-draw-color]');
         if (firstColor) firstColor.classList.add('active');
-        setActiveMode(tb.querySelector('[data-draw-mode="pen"]'));
+        
+        // Restore saved mode selection (not always pen)
+        const savedModeBtn = tb.querySelector(`[data-draw-mode="${currentMode}"]`);
+        setActiveMode(savedModeBtn || tb.querySelector('[data-draw-mode="pen"]'));
+        
         tb.addEventListener('click', (e)=>{
           const modeBtn = e.target.closest('[data-draw-mode]');
           const colorBtn = e.target.closest('[data-draw-color]');
           if (modeBtn){
             currentMode = modeBtn.dataset.drawMode;
             setActiveMode(modeBtn);
+            try { localStorage.setItem(DRAW_MODE_KEY, currentMode); } catch(_) {}
           }
           if (colorBtn){
             currentColor = colorBtn.dataset.drawColor;
             tb.querySelectorAll('[data-draw-color]').forEach(b=>b.classList.remove('active'));
             colorBtn.classList.add('active');
+            try { localStorage.setItem(DRAW_COLOR_KEY, currentColor); } catch(_) {}
           }
         });
         const sizeSel = tb.querySelector('#mdt-size');
