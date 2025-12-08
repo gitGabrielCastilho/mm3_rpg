@@ -47,6 +47,7 @@ class Mapa(models.Model):
     combate = models.ForeignKey('Combate', on_delete=models.CASCADE, related_name='mapas', blank=True, null=True)  # <-- Torne opcional
     criado_por = models.ForeignKey('auth.User', on_delete=models.CASCADE)
     criado_em = models.DateTimeField(auto_now_add=True)
+    desenhos_json = models.JSONField(default=list, blank=True)
     
 class PosicaoPersonagem(models.Model):
     mapa = models.ForeignKey(Mapa, on_delete=models.CASCADE)

@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .views import atualizar_posicao_token, remover_mapa_global, adicionar_mapa_global, listar_mapas, adicionar_mapa, remover_mapa, remover_participante, realizar_ataque, criar_combate, detalhes_combate, passar_turno, listar_combates, iniciar_turno, avancar_turno, deletar_combate, finalizar_combate, adicionar_npc_participante, adicionar_participante, limpar_historico, encerrar_efeito, encerrar_meus_efeitos, participantes_json
+from .views import atualizar_posicao_token, remover_mapa_global, adicionar_mapa_global, listar_mapas, adicionar_mapa, remover_mapa, remover_participante, realizar_ataque, criar_combate, detalhes_combate, passar_turno, listar_combates, iniciar_turno, avancar_turno, deletar_combate, finalizar_combate, adicionar_npc_participante, adicionar_participante, limpar_historico, encerrar_efeito, encerrar_meus_efeitos, participantes_json, salvar_desenho, limpar_desenhos
 from . import views_ajax
 
 urlpatterns = [
@@ -28,4 +28,6 @@ urlpatterns = [
     path('atualizar-posicao-token/<int:token_id>/', atualizar_posicao_token, name='atualizar_posicao_token'),
     path('<int:combate_id>/participantes-json/', participantes_json, name='participantes_json'),
     path('<int:combate_id>/tabela_participantes/', views_ajax.tabela_participantes, name='tabela_participantes'),
+    path('mapa/<int:mapa_id>/salvar-desenho/', salvar_desenho, name='salvar_desenho'),
+    path('mapa/<int:mapa_id>/limpar-desenhos/', limpar_desenhos, name='limpar_desenhos'),
 ]

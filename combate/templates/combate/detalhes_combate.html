@@ -943,7 +943,7 @@
       document.querySelectorAll("[id^='mapa-area-']").forEach(ensureMinScaleForArea);
     }
 
-    // ====== Camada de desenho livre (local, sem persistir) ======
+    // ====== Camada de desenho livre (persistido no servidor) ======
     (function(){
       const DRAW_COLORS = ['#d33','#1e88e5','#2e7d32','#f9a825','#000000','#ffffff'];
       const DRAW_MODE_KEY = `combate:${combateId}:drawMode`;
@@ -961,25 +961,26 @@
       
       let currentSize = 4;
 
-      function broadcastDrawStroke(mapaArea, shape, from, to){
+      function salvarDesenhoServidor(mapaArea, shape, from, to){
         try {
-          if (!window.combateSocket || combateSocket.readyState !== WebSocket.OPEN) return;
           const mapaId = (mapaArea && mapaArea.id || '').replace('mapa-area-','');
           if (!mapaId) return;
-          const msg = {
-            tipo: 'draw',
-            combate_id: combateId,
-            data: {
-              mapa_id: mapaId,
-              mode: shape,
-              color: currentColor,
-              size: currentSize,
-              from,
-              to,
-              client_id: window.DRAW_CLIENT_ID || null,
-            }
+          const stroke = {
+            mode: shape,
+            color: currentColor,
+            size: currentSize,
+            from,
+            to,
           };
-          combateSocket.send(JSON.stringify(msg));
+          fetch(`/combate/mapa/${mapaId}/salvar-desenho/`, {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+              'Content-Type': 'application/json',
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(stroke),
+          }).catch(err => console.warn('Falha ao salvar desenho:', err));
         } catch(_) {}
       }
 
@@ -1156,8 +1157,8 @@
           }
           ctx.stroke();
           ctx.restore();
-          // Broadcast desenho para outros clientes
-          broadcastDrawStroke(mapaArea, shape, from, to);
+          // Salva desenho no servidor
+          salvarDesenhoServidor(mapaArea, shape, from, to);
         }
 
         function onDown(e){
@@ -1181,7 +1182,7 @@
           
           // desenha um ponto imediato para feedback
           strokeLine(start, start, currentMode);
-          broadcastDrawStroke(mapaArea, currentMode, start, start);
+          salvarDesenhoServidor(mapaArea, currentMode, start, start);
         }
 
         function onMove(e){
@@ -1192,7 +1193,7 @@
           if (currentMode === 'pen' || currentMode === 'eraser') {
             const prev = start;
             strokeLine(prev, pos, currentMode);
-            broadcastDrawStroke(mapaArea, currentMode, prev, pos);
+            salvarDesenhoServidor(mapaArea, currentMode, prev, pos);
             start = pos;
           } else {
             drawShape(currentMode, start, pos);
@@ -1206,7 +1207,7 @@
           const pos = toCoord(e, mapaArea);
           if (currentMode === 'pen' || currentMode === 'eraser') {
             strokeLine(start, pos, currentMode);
-            broadcastDrawStroke(mapaArea, currentMode, start, pos);
+            salvarDesenhoServidor(mapaArea, currentMode, start, pos);
           } else {
             commitShape(currentMode, start, pos);
           }
@@ -1264,6 +1265,18 @@
       function clearAllDrawings(){
         document.querySelectorAll('.mapa-draw-layer').forEach(cv => cv.getContext('2d').clearRect(0,0,cv.width,cv.height));
         document.querySelectorAll('.mapa-draw-preview').forEach(cv => cv.getContext('2d').clearRect(0,0,cv.width,cv.height));
+        // Limpa no servidor também
+        const area = document.querySelector("[id^='mapa-area-']");
+        if (area) {
+          const mapaId = area.id.replace('mapa-area-','');
+          fetch(`/combate/mapa/${mapaId}/limpar-desenhos/`, {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            },
+            credentials: 'same-origin',
+          }).catch(err => console.warn('Falha ao limpar desenhos:', err));
+        }
       }
 
       function setupToolbar(){
@@ -1307,6 +1320,35 @@
         // Force immediate canvas creation
         ensureDrawLayersAll();
         updateDrawLayerSizes();
+        // Carrega desenhos salvos do servidor
+        try {
+          const desenhosSalvos = {{ desenhos_salvos|safe }};
+          Object.entries(desenhosSalvos).forEach(([mapaId, strokes]) => {
+            const area = document.getElementById('mapa-area-' + mapaId);
+            if (!area || !Array.isArray(strokes)) return;
+            const canvas = area.querySelector('.mapa-draw-layer');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            strokes.forEach(s => {
+              try {
+                const mode = s.mode || 'pen';
+                const color = s.color || '#d33';
+                const size = Number(s.size) || 4;
+                const from = s.from || {}; const to = s.to || {};
+                if (typeof from.x !== 'number' || typeof to.x !== 'number') return;
+                ctx.save();
+                ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = size;
+                if (mode === 'eraser') { ctx.globalCompositeOperation = 'destination-out'; ctx.strokeStyle = '#000'; }
+                else { ctx.globalCompositeOperation = 'source-over'; ctx.strokeStyle = color; }
+                ctx.beginPath();
+                if (mode === 'rect') ctx.rect(from.x, from.y, to.x - from.x, to.y - from.y);
+                else if (mode === 'circle') { const dx = to.x - from.x; const dy = to.y - from.y; const r = Math.sqrt(dx*dx + dy*dy); ctx.arc(from.x, from.y, r, 0, Math.PI * 2); }
+                else { ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); }
+                ctx.stroke(); ctx.restore();
+              } catch(_) {}
+            });
+          });
+        } catch(_) {}
         // Re-ensure after images load
         document.querySelectorAll('.mapa-img').forEach(img => {
           if (img.complete) { 
@@ -2309,6 +2351,20 @@
         }
         case 'draw': {
           applyRemoteDraw(payload);
+          break;
+        }
+        case 'clear_drawings': {
+          const mapaId = payload.mapa_id;
+          if (mapaId) {
+            const area = document.getElementById('mapa-area-' + mapaId);
+            if (area) {
+              const canvas = area.querySelector('.mapa-draw-layer');
+              if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+              }
+            }
+          }
           break;
         }
         case 'limpar_historico': {

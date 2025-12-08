@@ -488,6 +488,8 @@ def detalhes_combate(request, combate_id):
         'posicoes': posicoes,
         'ataque_form': ataque_form,
         'allowed_personagem_ids': allowed_personagem_ids,
+        'ws_token': signing.dumps({'uid': request.user.id}, salt='ws-combate'),
+        'desenhos_salvos': {str(m.id): m.desenhos_json or [] for m in combate.mapas.all()},
     }
 
     return render(request, 'combate/detalhes_combate.html', context)
@@ -2772,3 +2774,92 @@ def adicionar_participante(request, combate_id):
             }
         })
     return redirect('detalhes_combate', combate_id=combate_id)
+
+
+@login_required
+@require_POST
+def salvar_desenho(request, mapa_id):
+    """Salva um traço de desenho no mapa e notifica todos os clientes."""
+    mapa = get_object_or_404(Mapa, id=mapa_id)
+    # Permissão: GM da sala do combate ou dono do mapa (mapas globais)
+    if mapa.combate:
+        sala = mapa.combate.sala
+        if sala.game_master != request.user and request.user not in sala.jogadores.all():
+            return JsonResponse({'error': 'forbidden'}, status=403)
+    elif mapa.criado_por != request.user:
+        # Mapa global: só o criador pode desenhar
+        return JsonResponse({'error': 'forbidden'}, status=403)
+    
+    try:
+        data = json.loads(request.body)
+        stroke = {
+            'mode': data.get('mode', 'pen'),
+            'color': data.get('color', '#d33'),
+            'size': data.get('size', 4),
+            'from': data.get('from', {}),
+            'to': data.get('to', {}),
+            'timestamp': timezone.now().isoformat(),
+        }
+        desenhos = mapa.desenhos_json or []
+        desenhos.append(stroke)
+        mapa.desenhos_json = desenhos
+        mapa.save(update_fields=['desenhos_json'])
+        
+        # Broadcast para todos via WebSocket
+        if mapa.combate:
+            try:
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    f'combate_{mapa.combate.id}',
+                    {
+                        'type': 'combate_message',
+                        'message': {
+                            'evento': 'draw',
+                            'mapa_id': str(mapa.id),
+                            **stroke,
+                        }
+                    }
+                )
+            except Exception:
+                logger.warning("Falha ao broadcast desenho via WS", exc_info=True)
+        
+        return JsonResponse({'status': 'ok', 'stroke': stroke})
+    except Exception as e:
+        logger.exception("Erro ao salvar desenho")
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@login_required
+@require_POST
+def limpar_desenhos(request, mapa_id):
+    """Limpa todos os desenhos de um mapa."""
+    mapa = get_object_or_404(Mapa, id=mapa_id)
+    # Permissão: apenas GM ou dono do mapa
+    if mapa.combate:
+        sala = mapa.combate.sala
+        if sala.game_master != request.user:
+            return JsonResponse({'error': 'forbidden'}, status=403)
+    elif mapa.criado_por != request.user:
+        return JsonResponse({'error': 'forbidden'}, status=403)
+    
+    mapa.desenhos_json = []
+    mapa.save(update_fields=['desenhos_json'])
+    
+    # Broadcast evento de limpeza
+    if mapa.combate:
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'combate_{mapa.combate.id}',
+                {
+                    'type': 'combate_message',
+                    'message': {
+                        'evento': 'clear_drawings',
+                        'mapa_id': str(mapa.id),
+                    }
+                }
+            )
+        except Exception:
+            logger.warning("Falha ao broadcast limpeza de desenhos", exc_info=True)
+    
+    return JsonResponse({'status': 'ok'})
