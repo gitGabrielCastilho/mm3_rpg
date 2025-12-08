@@ -965,12 +965,14 @@
           // Append to mapaArea directly, not to .mapa-canvas
           mapaArea.appendChild(canvas);
           mapaArea.appendChild(preview);
+          // Immediately set dimensions before first draw
+          resizeCanvasPair(mapaArea, canvas, preview);
         }
         // Keep canvases transparent to pointer hit-testing; we listen on mapaArea
         canvas.style.pointerEvents = 'none';
         preview.style.pointerEvents = 'none';
         resizeCanvasPair(mapaArea, canvas, preview);
-        // Always rebind - don't skip
+        // Bind drawing events (will skip if already bound)
         bindDrawing(mapaArea, canvas, preview);
       }
 
@@ -1203,12 +1205,26 @@
 
       document.addEventListener('DOMContentLoaded', function(){
         setupToolbar();
+        // Force immediate canvas creation
         ensureDrawLayersAll();
         updateDrawLayerSizes();
+        // Re-ensure after images load
         document.querySelectorAll('.mapa-img').forEach(img => {
-          if (img.complete) { ensureDrawLayersAll(); updateDrawLayerSizes(); return; }
-          img.addEventListener('load', function(){ ensureDrawLayersAll(); updateDrawLayerSizes(); }, { once:true });
+          if (img.complete) { 
+            ensureDrawLayersAll(); 
+            updateDrawLayerSizes(); 
+            return; 
+          }
+          img.addEventListener('load', function(){ 
+            ensureDrawLayersAll(); 
+            updateDrawLayerSizes(); 
+          }, { once:true });
         });
+        // Extra safety: ensure one more time after a short delay
+        setTimeout(() => {
+          ensureDrawLayersAll();
+          updateDrawLayerSizes();
+        }, 100);
       });
 
       window.addEventListener('resize', updateDrawLayerSizes);
