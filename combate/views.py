@@ -2836,10 +2836,15 @@ def salvar_desenho(request, mapa_id):
 def limpar_desenhos(request, mapa_id):
     """Limpa todos os desenhos de um mapa."""
     mapa = get_object_or_404(Mapa, id=mapa_id)
-    # Permissão: apenas GM ou dono do mapa
+    # Permissão: GM, dono do mapa, ou qualquer participante do combate
     if mapa.combate:
         sala = mapa.combate.sala
-        if sala.game_master != request.user:
+        is_gm = sala.game_master == request.user
+        is_participante = Participante.objects.filter(
+            combate=mapa.combate,
+            personagem__usuario=request.user,
+        ).exists()
+        if not (is_gm or is_participante):
             return JsonResponse({'error': 'forbidden'}, status=403)
     elif mapa.criado_por != request.user:
         return JsonResponse({'error': 'forbidden'}, status=403)
