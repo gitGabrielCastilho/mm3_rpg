@@ -2818,7 +2818,7 @@ def salvar_desenho(request, mapa_id):
                         'message': {
                             'evento': 'draw_snapshot',
                             'mapa_id': str(mapa.id),
-                            'data': f'data:image/png;base64,{img_data}',
+                            'snapshot': f'data:image/png;base64,{img_data}',
                         }
                     }
                 )
