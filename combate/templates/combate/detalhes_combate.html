@@ -2346,23 +2346,47 @@
         }
         case 'draw_snapshot': {
           // Recebe snapshot PNG completo via WebSocket e atualiza canvas
+          console.log('[WS] draw_snapshot recebido:', payload);
           const mapaId = payload.mapa_id;
           const snapshotData = payload.snapshot;
-          if (mapaId && snapshotData) {
-            const area = document.getElementById('mapa-area-' + mapaId);
-            if (area) {
-              const canvas = area.querySelector('.mapa-draw-layer');
-              if (canvas) {
-                const ctx = canvas.getContext('2d');
-                const img = new Image();
-                img.onload = () => {
-                  ctx.clearRect(0, 0, canvas.width, canvas.height);
-                  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                };
-                img.src = snapshotData;
-              }
-            }
+          if (!mapaId || !snapshotData) {
+            console.warn('[WS] draw_snapshot sem mapa_id ou snapshot:', payload);
+            break;
           }
+          const area = document.getElementById('mapa-area-' + mapaId);
+          if (!area) {
+            console.warn('[WS] draw_snapshot: área não encontrada para mapa', mapaId);
+            break;
+          }
+          const canvas = area.querySelector('.mapa-draw-layer');
+          if (!canvas) {
+            console.warn('[WS] draw_snapshot: canvas não encontrado para mapa', mapaId);
+            if (window.ensureDrawLayersAll) window.ensureDrawLayersAll();
+            const canvas2 = area.querySelector('.mapa-draw-layer');
+            if (!canvas2) {
+              console.error('[WS] draw_snapshot: canvas ainda não existe após ensureDrawLayersAll');
+              break;
+            }
+            const ctx2 = canvas2.getContext('2d');
+            const img2 = new Image();
+            img2.onload = () => {
+              console.log('[WS] draw_snapshot: imagem carregada (fallback)', canvas2.width, 'x', canvas2.height);
+              ctx2.clearRect(0, 0, canvas2.width, canvas2.height);
+              ctx2.drawImage(img2, 0, 0, canvas2.width, canvas2.height);
+            };
+            img2.onerror = (e) => console.error('[WS] draw_snapshot: erro ao carregar imagem', e);
+            img2.src = snapshotData;
+            break;
+          }
+          const ctx = canvas.getContext('2d');
+          const img = new Image();
+          img.onload = () => {
+            console.log('[WS] draw_snapshot: imagem carregada', canvas.width, 'x', canvas.height);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          };
+          img.onerror = (e) => console.error('[WS] draw_snapshot: erro ao carregar imagem', e);
+          img.src = snapshotData;
           break;
         }
         case 'clear_drawings': {
