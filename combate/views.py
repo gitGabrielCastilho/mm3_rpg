@@ -59,9 +59,6 @@ def _item_bonus(personagem: Personagem, categoria: str, chave: str) -> int:
         return int(total)
     except Exception:
         return 0
-
-
-            'ws_token': signing.dumps({'uid': request.user.id}, salt='ws-combate'),
 def _atributo_efetivo(personagem: Personagem, participante: Participante, atributo: str, combate_id: int) -> int:
     """Retorna o valor do atributo considerando:
     - valor base do Personagem
