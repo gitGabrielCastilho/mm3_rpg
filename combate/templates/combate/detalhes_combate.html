@@ -706,6 +706,8 @@
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     const combateId = '{{ combate.id }}';
+    // Identificador de cliente para ignorar eco dos próprios desenhos
+    window.DRAW_CLIENT_ID = window.DRAW_CLIENT_ID || ('draw-' + Math.random().toString(36).slice(2, 10));
     // ====== Histórico: melhor legibilidade ======
     function removeAccents(str){ try { return (str||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''); } catch(_) { return str||''; } }
     function enhanceHistorico(container){
@@ -955,6 +957,28 @@
       
       let currentSize = 4;
 
+      function broadcastDrawStroke(mapaArea, shape, from, to){
+        try {
+          if (!window.combateSocket || combateSocket.readyState !== WebSocket.OPEN) return;
+          const mapaId = (mapaArea && mapaArea.id || '').replace('mapa-area-','');
+          if (!mapaId) return;
+          const msg = {
+            tipo: 'draw',
+            combate_id: combateId,
+            data: {
+              mapa_id: mapaId,
+              mode: shape,
+              color: currentColor,
+              size: currentSize,
+              from,
+              to,
+              client_id: window.DRAW_CLIENT_ID || null,
+            }
+          };
+          combateSocket.send(JSON.stringify(msg));
+        } catch(_) {}
+      }
+
       function setActiveMode(btn){
         document.querySelectorAll('.mapa-draw-toolbar .mdt-btn[data-draw-mode]').forEach(b=>{
           b.classList.remove('active');
@@ -1128,6 +1152,8 @@
           }
           ctx.stroke();
           ctx.restore();
+          // Broadcast desenho para outros clientes
+          broadcastDrawStroke(mapaArea, shape, from, to);
         }
 
         function onDown(e){
@@ -1151,6 +1177,7 @@
           
           // desenha um ponto imediato para feedback
           strokeLine(start, start, currentMode);
+          broadcastDrawStroke(mapaArea, currentMode, start, start);
         }
 
         function onMove(e){
@@ -1159,7 +1186,9 @@
           e.stopPropagation();
           const pos = toCoord(e, mapaArea);
           if (currentMode === 'pen' || currentMode === 'eraser') {
-            strokeLine(start, pos, currentMode);
+            const prev = start;
+            strokeLine(prev, pos, currentMode);
+            broadcastDrawStroke(mapaArea, currentMode, prev, pos);
             start = pos;
           } else {
             drawShape(currentMode, start, pos);
@@ -1173,6 +1202,7 @@
           const pos = toCoord(e, mapaArea);
           if (currentMode === 'pen' || currentMode === 'eraser') {
             strokeLine(start, pos, currentMode);
+            broadcastDrawStroke(mapaArea, currentMode, start, pos);
           } else {
             commitShape(currentMode, start, pos);
           }
@@ -1303,6 +1333,47 @@
       };
     })();
     // ====== Persistência do tamanho dos tokens (Ctrl + Scroll) ======
+    function applyRemoteDraw(evt){
+      try {
+        if (!evt || !evt.mapa_id) return;
+        if (evt.client_id && window.DRAW_CLIENT_ID && evt.client_id === window.DRAW_CLIENT_ID) return;
+        const area = document.getElementById('mapa-area-' + evt.mapa_id);
+        if (!area) return;
+        if (window.ensureDrawLayersAll) window.ensureDrawLayersAll();
+        const canvas = area.querySelector('.mapa-draw-layer');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const mode = evt.mode || 'pen';
+        const color = evt.color || '#d33';
+        const size = Number(evt.size) || 4;
+        const from = evt.from || {}; const to = evt.to || {};
+        if (typeof from.x !== 'number' || typeof from.y !== 'number' || typeof to.x !== 'number' || typeof to.y !== 'number') return;
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = size;
+        if (mode === 'eraser') {
+          ctx.globalCompositeOperation = 'destination-out';
+          ctx.strokeStyle = '#000';
+        } else {
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.strokeStyle = color;
+        }
+        ctx.beginPath();
+        if (mode === 'rect') {
+          ctx.rect(from.x, from.y, to.x - from.x, to.y - from.y);
+        } else if (mode === 'circle') {
+          const dx = to.x - from.x; const dy = to.y - from.y;
+          const r = Math.sqrt(dx*dx + dy*dy);
+          ctx.arc(from.x, from.y, r, 0, Math.PI * 2);
+        } else {
+          ctx.moveTo(from.x, from.y);
+          ctx.lineTo(to.x, to.y);
+        }
+        ctx.stroke();
+        ctx.restore();
+      } catch(_) {}
+    }
     function tokenSizeKey(posicaoId){ return `combate:${combateId}:token:${posicaoId}:size`; }
     function persistTokenSize(tokenEl){
       if (!tokenEl || !tokenEl.id) return;
@@ -1591,12 +1662,14 @@
     }
   } catch(_) {}
         // Restaura posição de scroll global se estava próximo ao fim
-        try {
-          const newDocHeight = document.body.scrollHeight;
-          const targetGap = wasDocNearBottom ? 0 : prevBottomGap;
-          const targetY = Math.max(0, newDocHeight - window.innerHeight - targetGap);
-          window.scrollTo({ top: targetY, behavior: 'auto' });
-        } catch(_) {}
+        if (replacedHistorico || (selectors||[]).includes('#historico-card')) {
+          try {
+            const newDocHeight = document.body.scrollHeight;
+            const targetGap = wasDocNearBottom ? 0 : prevBottomGap;
+            const targetY = Math.max(0, newDocHeight - window.innerHeight - targetGap);
+            window.scrollTo({ top: targetY, behavior: 'auto' });
+          } catch(_) {}
+        }
       } catch (err) {
         console.warn('Refresh parcial falhou, mantendo página:', err);
       }
@@ -2228,6 +2301,10 @@
           } else {
             await refreshSelectors(['#historico-card', '#status-card']);
           }
+          break;
+        }
+        case 'draw': {
+          applyRemoteDraw(payload);
           break;
         }
         case 'limpar_historico': {

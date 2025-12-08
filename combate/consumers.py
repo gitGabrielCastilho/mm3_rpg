@@ -41,6 +41,23 @@ class CombateConsumer(AsyncWebsocketConsumer):
             payload = json.loads(text_data)
             if isinstance(payload, dict) and payload.get('tipo') == 'ping':
                 await self.send(text_data=json.dumps({'tipo': 'pong', 't': payload.get('t')}))
+                return
+            # Broadcast de desenhos leves (não persistidos)
+            if isinstance(payload, dict) and payload.get('tipo') == 'draw':
+                data = payload.get('data') or {}
+                mapa_id = data.get('mapa_id')
+                if mapa_id:
+                    await self.channel_layer.group_send(
+                        self.combate_group_name,
+                        {
+                            'type': 'combate_message',
+                            'message': {
+                                'evento': 'draw',
+                                **data,
+                            }
+                        }
+                    )
+                return
         except Exception:
             # Silencie entradas inválidas
             pass
