@@ -804,16 +804,16 @@
         if (tick === 0) {
           const sels = ['.turno-topbar', '#status-card'];
           if (!userReading) sels.splice(1, 0, '#historico-card');
-          if (wsDown) tryUpdateTargetsLight();
+          if (wsDown) { tryUpdateTargetsLight(); sels.push('.combate-col-right'); }
           refreshSelectors(sels).catch(()=>{});
         } else if (tick === 6) {
           const sels = ['#status-card'];
-          if (wsDown) tryUpdateTargetsLight();
+          if (wsDown) { tryUpdateTargetsLight(); sels.push('.combate-col-right'); }
           refreshSelectors(sels).catch(()=>{});
         } else {
           const sels = ['.turno-topbar', '#status-card'];
           if (!userReading) sels.splice(1, 0, '#historico-card');
-          if (wsDown) tryUpdateTargetsLight();
+          if (wsDown) { tryUpdateTargetsLight(); sels.push('.combate-col-right'); }
           refreshSelectors(sels).catch(()=>{});
         }
       }, 5000);
@@ -834,8 +834,10 @@
           } catch(_) {}
           const hc = document.getElementById('historico-card');
           const userReading = (()=>{ try { return hc && (hc.scrollHeight - hc.scrollTop - hc.clientHeight) >= 24; } catch(_) { return false; } })();
+          const wsDown = !window._combateWsActive;
           const sels = ['.turno-topbar', '#status-card'];
           if (!userReading) sels.splice(1, 0, '#historico-card');
+          if (wsDown) { tryUpdateTargetsLight(); sels.push('.combate-col-right'); }
           refreshSelectors(sels).catch(()=>{});
         }
       }, 8000);
@@ -1522,10 +1524,11 @@
     rafEqualize();
   // Restaura estados do mapa após substituição
         restoreMapStates();
-    // Restaura desenhos após substituição
-    try { restoreDrawings(); } catch(_) {}
   // Se não houver estado salvo (primeira vez), garanta cobertura
   ensureAllAreasMinScale();
+  if (window.ensureDrawLayersAll) window.ensureDrawLayersAll();
+    // Restaura desenhos após substituição
+    try { restoreDrawings(); } catch(_) {}
   // Reformat history for readability
   try { enhanceHistorico(document); } catch(_) {}
   // Marca interação do usuário com o histórico (usado para evitar pulo ao topo durante resize)
@@ -2233,16 +2236,14 @@
         }
   case 'adicionar_mapa':
   case 'remover_mapa': {
-          // Skip refreshing combate-col-right to preserve drawings
-          await refreshSelectors([]);
+          await refreshSelectors(['.combate-col-right']);
           break;
         }
         case 'adicionar_participante': {
           // Atualização incremental (sem recriar form inteiro)
           ensureAlvoHasParticipant(payload && payload.participante);
           maybeAddToAcoesDe(payload && payload.participante);
-          // Skip refreshing combate-col-right to preserve drawings
-          await refreshSelectors(['#status-card']);
+          await refreshSelectors(['.combate-col-right']);
           try {
             const newId = payload && payload.participante && payload.participante.id;
             if (newId) {
@@ -2272,8 +2273,7 @@
               sel.selectedIndex = 0; sel.dispatchEvent(new Event('change'));
             }
           } catch(_) {}
-          // Skip refreshing combate-col-right to preserve drawings
-          await refreshSelectors(['#status-card']);
+          await refreshSelectors(['.combate-col-right']);
           try {
             if (remId) {
               setTimeout(() => {
