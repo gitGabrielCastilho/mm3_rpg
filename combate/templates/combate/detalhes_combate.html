@@ -1058,7 +1058,9 @@
         }
 
         function onDown(e){
-          if (e.button !== 0) return; // only main button
+          // Only respond to mouse button 0 (left click) or touch
+          if (e.button !== 0 && e.button !== undefined && e.type !== 'touchstart') return;
+          
           // Check if clicking on a token - if so, ignore and let token drag happen
           const target = e.target;
           if (target && target.closest && target.closest('.mapa-token')) return;
@@ -1068,7 +1070,12 @@
           drawing = true;
           start = toCoord(e, mapaArea);
           mapaArea.dataset.drawing = '1';
-          canvas.setPointerCapture(e.pointerId);
+          
+          // Try to set pointer capture if available
+          if (e.pointerId !== undefined && canvas.setPointerCapture) {
+            try { canvas.setPointerCapture(e.pointerId); } catch(_){}
+          }
+          
           // desenha um ponto imediato para feedback
           strokeLine(start, start, currentMode);
         }
@@ -1098,40 +1105,26 @@
           }
           drawing = false;
           delete mapaArea.dataset.drawing;
-          try { canvas.releasePointerCapture(e.pointerId); } catch(_){ }
+          if (e.pointerId !== undefined && canvas.releasePointerCapture) {
+            try { canvas.releasePointerCapture(e.pointerId); } catch(_){ }
+          }
         }
 
-        // Only canvas (not preview) captures pointer events for drawing
-        function wrapDown(e) {
-          console.log('CLICK DETECTED!', e.type, 'on', e.target.tagName);
-          onDown(e);
-        }
+        // Attach event listeners to mapaArea (parent), not canvas
+        // This captures all events in the area and lets us dispatch to canvas
+        mapaArea.addEventListener('pointerdown', onDown, false);
+        mapaArea.addEventListener('mousedown', onDown, false);
+        mapaArea.addEventListener('touchstart', onDown, { passive: false });
         
-        canvas.addEventListener('pointerdown', wrapDown, false);
-        canvas.addEventListener('mousedown', wrapDown, false);
-        canvas.addEventListener('touchstart', wrapDown, { passive: false });
+        mapaArea.addEventListener('pointermove', onMove, false);
+        mapaArea.addEventListener('mousemove', onMove, false);
+        mapaArea.addEventListener('touchmove', onMove, { passive: false });
         
-        canvas.addEventListener('pointermove', onMove, false);
-        canvas.addEventListener('mousemove', onMove, false);
-        canvas.addEventListener('touchmove', onMove, { passive: false });
+        mapaArea.addEventListener('pointerup', onUp, false);
+        mapaArea.addEventListener('mouseup', onUp, false);
+        mapaArea.addEventListener('touchend', onUp, { passive: false });
         
-        canvas.addEventListener('pointerup', onUp, false);
-        canvas.addEventListener('mouseup', onUp, false);
-        canvas.addEventListener('touchend', onUp, { passive: false });
-        
-        canvas.addEventListener('pointercancel', onUp, false);
-        canvas.addEventListener('pointerleave', function(e){
-          // Only end drawing if we leave the canvas while drawing
-          if (drawing) onUp(e);
-        }, false);
-        
-        // Bloqueia scroll wheel ao desenhar para não mover o mapa
-        canvas.addEventListener('wheel', function(e){ 
-          if (drawing) { 
-            e.preventDefault(); 
-            e.stopPropagation(); 
-          } 
-        }, { passive:false });
+        mapaArea.addEventListener('pointercancel', onUp, false);
 
         canvas.dataset.drawingBound = '1';
         mapaArea.dataset.drawBound = '1';
@@ -1209,19 +1202,6 @@
           if (img.complete) { ensureDrawLayersAll(); updateDrawLayerSizes(); return; }
           img.addEventListener('load', function(){ ensureDrawLayersAll(); updateDrawLayerSizes(); }, { once:true });
         });
-        
-        // DEBUG: Check mapa-area properties
-        setTimeout(function() {
-          const mapaAreas = document.querySelectorAll('[id^="mapa-area-"]');
-          console.log('Found mapa-areas:', mapaAreas.length);
-          mapaAreas.forEach(area => {
-            console.log('Mapa area:', area.id, 'visible:', area.offsetHeight > 0, 'size:', area.offsetWidth, 'x', area.offsetHeight);
-            const canvas = area.querySelector('.mapa-draw-layer');
-            console.log('Canvas in area:', canvas ? 'YES' : 'NO', canvas ? 'size: ' + canvas.width + 'x' + canvas.height : '');
-            const rect = area.getBoundingClientRect();
-            console.log('Area rect:', 'left:', rect.left, 'top:', rect.top, 'width:', rect.width, 'height:', rect.height);
-          });
-        }, 500);
       });
 
       window.addEventListener('resize', updateDrawLayerSizes);
