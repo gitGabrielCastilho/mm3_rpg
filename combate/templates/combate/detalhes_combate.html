@@ -987,7 +987,10 @@
           return;
         }
         
-        console.log('BINDING DRAWING - Canvas:', canvas, 'dimensions:', canvas.width, 'x', canvas.height);
+        // Skip if already bound to this mapaArea
+        if (mapaArea.dataset.drawingEventsBound === '1') {
+          return;
+        }
         
         const ctx = canvas.getContext('2d');
         const ctxPrev = preview.getContext('2d');
@@ -1128,6 +1131,7 @@
 
         canvas.dataset.drawingBound = '1';
         mapaArea.dataset.drawBound = '1';
+        mapaArea.dataset.drawingEventsBound = '1';
       }
       
       // Helper to clone and replace canvas to remove all event listeners
