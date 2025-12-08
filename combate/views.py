@@ -2855,10 +2855,10 @@ def limpar_desenhos(request, mapa_id):
                 f'combate_{mapa.combate.id}',
                 {
                     'type': 'combate_message',
-                    'message': {
+                    'message': json.dumps({
                         'evento': 'clear_drawings',
                         'mapa_id': str(mapa.id),
-                    }
+                    })
                 }
             )
         except Exception:

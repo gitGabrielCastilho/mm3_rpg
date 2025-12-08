@@ -2270,10 +2270,16 @@
           // Atualiza apenas o token informado, sem refresh de colunas
           const id = payload.posicao_id;
           const x = payload.x; const y = payload.y;
-          const token = document.getElementById('token-' + id);
+          const mapa_id = payload.mapa_id;
+          const tokenId = 'token-' + id;
+          const token = document.getElementById(tokenId);
+          console.log('[WS] token_move:', { id, mapa_id, x, y, tokenId, tokenFound: !!token });
           if (token && Number.isFinite(x) && Number.isFinite(y)) {
             token.style.left = x + 'px';
             token.style.top = y + 'px';
+            console.log('[WS] token_move: movido para', x, y);
+          } else {
+            console.warn('[WS] token_move: token não encontrado ou coordenadas inválidas', { id, x, y, token: !!token });
           }
           break;
         }
@@ -2281,11 +2287,13 @@
           const id = payload.posicao_id;
           const size = payload.size;
           const token = document.getElementById('token-' + id);
+          console.log('[WS] token_resize:', { id, size, tokenFound: !!token });
           if (token && Number.isFinite(size)) {
             token.style.width = size + 'px';
             token.style.height = size + 'px';
-            try { persistTokenSize(token); } catch(_) {}
+            console.log('[WS] token_resize: redimensionado para', size);
           }
+          try { persistTokenSize(token); } catch(_) {}
           break;
         }
         case 'rolagem': {
@@ -2391,16 +2399,24 @@
         }
         case 'clear_drawings': {
           const mapaId = payload.mapa_id;
-          if (mapaId) {
-            const area = document.getElementById('mapa-area-' + mapaId);
-            if (area) {
-              const canvas = area.querySelector('.mapa-draw-layer');
-              if (canvas) {
-                const ctx = canvas.getContext('2d');
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-              }
-            }
+          console.log('[WS] clear_drawings recebido:', { mapaId });
+          if (!mapaId) {
+            console.warn('[WS] clear_drawings: mapa_id ausente');
+            break;
           }
+          const area = document.getElementById('mapa-area-' + mapaId);
+          if (!area) {
+            console.warn('[WS] clear_drawings: área não encontrada para mapa', mapaId);
+            break;
+          }
+          const canvas = area.querySelector('.mapa-draw-layer');
+          if (!canvas) {
+            console.warn('[WS] clear_drawings: canvas não encontrado para mapa', mapaId);
+            break;
+          }
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          console.log('[WS] clear_drawings: canvas limpo para mapa', mapaId);
           break;
         }
         case 'limpar_historico': {
@@ -2417,6 +2433,8 @@
           ensureAlvoHasParticipant(payload && payload.participante);
           maybeAddToAcoesDe(payload && payload.participante);
           await refreshSelectors(['.combate-col-right']);
+          // Atualiza tokens no mapa para refletir novo participante
+          if (window.ensureAllAreasMinScale) window.ensureAllAreasMinScale();
           try {
             const newId = payload && payload.participante && payload.participante.id;
             if (newId) {
@@ -2436,6 +2454,14 @@
         }
         case 'remover_participante': {
           const remId = payload && payload.participante_id;
+          // Remove token visualmente do mapa imediatamente
+          if (remId) {
+            const token = document.getElementById('token-' + remId);
+            if (token) {
+              token.remove();
+              console.log('[WS][remover_participante] token removido visualmente:', remId);
+            }
+          }
           removeFromAlvo(remId);
           removeFromAcoesDe(remId);
           purgeTargetFromStorage(remId);
