@@ -3,6 +3,7 @@ from channels.layers import get_channel_layer
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponseBadRequest
+from django.core import signing
 from .models import Combate, Turno, Participante
 from personagens.models import Personagem, Poder
 from django.utils import timezone
@@ -60,6 +61,7 @@ def _item_bonus(personagem: Personagem, categoria: str, chave: str) -> int:
         return 0
 
 
+            'ws_token': signing.dumps({'uid': request.user.id}, salt='ws-combate'),
 def _atributo_efetivo(personagem: Personagem, participante: Participante, atributo: str, combate_id: int) -> int:
     """Retorna o valor do atributo considerando:
     - valor base do Personagem

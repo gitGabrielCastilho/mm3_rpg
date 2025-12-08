@@ -14,6 +14,9 @@
   window._isPersonagemAllowed = function(pid){ try { return window._allowedPersonagemIdsStr.indexOf(String(pid)) !== -1; } catch(_) { return true; } };
   // URL resolvida pelo Django para evitar problemas de prefixo em produção
   window._poderesAjaxUrl = "{% url 'poderes_personagem_ajax' %}";
+  // Token assinado para autenticar WebSocket mesmo com bloqueio de cookies
+  window._wsToken = "{{ ws_token }}";
+  window._wsUserId = "{{ request.user.id }}";
 </script>
 <div id="combate-content" class="combate-detalhes-center" data-is-gm="{% if combate.sala.game_master == user %}true{% else %}false{% endif %}">
   <!-- Topo: info de turno + ações globais -->
@@ -783,7 +786,8 @@
     })();
     const IS_GM = window._IS_GM;
     const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const wsPath = `${wsScheme}://${window.location.host}/ws/combate/${combateId}/`;
+    const wsToken = window._wsToken ? `?ws_token=${encodeURIComponent(window._wsToken)}` : '';
+    const wsPath = `${wsScheme}://${window.location.host}/ws/combate/${combateId}/${wsToken}`;
     let combateSocket = new WebSocket(wsPath);
   let lastEventAt = Date.now();
 

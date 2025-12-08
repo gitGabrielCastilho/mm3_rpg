@@ -1,5 +1,8 @@
 import json
 import logging
+import urllib.parse
+from django.core import signing
+from django.contrib.auth import get_user_model
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
@@ -14,6 +17,10 @@ class CombateConsumer(AsyncWebsocketConsumer):
         self.combate_group_name = f'combate_{self.combate_id}'
         # Autorização: requer usuário autenticado e membro da sala do combate
         user = self.scope.get('user')
+        if not user or isinstance(user, AnonymousUser) or not user.is_authenticated:
+            token = self._extract_token()
+            if token:
+                user = await self._user_from_token(token)
         if not user or isinstance(user, AnonymousUser) or not user.is_authenticated:
             return await self.close()
         try:
@@ -85,3 +92,25 @@ class CombateConsumer(AsyncWebsocketConsumer):
         if combate.sala.game_master_id == user_id:
             return True
         return combate.sala.jogadores.filter(id=user_id).exists()
+
+    def _extract_token(self):
+        try:
+            qs = self.scope.get('query_string', b'').decode()
+            params = urllib.parse.parse_qs(qs)
+            tok = params.get('ws_token') or params.get('token')
+            if tok:
+                return tok[0]
+        except Exception:
+            return None
+        return None
+
+    @database_sync_to_async
+    def _user_from_token(self, token):
+        try:
+            data = signing.loads(token, salt='ws-combate', max_age=60*60*24*30)
+            uid = data.get('uid')
+            if not uid:
+                return None
+            return get_user_model().objects.filter(id=uid).first()
+        except Exception:
+            return None
