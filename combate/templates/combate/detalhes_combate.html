@@ -961,26 +961,25 @@
       
       let currentSize = 4;
 
-      function salvarDesenhoServidor(mapaArea, shape, from, to){
+      function salvarCanvasCompleto(mapaArea){
         try {
           const mapaId = (mapaArea && mapaArea.id || '').replace('mapa-area-','');
           if (!mapaId) return;
-          const stroke = {
-            mode: shape,
-            color: currentColor,
-            size: currentSize,
-            from,
-            to,
-          };
-          fetch(`/combate/mapa/${mapaId}/salvar-desenho/`, {
-            method: 'POST',
-            headers: {
-              'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-              'Content-Type': 'application/json',
-            },
-            credentials: 'same-origin',
-            body: JSON.stringify(stroke),
-          }).catch(err => console.warn('Falha ao salvar desenho:', err));
+          const canvas = mapaArea.querySelector('.mapa-draw-layer');
+          if (!canvas) return;
+          canvas.toBlob(blob => {
+            if (!blob) return;
+            const formData = new FormData();
+            formData.append('imagem', blob, 'desenho.png');
+            fetch(`/combate/mapa/${mapaId}/salvar-desenho/`, {
+              method: 'POST',
+              headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+              },
+              credentials: 'same-origin',
+              body: formData,
+            }).catch(err => console.warn('Falha ao salvar desenho:', err));
+          }, 'image/png');
         } catch(_) {}
       }
 
@@ -1182,7 +1181,6 @@
           
           // desenha um ponto imediato para feedback
           strokeLine(start, start, currentMode);
-          salvarDesenhoServidor(mapaArea, currentMode, start, start);
         }
 
         function onMove(e){
@@ -1193,7 +1191,6 @@
           if (currentMode === 'pen' || currentMode === 'eraser') {
             const prev = start;
             strokeLine(prev, pos, currentMode);
-            salvarDesenhoServidor(mapaArea, currentMode, prev, pos);
             start = pos;
           } else {
             drawShape(currentMode, start, pos);
@@ -1205,12 +1202,14 @@
           e.preventDefault();
           e.stopPropagation();
           const pos = toCoord(e, mapaArea);
+          // Salva apenas traços completos ao soltar o mouse
           if (currentMode === 'pen' || currentMode === 'eraser') {
             strokeLine(start, pos, currentMode);
-            salvarDesenhoServidor(mapaArea, currentMode, start, pos);
           } else {
             commitShape(currentMode, start, pos);
           }
+          // Captura snapshot do canvas e salva de uma vez
+          setTimeout(() => salvarCanvasCompleto(mapaArea), 50);
           drawing = false;
           delete mapaArea.dataset.drawing;
           if (e.pointerId !== undefined && canvas.releasePointerCapture) {
@@ -1323,30 +1322,22 @@
         // Carrega desenhos salvos do servidor
         try {
           const desenhosSalvos = {{ desenhos_salvos|safe }};
-          Object.entries(desenhosSalvos).forEach(([mapaId, strokes]) => {
+          Object.entries(desenhosSalvos).forEach(([mapaId, snapshots]) => {
             const area = document.getElementById('mapa-area-' + mapaId);
-            if (!area || !Array.isArray(strokes)) return;
+            if (!area || !Array.isArray(snapshots) || !snapshots.length) return;
             const canvas = area.querySelector('.mapa-draw-layer');
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
-            strokes.forEach(s => {
-              try {
-                const mode = s.mode || 'pen';
-                const color = s.color || '#d33';
-                const size = Number(s.size) || 4;
-                const from = s.from || {}; const to = s.to || {};
-                if (typeof from.x !== 'number' || typeof to.x !== 'number') return;
-                ctx.save();
-                ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = size;
-                if (mode === 'eraser') { ctx.globalCompositeOperation = 'destination-out'; ctx.strokeStyle = '#000'; }
-                else { ctx.globalCompositeOperation = 'source-over'; ctx.strokeStyle = color; }
-                ctx.beginPath();
-                if (mode === 'rect') ctx.rect(from.x, from.y, to.x - from.x, to.y - from.y);
-                else if (mode === 'circle') { const dx = to.x - from.x; const dy = to.y - from.y; const r = Math.sqrt(dx*dx + dy*dy); ctx.arc(from.x, from.y, r, 0, Math.PI * 2); }
-                else { ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); }
-                ctx.stroke(); ctx.restore();
-              } catch(_) {}
-            });
+            // Carrega último snapshot (imagem completa)
+            const last = snapshots[snapshots.length - 1];
+            if (last && last.type === 'snapshot' && last.data) {
+              const img = new Image();
+              img.onload = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+              };
+              img.src = last.data;
+            }
           });
         } catch(_) {}
         // Re-ensure after images load

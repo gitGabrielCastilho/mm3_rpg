@@ -2779,7 +2779,7 @@ def adicionar_participante(request, combate_id):
 @login_required
 @require_POST
 def salvar_desenho(request, mapa_id):
-    """Salva um traço de desenho no mapa e notifica todos os clientes."""
+    """Salva snapshot completo do canvas como imagem PNG."""
     mapa = get_object_or_404(Mapa, id=mapa_id)
     # Permissão: GM da sala do combate ou dono do mapa (mapas globais)
     if mapa.combate:
@@ -2787,22 +2787,24 @@ def salvar_desenho(request, mapa_id):
         if sala.game_master != request.user and request.user not in sala.jogadores.all():
             return JsonResponse({'error': 'forbidden'}, status=403)
     elif mapa.criado_por != request.user:
-        # Mapa global: só o criador pode desenhar
         return JsonResponse({'error': 'forbidden'}, status=403)
     
     try:
-        data = json.loads(request.body)
-        stroke = {
-            'mode': data.get('mode', 'pen'),
-            'color': data.get('color', '#d33'),
-            'size': data.get('size', 4),
-            'from': data.get('from', {}),
-            'to': data.get('to', {}),
+        # Recebe imagem PNG do canvas
+        if 'imagem' not in request.FILES:
+            return JsonResponse({'error': 'imagem não enviada'}, status=400)
+        
+        img_file = request.FILES['imagem']
+        # Converte para base64 para salvar no JSON
+        import base64
+        img_data = base64.b64encode(img_file.read()).decode('utf-8')
+        
+        # Salva como data URL
+        mapa.desenhos_json = [{
+            'type': 'snapshot',
+            'data': f'data:image/png;base64,{img_data}',
             'timestamp': timezone.now().isoformat(),
-        }
-        desenhos = mapa.desenhos_json or []
-        desenhos.append(stroke)
-        mapa.desenhos_json = desenhos
+        }]
         mapa.save(update_fields=['desenhos_json'])
         
         # Broadcast para todos via WebSocket
@@ -2814,16 +2816,16 @@ def salvar_desenho(request, mapa_id):
                     {
                         'type': 'combate_message',
                         'message': {
-                            'evento': 'draw',
+                            'evento': 'draw_snapshot',
                             'mapa_id': str(mapa.id),
-                            **stroke,
+                            'data': f'data:image/png;base64,{img_data}',
                         }
                     }
                 )
             except Exception:
                 logger.warning("Falha ao broadcast desenho via WS", exc_info=True)
         
-        return JsonResponse({'status': 'ok', 'stroke': stroke})
+        return JsonResponse({'status': 'ok'})
     except Exception as e:
         logger.exception("Erro ao salvar desenho")
         return JsonResponse({'error': str(e)}, status=400)
