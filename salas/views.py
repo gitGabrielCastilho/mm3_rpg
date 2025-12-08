@@ -21,6 +21,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class SalaForm(forms.ModelForm):
     class Meta:
         model = Sala
