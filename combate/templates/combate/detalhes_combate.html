@@ -624,16 +624,72 @@
 
   <style>
     .mapa-draw-toolbar{
-      display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:8px 0 4px;
-      padding:6px 8px; background:#f7f7f7; border:1px solid #e1e1e1; border-radius:6px;
+      display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:8px 0 8px;
+      padding:8px 12px; 
+      background: #262626;
+      border:1px solid #3a3a3a; 
+      border-radius:12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     }
-    .mdt-group{display:flex; gap:4px; align-items:center;}
+    .mdt-group{display:flex; gap:6px; align-items:center;}
     .mdt-btn{
-      padding:4px 8px; border:1px solid #ccc; border-radius:4px; background:#fff; cursor:pointer; font-size:12px;
+      padding:6px 12px; 
+      border:1px solid #3a3a3a; 
+      border-radius:8px; 
+      background:#1a1a1a; 
+      color:#f5f5f5;
+      cursor:pointer; 
+      font-size:13px;
+      font-weight:600;
+      transition: all 0.2s cubic-bezier(.4,0,.2,1);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
     }
-    .mdt-btn.active{background:#0d6efd; border-color:#0d6efd; color:#fff;}
+    .mdt-btn:hover{
+      background:#2a2a2a;
+      border-color:#4a4a4a;
+    }
+    .mdt-btn.active{
+      background:#c53131; 
+      border-color:#c53131; 
+      color:#fff;
+      box-shadow: 0 2px 8px rgba(197,49,49,0.3);
+    }
     .mdt-colors button{
-      width:20px; height:20px; border-radius:50%; border:1px solid #bbb; cursor:pointer; padding:0;
+      width:24px; height:24px; border-radius:50%; border:2px solid #3a3a3a; cursor:pointer; padding:0;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .mdt-colors button:hover{
+      transform: scale(1.1);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+    .mdt-colors button.active{
+      border-color:#e6c200;
+      box-shadow: 0 0 0 2px #e6c200;
+    }
+    #mdt-size, #mdt-clear{
+      padding:6px 10px;
+      border:1px solid #3a3a3a;
+      border-radius:8px;
+      background:#1a1a1a;
+      color:#f5f5f5;
+      font-size:13px;
+      cursor:pointer;
+      transition: all 0.2s;
+    }
+    #mdt-size:hover, #mdt-clear:hover{
+      background:#2a2a2a;
+      border-color:#4a4a4a;
+    }
+    #mdt-clear{
+      background:#a32a2a;
+      border-color:#a32a2a;
+      color:#fff;
+      font-weight:600;
+    }
+    #mdt-clear:hover{
+      background:#e6c200;
+      border-color:#e6c200;
+      color:#23272a;
     }
     canvas.mapa-draw-layer,
     canvas.mapa-draw-preview{
@@ -953,6 +1009,12 @@
 
       function ensureDrawLayer(mapaArea){
         if (!mapaArea) return;
+       
+         // Skip if already initialized
+         if (mapaArea.dataset.drawLayerInitialized === '1') {
+           return;
+         }
+       
         let canvas = mapaArea.querySelector('.mapa-draw-layer');
         let preview = mapaArea.querySelector('.mapa-draw-preview');
         if (!canvas) {
@@ -971,9 +1033,10 @@
         // Keep canvases transparent to pointer hit-testing; we listen on mapaArea
         canvas.style.pointerEvents = 'none';
         preview.style.pointerEvents = 'none';
-        resizeCanvasPair(mapaArea, canvas, preview);
         // Bind drawing events (will skip if already bound)
         bindDrawing(mapaArea, canvas, preview);
+         // Mark as initialized so we don't reinitialize
+         mapaArea.dataset.drawLayerInitialized = '1';
       }
 
       function toCoord(e, mapaArea){
