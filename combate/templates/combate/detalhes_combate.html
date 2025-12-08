@@ -1926,7 +1926,8 @@
                   maybeAddToAcoesDe(data.participante);
                 }
                 // Atualiza apenas coluna direita/status (evita sobrescrever seleção/poderes)
-                await refreshSelectors(['.combate-col-right', '#status-card']);
+                // Skip refreshing combate-col-right to preserve drawings
+                await refreshSelectors(['#status-card']);
                 // Verificação tardia apenas injeta opção se ausente (sem refresh do form)
                 try {
                   const newId = data.participante && data.participante.id;
@@ -1958,7 +1959,8 @@
                     }
                   } catch(_) {}
                 }
-                await refreshSelectors(['.combate-col-right', '#status-card']);
+                // Skip refreshing combate-col-right to preserve drawings
+                await refreshSelectors(['#status-card']);
                 // Verificação tardia remove opção persistente sem recriar form
                 try {
                   const remId = data.participante_id;
@@ -1988,7 +1990,8 @@
               }
               case 'adicionar_mapa':
               case 'remover_mapa':
-                await refreshSelectors(['.combate-col-right']);
+                // Skip refreshing combate-col-right to preserve drawings
+                await refreshSelectors([]);
                 break;
               case 'limpar_historico':
                 // Não toque no form de ataque; só limpa topbar e histórico
@@ -2113,14 +2116,16 @@
         }
   case 'adicionar_mapa':
   case 'remover_mapa': {
-          await refreshSelectors(['.combate-col-right']);
+          // Skip refreshing combate-col-right to preserve drawings
+          await refreshSelectors([]);
           break;
         }
         case 'adicionar_participante': {
           // Atualização incremental (sem recriar form inteiro)
           ensureAlvoHasParticipant(payload && payload.participante);
           maybeAddToAcoesDe(payload && payload.participante);
-          await refreshSelectors(['.combate-col-right', '#status-card']);
+          // Skip refreshing combate-col-right to preserve drawings
+          await refreshSelectors(['#status-card']);
           try {
             const newId = payload && payload.participante && payload.participante.id;
             if (newId) {
@@ -2150,7 +2155,8 @@
               sel.selectedIndex = 0; sel.dispatchEvent(new Event('change'));
             }
           } catch(_) {}
-          await refreshSelectors(['.combate-col-right', '#status-card']);
+          // Skip refreshing combate-col-right to preserve drawings
+          await refreshSelectors(['#status-card']);
           try {
             if (remId) {
               setTimeout(() => {
