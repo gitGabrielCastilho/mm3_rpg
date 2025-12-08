@@ -958,14 +958,17 @@
         if (!canvas) {
           canvas = document.createElement('canvas');
           canvas.className = 'mapa-draw-layer';
-          canvas.style.pointerEvents = 'auto';
+          canvas.style.pointerEvents = 'none';
           preview = document.createElement('canvas');
           preview.className = 'mapa-draw-preview';
-          preview.style.pointerEvents = 'auto';
+          preview.style.pointerEvents = 'none';
           // Append to mapaArea directly, not to .mapa-canvas
           mapaArea.appendChild(canvas);
           mapaArea.appendChild(preview);
         }
+        // Keep canvases transparent to pointer hit-testing; we listen on mapaArea
+        canvas.style.pointerEvents = 'none';
+        preview.style.pointerEvents = 'none';
         resizeCanvasPair(mapaArea, canvas, preview);
         // Always rebind - don't skip
         bindDrawing(mapaArea, canvas, preview);
