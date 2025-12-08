@@ -2344,6 +2344,27 @@
           applyRemoteDraw(payload);
           break;
         }
+        case 'draw_snapshot': {
+          // Recebe snapshot PNG completo via WebSocket e atualiza canvas
+          const mapaId = payload.mapa_id;
+          const snapshotData = payload.snapshot;
+          if (mapaId && snapshotData) {
+            const area = document.getElementById('mapa-area-' + mapaId);
+            if (area) {
+              const canvas = area.querySelector('.mapa-draw-layer');
+              if (canvas) {
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                img.onload = () => {
+                  ctx.clearRect(0, 0, canvas.width, canvas.height);
+                  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                };
+                img.src = snapshotData;
+              }
+            }
+          }
+          break;
+        }
         case 'clear_drawings': {
           const mapaId = payload.mapa_id;
           if (mapaId) {
