@@ -1378,6 +1378,40 @@
       });
       window._mapStates = states;
     }
+    function snapshotDrawings(){
+      const snaps = {};
+      document.querySelectorAll("[id^='mapa-area-']").forEach(area => {
+        const id = area.id || '';
+        const canvas = area.querySelector('.mapa-draw-layer');
+        if (canvas && canvas.width && canvas.height) {
+          try {
+            snaps[id] = {
+              w: canvas.width,
+              h: canvas.height,
+              data: canvas.toDataURL('image/png')
+            };
+          } catch(_) {}
+        }
+      });
+      window._drawSnaps = snaps;
+    }
+    function restoreDrawings(){
+      const snaps = window._drawSnaps || {};
+      Object.entries(snaps).forEach(([id, snap]) => {
+        const area = document.getElementById(id);
+        const canvas = area ? area.querySelector('.mapa-draw-layer') : null;
+        if (!canvas || !snap || !snap.data) return;
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        img.onload = () => {
+          try {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            ctx.drawImage(img, 0, 0, snap.w, snap.h, 0, 0, canvas.width, canvas.height);
+          } catch(_) {}
+        };
+        img.src = snap.data;
+      });
+    }
     function restoreMapStates(){
       const states = window._mapStates || {};
       document.querySelectorAll("[id^='mapa-area-']").forEach(area => {
@@ -1427,6 +1461,8 @@
         persistGridState();
         // Salva estados atuais do mapa (zoom/scroll) para restaurar após troca
         saveMapStates();
+        // Snapshot drawings para restaurar após troca
+        snapshotDrawings();
         // Hist: detecta se o usuário está perto do fim para preservar leitura SOMENTE se vamos trocar o #historico-card
         let historicoWasNearBottom = false;
         let historicoPrevScroll = 0;
@@ -1486,6 +1522,8 @@
     rafEqualize();
   // Restaura estados do mapa após substituição
         restoreMapStates();
+    // Restaura desenhos após substituição
+    try { restoreDrawings(); } catch(_) {}
   // Se não houver estado salvo (primeira vez), garanta cobertura
   ensureAllAreasMinScale();
   // Reformat history for readability
