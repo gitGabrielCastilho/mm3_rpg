@@ -810,16 +810,16 @@
         if (tick === 0) {
           const sels = ['.turno-topbar', '#status-card'];
           if (!userReading) sels.splice(1, 0, '#historico-card');
-          if (wsDown) { tryUpdateTargetsLight(); sels.push('.combate-col-right'); }
+          if (wsDown) tryUpdateTargetsLight();
           refreshSelectors(sels).catch(()=>{});
         } else if (tick === 6) {
           const sels = ['#status-card'];
-          if (wsDown) { tryUpdateTargetsLight(); sels.push('.combate-col-right'); }
+          if (wsDown) tryUpdateTargetsLight();
           refreshSelectors(sels).catch(()=>{});
         } else {
           const sels = ['.turno-topbar', '#status-card'];
           if (!userReading) sels.splice(1, 0, '#historico-card');
-          if (wsDown) { tryUpdateTargetsLight(); sels.push('.combate-col-right'); }
+          if (wsDown) tryUpdateTargetsLight();
           refreshSelectors(sels).catch(()=>{});
         }
       }, 5000);
@@ -843,7 +843,7 @@
           const wsDown = !window._combateWsActive;
           const sels = ['.turno-topbar', '#status-card'];
           if (!userReading) sels.splice(1, 0, '#historico-card');
-          if (wsDown) { tryUpdateTargetsLight(); sels.push('.combate-col-right'); }
+          if (wsDown) tryUpdateTargetsLight();
           refreshSelectors(sels).catch(()=>{});
         }
       }, 8000);
@@ -2440,16 +2440,20 @@
       }
     };
 
-    window._combateWsActive = true;
-    combateSocket.onopen = function(){ window._combateWsActive = true; stopCombatePolling(); };
+    window._combateWsActive = false;
+    combateSocket.onopen = function(){ 
+      window._combateWsActive = true; 
+      stopCombatePolling(); 
+      console.log('WebSocket conectado');
+    };
     combateSocket.onclose = function(e) {
       window._combateWsActive = false;
-      console.warn('WebSocket fechado. Atualização por polling ativada.');
+      console.warn('WebSocket fechado (code:', e.code, '). Polling ativado.');
       startCombatePolling();
     };
-    combateSocket.onerror = function(){
-      // Marca como inativo para habilitar refresh mais agressivo (inclui #form-ataque)
+    combateSocket.onerror = function(err){
       window._combateWsActive = false;
+      console.error('WebSocket erro:', err);
     };
   startHeartbeat();
 

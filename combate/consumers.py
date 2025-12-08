@@ -21,7 +21,10 @@ class CombateConsumer(AsyncWebsocketConsumer):
             token = self._extract_token()
             if token:
                 user = await self._user_from_token(token)
+                if user:
+                    self.scope['user'] = user
         if not user or isinstance(user, AnonymousUser) or not user.is_authenticated:
+            logger.warning(f"WS combate {self.combate_id}: auth failed (user={user})")
             return await self.close()
         try:
             allowed = await self._user_allowed(int(self.combate_id), user.id)
@@ -29,12 +32,14 @@ class CombateConsumer(AsyncWebsocketConsumer):
             logger.warning("Falha ao checar permissão no WS de combate", exc_info=True)
             return await self.close()
         if not allowed:
+            logger.warning(f"WS combate {self.combate_id}: user {user.id} not allowed")
             return await self.close()
         await self.channel_layer.group_add(
             self.combate_group_name,
             self.channel_name
         )
         await self.accept()
+        logger.info(f"WS combate {self.combate_id}: user {user.id} connected")
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(
