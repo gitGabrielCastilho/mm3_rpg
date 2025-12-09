@@ -69,6 +69,18 @@ class ItemPoder(models.Model):
         ('restricao_fisica', 'Restrição física/movimentação'),
         ('debilitacao', 'Debilitação/consciência'),
     ]
+    DANO_TIPO_CHOICES = [
+        ('fisico', 'Físico'),
+        ('acido', 'Ácido'),
+        ('gelo', 'Gelo'),
+        ('fogo', 'Fogo'),
+        ('raio', 'Raio'),
+        ('veneno', 'Veneno'),
+        ('mental', 'Mental'),
+        ('trovao', 'Trovão'),
+        ('necrotico', 'Necrótico'),
+        ('radiante', 'Radiante'),
+    ]
     TIPO_CHOICES = [
         ('descritivo', 'Descritivo'),
         ('aflicao', 'Aflição'),
@@ -118,6 +130,7 @@ class ItemPoder(models.Model):
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='dano')
     modo = models.CharField(max_length=20, choices=MODO_CHOICES, default='melee')
     duracao = models.CharField(max_length=20, choices=DURACAO_CHOICES, default='instantaneo')
+    tipo_dano = models.CharField(max_length=20, choices=DANO_TIPO_CHOICES, default='fisico')
     nivel_efeito = models.IntegerField(default=0)
     bonus_ataque = models.IntegerField(default=0)
     somar_forca_no_nivel = models.BooleanField(default=False)

@@ -27,6 +27,33 @@ POWER_CASTING_ABILITY_CHOICES = CASTING_ABILITY_CHOICES + [
     ('resistencia', 'Resistência'),
 ]
 
+# Tipos de dano (único por poder)
+DANO_TIPO_CHOICES = [
+    ('fisico', 'Físico'),
+    ('acido', 'Ácido'),
+    ('gelo', 'Gelo'),
+    ('fogo', 'Fogo'),
+    ('raio', 'Raio'),
+    ('veneno', 'Veneno'),
+    ('mental', 'Mental'),
+    ('trovao', 'Trovão'),
+    ('necrotico', 'Necrótico'),
+    ('radiante', 'Radiante'),
+]
+
+DANO_TIPO_CUSTO = {
+    'fisico': 0,
+    'acido': 2,
+    'gelo': 2,
+    'fogo': 2,
+    'raio': 2,
+    'veneno': 2,
+    'mental': 3,
+    'trovao': 3,
+    'necrotico': 5,
+    'radiante': 5,
+}
+
 
 class Personagem(models.Model):
     is_npc = models.BooleanField(default=False)
@@ -44,6 +71,10 @@ class Personagem(models.Model):
     nivel_poder = models.IntegerField(default=10)
     foto = models.ImageField(upload_to='personagens_fotos/', blank=True, null=True)
     vantagens = models.ManyToManyField('Vantagem', blank=True)
+
+    # Resistências/Imunidades a tipos de dano
+    resistencias_dano = models.JSONField(default=list, blank=True)
+    imunidades_dano = models.JSONField(default=list, blank=True)
 
     # Características
     forca = models.IntegerField(default=0)
@@ -89,6 +120,16 @@ class Personagem(models.Model):
 
 
     def clean(self):
+        # Validar Resistência/Imunidade (vale para jogadores e NPCs)
+        res_set = set([str(x).lower() for x in (self.resistencias_dano or [])])
+        imu_set = set([str(x).lower() for x in (self.imunidades_dano or [])])
+        conflito = res_set & imu_set
+        if conflito:
+            raise ValidationError(
+                "Não é possível ter Resistência e Imunidade ao mesmo tipo de dano: "
+                + ", ".join(sorted(conflito))
+            )
+
         # NPCs não sofrem limitações gerais (atributos/defesas/perícias)
         if getattr(self, 'is_npc', False):
             return
@@ -139,6 +180,7 @@ class Personagem(models.Model):
             if valor > np + 5:
                 raise ValidationError(f"A perícia {nome} não pode exceder o nível de poder + 5.")
 
+
     def __str__(self):
         return self.nome
     
@@ -188,6 +230,7 @@ class Poder(models.Model):
     personagem = models.ForeignKey(Personagem, on_delete=models.CASCADE, related_name='poderes')
     nome = models.CharField(max_length=100)
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='dano')
+    tipo_dano = models.CharField(max_length=20, choices=DANO_TIPO_CHOICES, default='fisico', help_text="Tipo de dano (apenas para poderes de Dano; Físico é o padrão).")
     modo = models.CharField(max_length=20, choices=MODO_CHOICES, default='melee')
     duracao = models.CharField(max_length=20, choices=DURACAO_CHOICES, default='instantaneo')
     nivel_efeito = models.IntegerField(default=0)
@@ -243,6 +286,20 @@ class Poder(models.Model):
     def __str__(self):
         return f"{self.nome} ({self.tipo}, {self.modo})"
 
+    def custo_tipo_dano(self) -> int:
+        """Custo fixo por tipo de dano (apenas se o poder causar Dano).
+
+        Mapa:
+        - Físico: +0
+        - Ácido/Gelo/Fogo/Raio/Veneno: +2
+        - Mental/Trovão: +3
+        - Necrótico/Radiante: +5
+        """
+        if getattr(self, 'tipo', '') != 'dano':
+            return 0
+        tipo = str(getattr(self, 'tipo_dano', 'fisico') or 'fisico').lower()
+        return int(DANO_TIPO_CUSTO.get(tipo, 0))
+
     # --- Cálculo de custo do poder ---
     def custo_base(self):
         """Calcula o custo base do poder (sem considerar Array nem encadeamentos):
@@ -251,7 +308,8 @@ class Poder(models.Model):
           Tipo: Cura +1, Aprimorar/Reduzir +1, Outros +0
           Duração: Instantâneo +0, Concentração +1, Sustentado +2
           Modo: Corpo a Corpo +0, À distância +1, Área +2, Percepção +3
-        Custo = nivel_efeito * (1 + soma_modificadores)
+                Custo = nivel_efeito * (1 + soma_modificadores)
+                + custo fixo do tipo de dano (se aplicável)
         """
         # Se for poder de item ou de vantagem, custo é desconsiderado
         if getattr(self, 'de_item', False) or getattr(self, 'de_vantagem', False):
@@ -284,7 +342,7 @@ class Poder(models.Model):
             + tipo_bonus_map.get(self.tipo, 0) \
             + duracao_bonus_map.get(self.duracao, 0) \
             + modo_bonus_map.get(self.modo, 0)
-        return n * bonus
+        return (n * bonus) + self.custo_tipo_dano()
 
     def custo(self):
         """Custo do poder individual (sem consolidar Arrays).
@@ -371,7 +429,7 @@ class Inventario(models.Model):
             existentes = {
                 (p.nome, p.tipo, p.modo, p.duracao, p.nivel_efeito, p.bonus_ataque,
                  p.somar_forca_no_nivel, p.defesa_ativa, p.defesa_passiva, p.casting_ability,
-                 p.charges, (p.array or ""))
+                 p.charges, (p.array or ""), (p.tipo_dano or 'fisico'))
                 for p in Poder.objects.filter(personagem_id=personagem_id, de_item=True, item_origem=item)
             }
             novos = []
@@ -389,6 +447,7 @@ class Inventario(models.Model):
                     tpl.casting_ability,
                     tpl.charges,
                     (tpl.array or ""),
+                    getattr(tpl, 'tipo_dano', 'fisico') or 'fisico',
                 )
                 if chave in existentes:
                     continue
@@ -406,6 +465,7 @@ class Inventario(models.Model):
                     casting_ability=tpl.casting_ability,
                     charges=tpl.charges,
                     array=tpl.array or "",
+                    tipo_dano=getattr(tpl, 'tipo_dano', 'fisico') or 'fisico',
                     de_item=True,
                     item_origem=item,
                 ))
@@ -428,9 +488,11 @@ def personagem_custos_detalhados(self):
       Vantagem: 1 pt por vantagem (não há nível atualmente)
       Perícia: 0.5 pt por nível (soma das perícias)
       Defesa: 1 pt por nível (aparar, esquivar, fortitude, vontade, resistencia)
-      Poder: Base = nivel × (1 + Tipo + Duração + Modo) + (em cada poder) Bônus de Ataque × 0,5.
+    Poder: Base = nivel × (1 + Tipo + Duração + Modo) + custo do tipo de dano (Dano: +0/+2/+3/+5) + (em cada poder) Bônus de Ataque × 0,5.
              Arrays: custo do grupo = maior Base (sem Bônus de Ataque) + (qtd-1);
              além disso, cada poder ainda soma seu próprio Bônus de Ataque × 0,5 ao total.
+    Resistência a dano: 5 pts por tipo
+    Imunidade a dano: 10 pts por tipo
     """
     # Características
     carac_campos = ['forca','vigor','destreza','agilidade','luta','inteligencia','prontidao','presenca']
@@ -485,13 +547,19 @@ def personagem_custos_detalhados(self):
             custo_poderes += (max(bases) + max(0, n - 1))
         # Soma custo aditivo do Bônus de Ataque (por poder)
         custo_poderes += custo_bonus_ataque_total
-    total = custo_carac + custo_def + custo_pericias + custo_vantagens + custo_poderes
+    # Resistências/Imunidades a dano
+    res_list = set([str(x).lower() for x in (getattr(self, 'resistencias_dano', []) or [])])
+    imu_list = set([str(x).lower() for x in (getattr(self, 'imunidades_dano', []) or [])])
+    custo_res_imun = (len(res_list) * 5) + (len(imu_list) * 10)
+
+    total = custo_carac + custo_def + custo_pericias + custo_vantagens + custo_poderes + custo_res_imun
     return {
         'caracteristicas': custo_carac,
         'defesas': custo_def,
         'pericias': custo_pericias,
         'vantagens': custo_vantagens,
         'poderes': custo_poderes,
+        'resist_imunidades': custo_res_imun,
         'total': total,
         'soma_caracteristicas': soma_carac,
         'soma_defesas': soma_def,

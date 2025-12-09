@@ -2,7 +2,7 @@ from django import forms
 from django.forms import inlineformset_factory, BaseInlineFormSet
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Personagem, Poder, Inventario, Vantagem
+from .models import Personagem, Poder, Inventario, Vantagem, DANO_TIPO_CHOICES
 
 
 class CadastroForm(UserCreationForm):
@@ -25,6 +25,18 @@ class PersonagemForm(forms.ModelForm):
         required=False,
         label="Vantagens"
     )
+    resistencias_dano = forms.MultipleChoiceField(
+        choices=DANO_TIPO_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        label="Resistências a dano"
+    )
+    imunidades_dano = forms.MultipleChoiceField(
+        choices=DANO_TIPO_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        label="Imunidades a dano"
+    )
     class Meta:
         model = Personagem
         fields = [
@@ -42,6 +54,8 @@ class PersonagemForm(forms.ModelForm):
             'arcana', 'religiao',
             # Campo especialidade_casting_ability
             'especialidade_casting_ability',
+            # Resistências/Imunidades
+            'resistencias_dano', 'imunidades_dano',
             'vantagens',
         ]
         exclude = ['usuario']
@@ -95,12 +109,31 @@ class PersonagemForm(forms.ModelForm):
                 abbr = attr_abbr.get(ability, ability[:3].upper())
                 self.fields[skill].label = f"{base_label} ({abbr})"
 
+        # Inicializar resistências/imunidades a partir da instância
+        for fname in ('resistencias_dano', 'imunidades_dano'):
+            if fname in self.fields:
+                initial_val = getattr(self.instance, fname, []) or []
+                self.fields[fname].initial = initial_val
+
     def clean(self):
         cleaned_data = super().clean()
         # Se os campos não vierem no POST (pois não estão na UI), normalize para 0
         for f in ('combate_distancia', 'combate_corpo'):
             if cleaned_data.get(f) in (None, ''):
                 cleaned_data[f] = 0
+        # Normalizar para lista e validar conflitos de resistência/imunidade
+        res = cleaned_data.get('resistencias_dano') or []
+        imu = cleaned_data.get('imunidades_dano') or []
+        res_set = set(res)
+        imu_set = set(imu)
+        conflito = res_set & imu_set
+        if conflito:
+            raise forms.ValidationError(
+                "Não é possível ter Resistência e Imunidade ao mesmo tipo de dano: "
+                + ", ".join(sorted(conflito))
+            )
+        cleaned_data['resistencias_dano'] = list(res_set)
+        cleaned_data['imunidades_dano'] = list(imu_set)
         return cleaned_data
 
 
@@ -109,7 +142,7 @@ class PoderForm(forms.ModelForm):
         model = Poder
         fields = [
             'id',
-            'nome', 'array', 'tipo', 'caminho_aflicao', 'modo', 'duracao', 'nivel_efeito', 'bonus_ataque', 'somar_forca_no_nivel', 'charges',
+            'nome', 'array', 'tipo', 'tipo_dano', 'caminho_aflicao', 'modo', 'duracao', 'nivel_efeito', 'bonus_ataque', 'somar_forca_no_nivel', 'charges',
             'defesa_ativa', 'defesa_passiva', 'casting_ability',
             'de_item', 'item_origem', 'de_vantagem', 'vantagem_origem', 'ligados'
         ]
@@ -259,6 +292,18 @@ class InventarioForm(forms.ModelForm):
 
 # ---- NPC Forms (sem vantagens e sem inventário; poderes sem origens) ----
 class PersonagemNPCForm(forms.ModelForm):
+    resistencias_dano = forms.MultipleChoiceField(
+        choices=DANO_TIPO_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        label="Resistências a dano"
+    )
+    imunidades_dano = forms.MultipleChoiceField(
+        choices=DANO_TIPO_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        label="Imunidades a dano"
+    )
     class Meta:
         model = Personagem
         fields = [
@@ -276,6 +321,8 @@ class PersonagemNPCForm(forms.ModelForm):
             'arcana', 'religiao',
             # Campo especialidade_casting_ability
             'especialidade_casting_ability',
+            # Resistências/Imunidades
+            'resistencias_dano', 'imunidades_dano',
         ]
         exclude = ['usuario']
 
@@ -323,12 +370,29 @@ class PersonagemNPCForm(forms.ModelForm):
                 abbr = attr_abbr.get(ability, ability[:3].upper())
                 self.fields[skill].label = f"{base_label} ({abbr})"
 
+        for fname in ('resistencias_dano', 'imunidades_dano'):
+            if fname in self.fields:
+                initial_val = getattr(self.instance, fname, []) or []
+                self.fields[fname].initial = initial_val
+
     def clean(self):
         cleaned_data = super().clean()
         # Normaliza para 0 quando ausentes
         for f in ('combate_distancia', 'combate_corpo'):
             if cleaned_data.get(f) in (None, ''):
                 cleaned_data[f] = 0
+        res = cleaned_data.get('resistencias_dano') or []
+        imu = cleaned_data.get('imunidades_dano') or []
+        res_set = set(res)
+        imu_set = set(imu)
+        conflito = res_set & imu_set
+        if conflito:
+            raise forms.ValidationError(
+                "Não é possível ter Resistência e Imunidade ao mesmo tipo de dano: "
+                + ", ".join(sorted(conflito))
+            )
+        cleaned_data['resistencias_dano'] = list(res_set)
+        cleaned_data['imunidades_dano'] = list(imu_set)
         return cleaned_data
 
 
@@ -336,7 +400,7 @@ class PoderNPCForm(forms.ModelForm):
     class Meta:
         model = Poder
         fields = [
-            'nome', 'array', 'tipo', 'caminho_aflicao', 'modo', 'duracao', 'nivel_efeito',
+            'nome', 'array', 'tipo', 'tipo_dano', 'caminho_aflicao', 'modo', 'duracao', 'nivel_efeito',
             'bonus_ataque', 'somar_forca_no_nivel', 'charges',
             'defesa_ativa', 'defesa_passiva', 'casting_ability', 'ligados'
         ]

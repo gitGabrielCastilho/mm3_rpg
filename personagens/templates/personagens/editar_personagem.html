@@ -140,6 +140,23 @@
           </div>
         </div>
       </div>
+
+  <h2>Resistências e Imunidades <span id="badge-res" class="section-cost-badge" title="Resistência: +5 pp por tipo. Imunidade: +10 pp por tipo.">Resist 5 / Imun 10 — 0</span></h2>
+      <div class="resist-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:1.2rem 2rem; margin-bottom:1.6rem;">
+        <div>
+          <h4 style="margin:0 0 0.4rem;">Resistências</h4>
+          <div class="checkbox-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:0.35rem 0.6rem;">
+            {{ form.resistencias_dano }}
+          </div>
+        </div>
+        <div>
+          <h4 style="margin:0 0 0.4rem;">Imunidades</h4>
+          <div class="checkbox-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:0.35rem 0.6rem;">
+            {{ form.imunidades_dano }}
+          </div>
+        </div>
+      </div>
+
   <h2>Perícias <span id="badge-per" class="section-cost-badge" title="Cada ponto em Perícias custa +0,5 pp.">+0,5 pp — 0</span></h2>
       <div>
         {{ form.especialidade_casting_ability.label_tag }} {{ form.especialidade_casting_ability }}
@@ -180,6 +197,7 @@
           <div class="campo-poder">{{ formset.empty_form.nome.label_tag }}{{ formset.empty_form.nome }}</div>
           <div class="campo-poder">{{ formset.empty_form.array.label_tag }}{{ formset.empty_form.array }}</div>
           <div class="campo-poder">{{ formset.empty_form.tipo.label_tag }}{{ formset.empty_form.tipo }}</div>
+          <div class="campo-poder campo-tipo-dano">{{ formset.empty_form.tipo_dano.label_tag }}{{ formset.empty_form.tipo_dano }}</div>
           <div class="campo-poder campo-caminho-aflicao">{{ formset.empty_form.caminho_aflicao.label_tag }}{{ formset.empty_form.caminho_aflicao }}</div>
           <div class="campo-poder">{{ formset.empty_form.modo.label_tag }}{{ formset.empty_form.modo }}</div>
           <div class="campo-poder somar-forca-wrap span-2" title="Se marcado e for Dano Corpo a Corpo, o nível de efeito soma a Força.">
@@ -229,6 +247,7 @@
                 <div class="campo-poder">{{ form.nome.label_tag }}{{ form.nome }}</div>
                 <div class="campo-poder">{{ form.array.label_tag }}{{ form.array }}</div>
                 <div class="campo-poder">{{ form.tipo.label_tag }}{{ form.tipo }}</div>
+                <div class="campo-poder campo-tipo-dano">{{ form.tipo_dano.label_tag }}{{ form.tipo_dano }}</div>
                 <div class="campo-poder campo-caminho-aflicao">{{ form.caminho_aflicao.label_tag }}{{ form.caminho_aflicao }}</div>
                 <div class="campo-poder">{{ form.modo.label_tag }}{{ form.modo }}</div>
                 <div class="campo-poder somar-forca-wrap span-2" title="Se marcado e for Dano Corpo a Corpo, o nível de efeito soma a Força.">
@@ -959,14 +978,34 @@ document.addEventListener('DOMContentLoaded', function() {
     wrap.style.display = v === 'aflicao' ? '' : 'none';
   }
   window.atualizarCaminhoAflicao = atualizarCaminhoAflicao;
+  function toggleTipoDano(div){
+    if (!div) return;
+    const tipoEl = div.querySelector('[name$="-tipo"]');
+    const wrap = div.querySelector('.campo-tipo-dano');
+    if (!wrap) return;
+    const v = (tipoEl && (tipoEl.value || '') || '').toLowerCase();
+    wrap.style.display = v === 'dano' ? '' : 'none';
+  }
+  window.toggleTipoDano = toggleTipoDano;
   function bind(scope){
     (scope || document).querySelectorAll('.poder-form [name$="-tipo"]').forEach(el=>{
       if (el.dataset.caminhoBound) return;
-      el.addEventListener('change', function(){ atualizarCaminhoAflicao(el.closest('.poder-form')); });
-      el.addEventListener('input', function(){ atualizarCaminhoAflicao(el.closest('.poder-form')); });
+      el.addEventListener('change', function(){
+        const div = el.closest('.poder-form');
+        atualizarCaminhoAflicao(div);
+        toggleTipoDano(div);
+      });
+      el.addEventListener('input', function(){
+        const div = el.closest('.poder-form');
+        atualizarCaminhoAflicao(div);
+        toggleTipoDano(div);
+      });
       el.dataset.caminhoBound = '1';
     });
-    (scope || document).querySelectorAll('.poder-form').forEach(div=>atualizarCaminhoAflicao(div));
+    (scope || document).querySelectorAll('.poder-form').forEach(div=>{
+      atualizarCaminhoAflicao(div);
+      toggleTipoDano(div);
+    });
   }
   bind(document);
 });
@@ -1102,6 +1141,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const custoDef = camposDefesas.reduce((s,c)=>s+val(c),0)*1;
     const custoPer = camposPericias.reduce((s,c)=>s+val(c),0)*0.5;
     const custoVant = document.querySelectorAll('input[type="checkbox"][name="vantagens"]:checked').length * 1;
+    // Resistências: 5 pp por tipo marcado
+    const custoRes = document.querySelectorAll('input[type="checkbox"][name="resistencias_dano"]:checked').length * 5;
+    // Imunidades: 10 pp por tipo marcado
+    const custoImun = document.querySelectorAll('input[type="checkbox"][name="imunidades_dano"]:checked').length * 10;
     // Custos de Poderes com Arrays: agrupar por nome do array (case-insensitive)
   // Agora incluindo Bônus de Ataque como custo aditivo por poder (0,5 pp por ponto)
     const grupos = new Map();
@@ -1141,7 +1184,7 @@ document.addEventListener('DOMContentLoaded', function() {
       custoPod += (gruposBonus.get(nome)||0);
       temArray = true;
     });
-    const total = custoCarac + custoDef + custoPer + custoVant + custoPod;
+    const total = custoCarac + custoDef + custoPer + custoVant + custoRes + custoImun + custoPod;
     function fmt(x){ return (Math.round(x*10)%10===0)?x: x.toFixed(1).replace('.0',''); }
     document.getElementById('custo-caracteristicas').textContent = custoCarac;
     document.getElementById('custo-defesas').textContent = custoDef;
@@ -1154,6 +1197,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const bDef = document.getElementById('badge-def'); if (bDef){ bDef.textContent = '+1 pp — ' + custoDef; bDef.title = 'Cada ponto em Defesas custa +1 pp. Total atual: '+custoDef; }
     const bPer = document.getElementById('badge-per'); if (bPer){ bPer.textContent = '+0,5 pp — ' + fmt(custoPer); bPer.title = 'Cada ponto em Perícias custa +0,5 pp. Total atual: '+fmt(custoPer); }
     const bVan = document.getElementById('badge-vant'); if (bVan){ bVan.textContent = '+1 pp — ' + custoVant; bVan.title = 'Cada vantagem selecionada custa +1 pp. Total atual: '+custoVant; }
+    const bRes = document.getElementById('badge-res'); if (bRes){ const custoResImun = custoRes + custoImun; bRes.textContent = 'Resist 5 / Imun 10 — ' + custoResImun; bRes.title = 'Resistência: +5 pp por tipo. Imunidade: +10 pp por tipo. Total atual: '+custoResImun; }
     const bPod = document.getElementById('badge-pod');
     if (bPod){
       const labelBase = 'Nivel x (1+Tipo+Duração+Modo) + Bônus Ataque';
@@ -1167,7 +1211,9 @@ document.addEventListener('DOMContentLoaded', function() {
     .concat(camposCaracteristicas.map(c=>'#id_'+c))
     .concat(camposDefesas.map(c=>'#id_'+c))
     .concat(camposPericias.map(c=>'#id_'+c))
-    .concat(['input[type="checkbox"][name="vantagens"]']);
+    .concat(['input[type="checkbox"][name="vantagens"]'])
+    .concat(['input[type="checkbox"][name="resistencias_dano"]'])
+    .concat(['input[type="checkbox"][name="imunidades_dano"]']);
 
   function addListeners(){
     watchSelectors.forEach(sel=>{

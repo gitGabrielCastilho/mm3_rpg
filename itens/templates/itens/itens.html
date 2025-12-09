@@ -73,6 +73,7 @@
             <div class="campo-poder">{{ formset.empty_form.nome.label_tag }}{{ formset.empty_form.nome }}</div>
             <div class="campo-poder">{{ formset.empty_form.array.label_tag }}{{ formset.empty_form.array }}</div>
             <div class="campo-poder">{{ formset.empty_form.tipo.label_tag }}{{ formset.empty_form.tipo }}</div>
+            <div class="campo-poder campo-tipo-dano">{{ formset.empty_form.tipo_dano.label_tag }}{{ formset.empty_form.tipo_dano }}</div>
             <div class="campo-poder campo-caminho-aflicao">{{ formset.empty_form.caminho_aflicao.label_tag }}{{ formset.empty_form.caminho_aflicao }}</div>
             <div class="campo-poder">{{ formset.empty_form.modo.label_tag }}{{ formset.empty_form.modo }}</div>
             <div class="campo-poder">{{ formset.empty_form.duracao.label_tag }}{{ formset.empty_form.duracao }}</div>
@@ -94,6 +95,7 @@
               <div class="campo-poder">{{ f.nome.label_tag }}{{ f.nome }}</div>
               <div class="campo-poder">{{ f.array.label_tag }}{{ f.array }}</div>
               <div class="campo-poder">{{ f.tipo.label_tag }}{{ f.tipo }}</div>
+              <div class="campo-poder campo-tipo-dano">{{ f.tipo_dano.label_tag }}{{ f.tipo_dano }}</div>
               <div class="campo-poder campo-caminho-aflicao">{{ f.caminho_aflicao.label_tag }}{{ f.caminho_aflicao }}</div>
               <div class="campo-poder">{{ f.modo.label_tag }}{{ f.modo }}</div>
               <div class="campo-poder">{{ f.duracao.label_tag }}{{ f.duracao }}</div>
@@ -238,6 +240,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const show = tipoEl && (tipoEl.value === 'aprimorar' || tipoEl.value === 'reduzir');
     wrap.style.display = show ? '' : 'none';
   }
+  function toggleTipoDano(div){
+    if (!div) return;
+    const tipoEl = div.querySelector('[name$="-tipo"]');
+    const wrap = div.querySelector('.campo-tipo-dano');
+    if (!wrap) return;
+    const v = (tipoEl && (tipoEl.value || '') || '').toLowerCase();
+    wrap.style.display = v === 'dano' ? '' : 'none';
+  }
+  window.toggleTipoDano = toggleTipoDano;
   function bind(scope){
     (scope || document).querySelectorAll('#item-poderes-list .poder-form [name$="-tipo"]').forEach(el => {
       if (el.dataset.caminhoBound) return;
@@ -245,17 +256,20 @@ document.addEventListener('DOMContentLoaded', function() {
         const div = el.closest('.poder-form');
         atualizarCaminhoAflicao(div);
         toggleAtributoAfetadoItem(div);
+        toggleTipoDano(div);
       });
       el.addEventListener('input', function(){
         const div = el.closest('.poder-form');
         atualizarCaminhoAflicao(div);
         toggleAtributoAfetadoItem(div);
+        toggleTipoDano(div);
       });
       el.dataset.caminhoBound = '1';
     });
     (scope || document).querySelectorAll('#item-poderes-list .poder-form').forEach(div => {
       atualizarCaminhoAflicao(div);
       toggleAtributoAfetadoItem(div);
+      toggleTipoDano(div);
     });
   }
   bind(document);
