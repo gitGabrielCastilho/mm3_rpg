@@ -702,169 +702,134 @@
     .mapa-canvas, .mapa-img, canvas.mapa-draw-layer, canvas.mapa-draw-preview { user-select:none; }
     .mapa-canvas { position: relative; }
     
-    /* Estilos para histórico de ataques formatado */
-    .ataque {
-      border-left: 4px solid var(--gold);
-      padding: 12px 16px;
-      margin: 10px 0;
+    /* Estilos para logs de ataque formatados */
+    .ataque-log {
       background: #1a1a1a;
-      border-radius: 6px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-      transition: all 0.2s;
-    }
-    .ataque:hover {
-      background: #202020;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      border-left: 4px solid var(--gold);
+      padding: 12px 14px;
+      margin: 8px 0;
+      border-radius: 4px;
+      font-size: 0.95em;
+      line-height: 1.5;
     }
     
-    /* Cores por modo de ataque */
-    .ataque--melee { border-left-color: #ff6b6b; }
-    .ataque--ranged { border-left-color: #4ecdc4; }
-    .ataque--area { border-left-color: #ffe66d; }
-    .ataque--perception { border-left-color: #a8dadc; }
-    .ataque--direct { border-left-color: #95e1d3; }
-    
-    .ataque__header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
+    .ataque-header {
       font-size: 1.05em;
+      margin-bottom: 8px;
+      color: #e8e8e8;
     }
     
-    .badge--melee { background: #ff6b6b; color: #fff; }
-    .badge--ranged { background: #4ecdc4; color: #fff; }
-    .badge--area { background: #ffe66d; color: #23272a; }
-    .badge--perception { background: #a8dadc; color: #23272a; }
-    .badge--direct { background: #95e1d3; color: #23272a; }
+    .badge-modo {
+      display: inline-block;
+      background: #2a2a2a;
+      color: var(--gold);
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 0.85em;
+      font-weight: 600;
+      margin-right: 6px;
+      border: 1px solid #444;
+    }
     
     .poder-nome {
       color: var(--gold);
-      font-weight: 600;
       font-style: normal;
+      font-weight: 600;
     }
     
-    .tipo-dano {
-      font-size: 0.9em;
+    .ataque-alvos {
       color: #aaa;
-      font-style: italic;
-    }
-    
-    .ataque__alvos {
-      color: #ddd;
-      margin: 4px 0 8px;
-      padding-left: 4px;
       font-size: 0.95em;
+      margin-bottom: 10px;
+      padding-left: 4px;
     }
     
-    .ataque__rolls {
+    .ataque-rolls {
       display: grid;
       grid-template-columns: auto 1fr;
       gap: 6px 12px;
-      margin: 12px 0;
-      padding: 10px 12px;
+      margin: 10px 0;
+      padding: 8px 10px;
       background: #141414;
-      border-radius: 4px;
-      font-size: 0.95em;
+      border-radius: 3px;
+      font-size: 0.93em;
     }
     
-    .ataque__rolls dt {
+    .ataque-rolls dt {
       font-weight: 600;
       color: var(--gold);
-      text-align: right;
     }
     
-    .ataque__rolls dd {
+    .ataque-rolls dd {
       margin: 0;
-      font-family: 'Courier New', monospace;
-      color: #e0e0e0;
+      color: #d0d0d0;
     }
     
-    .roll-total {
-      color: #fff;
-      font-weight: 700;
-      padding: 2px 6px;
-      background: #2a2a2a;
+    .roll-resultado {
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.9em;
+    }
+    
+    .ataque-efeitos {
+      margin-top: 10px;
+      padding: 8px 10px;
+      background: #0f0f0f;
       border-radius: 3px;
     }
     
-    .roll-success {
-      color: #51cf66;
-    }
-    
-    .roll-fail {
-      color: #ff8787;
-    }
-    
-    .ataque__efeitos {
-      background: #0f0f0f;
-      padding: 10px 12px;
-      border-radius: 4px;
-      margin-top: 10px;
-    }
-    
-    .ataque__efeitos h4 {
-      margin: 0 0 8px;
-      font-size: 0.9em;
-      color: #999;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+    .ataque-efeitos strong {
+      color: var(--gold);
+      font-size: 0.95em;
     }
     
     .efeitos-list {
       list-style: none;
       padding: 0;
-      margin: 0;
+      margin: 6px 0 0 0;
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
     }
     
-    .efeito {
+    .efeitos-list li {
       display: inline-block;
-      padding: 4px 10px;
-      border-radius: 4px;
-      font-size: 0.88em;
+      padding: 3px 8px;
+      border-radius: 3px;
+      font-size: 0.9em;
       background: #1e1e1e;
-      border-left: 3px solid #555;
-      line-height: 1.4;
+      border-left: 3px solid #666;
+      color: #e0e0e0;
     }
     
-    .efeito--success {
-      border-left-color: #51cf66;
-      background: rgba(81, 207, 102, 0.1);
-      color: #a3e9a4;
-    }
-    
-    .efeito--damage {
-      border-left-color: #ff8787;
-      background: rgba(255, 135, 135, 0.1);
-      color: #ffa8a8;
-    }
-    
-    .efeito--resist {
-      border-left-color: #ffd43b;
-      background: rgba(255, 212, 59, 0.1);
-      color: #ffe066;
-    }
-    
-    .efeito--immune {
-      border-left-color: #748ffc;
-      background: rgba(116, 143, 252, 0.1);
-      color: #91a7ff;
-    }
-    
-    .efeito--critical {
-      border-left-color: #ff6b6b;
-      background: rgba(255, 107, 107, 0.15);
-      color: #ff8787;
+    .efeito-immune {
+      border-left-color: #748ffc !important;
+      background: #1a1d2e !important;
       font-weight: 600;
     }
     
-    .efeito--neutral {
-      border-left-color: #868e96;
-      color: #adb5bd;
+    .efeito-resist {
+      border-left-color: #ffd43b !important;
+      background: #2a2415 !important;
+    }
+    
+    .efeito-incap {
+      border-left-color: #ff8787 !important;
+      background: #2e1a1a !important;
+      font-weight: 600;
+    }
+    
+    .efeito-neutral {
+      border-left-color: #868e96 !important;
+      opacity: 0.7;
+    }
+    
+    .ataque-duracao {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #2a2a2a;
+      color: #999;
+      font-size: 0.88em;
     }
   </style>
 
