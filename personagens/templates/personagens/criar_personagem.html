@@ -620,7 +620,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Garantir que tipo_dano dispara atualização
     document.querySelectorAll('#poderes-main-list .poder-form [name$="-tipo_dano"]').forEach(el=>{
       el.addEventListener('change', atualizarCustos);
-      el.addEventListener('change', updateBadges);
+      // Chama updateBadges se já estiver disponível (definido mais abaixo)
+      el.addEventListener('change', function(){ if(typeof window.updateBadges === 'function') window.updateBadges(); });
     });
     // Validar resistência/imunidade
     document.querySelectorAll('input[type="checkbox"][name="resistencias_dano"], input[type="checkbox"][name="imunidades_dano"]').forEach(cb => {
