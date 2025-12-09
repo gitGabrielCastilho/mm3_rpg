@@ -1280,7 +1280,11 @@ document.addEventListener('DOMContentLoaded', function(){
     const tipoBonus = (tipo==='cura'||tipo==='aprimorar')?1:0;
     const durBonus = dur==='concentracao'?1:(dur==='sustentado'?2:0);
     const modoBonus = modo==='ranged'?1:(modo==='area'?2:(modo==='percepcao'?3:0));
-    return n * (1 + tipoBonus + durBonus + modoBonus);
+    // tipo_dano é aditivo (não entra no multiplicador)
+    const tipoDano = (sel('tipo_dano')?.value||'').toLowerCase();
+    const custoTipoDano = { fisico:0, acido:2, gelo:2, fogo:2, raio:2, veneno:2, mental:3, trovao:3, necrotico:5, radiante:5 };
+    const tipoDanoBonus = tipo === 'dano' ? (custoTipoDano[tipoDano] || 0) : 0;
+    return n * (1 + tipoBonus + durBonus + modoBonus) + tipoDanoBonus;
   }
   function breakdown(div){
     // Calcula n e bônus individuais para tooltip

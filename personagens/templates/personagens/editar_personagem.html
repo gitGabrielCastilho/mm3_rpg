@@ -1333,7 +1333,11 @@ document.addEventListener('DOMContentLoaded', function(){
     const durBonus = dur==='concentracao'?1:(dur==='sustentado'?2:0);
     const modoBonus = modo==='ranged'?1:(modo==='area'?2:(modo==='percepcao'?3:0));
     const mult = 1 + tipoBonus + durBonus + modoBonus;
-    return n * mult;
+    // tipo_dano é aditivo (não entra no multiplicador)
+    const tipoDano = (sel('tipo_dano')?.value||'').toLowerCase();
+    const custoTipoDano = { fisico:0, acido:2, gelo:2, fogo:2, raio:2, veneno:2, mental:3, trovao:3, necrotico:5, radiante:5 };
+    const tipoDanoBonus = tipo === 'dano' ? (custoTipoDano[tipoDano] || 0) : 0;
+    return n * mult + tipoDanoBonus;
   }
   function breakdown(div){
     const sel = n => div.querySelector('[name$="-'+n+'"]');
