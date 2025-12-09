@@ -142,6 +142,134 @@ def _verificar_resistencia_imunidade(personagem: Personagem, tipo_dano: str) -> 
     return tem_resistencia, tem_imunidade
 
 
+def _format_attack_log(
+    atacante_nome: str,
+    poder_nome: str,
+    poder_tipo: str,
+    poder_modo: str,
+    duracao: str,
+    tipo_dano: str | None,
+    alvo_nome: str,
+    ataque_roll: dict | None = None,
+    defesa_roll: dict | None = None,
+    esquiva_roll: dict | None = None,
+    efeitos: list = None
+) -> str:
+    """Formata resultado de ataque em HTML estruturado e legível.
+    
+    Args:
+        atacante_nome: Nome do atacante
+        poder_nome: Nome do poder
+        poder_tipo: Tipo do poder (dano, aflicao, cura, buff, aprimorar, descritivo)
+        poder_modo: Modo (melee, ranged, area, perception, null)
+        duracao: Duração (instantaneo, concentracao, sustentado)
+        tipo_dano: Tipo de dano (fogo, gelo, etc) ou None
+        alvo_nome: Nome do alvo
+        ataque_roll: Dict com {d20, bonus, total, vs} para roll de ataque
+        defesa_roll: Dict com {defesa, d20, bonus, total, cd, resultado} para defesa
+        esquiva_roll: Dict com {d20, bonus, total, cd, resultado} para esquiva
+        efeitos: Lista de strings com efeitos aplicados
+    
+    Returns:
+        String HTML formatada
+    """
+    # Mapeia modo para rótulo e classe CSS
+    modo_info = {
+        'melee': ('CORPO A CORPO', 'melee'),
+        'ranged': ('À DISTÂNCIA', 'ranged'),
+        'area': ('ÁREA', 'area'),
+        'perception': ('PERCEPÇÃO', 'perception'),
+        'null': ('DIRETO', 'direct'),
+    }
+    modo_label, modo_class = modo_info.get(poder_modo, ('ATAQUE', 'ataque'))
+    
+    # Mapeia tipo para contexto adicional
+    tipo_label = {
+        'dano': 'Dano',
+        'aflicao': 'Aflição',
+        'cura': 'Cura',
+        'buff': 'Aprimoramento',
+        'aprimorar': 'Aprimorar',
+        'descritivo': 'Descritivo'
+    }.get(poder_tipo, poder_tipo.title())
+    
+    # Monta o HTML estruturado
+    html_parts = [
+        f'<article class="ataque ataque--{modo_class}">',
+        f'  <header class="ataque__header">',
+        f'    <span class="badge badge--{modo_class}">{modo_label}</span>',
+        f'    <strong>{atacante_nome}</strong> usou ',
+        f'    <em class="poder-nome">{poder_nome}</em>',
+    ]
+    
+    # Tipo de dano se relevante
+    if tipo_dano and poder_tipo == 'dano':
+        html_parts.append(f'    <span class="tipo-dano">({tipo_dano.title()})</span>')
+    
+    html_parts.append(f'  </header>')
+    
+    # Linha de alvo
+    html_parts.append(f'  <div class="ataque__alvos">→ {alvo_nome}</div>')
+    
+    # Rolls
+    if ataque_roll or defesa_roll or esquiva_roll:
+        html_parts.append(f'  <dl class="ataque__rolls">')
+        
+        if ataque_roll:
+            html_parts.append(f'    <dt>Ataque:</dt>')
+            html_parts.append(
+                f'    <dd>{ataque_roll["d20"]} + {ataque_roll["bonus"]} = '
+                f'<strong class="roll-total">{ataque_roll["total"]}</strong> vs {ataque_roll["vs"]}</dd>'
+            )
+        
+        if esquiva_roll:
+            resultado_class = 'success' if esquiva_roll.get('resultado') == 'sucesso' else 'fail'
+            html_parts.append(f'    <dt>Esquiva:</dt>')
+            html_parts.append(
+                f'    <dd>{esquiva_roll["d20"]} + {esquiva_roll["bonus"]} = '
+                f'<strong class="roll-total roll-{resultado_class}">{esquiva_roll["total"]}</strong> '
+                f'vs CD {esquiva_roll["cd"]} → {esquiva_roll.get("resultado", "").upper()}</dd>'
+            )
+        
+        if defesa_roll:
+            resultado_class = 'success' if defesa_roll.get('resultado') == 'sucesso' else 'fail'
+            html_parts.append(f'    <dt>Defesa ({defesa_roll["defesa"].title()}):</dt>')
+            html_parts.append(
+                f'    <dd>{defesa_roll["d20"]} + {defesa_roll["bonus"]} = '
+                f'<strong class="roll-total roll-{resultado_class}">{defesa_roll["total"]}</strong> '
+                f'vs CD {defesa_roll["cd"]}</dd>'
+            )
+        
+        html_parts.append(f'  </dl>')
+    
+    # Efeitos
+    if efeitos:
+        html_parts.append(f'  <section class="ataque__efeitos">')
+        html_parts.append(f'    <h4>Resultado:</h4>')
+        html_parts.append(f'    <ul class="efeitos-list">')
+        for efeito in efeitos:
+            # Detecta tipo de efeito por palavra-chave
+            efeito_class = 'neutral'
+            if 'IMUNE' in efeito.upper():
+                efeito_class = 'immune'
+            elif 'RESISTÊNCIA' in efeito.upper():
+                efeito_class = 'resist'
+            elif 'INCAPACITADO' in efeito.upper():
+                efeito_class = 'critical'
+            elif 'sem efeito' in efeito.lower():
+                efeito_class = 'success'
+            elif '+1' in efeito or 'Ferimentos' in efeito:
+                efeito_class = 'damage'
+            
+            html_parts.append(f'      <li class="efeito efeito--{efeito_class}">{efeito}</li>')
+        html_parts.append(f'    </ul>')
+        html_parts.append(f'  </section>')
+    
+    html_parts.append(f'</article>')
+    
+    return '\n'.join(html_parts)
+
+
 def _aflicao_condicao(caminho: str, nivel: int) -> str:
     """Mapeia caminho de Aflição + nível (1–3) para condição textual.
 
@@ -2269,12 +2397,7 @@ def realizar_ataque(request, combate_id):
                                 participante_alvo.save()
                             a_piece = (f" + {a_next}" if a_next > 0 else (f" - {abs(a_next)}" if a_next < 0 else ""))
                             pen_piece = f" - {salv_pen}" if salv_pen else ""
-                            defesa_msg = (
-                                f"{d_base} + {d_valor}"
-                                f"{' + ' + str(buff) if buff else ''}"
-                                f"{' - ' + str(debuff) if debuff else ''}"
-                                f"{a_piece}{pen_piece} = {d_total}"
-                            )
+                            defesa_bonus_total = d_valor + (a_next if a_next else 0) + buff - debuff - salv_pen
                             esq_piece = (f" + {esq_next}" if esq_next > 0 else (f" - {abs(esq_next)}" if esq_next < 0 else ""))
                             if d_total < cd:
                                 diff = cd - d_total
@@ -2286,25 +2409,70 @@ def realizar_ataque(request, combate_id):
                                         combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
                                         poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
                                     )
-                                efeitos = []
+                                efeitos_list = []
                                 if msg_resist == "IMUNE":
-                                    efeitos.append(msg_resist)
+                                    efeitos_list.append(msg_resist)
                                 elif msg_resist == "RESISTÊNCIA":
-                                    efeitos.append("RESISTÊNCIA +5 (já aplicada na defesa)")
+                                    efeitos_list.append("RESISTÊNCIA +5 (já aplicada na defesa)")
                                 if msg_resist != "IMUNE":
-                                    efeitos.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
+                                    efeitos_list.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
                                     if aplicou:
-                                        efeitos.append("+1 de " + ("dano" if tipo=='dano' else "aflição"))
+                                        efeitos_list.append("+1 de " + ("dano" if tipo=='dano' else "aflição"))
                                 if incap:
-                                    efeitos.append("INCAPACITADO")
-                                resultado = (
-                                    f"{alvo.nome} falhou esquiva ({rolagem_esq_base}+{esquiva}{esq_piece}={rolagem_esq} vs {cd}) {defesa_attr}: "
-                                    f"{defesa_msg} " + ", ".join(efeitos) + f" ({poder_atual.nome})"
+                                    efeitos_list.append("INCAPACITADO")
+                                
+                                resultado = _format_attack_log(
+                                    atacante_nome=atacante.nome,
+                                    poder_nome=poder_atual.nome,
+                                    poder_tipo=tipo,
+                                    poder_modo=modo,
+                                    duracao=duracao_label,
+                                    tipo_dano=tipo_dano_poder,
+                                    alvo_nome=alvo.nome,
+                                    esquiva_roll={
+                                        'd20': rolagem_esq_base,
+                                        'bonus': esquiva + esq_next,
+                                        'total': rolagem_esq,
+                                        'cd': cd,
+                                        'resultado': 'falha'
+                                    },
+                                    defesa_roll={
+                                        'defesa': defesa_attr,
+                                        'd20': d_base,
+                                        'bonus': defesa_bonus_total,
+                                        'total': d_total,
+                                        'cd': cd,
+                                        'resultado': 'falha'
+                                    },
+                                    efeitos=efeitos_list
                                 )
                                 manter_concentracao_apos_sofrer(participante_alvo)
                             else:
-                                resultado = (
-                                    f"{alvo.nome} falhou esquiva ({rolagem_esq_base}+{esquiva}{esq_piece}={rolagem_esq} vs {cd}) {defesa_attr}: {defesa_msg} "
+                                resultado = _format_attack_log(
+                                    atacante_nome=atacante.nome,
+                                    poder_nome=poder_atual.nome,
+                                    poder_tipo=tipo,
+                                    poder_modo=modo,
+                                    duracao=duracao_label,
+                                    tipo_dano=getattr(poder_atual, 'tipo_dano', None) if tipo == 'dano' else None,
+                                    alvo_nome=alvo.nome,
+                                    esquiva_roll={
+                                        'd20': rolagem_esq_base,
+                                        'bonus': esquiva + esq_next,
+                                        'total': rolagem_esq,
+                                        'cd': cd,
+                                        'resultado': 'falha'
+                                    },
+                                    defesa_roll={
+                                        'defesa': defesa_attr,
+                                        'd20': d_base,
+                                        'bonus': defesa_bonus_total,
+                                        'total': d_total,
+                                        'cd': cd,
+                                        'resultado': 'sucesso'
+                                    },
+                                    efeitos=["sem efeito"]
+                                )
                                     f"(sem efeito) ({poder_atual.nome})"
                                 )
                         else:  # sucesso parcial na esquiva
