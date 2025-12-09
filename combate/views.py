@@ -2378,6 +2378,7 @@ def realizar_ataque(request, combate_id):
                         except Exception:
                             n_eff = int(getattr(poder_atual, 'nivel_efeito', 0) or 0)
                         cd = (15 if tipo == 'dano' else 10) + n_eff
+                        tipo_dano_poder = getattr(poder_atual, 'tipo_dano', None) if tipo == 'dano' else None
                         cd_sucesso = ((15 if tipo == 'dano' else 10) + n_eff) // 2
                         cd_sucesso //= 2
                         defesa_attr = poder_atual.defesa_passiva
@@ -2416,7 +2417,6 @@ def realizar_ataque(request, combate_id):
                             if d_total < cd:
                                 diff = cd - d_total
                                 degree = _calc_fail_degree(tipo, diff)
-                                tipo_dano_poder = getattr(poder_atual, 'tipo_dano', None) if tipo == 'dano' else None
                                 aplicou, incap, msg_resist = _aplicar_falha_salvamento(participante_alvo, tipo, degree, cd if tipo == 'aflicao' else None, tipo_dano_poder)
                                 if duracao_raw in ('concentracao', 'sustentado'):
                                     EfeitoConcentracao.objects.create(
@@ -2508,7 +2508,6 @@ def realizar_ataque(request, combate_id):
                             if d_total < cd_sucesso:
                                 diff = cd_sucesso - d_total
                                 degree = _calc_fail_degree(tipo, diff)
-                                tipo_dano_poder = getattr(poder_atual, 'tipo_dano', None) if tipo == 'dano' else None
                                 aplicou, incap, msg_resist = _aplicar_falha_salvamento(participante_alvo, tipo, degree, cd if tipo == 'aflicao' else None, tipo_dano_poder)
                                 if duracao_raw in ('concentracao', 'sustentado'):
                                     EfeitoConcentracao.objects.create(
@@ -2579,6 +2578,7 @@ def realizar_ataque(request, combate_id):
                         except Exception:
                             n_eff = int(getattr(poder_atual, 'nivel_efeito', 0) or 0)
                         cd = (15 if tipo == 'dano' else 10) + n_eff
+                        tipo_dano_poder = getattr(poder_atual, 'tipo_dano', None) if tipo == 'dano' else None
                         defesa_attr = poder_atual.defesa_passiva
                         buff = participante_alvo.bonus_temporario
                         debuff = participante_alvo.penalidade_temporaria
@@ -2598,7 +2598,6 @@ def realizar_ataque(request, combate_id):
                             diff = cd - total
                             degree = _calc_fail_degree(tipo, diff)
                             antigo_af = int(getattr(participante_alvo, 'aflicao', 0) or 0) if tipo == 'aflicao' else None
-                            tipo_dano_poder = getattr(poder_atual, 'tipo_dano', None) if tipo == 'dano' else None
                             aplicou, incap, msg_resist = _aplicar_falha_salvamento(participante_alvo, tipo, degree, cd if tipo == 'aflicao' else None, tipo_dano_poder)
                             if duracao_raw in ('concentracao', 'sustentado'):
                                 EfeitoConcentracao.objects.create(
