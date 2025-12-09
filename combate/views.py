@@ -209,7 +209,7 @@ def _aplicar_falha_salvamento(alvo_part: Participante, tipo: str, degree: int, c
         - A condição exata (Transe/Compelido/etc.) é derivada em outro lugar a partir do nível.
 
     Retorna (aplicou_pontuacao, incapacitado, mensagem_resistencia)
-    mensagem_resistencia: string vazia ou "IMUNE" (para resistência, retorna vazio pois já foi aplicada na defesa)
+    mensagem_resistencia: "IMUNE", "RESISTÊNCIA" (já aplicada na defesa +5), ou "" (sem resistência/imunidade)
     """
     aplicou_pontuacao = False
     incapacitado = False
@@ -227,7 +227,9 @@ def _aplicar_falha_salvamento(alvo_part: Participante, tipo: str, degree: int, c
             # Imunidade bloqueia totalmente
             msg_resist = "IMUNE"
             return aplicou_pontuacao, incapacitado, msg_resist
-        # Resistência é tratada na defesa passiva (+5), não aqui
+        elif tem_resistencia:
+            # Resistência: já foi aplicada na defesa passiva (+5), mas registramos para exibição
+            msg_resist = "RESISTÊNCIA"
 
     if tipo == 'dano':
         # Sempre acumula Ferimentos em falhas de Dano
@@ -798,6 +800,8 @@ def iniciar_turno(request, combate_id):
                     efeitos_txt = []
                     if msg_resist == "IMUNE":
                         efeitos_txt.append(msg_resist)
+                    elif msg_resist == "RESISTÊNCIA":
+                        efeitos_txt.append("RESISTÊNCIA +5 (já aplicada na defesa)")
                     if poder.tipo == 'dano':
                         if msg_resist != "IMUNE":
                             efeitos_txt.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
@@ -1151,6 +1155,8 @@ def avancar_turno(request, combate_id):
                         efeitos_txt = []
                         if msg_resist == "IMUNE":
                             efeitos_txt.append(msg_resist)
+                        elif msg_resist == "RESISTÊNCIA":
+                            efeitos_txt.append("RESISTÊNCIA +5 (já aplicada na defesa)")
                         if poder.tipo == 'dano':
                             if msg_resist != "IMUNE":
                                 efeitos_txt.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
@@ -2283,6 +2289,8 @@ def realizar_ataque(request, combate_id):
                                 efeitos = []
                                 if msg_resist == "IMUNE":
                                     efeitos.append(msg_resist)
+                                elif msg_resist == "RESISTÊNCIA":
+                                    efeitos.append("RESISTÊNCIA +5 (já aplicada na defesa)")
                                 if msg_resist != "IMUNE":
                                     efeitos.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
                                     if aplicou:
@@ -2341,6 +2349,8 @@ def realizar_ataque(request, combate_id):
                                 efeitos = []
                                 if msg_resist == "IMUNE":
                                     efeitos.append(msg_resist)
+                                elif msg_resist == "RESISTÊNCIA":
+                                    efeitos.append("RESISTÊNCIA +5 (já aplicada na defesa)")
                                 if msg_resist != "IMUNE":
                                     efeitos.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
                                     if aplicou:
@@ -2397,6 +2407,8 @@ def realizar_ataque(request, combate_id):
                             efeitos = []
                             if msg_resist == "IMUNE":
                                 efeitos.append(msg_resist)
+                            elif msg_resist == "RESISTÊNCIA":
+                                efeitos.append("RESISTÊNCIA +5 (já aplicada na defesa)")
                             if tipo == 'dano':
                                 if msg_resist != "IMUNE":
                                     efeitos.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
@@ -2501,6 +2513,8 @@ def realizar_ataque(request, combate_id):
                                 efeitos = []
                                 if msg_resist == "IMUNE":
                                     efeitos.append(msg_resist)
+                                elif msg_resist == "RESISTÊNCIA":
+                                    efeitos.append("RESISTÊNCIA +5 (já aplicada na defesa)")
                                 if tipo == 'dano':
                                     if msg_resist != "IMUNE":
                                         efeitos.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")

@@ -428,6 +428,13 @@ thead {
 }
 .defesas-grid .campo-def label { display:block; margin-bottom:0.3rem; font-weight:700; color:#fff; text-align:center; }
 .defesas-grid .campo-def input { display:block; text-align:center; max-width:120px; margin:0 auto; }
+
+/* Alinhar checkboxes de resistências e imunidades (Django CheckboxSelectMultiple) */
+.checkbox-grid ul { list-style: none; padding: 0; margin: 0; }
+.checkbox-grid li { display: flex; align-items: center; gap: 0.4rem; margin: 0; }
+.checkbox-grid li label { display: flex; align-items: center; gap: 0.4rem; margin: 0; font-weight: normal; }
+.checkbox-grid input[type="checkbox"] { margin: 0; flex-shrink: 0; }
+
 @media (max-width: 900px) {
   .defesas-duas-colunas {
     flex-direction: column;
