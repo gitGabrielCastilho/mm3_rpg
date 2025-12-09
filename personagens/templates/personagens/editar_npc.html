@@ -257,7 +257,7 @@ document.addEventListener('DOMContentLoaded', function() {
       tipoDanoB = mapaTipoDano[tipoDano.toLowerCase()] || 0;
     }
     const durB=dur==='concentracao'?1:(dur==='sustentado'?2:0); const modoB=modo==='ranged'?1:(modo==='area'?2:(modo==='percepcao'?3:0));
-    return n*(1+tipoB+tipoDanoB+durB+modoB);
+    return n*(1+tipoB+durB+modoB) + tipoDanoB;
   }
   
   // Validar que um tipo de dano não pode ser resistente E imune simultaneamente
@@ -287,7 +287,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const v=parseFloat((el.value||'').toString().replace(',','.')); const b = isNaN(v)?0:Math.abs(v);
     const chItem = div.querySelector('input[type="checkbox"][name$="-de_item"]');
     const chVant = div.querySelector('input[type="checkbox"][name$="-de_vantagem"]');
-    if ((chItem && chItem.checked) || (chVant && chVant.checked)) return 0; return b;
+    if ((chItem && chItem.checked) || (chVant && chVant.checked)) return 0; return b * 0.5;
   }
   function atualizar(){
     const custoCarac=camposCaracteristicas.reduce((s,c)=>s+val(c),0)*2;
