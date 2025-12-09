@@ -1949,10 +1949,21 @@ def realizar_ataque(request, combate_id):
             # Descritivo não exige alvo
             if getattr(poder_atual, 'tipo', '') == 'descritivo':
                 rolagem_base = random.randint(1, 20)
-                total = rolagem_base + int(getattr(poder_atual, 'nivel_efeito', 0) or 0)
-                resultados.append(
-                    f"{poder_atual.nome} (Descritivo): {rolagem_base} + {poder_atual.nivel_efeito} = <b>{total}</b>"
+                nivel_efeito = int(getattr(poder_atual, 'nivel_efeito', 0) or 0)
+                total = rolagem_base + nivel_efeito
+                rolls_data = {
+                    'Rolagem Descritiva': {
+                        'formula': f"{rolagem_base} + {nivel_efeito}",
+                        'total': total,
+                        'vs': '',
+                        'resultado': ''
+                    }
+                }
+                resultado = _format_attack_html(
+                    atacante.nome, poder_atual.nome, '', 'descritivo', '',
+                    [], rolls_data, [], None
                 )
+                resultados.append(resultado)
                 continue
 
             # Demais tipos precisam de alvos; se ausentes no poder principal aborta tudo, se em encadeados apenas pula
@@ -1972,50 +1983,72 @@ def realizar_ataque(request, combate_id):
 
                 if tipo == 'cura':
                     # Cura: CD = 10 + penalidade acumulada do tipo priorizado (Dano/Aflição)
-                    rolagem = random.randint(1, 20) + int(getattr(poder_atual, 'nivel_efeito', 0) or 0)
+                    nivel_efeito = int(getattr(poder_atual, 'nivel_efeito', 0) or 0)
+                    rolagem_base = random.randint(1, 20)
+                    rolagem = rolagem_base + nivel_efeito
                     heal_type = None
                     if participante_alvo.dano >= participante_alvo.aflicao and participante_alvo.dano > 0:
                         heal_type = 'dano'
                     elif participante_alvo.aflicao > participante_alvo.dano and participante_alvo.aflicao > 0:
                         heal_type = 'aflicao'
                     cd = 10 + int(getattr(participante_alvo, 'ferimentos', 0) or 0)
+                    
+                    rolls_data = {
+                        'Teste de Cura': {
+                            'formula': f"{rolagem_base} + {nivel_efeito}",
+                            'total': rolagem,
+                            'vs': f"CD {cd}",
+                            'resultado': 'SUCESSO' if (heal_type and rolagem >= cd) else 'FALHOU'
+                        }
+                    }
+                    
                     if heal_type and rolagem >= cd:
                         if heal_type == 'dano':
                             participante_alvo.dano = max(0, int(getattr(participante_alvo, 'dano', 0) or 0) - 1)
-                            resultado = f"{atacante.nome} curou {alvo.nome} ({poder_atual.nome}) Dano -1 (Rol {rolagem} vs {cd})."
+                            efeitos_list = ['Dano -1']
                         else:
                             participante_alvo.aflicao = max(0, int(getattr(participante_alvo, 'aflicao', 0) or 0) - 1)
-                            resultado = f"{atacante.nome} curou {alvo.nome} ({poder_atual.nome}) Aflição -1 (Rol {rolagem} vs {cd})."
+                            efeitos_list = ['Aflição -1']
                         participante_alvo.save()
                         # Se completamente curado (0 e 0), zera penalidades acumuladas
                         if participante_alvo.dano == 0 and participante_alvo.aflicao == 0:
                             participante_alvo.ferimentos = 0
                             participante_alvo.save()
+                            efeitos_list.append('Totalmente curado')
                         if duracao_raw in ('concentracao', 'sustentado'):
                             EfeitoConcentracao.objects.create(
                                 combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
                                 poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
                             )
                     elif not heal_type:
-                        resultado = f"{atacante.nome} curou {alvo.nome} ({poder_atual.nome}) (Rol {rolagem} vs {cd}) nada para curar."
+                        efeitos_list = ['Nada para curar']
                         # Se já está 0/0, também limpamos penalidades
                         if int(getattr(participante_alvo, 'ferimentos', 0) or 0) and int(getattr(participante_alvo, 'dano', 0) or 0) == 0 and int(getattr(participante_alvo, 'aflicao', 0) or 0) == 0:
                             participante_alvo.ferimentos = 0
                             participante_alvo.save()
                     else:
-                        resultado = f"{atacante.nome} tentou curar {alvo.nome} ({poder_atual.nome}) (Rol {rolagem} vs {cd}) falhou."
+                        efeitos_list = ['Cura falhou']
+                    
+                    resultado = _format_attack_html(
+                        atacante.nome, poder_atual.nome, modo, tipo, duracao_raw,
+                        [alvo.nome], rolls_data, efeitos_list, None
+                    )
 
                 elif tipo == 'buff':
-                    participante_alvo.bonus_temporario += poder_atual.nivel_efeito
-                    participante_alvo.save()
                     val = int(getattr(poder_atual, 'nivel_efeito', 0) or 0)
+                    participante_alvo.bonus_temporario += val
+                    participante_alvo.save()
                     sign_val = f"+{val}" if val >= 0 else f"{val}"
-                    resultado = f"{alvo.nome} recebe {sign_val} (Buff/Debuff {poder_atual.nome})."
+                    efeitos_list = [f"Bônus Temporário {sign_val}"]
                     if duracao_raw in ('concentracao', 'sustentado'):
                         EfeitoConcentracao.objects.create(
                             combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
                             poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
                         )
+                    resultado = _format_attack_html(
+                        atacante.nome, poder_atual.nome, modo, tipo, duracao_raw,
+                        [alvo.nome], {}, efeitos_list, None
+                    )
 
                 elif tipo == 'aprimorar':
                     # Aprimorar/Reduzir: quando negativo (redução), exige teste do alvo para aplicar.
@@ -2603,13 +2636,50 @@ def realizar_ataque(request, combate_id):
                                 else:
                                     efeitos.append(f"Aflição grau {degree}: sem alteração de nível (atual {participante_alvo.aflicao})")
 
-                            resultado = (
-                                f"{alvo.nome} teste {defesa_attr} ({defesa_msg}) vs CD {cd}: falha de grau {degree}; "
-                                + ", ".join(efeitos) + f" ({poder_atual.nome})"
+                            # Monta efeitos formatados
+                            efeitos_list = []
+                            if msg_resist == "IMUNE":
+                                efeitos_list.append("IMUNE")
+                            elif msg_resist == "RESISTÊNCIA":
+                                efeitos_list.append("Resistência +5")
+                            if tipo == 'dano':
+                                if msg_resist != "IMUNE":
+                                    efeitos_list.append("Ferimentos +1")
+                                    if aplicou:
+                                        efeitos_list.append("+1 Dano")
+                                    if incap:
+                                        efeitos_list.append("INCAPACITADO")
+                            else:
+                                # Usa descrições de efeitos já montadas
+                                efeitos_list.extend(efeitos)
+                            
+                            # Usa novo formato estruturado
+                            rolls_data = {
+                                f'Defesa ({defesa_attr.capitalize()})': {
+                                    'formula': defesa_msg.split('=')[0].strip() if '=' in defesa_msg else defesa_msg,
+                                    'total': total,
+                                    'vs': f"CD {cd}",
+                                    'resultado': f'FALHOU (grau {degree})'
+                                }
+                            }
+                            resultado = _format_attack_html(
+                                atacante.nome, poder_atual.nome, modo, tipo, duracao_raw,
+                                [alvo.nome], rolls_data, efeitos_list, tipo_dano_poder
                             )
                             manter_concentracao_apos_sofrer(participante_alvo)
                         else:
-                            resultado = f"{alvo.nome} teste {defesa_attr} ({defesa_msg}) vs CD {cd}: sem efeito ({poder_atual.nome})"
+                            rolls_data = {
+                                f'Defesa ({defesa_attr.capitalize()})': {
+                                    'formula': defesa_msg.split('=')[0].strip() if '=' in defesa_msg else defesa_msg,
+                                    'total': total,
+                                    'vs': f"CD {cd}",
+                                    'resultado': 'RESISTIU'
+                                }
+                            }
+                            resultado = _format_attack_html(
+                                atacante.nome, poder_atual.nome, modo, tipo, duracao_raw,
+                                [alvo.nome], rolls_data, ['Sem efeito'], tipo_dano_poder
+                            )
 
                     elif modo in ('melee', 'ranged'):
                         # Shared attack vs aparar/esquivar (reuse for encadeado)
@@ -2709,29 +2779,113 @@ def realizar_ataque(request, combate_id):
                                     else:
                                         efeitos.append(f"Aflição grau {degree}: sem alteração de nível (atual {participante_alvo.aflicao})")
 
+                                # Monta efeitos formatados
+                                efeitos_list = []
+                                if msg_resist == "IMUNE":
+                                    efeitos_list.append("IMUNE")
+                                elif msg_resist == "RESISTÊNCIA":
+                                    efeitos_list.append("Resistência +5")
+                                if tipo == 'dano':
+                                    if msg_resist != "IMUNE":
+                                        efeitos_list.append("Ferimentos +1")
+                                        if aplicou:
+                                            efeitos_list.append("+1 Dano")
+                                        if incap:
+                                            efeitos_list.append("INCAPACITADO")
+                                else:
+                                    efeitos_list.extend(efeitos)
+                                
                                 if not st[logged_flag]:
-                                    resultado = (
-                                        f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {defesa_mov_val}) {defesa_attr} ({defesa_msg}) CD {cd} — "
-                                        f"falha de grau {degree}; " + ", ".join(efeitos) + f" ({poder_atual.nome})"
+                                    # Primeira vez logando este tipo de ataque - mostrar ataque
+                                    defesa_label = 'Aparar' if is_melee else 'Esquivar'
+                                    rolls_data = {
+                                        'Ataque': {
+                                            'formula': ataque_msg.split('=')[0].strip() if '=' in ataque_msg else ataque_msg,
+                                            'total': st['atk_total_melee'] if is_melee else st['atk_total_ranged'],
+                                            'vs': f"{defesa_label} {defesa_mov_val}",
+                                            'resultado': 'ACERTOU'
+                                        },
+                                        f'Defesa ({defesa_attr.capitalize()})': {
+                                            'formula': defesa_msg.split('=')[0].strip() if '=' in defesa_msg else defesa_msg,
+                                            'total': d_total,
+                                            'vs': f"CD {cd}",
+                                            'resultado': f'FALHOU (grau {degree})'
+                                        }
+                                    }
+                                    resultado = _format_attack_html(
+                                        atacante.nome, poder_atual.nome, modo, tipo, duracao_raw,
+                                        [alvo.nome], rolls_data, efeitos_list, tipo_dano_poder
                                     )
                                     st[logged_flag] = True
                                 else:
-                                    resultado = (
-                                        f"{atacante.nome} acertou {alvo.nome} {defesa_attr} ({defesa_msg}) CD {cd} — "
-                                        f"falha de grau {degree}; " + ", ".join(efeitos) + f" ({poder_atual.nome})"
+                                    # Encadeado - só mostrar defesa
+                                    rolls_data = {
+                                        f'Defesa ({defesa_attr.capitalize()})': {
+                                            'formula': defesa_msg.split('=')[0].strip() if '=' in defesa_msg else defesa_msg,
+                                            'total': d_total,
+                                            'vs': f"CD {cd}",
+                                            'resultado': f'FALHOU (grau {degree})'
+                                        }
+                                    }
+                                    resultado = _format_attack_html(
+                                        atacante.nome, poder_atual.nome, modo, tipo, duracao_raw,
+                                        [alvo.nome], rolls_data, efeitos_list, tipo_dano_poder
                                     )
                                 manter_concentracao_apos_sofrer(participante_alvo)
                             else:
+                                # Acertou mas alvo resistiu
                                 if not st[logged_flag]:
-                                    resultado = f"{atacante.nome} acertou {alvo.nome} (atk {ataque_msg} vs {defesa_mov_val}) {defesa_attr} ({defesa_msg}) CD {cd} (sem efeito) ({poder_atual.nome})"
+                                    defesa_label = 'Aparar' if is_melee else 'Esquivar'
+                                    rolls_data = {
+                                        'Ataque': {
+                                            'formula': ataque_msg.split('=')[0].strip() if '=' in ataque_msg else ataque_msg,
+                                            'total': st['atk_total_melee'] if is_melee else st['atk_total_ranged'],
+                                            'vs': f"{defesa_label} {defesa_mov_val}",
+                                            'resultado': 'ACERTOU'
+                                        },
+                                        f'Defesa ({defesa_attr.capitalize()})': {
+                                            'formula': defesa_msg.split('=')[0].strip() if '=' in defesa_msg else defesa_msg,
+                                            'total': d_total,
+                                            'vs': f"CD {cd}",
+                                            'resultado': 'RESISTIU'
+                                        }
+                                    }
+                                    resultado = _format_attack_html(
+                                        atacante.nome, poder_atual.nome, modo, tipo, duracao_raw,
+                                        [alvo.nome], rolls_data, ['Sem efeito'], tipo_dano_poder
+                                    )
                                     st[logged_flag] = True
                                 else:
-                                    resultado = f"{atacante.nome} acertou {alvo.nome} {defesa_attr} ({defesa_msg}) CD {cd} (sem efeito) ({poder_atual.nome})"
+                                    rolls_data = {
+                                        f'Defesa ({defesa_attr.capitalize()})': {
+                                            'formula': defesa_msg.split('=')[0].strip() if '=' in defesa_msg else defesa_msg,
+                                            'total': d_total,
+                                            'vs': f"CD {cd}",
+                                            'resultado': 'RESISTIU'
+                                        }
+                                    }
+                                    resultado = _format_attack_html(
+                                        atacante.nome, poder_atual.nome, modo, tipo, duracao_raw,
+                                        [alvo.nome], rolls_data, ['Sem efeito'], tipo_dano_poder
+                                    )
                         else:
                             if st[logged_flag]:
                                 # We've already logged the miss for this kind in this chain; skip duplicates
                                 continue
-                            resultado = f"{atacante.nome} errou {alvo.nome} (atk {atk_msg} vs {defesa_mov_val}) ({poder_atual.nome})"
+                            # Ataque errou
+                            defesa_label = 'Aparar' if is_melee else 'Esquivar'
+                            rolls_data = {
+                                'Ataque': {
+                                    'formula': atk_msg.split('=')[0].strip() if '=' in atk_msg else atk_msg,
+                                    'total': st['atk_total_melee'] if is_melee else st['atk_total_ranged'],
+                                    'vs': f"{defesa_label} {defesa_mov_val}",
+                                    'resultado': 'ERROU'
+                                }
+                            }
+                            resultado = _format_attack_html(
+                                atacante.nome, poder_atual.nome, modo, tipo, duracao_raw,
+                                [alvo.nome], rolls_data, ['Ataque falhou'], tipo_dano_poder
+                            )
                             st[logged_flag] = True
                     else:
                         resultado = f"Ação inválida para o poder selecionado ({poder_atual.nome})."
