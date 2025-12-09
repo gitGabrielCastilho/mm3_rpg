@@ -583,6 +583,7 @@ document.addEventListener('DOMContentLoaded', function(){
     const base = (n||0) * mult + extraDano;
     const elBA = div.querySelector('[name$="-bonus_ataque"]');
     let bAtk = 0; if(elBA){ const v=parseFloat((elBA.value||'').toString().replace(',','.')); bAtk = isNaN(v)?0:Math.abs(v); }
+    return { n, tipoBonus, durBonus, modoBonus, mult, base, bAtk, extraDano };
     return { n, tipoBonus, durBonus, modoBonus, mult, base, bAtk, extraDano, tipoDano };
   }
   function ensureBadge(div){
