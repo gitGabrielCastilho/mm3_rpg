@@ -68,6 +68,29 @@
       </ul>
     </section>
     <section class="ficha-card">
+      <h2 class="ficha-section-title">Resistências e Imunidades</h2>
+      {% if personagem.resistencias_dano or personagem.imunidades_dano %}
+        {% if personagem.resistencias_dano %}
+          <h3 class="ficha-subtitle">Resistências</h3>
+          <ul class="ficha-list pares">
+            {% for tipo in personagem.resistencias_dano %}
+              <li><span class="badge">{{ tipo|capfirst }}</span></li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+        {% if personagem.imunidades_dano %}
+          <h3 class="ficha-subtitle">Imunidades</h3>
+          <ul class="ficha-list pares">
+            {% for tipo in personagem.imunidades_dano %}
+              <li><span class="badge">{{ tipo|capfirst }}</span></li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      {% else %}
+        <em>Sem resistências ou imunidades.</em>
+      {% endif %}
+    </section>
+    <section class="ficha-card">
       <h2 class="ficha-section-title">Vantagens</h2>
       <ul class="ficha-list">
         {% for vantagem in personagem.vantagens.all %}
