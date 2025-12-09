@@ -27,6 +27,7 @@
           <span>Características: <span id="custo-caracteristicas">0</span></span>
           <span>Defesas: <span id="custo-defesas">0</span></span>
           <span>Perícias: <span id="custo-pericias">0</span></span>
+          <span>Resist/Imun: <span id="custo-resistencias">0</span></span>
           <span>Poderes: <span id="custo-poderes">0</span></span>
           <span style="font-weight:bold;">Total: <span id="custo-total">0</span></span>
         </div>
@@ -94,13 +95,13 @@
       <div class="resist-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:1.2rem 2rem; margin-bottom:1.6rem;">
         <div>
           <h4 style="margin:0 0 0.4rem;">Resistências</h4>
-          <div class="checkbox-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:0.35rem 0.6rem;">
+          <div class="checkbox-grid" style="display:grid; grid-template-columns:1fr; gap:0.35rem 0.6rem;">
             {{ form.resistencias_dano }}
           </div>
         </div>
         <div>
           <h4 style="margin:0 0 0.4rem;">Imunidades</h4>
-          <div class="checkbox-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:0.35rem 0.6rem;">
+          <div class="checkbox-grid" style="display:grid; grid-template-columns:1fr; gap:0.35rem 0.6rem;">
             {{ form.imunidades_dano }}
           </div>
         </div>
@@ -293,6 +294,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const custoCarac=camposCaracteristicas.reduce((s,c)=>s+val(c),0)*2;
     const custoDef=camposDefesas.reduce((s,c)=>s+val(c),0);
     const custoPer=camposPericias.reduce((s,c)=>s+val(c),0)*0.5;
+    const resCount = document.querySelectorAll('input[name="resistencias_dano"]:checked').length;
+    const imuCount = document.querySelectorAll('input[name="imunidades_dano"]:checked').length;
+    const custoRes = resCount * 5 + imuCount * 10;
     const grupos=new Map(); const gruposBonus=new Map(); const individuais=[]; let bonusSemArray=0;
     document.querySelectorAll('.poder-form').forEach(div=>{
       const del=div.querySelector('input[name$="-DELETE"]'); if(del&&del.checked) return; if(div.style.display==='none') return;
@@ -306,20 +310,25 @@ document.addEventListener('DOMContentLoaded', function() {
     let custoPod=individuais.reduce((a,b)=>a+b,0) + bonusSemArray;
     let temArray=false;
     grupos.forEach((bases,nome)=>{ if(!bases||bases.length===0) return; const n=bases.length; const maxBase=Math.max.apply(null,bases); custoPod += maxBase + Math.max(0, n-1); custoPod += (gruposBonus.get(nome)||0); temArray=true; });
-    const total=custoCarac+custoDef+custoPer+custoPod;
+    const total=custoCarac+custoDef+custoPer+custoPod+custoRes;
     function fmt(x){ return (Math.round(x*10)%10===0)?x: x.toFixed(1).replace('.0',''); }
     document.getElementById('custo-caracteristicas').textContent=custoCarac;
     document.getElementById('custo-defesas').textContent=custoDef;
     document.getElementById('custo-pericias').textContent=fmt(custoPer);
+    const elRes = document.getElementById('custo-resistencias'); if(elRes) elRes.textContent = custoRes;
     document.getElementById('custo-poderes').textContent=custoPod;
     document.getElementById('custo-total').textContent=fmt(total);
     const bCar=document.getElementById('badge-carac'); if(bCar){ bCar.textContent = '+2 pp — '+custoCarac; bCar.title='Cada ponto em Características custa +2 pp. Total atual: '+custoCarac; }
     const bDef=document.getElementById('badge-def'); if(bDef){ bDef.textContent = '+1 pp — '+custoDef; bDef.title='Cada ponto em Defesas custa +1 pp. Total atual: '+custoDef; }
     const bPer=document.getElementById('badge-per'); if(bPer){ bPer.textContent = '+0,5 pp — '+fmt(custoPer); bPer.title='Cada ponto em Perícias custa +0,5 pp. Total atual: '+fmt(custoPer); }
+    const bRes=document.getElementById('badge-res'); if(bRes){ bRes.textContent = 'Resist 5 / Imun 10 — '+custoRes; bRes.title='Resistência a dano custa 5 pp por tipo; Imunidade custa 10 pp por tipo. Total atual: '+custoRes; }
   const bPod=document.getElementById('badge-pod'); if(bPod){ const labelBase='Nivel x (1+Tipo+TipoDano+Duração+Modo) + Bônus Ataque'; bPod.textContent=(temArray?labelBase+' + Arrays':labelBase)+' — '+custoPod; bPod.title='Custo por poder = Nível × (1 + bônus de Tipo + bônus de Tipo Dano + Duração + Modo) + Bônus de Ataque. Bônus: Tipo: +1 (cura/aprimorar). Tipo Dano (apenas Dano): +0 (físico), +2 (ácido/gelo/fogo/raio/veneno), +3 (mental/trovão), +5 (necrótico/radiante). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +0,5 pp por ponto (aditivo, por poder). '+(temArray?'Arrays: parte de Nível = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque. ':'')+'Total atual: '+custoPod; }
   }
   ;[].concat(camposCaracteristicas,camposDefesas,camposPericias).forEach(id=>{ const el=document.getElementById('id_'+id); if(el){ el.addEventListener('input',atualizar); el.addEventListener('change',atualizar);} });
-  document.querySelectorAll('input[name="resistencias_dano"], input[name="imunidades_dano"]').forEach(el=>{ el.addEventListener('change', validarResistenciaImunidade); });
+  document.querySelectorAll('input[name="resistencias_dano"], input[name="imunidades_dano"]').forEach(el=>{
+    el.addEventListener('change', validarResistenciaImunidade);
+    el.addEventListener('change', atualizar);
+  });
   function bind(div){ div.querySelectorAll('select,input').forEach(el=>{ el.addEventListener('input',atualizar); el.addEventListener('change',atualizar); }); }
   document.querySelectorAll('.poder-form').forEach(div=>bind(div));
   // Garantir que tipo_dano dispara atualização (incluindo badges individuais)
