@@ -322,6 +322,10 @@ document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('input[name="resistencias_dano"], input[name="imunidades_dano"]').forEach(el=>{ el.addEventListener('change', validarResistenciaImunidade); });
   function bind(div){ div.querySelectorAll('select,input').forEach(el=>{ el.addEventListener('input',atualizar); el.addEventListener('change',atualizar); }); }
   document.querySelectorAll('.poder-form').forEach(div=>bind(div));
+  // Garantir que tipo_dano dispara atualização
+  document.querySelectorAll('.poder-form [name$="-tipo_dano"]').forEach(el=>{
+    el.addEventListener('change', atualizar);
+  });
   const oldAdd=window.adicionarPoder; window.adicionarPoder=function(){ if(typeof oldAdd==='function') oldAdd(); setTimeout(()=>{ const last=document.querySelector('.poder-form:last-child'); if(last){ bind(last); atualizar(); } },50); };
   const oldRemLinha=window.removerPoderLinha; window.removerPoderLinha=function(btn){ if(typeof oldRemLinha==='function') oldRemLinha(btn); atualizar(); };
   const oldRem=window.removerPoder; window.removerPoder=function(){ if(typeof oldRem==='function') oldRem(); atualizar(); };

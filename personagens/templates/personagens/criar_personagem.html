@@ -612,9 +612,13 @@ document.addEventListener('DOMContentLoaded', function() {
         el.addEventListener('change', atualizarCustos);
       });
     });
-    // Campos de poder
+    // Campos de poder (incluindo tipo_dano)
   document.querySelectorAll('#poderes-main-list .poder-form select, #poderes-main-list .poder-form input').forEach(el=>{
       el.addEventListener('input', atualizarCustos);
+      el.addEventListener('change', atualizarCustos);
+    });
+    // Garantir que tipo_dano dispara atualização
+    document.querySelectorAll('#poderes-main-list .poder-form [name$="-tipo_dano"]').forEach(el=>{
       el.addEventListener('change', atualizarCustos);
     });
     // Validar resistência/imunidade

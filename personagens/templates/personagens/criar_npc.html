@@ -347,6 +347,10 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   function addPowerListeners(scope){ scope.querySelectorAll('select,input').forEach(el=>{ el.addEventListener('input', atualizar); el.addEventListener('change', atualizar); }); }
   document.querySelectorAll('.poder-form').forEach(div=>addPowerListeners(div));
+  // Garantir que tipo_dano dispara atualização
+  document.querySelectorAll('.poder-form [name$="-tipo_dano"]').forEach(el=>{
+    el.addEventListener('change', atualizar);
+  });
   const oldAdd = window.adicionarPoder; window.adicionarPoder = function(){ oldAdd(); setTimeout(()=>{ const last=document.querySelector('.poder-form:last-child'); if(last){ addPowerListeners(last); atualizar(); } },50); };
   const oldRemLinha = window.removerPoderLinha; window.removerPoderLinha = function(btn){ oldRemLinha(btn); atualizar(); };
   const oldRem = window.removerPoder; window.removerPoder = function(){ oldRem(); atualizar(); };
