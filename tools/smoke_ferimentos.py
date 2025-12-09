@@ -57,27 +57,27 @@ def main():
 
     # 1) Dano progression and incapacitation at 4
     reset_part(part_tgt)
-    _aplicar_falha_salvamento(part_tgt, 'dano', 1)  # degree 1
+    _aplicar_falha_salvamento(part_tgt, 'dano', 1, None, None)  # degree 1
     part_tgt.refresh_from_db()
     check("Dano deg1 -> dano=1, fer=1", part_tgt.dano == 1 and part_tgt.ferimentos == 1,
           f"got dano={part_tgt.dano}, fer={part_tgt.ferimentos}")
 
-    _aplicar_falha_salvamento(part_tgt, 'dano', 1)  # still degree 1
+    _aplicar_falha_salvamento(part_tgt, 'dano', 1, None, None)  # still degree 1
     part_tgt.refresh_from_db()
     check("Dano deg1 again -> no dano increase, fer+1", part_tgt.dano == 1 and part_tgt.ferimentos == 2,
           f"got dano={part_tgt.dano}, fer={part_tgt.ferimentos}")
 
-    _aplicar_falha_salvamento(part_tgt, 'dano', 3)
+    _aplicar_falha_salvamento(part_tgt, 'dano', 3, None, None)
     part_tgt.refresh_from_db()
     check("Dano deg3 -> dano climbs to 2, fer=3", part_tgt.dano == 2 and part_tgt.ferimentos == 3,
           f"got dano={part_tgt.dano}, fer={part_tgt.ferimentos}")
 
-    _aplicar_falha_salvamento(part_tgt, 'dano', 3)
+    _aplicar_falha_salvamento(part_tgt, 'dano', 3, None, None)
     part_tgt.refresh_from_db()
     check("Dano deg3 again -> dano 3, fer=4", part_tgt.dano == 3 and part_tgt.ferimentos == 4,
           f"got dano={part_tgt.dano}, fer={part_tgt.ferimentos}")
 
-    _, incapac = _aplicar_falha_salvamento(part_tgt, 'dano', 4)
+    _, incapac, _ = _aplicar_falha_salvamento(part_tgt, 'dano', 4, None, None)
     part_tgt.refresh_from_db()
     check("Dano deg4 -> dano 4 (incapacitado), fer=5", part_tgt.dano == 4 and part_tgt.ferimentos == 5 and incapac,
           f"got dano={part_tgt.dano}, fer={part_tgt.ferimentos}, incap={incapac}")
@@ -85,19 +85,19 @@ def main():
     # 2) Aflição progression with new rules (no Ferimentos, cap 3, multi-level)
     reset_part(part_tgt)
     # degree 1 -> +1 nível (0 -> 1), sem ferimentos
-    _aplicar_falha_salvamento(part_tgt, 'aflicao', 1)
+    _aplicar_falha_salvamento(part_tgt, 'aflicao', 1, None, None)
     part_tgt.refresh_from_db()
     check("Aflição deg1 -> af=1, fer=0", part_tgt.aflicao == 1 and part_tgt.ferimentos == 0,
           f"got af={part_tgt.aflicao}, fer={part_tgt.ferimentos}")
 
     # novo teste degree 2 (+2 níveis): 1 -> 3 (capado), sem ferimentos
-    _aplicar_falha_salvamento(part_tgt, 'aflicao', 2)
+    _aplicar_falha_salvamento(part_tgt, 'aflicao', 2, None, None)
     part_tgt.refresh_from_db()
     check("Aflição deg2 from 1 -> af=3, fer=0", part_tgt.aflicao == 3 and part_tgt.ferimentos == 0,
           f"got af={part_tgt.aflicao}, fer={part_tgt.ferimentos}")
 
     # outro teste degree 3 não ultrapassa 3
-    _aplicar_falha_salvamento(part_tgt, 'aflicao', 3)
+    _aplicar_falha_salvamento(part_tgt, 'aflicao', 3, None, None)
     part_tgt.refresh_from_db()
     check("Aflição deg3 at max -> af=3, fer=0", part_tgt.aflicao == 3 and part_tgt.ferimentos == 0,
           f"got af={part_tgt.aflicao}, fer={part_tgt.ferimentos}")

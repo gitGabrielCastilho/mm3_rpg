@@ -87,12 +87,13 @@ _DEFESA_ASSOC_MAP = {
     'vontade': 'prontidao',
 }
 
-def _defesa_efetiva(personagem: Personagem, participante: Participante, defesa: str, combate_id: int) -> int:
+def _defesa_efetiva(personagem: Personagem, participante: Participante, defesa: str, combate_id: int, tipo_dano: str | None = None) -> int:
     """Retorna o valor da defesa somando a característica associada.
     Ex.: Resistência = resistencia + vigor; Aparar = aparar + luta; Esquivar = esquivar + agilidade; etc.
     Ambos componentes consideram:
     - bônus de itens (mods.defesas / mods.caracteristicas)
     - efeitos Aprimorar/Reduzir ativos
+    - bônus de resistência ao tipo_dano (+5 para defesa passiva)
     """
     # Defesa em si (inclui bônus de item em defesas via _item_bonus + aprimorar)
     val_def = getattr(personagem, defesa, 0) + _item_bonus(personagem, 'defesas', defesa)
@@ -105,10 +106,40 @@ def _defesa_efetiva(personagem: Personagem, participante: Participante, defesa: 
         val_def += sum(getattr(e.poder, 'nivel_efeito', 0) or 0 for e in efeitos)
     except Exception:
         pass
+    
     assoc = _DEFESA_ASSOC_MAP.get(defesa)
     if assoc:
         val_def += _atributo_efetivo(personagem, participante, assoc, combate_id)
+    
+    # Bônus de resistência: +5 para defesa passiva se houver resistência ao tipo_dano
+    if tipo_dano and defesa == 'resistencia':
+        tem_resistencia, _ = _verificar_resistencia_imunidade(personagem, tipo_dano)
+        if tem_resistencia:
+            val_def += 5
+    
     return val_def
+
+
+def _verificar_resistencia_imunidade(personagem: Personagem, tipo_dano: str) -> tuple[bool, bool]:
+    """Verifica se o personagem tem resistência ou imunidade ao tipo de dano.
+    
+    Retorna (tem_resistencia, tem_imunidade).
+    tipo_dano deve ser comparado case-insensitive com as listas resistencias_dano e imunidades_dano.
+    """
+    if not tipo_dano:
+        return False, False
+    
+    tipo_lower = str(tipo_dano).lower()
+    
+    # Verifica resistências
+    resistencias = getattr(personagem, 'resistencias_dano', None) or []
+    tem_resistencia = any(str(r).lower() == tipo_lower for r in resistencias)
+    
+    # Verifica imunidades
+    imunidades = getattr(personagem, 'imunidades_dano', None) or []
+    tem_imunidade = any(str(i).lower() == tipo_lower for i in imunidades)
+    
+    return tem_resistencia, tem_imunidade
 
 
 def _aflicao_condicao(caminho: str, nivel: int) -> str:
@@ -158,10 +189,12 @@ def _calc_fail_degree(tipo: str, diff: int) -> int:
     degree = 1 + min(cap - 1, diff // 5)
     return degree
 
-def _aplicar_falha_salvamento(alvo_part: Participante, tipo: str, degree: int, cd_usado: int | None = None) -> tuple[bool, bool]:
+def _aplicar_falha_salvamento(alvo_part: Participante, tipo: str, degree: int, cd_usado: int | None = None, tipo_dano: str | None = None) -> tuple[bool, bool, str]:
     """Aplica efeitos de falha no salvamento.
 
     Dano:
+        - Verifica imunidade ao tipo_dano (se fornecido). Imunidade bloqueia totalmente.
+        - Resistência NÃO reduz grau; em vez disso, DEVE ter sido considerada no cálculo da defesa passiva (+5).
         - Sempre acumula Ferimentos em +1 por falha.
         - Incrementa `dano` em +1 APENAS se o valor atual for menor que o grau atingido.
         - "Incapacitado" é retornado quando `dano >= 4`.
@@ -175,12 +208,26 @@ def _aplicar_falha_salvamento(alvo_part: Participante, tipo: str, degree: int, c
         - O total de Aflição é truncado em 3 (0–3), sem estoques acima disso.
         - A condição exata (Transe/Compelido/etc.) é derivada em outro lugar a partir do nível.
 
-    Retorna (aplicou_pontuacao, incapacitado)
+    Retorna (aplicou_pontuacao, incapacitado, mensagem_resistencia)
+    mensagem_resistencia: string vazia ou "IMUNE" (para resistência, retorna vazio pois já foi aplicada na defesa)
     """
     aplicou_pontuacao = False
     incapacitado = False
+    msg_resist = ""
+    
     if degree <= 0:
-        return aplicou_pontuacao, incapacitado
+        return aplicou_pontuacao, incapacitado, msg_resist
+
+    # Verifica imunidade apenas para dano (resistência é aplicada na defesa, não aqui)
+    if tipo == 'dano' and tipo_dano:
+        personagem = alvo_part.personagem
+        tem_resistencia, tem_imunidade = _verificar_resistencia_imunidade(personagem, tipo_dano)
+        
+        if tem_imunidade:
+            # Imunidade bloqueia totalmente
+            msg_resist = "IMUNE"
+            return aplicou_pontuacao, incapacitado, msg_resist
+        # Resistência é tratada na defesa passiva (+5), não aqui
 
     if tipo == 'dano':
         # Sempre acumula Ferimentos em falhas de Dano
@@ -224,7 +271,7 @@ def _aplicar_falha_salvamento(alvo_part: Participante, tipo: str, degree: int, c
     except Exception:
         # fallback silencioso
         pass
-    return aplicou_pontuacao, incapacitado
+    return aplicou_pontuacao, incapacitado, msg_resist
 
 # AJAX: retorna poderes de um personagem (com verificação de permissão)
 @login_required
@@ -713,7 +760,8 @@ def iniciar_turno(request, combate_id):
                     n_eff = int(getattr(poder, 'nivel_efeito', 0) or 0)
                 cd = (15 + n_eff) if poder.tipo == 'dano' else (10 + n_eff)
                 defesa_attr = getattr(poder, 'defesa_passiva', 'resistencia') or 'resistencia'
-                defesa_valor = _defesa_efetiva(alvo, alvo_part, defesa_attr, combate.id)
+                tipo_dano_poder = getattr(poder, 'tipo_dano', None) if poder.tipo == 'dano' else None
+                defesa_valor = _defesa_efetiva(alvo, alvo_part, defesa_attr, combate.id, tipo_dano_poder)
                 # Bônus específico (Aprimorar instantâneo) para próxima rolagem daquela defesa
                 attr_bonus_map = alvo_part.proximo_bonus_por_atributo or {}
                 attr_next_bonus = int(attr_bonus_map.get(defesa_attr, 0))
@@ -745,14 +793,18 @@ def iniciar_turno(request, combate_id):
                     diff = cd - total_def
                     degree = _calc_fail_degree(poder.tipo, diff)
                     antigo_af = int(getattr(alvo_part, 'aflicao', 0) or 0) if poder.tipo == 'aflicao' else None
-                    aplicou, incap = _aplicar_falha_salvamento(alvo_part, poder.tipo, degree, cd if poder.tipo == 'aflicao' else None)
+                    tipo_dano_poder = getattr(poder, 'tipo_dano', None) if poder.tipo == 'dano' else None
+                    aplicou, incap, msg_resist = _aplicar_falha_salvamento(alvo_part, poder.tipo, degree, cd if poder.tipo == 'aflicao' else None, tipo_dano_poder)
                     efeitos_txt = []
+                    if msg_resist == "IMUNE":
+                        efeitos_txt.append(msg_resist)
                     if poder.tipo == 'dano':
-                        efeitos_txt.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
-                        if aplicou:
-                            efeitos_txt.append("+1 de dano (acima do patamar atual)")
-                        if incap:
-                            efeitos_txt.append("INCAPACITADO (dano 4)")
+                        if msg_resist != "IMUNE":
+                            efeitos_txt.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
+                            if aplicou:
+                                efeitos_txt.append("+1 de dano (acima do patamar atual)")
+                            if incap:
+                                efeitos_txt.append("INCAPACITADO (dano 4)")
                     else:
                         novo_af = int(getattr(alvo_part, 'aflicao', 0) or 0)
                         if antigo_af is not None and novo_af != antigo_af:
@@ -1069,8 +1121,9 @@ def avancar_turno(request, combate_id):
                         n_eff = int(getattr(poder, 'nivel_efeito', 0) or 0)
                     cd = (15 if poder.tipo == 'dano' else 10) + n_eff
                     defesa_attr = getattr(poder, 'defesa_passiva', 'resistencia') or 'resistencia'
+                    tipo_dano_poder = getattr(poder, 'tipo_dano', None) if poder.tipo == 'dano' else None
                     base = random.randint(1, 20)
-                    val = _atributo_efetivo(alvo, alvo_part, defesa_attr, combate.id)
+                    val = _defesa_efetiva(alvo, alvo_part, defesa_attr, combate.id, tipo_dano_poder)
                     attr_map = alvo_part.proximo_bonus_por_atributo or {}
                     a_next = int(attr_map.get(defesa_attr, 0))
                     buff = alvo_part.bonus_temporario
@@ -1093,14 +1146,18 @@ def avancar_turno(request, combate_id):
                         diff = cd - total
                         degree = _calc_fail_degree(poder.tipo, diff)
                         antigo_af = int(getattr(alvo_part, 'aflicao', 0) or 0) if poder.tipo == 'aflicao' else None
-                        aplicou, incap = _aplicar_falha_salvamento(alvo_part, poder.tipo, degree, cd if poder.tipo == 'aflicao' else None)
+                        tipo_dano_poder = getattr(poder, 'tipo_dano', None) if poder.tipo == 'dano' else None
+                        aplicou, incap, msg_resist = _aplicar_falha_salvamento(alvo_part, poder.tipo, degree, cd if poder.tipo == 'aflicao' else None, tipo_dano_poder)
                         efeitos_txt = []
+                        if msg_resist == "IMUNE":
+                            efeitos_txt.append(msg_resist)
                         if poder.tipo == 'dano':
-                            efeitos_txt.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
-                            if aplicou:
-                                efeitos_txt.append("+1 de dano (acima do patamar atual)")
-                            if incap:
-                                efeitos_txt.append("INCAPACITADO (dano 4)")
+                            if msg_resist != "IMUNE":
+                                efeitos_txt.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
+                                if aplicou:
+                                    efeitos_txt.append("+1 de dano (acima do patamar atual)")
+                                if incap:
+                                    efeitos_txt.append("INCAPACITADO (dano 4)")
                         else:
                             novo_af = int(getattr(alvo_part, 'aflicao', 0) or 0)
                             if antigo_af is not None and novo_af != antigo_af:
@@ -1979,7 +2036,8 @@ def realizar_ataque(request, combate_id):
                                 attr_map = participante_alvo.proximo_bonus_por_atributo or {}
                                 a_next = int(attr_map.get(defesa_attr, 0))
                                 base = random.randint(1, 20)
-                                defesa_val = _defesa_efetiva(alvo, participante_alvo, defesa_attr, combate.id)
+                                tipo_dano_poder = getattr(poder_atual, 'tipo_dano', None) if tipo == 'dano' else None
+                                defesa_val = _defesa_efetiva(alvo, participante_alvo, defesa_attr, combate.id, tipo_dano_poder)
                                 total = base + defesa_val + a_next + buff - debuff
                                 participante_alvo.bonus_temporario = 0
                                 participante_alvo.penalidade_temporaria = 0
@@ -2215,15 +2273,20 @@ def realizar_ataque(request, combate_id):
                             if d_total < cd:
                                 diff = cd - d_total
                                 degree = _calc_fail_degree(tipo, diff)
-                                aplicou, incap = _aplicar_falha_salvamento(participante_alvo, tipo, degree, cd if tipo == 'aflicao' else None)
+                                tipo_dano_poder = getattr(poder_atual, 'tipo_dano', None) if tipo == 'dano' else None
+                                aplicou, incap, msg_resist = _aplicar_falha_salvamento(participante_alvo, tipo, degree, cd if tipo == 'aflicao' else None, tipo_dano_poder)
                                 if duracao_raw in ('concentracao', 'sustentado'):
                                     EfeitoConcentracao.objects.create(
                                         combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
                                         poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
                                     )
-                                efeitos = ["Ferimentos +1 (penalidade cumulativa em salvamentos)"]
-                                if aplicou:
-                                    efeitos.append("+1 de " + ("dano" if tipo=='dano' else "aflição"))
+                                efeitos = []
+                                if msg_resist == "IMUNE":
+                                    efeitos.append(msg_resist)
+                                if msg_resist != "IMUNE":
+                                    efeitos.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
+                                    if aplicou:
+                                        efeitos.append("+1 de " + ("dano" if tipo=='dano' else "aflição"))
                                 if incap:
                                     efeitos.append("INCAPACITADO")
                                 resultado = (
@@ -2268,17 +2331,22 @@ def realizar_ataque(request, combate_id):
                             if d_total < cd_sucesso:
                                 diff = cd_sucesso - d_total
                                 degree = _calc_fail_degree(tipo, diff)
-                                aplicou, incap = _aplicar_falha_salvamento(participante_alvo, tipo, degree, cd if tipo == 'aflicao' else None)
+                                tipo_dano_poder = getattr(poder_atual, 'tipo_dano', None) if tipo == 'dano' else None
+                                aplicou, incap, msg_resist = _aplicar_falha_salvamento(participante_alvo, tipo, degree, cd if tipo == 'aflicao' else None, tipo_dano_poder)
                                 if duracao_raw in ('concentracao', 'sustentado'):
                                     EfeitoConcentracao.objects.create(
                                         combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
                                         poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
                                     )
-                                efeitos = ["Ferimentos +1 (penalidade cumulativa em salvamentos)"]
-                                if aplicou:
-                                    efeitos.append("+1 de " + ("dano" if tipo=='dano' else "aflição"))
-                                if incap:
-                                    efeitos.append("INCAPACITADO")
+                                efeitos = []
+                                if msg_resist == "IMUNE":
+                                    efeitos.append(msg_resist)
+                                if msg_resist != "IMUNE":
+                                    efeitos.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
+                                    if aplicou:
+                                        efeitos.append("+1 de " + ("dano" if tipo=='dano' else "aflição"))
+                                    if incap:
+                                        efeitos.append("INCAPACITADO")
                                 resultado = (
                                     f"{alvo.nome} sucesso parcial esquiva ({rolagem_esq_base}+{esquiva}{esq_piece}={rolagem_esq} vs {cd}) {defesa_attr}: "
                                     f"{defesa_msg} " + ", ".join(efeitos) + f" ({poder_atual.nome})"
@@ -2319,19 +2387,23 @@ def realizar_ataque(request, combate_id):
                             diff = cd - total
                             degree = _calc_fail_degree(tipo, diff)
                             antigo_af = int(getattr(participante_alvo, 'aflicao', 0) or 0) if tipo == 'aflicao' else None
-                            aplicou, incap = _aplicar_falha_salvamento(participante_alvo, tipo, degree, cd if tipo == 'aflicao' else None)
+                            tipo_dano_poder = getattr(poder_atual, 'tipo_dano', None) if tipo == 'dano' else None
+                            aplicou, incap, msg_resist = _aplicar_falha_salvamento(participante_alvo, tipo, degree, cd if tipo == 'aflicao' else None, tipo_dano_poder)
                             if duracao_raw in ('concentracao', 'sustentado'):
                                 EfeitoConcentracao.objects.create(
                                     combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
                                     poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
                                 )
                             efeitos = []
+                            if msg_resist == "IMUNE":
+                                efeitos.append(msg_resist)
                             if tipo == 'dano':
-                                efeitos.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
-                                if aplicou:
-                                    efeitos.append("+1 de dano (acima do patamar atual)")
-                                if incap:
-                                    efeitos.append("INCAPACITADO (dano 4)")
+                                if msg_resist != "IMUNE":
+                                    efeitos.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
+                                    if aplicou:
+                                        efeitos.append("+1 de dano (acima do patamar atual)")
+                                    if incap:
+                                        efeitos.append("INCAPACITADO (dano 4)")
                             else:
                                 novo_af = int(getattr(participante_alvo, 'aflicao', 0) or 0)
                                 if antigo_af is not None and novo_af != antigo_af:
@@ -2419,19 +2491,23 @@ def realizar_ataque(request, combate_id):
                                 diff = cd - d_total
                                 degree = _calc_fail_degree(tipo, diff)
                                 antigo_af = int(getattr(participante_alvo, 'aflicao', 0) or 0) if tipo == 'aflicao' else None
-                                aplicou, incap = _aplicar_falha_salvamento(participante_alvo, tipo, degree, cd if tipo == 'aflicao' else None)
+                                tipo_dano_poder = getattr(poder_atual, 'tipo_dano', None) if tipo == 'dano' else None
+                                aplicou, incap, msg_resist = _aplicar_falha_salvamento(participante_alvo, tipo, degree, cd if tipo == 'aflicao' else None, tipo_dano_poder)
                                 if duracao_raw in ('concentracao', 'sustentado'):
                                     EfeitoConcentracao.objects.create(
                                         combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
                                         poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
                                     )
                                 efeitos = []
+                                if msg_resist == "IMUNE":
+                                    efeitos.append(msg_resist)
                                 if tipo == 'dano':
-                                    efeitos.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
-                                    if aplicou:
-                                        efeitos.append("+1 de dano (acima do patamar atual)")
-                                    if incap:
-                                        efeitos.append("INCAPACITADO (dano 4)")
+                                    if msg_resist != "IMUNE":
+                                        efeitos.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
+                                        if aplicou:
+                                            efeitos.append("+1 de dano (acima do patamar atual)")
+                                        if incap:
+                                            efeitos.append("INCAPACITADO (dano 4)")
                                 else:
                                     novo_af = int(getattr(participante_alvo, 'aflicao', 0) or 0)
                                     if antigo_af is not None and novo_af != antigo_af:
