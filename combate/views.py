@@ -2728,6 +2728,8 @@ def realizar_ataque(request, combate_id):
                                 f"{' - ' + str(debuff) if debuff else ''}"
                                 f"{a_piece}{pen_piece} = {d_total}"
                             )
+                            # Define tipo_dano_poder antes de usar
+                            tipo_dano_poder = getattr(poder_atual, 'tipo_dano', None) if tipo == 'dano' else None
                             try:
                                 if tipo == 'dano' and getattr(poder_atual, 'modo', '') == 'melee' and getattr(poder_atual, 'somar_forca_no_nivel', False):
                                     forca_eff2 = _atributo_efetivo(atacante, participante_atacante, 'forca', combate.id)
@@ -2741,7 +2743,6 @@ def realizar_ataque(request, combate_id):
                                 diff = cd - d_total
                                 degree = _calc_fail_degree(tipo, diff)
                                 antigo_af = int(getattr(participante_alvo, 'aflicao', 0) or 0) if tipo == 'aflicao' else None
-                                tipo_dano_poder = getattr(poder_atual, 'tipo_dano', None) if tipo == 'dano' else None
                                 aplicou, incap, msg_resist = _aplicar_falha_salvamento(participante_alvo, tipo, degree, cd if tipo == 'aflicao' else None, tipo_dano_poder)
                                 if duracao_raw in ('concentracao', 'sustentado'):
                                     EfeitoConcentracao.objects.create(
