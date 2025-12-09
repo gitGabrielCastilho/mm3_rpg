@@ -133,7 +133,7 @@
         {% endfor %}
       </div>
 
-  <h2>Poderes <span id="badge-pod" class="section-cost-badge" title="Custo por poder = Nível × (1 + bônus de Tipo + Duração + Modo) + Bônus de Ataque. Bônus: Tipo: +1 (cura/aprimorar). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +0,5 pp por ponto (aditivo, por poder). Arrays: parte de Nível do grupo = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque.">Nivel x (1+Tipo+Duração+Modo) + Bônus Ataque — 0</span></h2>
+  <h2>Poderes <span id="badge-pod" class="section-cost-badge" title="Custo por poder = Nível × (1 + bônus de Tipo + bônus de Tipo Dano + Duração + Modo) + Bônus de Ataque. Bônus: Tipo: +1 (cura/aprimorar). Tipo Dano (apenas Dano): +0 (físico), +2 (ácido/gelo/fogo/raio/veneno), +3 (mental/trovão), +5 (necrótico/radiante). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +0,5 pp por ponto (aditivo, por poder). Arrays: parte de Nível do grupo = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque.">Nivel x (1+Tipo+TipoDano+Duração+Modo) + Bônus Ataque — 0</span></h2>
       <div id="empty-poder-form" style="display:none;">
         <div class="poder-form poder-form-grid" style="border:1px solid #444; width:100%; position: relative;">
           <div class="campo-poder">{{ formset.empty_form.nome.label_tag }}{{ formset.empty_form.nome }}</div>
@@ -244,9 +244,44 @@ document.addEventListener('DOMContentLoaded', function() {
     if ((chItem && chItem.checked) || (chVant && chVant.checked)) return 0;
     let n=parseFloat((sel('nivel_efeito')?.value)||0)||0; n=Math.abs(n); if(n===0) return 0;
     const tipo=(sel('tipo')?.value)||''; const dur=(sel('duracao')?.value)||''; const modo=(sel('modo')?.value)||'';
-    const tipoB=(tipo==='cura'||tipo==='aprimorar')?1:0; const durB=dur==='concentracao'?1:(dur==='sustentado'?2:0); const modoB=modo==='ranged'?1:(modo==='area'?2:(modo==='percepcao'?3:0));
-    return n*(1+tipoB+durB+modoB);
+    const tipoDano = (sel('tipo_dano')?.value)||'';
+    const tipoB=(tipo==='cura'||tipo==='aprimorar')?1:0;
+    const mapaTipoDano = {
+      'acido': 2, 'gelo': 2, 'fogo': 2, 'raio': 2, 'veneno': 2,
+      'mental': 3, 'trovao': 3,
+      'necrotico': 5, 'radiante': 5,
+      'fisico': 0
+    };
+    let tipoDanoB = 0;
+    if (tipo === 'dano' && tipoDano) {
+      tipoDanoB = mapaTipoDano[tipoDano.toLowerCase()] || 0;
+    }
+    const durB=dur==='concentracao'?1:(dur==='sustentado'?2:0); const modoB=modo==='ranged'?1:(modo==='area'?2:(modo==='percepcao'?3:0));
+    return n*(1+tipoB+tipoDanoB+durB+modoB);
   }
+  
+  // Validar que um tipo de dano não pode ser resistente E imune simultaneamente
+  function validarResistenciaImunidade() {
+    const resistenciasCheckboxes = document.querySelectorAll('input[name="resistencias_dano"][type="checkbox"]');
+    const imunidadesCheckboxes = document.querySelectorAll('input[name="imunidades_dano"][type="checkbox"]');
+    
+    // Desabilitar um se o outro está marcado
+    resistenciasCheckboxes.forEach(cb => {
+      const immCb = Array.from(imunidadesCheckboxes).find(i => i.value === cb.value);
+      if (immCb && immCb.checked && cb.checked) {
+        cb.checked = false;
+      }
+      cb.disabled = immCb && immCb.checked;
+    });
+    imunidadesCheckboxes.forEach(cb => {
+      const resCb = Array.from(resistenciasCheckboxes).find(r => r.value === cb.value);
+      if (resCb && resCb.checked && cb.checked) {
+        cb.checked = false;
+      }
+      cb.disabled = resCb && resCb.checked;
+    });
+  }
+  
   function custoBonusAtaque(div){
     const el = div.querySelector('[name$="-bonus_ataque"]'); if(!el) return 0;
     const v=parseFloat((el.value||'').toString().replace(',','.')); const b = isNaN(v)?0:Math.abs(v);
@@ -281,15 +316,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const bCar=document.getElementById('badge-carac'); if(bCar){ bCar.textContent = '+2 pp — '+custoCarac; bCar.title='Cada ponto em Características custa +2 pp. Total atual: '+custoCarac; }
     const bDef=document.getElementById('badge-def'); if(bDef){ bDef.textContent = '+1 pp — '+custoDef; bDef.title='Cada ponto em Defesas custa +1 pp. Total atual: '+custoDef; }
     const bPer=document.getElementById('badge-per'); if(bPer){ bPer.textContent = '+0,5 pp — '+fmt(custoPer); bPer.title='Cada ponto em Perícias custa +0,5 pp. Total atual: '+fmt(custoPer); }
-  const bPod=document.getElementById('badge-pod'); if(bPod){ const labelBase='Nivel x (1+Tipo+Duração+Modo) + Bônus Ataque'; bPod.textContent=(temArray?labelBase+' + Arrays':labelBase)+' — '+custoPod; bPod.title='Custo por poder = Nível × (1 + Tipo + Duração + Modo) + Bônus de Ataque. Tipo: +1 (cura/aprimorar). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +0,5 pp por ponto (aditivo, por poder). '+(temArray?'Arrays: parte de Nível = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque. ':'')+'Total atual: '+custoPod; }
+  const bPod=document.getElementById('badge-pod'); if(bPod){ const labelBase='Nivel x (1+Tipo+TipoDano+Duração+Modo) + Bônus Ataque'; bPod.textContent=(temArray?labelBase+' + Arrays':labelBase)+' — '+custoPod; bPod.title='Custo por poder = Nível × (1 + bônus de Tipo + bônus de Tipo Dano + Duração + Modo) + Bônus de Ataque. Bônus: Tipo: +1 (cura/aprimorar). Tipo Dano (apenas Dano): +0 (físico), +2 (ácido/gelo/fogo/raio/veneno), +3 (mental/trovão), +5 (necrótico/radiante). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +0,5 pp por ponto (aditivo, por poder). '+(temArray?'Arrays: parte de Nível = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque. ':'')+'Total atual: '+custoPod; }
   }
   ;[].concat(camposCaracteristicas,camposDefesas,camposPericias).forEach(id=>{ const el=document.getElementById('id_'+id); if(el){ el.addEventListener('input',atualizar); el.addEventListener('change',atualizar);} });
+  document.querySelectorAll('input[name="resistencias_dano"], input[name="imunidades_dano"]').forEach(el=>{ el.addEventListener('change', validarResistenciaImunidade); });
   function bind(div){ div.querySelectorAll('select,input').forEach(el=>{ el.addEventListener('input',atualizar); el.addEventListener('change',atualizar); }); }
   document.querySelectorAll('.poder-form').forEach(div=>bind(div));
   const oldAdd=window.adicionarPoder; window.adicionarPoder=function(){ if(typeof oldAdd==='function') oldAdd(); setTimeout(()=>{ const last=document.querySelector('.poder-form:last-child'); if(last){ bind(last); atualizar(); } },50); };
   const oldRemLinha=window.removerPoderLinha; window.removerPoderLinha=function(btn){ if(typeof oldRemLinha==='function') oldRemLinha(btn); atualizar(); };
   const oldRem=window.removerPoder; window.removerPoder=function(){ if(typeof oldRem==='function') oldRem(); atualizar(); };
   atualizar();
+  validarResistenciaImunidade();
 });
 
 function adicionarPoder() {

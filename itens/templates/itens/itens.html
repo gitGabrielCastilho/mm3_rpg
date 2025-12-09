@@ -42,6 +42,22 @@
         <div>{{ mods_form.resistencia.label_tag }}{{ mods_form.resistencia }}</div>
       </div>
 
+        <h2 style="margin-top:1rem;">Resistências e Imunidades <span id="badge-item-res" class="section-cost-badge" title="Resistência: +5 pp por tipo. Imunidade: +10 pp por tipo.">Resist 5 / Imun 10 — 0</span></h2>
+        <div class="resist-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:1.2rem 2rem; margin-bottom:1.6rem;">
+          <div>
+            <h4 style="margin:0 0 0.4rem;">Resistências</h4>
+            <div class="checkbox-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:0.35rem 0.6rem;">
+              {{ mods_form.resistencias_dano }}
+            </div>
+          </div>
+          <div>
+            <h4 style="margin:0 0 0.4rem;">Imunidades</h4>
+            <div class="checkbox-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:0.35rem 0.6rem;">
+              {{ mods_form.imunidades_dano }}
+            </div>
+          </div>
+        </div>
+
         <h2 style="margin-top:1rem;">Perícias</h2>
         <div class="pericias-grid-4" style="display:grid; grid-template-columns:repeat(4, minmax(140px,1fr)); gap:1.4rem 2.2rem; justify-items:center; margin-bottom:2rem;">
         <div>{{ mods_form.acrobacias.label_tag }}{{ mods_form.acrobacias }}</div>
@@ -272,6 +288,51 @@ document.addEventListener('DOMContentLoaded', function() {
       toggleTipoDano(div);
     });
   }
+  window.atualizarCaminhoAflicao = atualizarCaminhoAflicao;
+  
+  // Validar que um tipo de dano não pode ser resistente E imune simultaneamente
+  function validarResistenciaImunidade() {
+    const resistenciasCheckboxes = document.querySelectorAll('input[name="resistencias_dano"][type="checkbox"]');
+    const imunidadesCheckboxes = document.querySelectorAll('input[name="imunidades_dano"][type="checkbox"]');
+    
+    // Desabilitar um se o outro está marcado
+    resistenciasCheckboxes.forEach(cb => {
+      const immCb = Array.from(imunidadesCheckboxes).find(i => i.value === cb.value);
+      if (immCb && immCb.checked && cb.checked) {
+        cb.checked = false;
+      }
+      cb.disabled = immCb && immCb.checked;
+    });
+    imunidadesCheckboxes.forEach(cb => {
+      const resCb = Array.from(resistenciasCheckboxes).find(r => r.value === cb.value);
+      if (resCb && resCb.checked && cb.checked) {
+        cb.checked = false;
+      }
+      cb.disabled = resCb && resCb.checked;
+    });
+  }
+  
+  // Atualizar badge de custos para itens
+  function atualizarCustosItem() {
+    const custoRes = document.querySelectorAll('input[type="checkbox"][name="resistencias_dano"]:checked').length * 5;
+    const custoImun = document.querySelectorAll('input[type="checkbox"][name="imunidades_dano"]:checked').length * 10;
+    const totalResImun = custoRes + custoImun;
+    const bRes = document.getElementById('badge-item-res');
+    if (bRes) {
+      bRes.textContent = 'Resist 5 / Imun 10 — ' + totalResImun;
+      bRes.title = 'Resistência: +5 pp por tipo. Imunidade: +10 pp por tipo. Total atual: ' + totalResImun;
+    }
+  }
+  
+  // Listener para resistências e imunidades
+  document.querySelectorAll('input[type="checkbox"][name="resistencias_dano"], input[type="checkbox"][name="imunidades_dano"]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      validarResistenciaImunidade();
+      atualizarCustosItem();
+    });
+  });
+  validarResistenciaImunidade();
+  atualizarCustosItem();
   bind(document);
 
   // Reaplicar bind após adicionar um novo poder de item

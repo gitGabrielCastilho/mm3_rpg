@@ -183,7 +183,7 @@
           {% endif %}
         {% endfor %}
       </div>
-  <h2>Poderes <span id="badge-pod" class="section-cost-badge" title="Custo por poder = Nível × (1 + bônus de Tipo + Duração + Modo) + Bônus de Ataque. Bônus: Tipo: +1 (cura/aprimorar). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +0,5 pp por ponto (aditivo, por poder). Arrays: parte de Nível do grupo = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque.">Nivel x (1+Tipo+Duração+Modo) + Bônus Ataque — 0</span></h2>
+  <h2>Poderes <span id="badge-pod" class="section-cost-badge" title="Custo por poder = Nível × (1 + bônus de Tipo + bônus de Tipo Dano + Duração + Modo) + Bônus de Ataque. Bônus: Tipo: +1 (cura/aprimorar). Tipo Dano (apenas Dano): +0 (físico), +2 (ácido/gelo/fogo/raio/veneno), +3 (mental/trovão), +5 (necrótico/radiante). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +0,5 pp por ponto (aditivo, por poder). Arrays: parte de Nível do grupo = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque.">Nivel x (1+Tipo+TipoDano+Duração+Modo) + Bônus Ataque — 0</span></h2>
       <!-- Empty form grid para JS clonar (opcional, se usar JS dinâmico igual editar) -->
       <div id="empty-poder-form" style="display:none;">
           <div class="poder-form poder-form-grid" style="border:1px solid #444; width:100%; position: relative;">
@@ -472,10 +472,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const tipo = (sel('tipo')?.value)||'';
     const dur = (sel('duracao')?.value)||'';
     const modo = (sel('modo')?.value)||'';
+    const tipoDano = (sel('tipo_dano')?.value)||'';
     const tipoBonus = (tipo==='cura'||tipo==='aprimorar')?1:0;
+    // tipo_dano: Físico +0, Ácido/Gelo/Fogo/Raio/Veneno +2, Mental/Trovão +3, Necrótico/Radiante +5
+    let tipoDanoBonus = 0;
+    if (tipo === 'dano' && tipoDano) {
+      const mapaTipoDano = {
+        'acido': 2, 'gelo': 2, 'fogo': 2, 'raio': 2, 'veneno': 2,
+        'mental': 3, 'trovao': 3,
+        'necrotico': 5, 'radiante': 5,
+        'fisico': 0
+      };
+      tipoDanoBonus = mapaTipoDano[tipoDano.toLowerCase()] || 0;
+    }
     const durBonus = dur==='concentracao'?1:(dur==='sustentado'?2:0);
     const modoBonus = modo==='ranged'?1:(modo==='area'?2:(modo==='percepcao'?3:0));
-    const mult = 1 + tipoBonus + durBonus + modoBonus;
+    const mult = 1 + tipoBonus + tipoDanoBonus + durBonus + modoBonus;
     return n * mult; // parte base (nível) usada na regra de arrays
   }
   function custoBonusAtaque(div){
@@ -487,6 +499,28 @@ document.addEventListener('DOMContentLoaded', function() {
     const chVant = div.querySelector('input[type="checkbox"][name$="-de_vantagem"]');
     if ((chItem && chItem.checked) || (chVant && chVant.checked)) return 0;
     return b * 0.5; // +0,5 pp por ponto de bônus de ataque (aditivo)
+  }
+
+  // Validar que um tipo de dano não pode ser resistente E imune simultaneamente
+  function validarResistenciaImunidade() {
+    const resistenciasCheckboxes = document.querySelectorAll('input[name="resistencias_dano"][type="checkbox"]');
+    const imunidadesCheckboxes = document.querySelectorAll('input[name="imunidades_dano"][type="checkbox"]');
+    
+    // Desabilitar um se o outro está marcado
+    resistenciasCheckboxes.forEach(cb => {
+      const immCb = Array.from(imunidadesCheckboxes).find(i => i.value === cb.value);
+      if (immCb && immCb.checked && cb.checked) {
+        cb.checked = false;
+      }
+      cb.disabled = immCb && immCb.checked;
+    });
+    imunidadesCheckboxes.forEach(cb => {
+      const resCb = Array.from(resistenciasCheckboxes).find(r => r.value === cb.value);
+      if (resCb && resCb.checked && cb.checked) {
+        cb.checked = false;
+      }
+      cb.disabled = resCb && resCb.checked;
+    });
   }
 
   function atualizarCustos(){
@@ -555,9 +589,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const bRes = document.getElementById('badge-res'); if (bRes){ const custoResImun = custoRes + custoImun; bRes.textContent = 'Resist 5 / Imun 10 — ' + custoResImun; bRes.title = 'Resistência: +5 pp por tipo. Imunidade: +10 pp por tipo. Total atual: '+custoResImun; }
     const bPod = document.getElementById('badge-pod');
     if (bPod){
-      const baseTxt = 'Nivel x (1+Tipo+Duração+Modo) + Bônus Ataque';
+      const baseTxt = 'Nivel x (1+Tipo+TipoDano+Duração+Modo) + Bônus Ataque';
       bPod.textContent = (temArray? baseTxt + ' + Arrays' : baseTxt) + ' — ' + custoPod;
-      bPod.title = 'Custo por poder = Nível × (1 + Tipo + Duração + Modo) + Bônus de Ataque. Tipo: +1 (cura/aprimorar). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +0,5 pp por ponto (aditivo, por poder). ' + (temArray ? 'Arrays: parte de Nível = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque. ' : '') + 'Total atual: ' + custoPod;
+      bPod.title = 'Custo por poder = Nível × (1 + bônus de Tipo + bônus de Tipo Dano + Duração + Modo) + Bônus de Ataque. Bônus: Tipo: +1 (cura/aprimorar). Tipo Dano (apenas Dano): +0 (físico), +2 (ácido/gelo/fogo/raio/veneno), +3 (mental/trovão), +5 (necrótico/radiante). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +0,5 pp por ponto (aditivo, por poder). ' + (temArray ? 'Arrays: parte de Nível = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque. ' : '') + 'Total atual: ' + custoPod;
     }
   }
   // Torna acessível globalmente para outros scripts (unificador final)
@@ -583,8 +617,13 @@ document.addEventListener('DOMContentLoaded', function() {
       el.addEventListener('input', atualizarCustos);
       el.addEventListener('change', atualizarCustos);
     });
+    // Validar resistência/imunidade
+    document.querySelectorAll('input[type="checkbox"][name="resistencias_dano"], input[type="checkbox"][name="imunidades_dano"]').forEach(cb => {
+      cb.addEventListener('change', validarResistenciaImunidade);
+    });
   }
   addListeners();
+  validarResistenciaImunidade();
   // Reaplicar listeners ao adicionar poder
   const originalAdicionar = window.adicionarPoder;
   window.adicionarPoder = function(){
