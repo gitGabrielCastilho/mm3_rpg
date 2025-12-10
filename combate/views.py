@@ -2710,6 +2710,8 @@ def realizar_ataque(request, combate_id):
                         atk_msg = st['atk_msg_melee'] if is_melee else st['atk_msg_ranged']
                         defesa_mov_val = 10 + (st['aparar'] if is_melee else st['esquivar'])
                         logged_flag = 'logged_melee' if is_melee else 'logged_ranged'
+                        # Define tipo_dano_poder antes de usar em qualquer branch
+                        tipo_dano_poder = getattr(poder_atual, 'tipo_dano', None) if tipo == 'dano' else None
                         if hit_now:
                             defesa_attr = poder_atual.defesa_passiva
                             buff = participante_alvo.bonus_temporario
@@ -2727,8 +2729,6 @@ def realizar_ataque(request, combate_id):
                                 f"{' - ' + str(debuff) if debuff else ''}"
                                 f"{a_piece}{pen_piece} = {d_total}"
                             )
-                            # Define tipo_dano_poder antes de usar
-                            tipo_dano_poder = getattr(poder_atual, 'tipo_dano', None) if tipo == 'dano' else None
                             try:
                                 if tipo == 'dano' and getattr(poder_atual, 'modo', '') == 'melee' and getattr(poder_atual, 'somar_forca_no_nivel', False):
                                     forca_eff2 = _atributo_efetivo(atacante, participante_atacante, 'forca', combate.id)
