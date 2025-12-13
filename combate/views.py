@@ -1914,7 +1914,14 @@ def realizar_ataque(request, combate_id):
 
         for idx, poder_atual in enumerate(poderes_sequence):
             duracao_raw = getattr(poder_atual, 'duracao', 'instantaneo')
-            duracao_label = 'Concentração' if duracao_raw == 'concentracao' else ('Sustentado' if duracao_raw == 'sustentado' else 'Instantâneo')
+            if duracao_raw == 'concentracao':
+                duracao_label = 'Concentração'
+            elif duracao_raw == 'sustentado':
+                duracao_label = 'Sustentado'
+            elif duracao_raw == 'reacao':
+                duracao_label = 'Reação'
+            else:
+                duracao_label = 'Instantâneo'
 
             # Se concentração: encerrar instância anterior deste poder individualmente
             if duracao_raw == 'concentracao':
