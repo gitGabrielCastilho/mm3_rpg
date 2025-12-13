@@ -139,7 +139,7 @@
         {% endfor %}
       </div>
 
-  <h2>Poderes <span id="badge-pod" class="section-cost-badge" title="Custo por poder = Nível × (1 + bônus de Tipo + bônus de Tipo Dano + Duração + Modo) + Bônus de Ataque. Bônus: Tipo: +1 (cura/aprimorar). Tipo Dano (apenas Dano): +0 (físico), +2 (ácido/gelo/fogo/raio/veneno), +3 (mental/trovão), +5 (necrótico/radiante). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +0,5 pp por ponto (aditivo, por poder). Arrays: parte de Nível do grupo = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque.">Nivel x (1+Tipo+TipoDano+Duração+Modo) + Bônus Ataque — 0</span></h2>
+  <h2>Poderes <span id="badge-pod" class="section-cost-badge" title="Custo por poder = Nível × (1 + bônus de Tipo + bônus de Tipo Dano + Duração + Modo) + Bônus de Ataque. Bônus: Tipo: +1 (cura/aprimorar). Tipo Dano (apenas Dano): +0 (físico), +2 (ácido/gelo/fogo/raio/veneno), +3 (mental/trovão), +5 (necrótico/radiante). Duração: +1 (concentração), +2 (sustentado), +3 (reação). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +0,5 pp por ponto (aditivo, por poder). Arrays: parte de Nível do grupo = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque.">Nivel x (1+Tipo+TipoDano+Duração+Modo) + Bônus Ataque — 0</span></h2>
       <div id="empty-poder-form" style="display:none;">
         <div class="poder-form poder-form-grid" style="border:1px solid #444; width:100%; position: relative;">
           <div class="campo-poder">{{ formset.empty_form.nome.label_tag }}{{ formset.empty_form.nome }}</div>
@@ -255,7 +255,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if(n===0) return 0;
     const tipo = (sel('tipo')?.value)||''; const dur = (sel('duracao')?.value)||''; const modo = (sel('modo')?.value)||'';
     const tipoBonus = (tipo==='cura'||tipo==='aprimorar')?1:0;
-    const durBonus = dur==='concentracao'?1:(dur==='sustentado'?2:0);
+    const durBonus = dur==='concentracao'?1:(dur==='sustentado'?2:(dur==='reacao'?3:0));
     const modoBonus = modo==='ranged'?1:(modo==='area'?2:(modo==='percepcao'?3:0));
     const extraDano = (tipo === 'dano') ? (custoTipoDano[(sel('tipo_dano')?.value||'fisico').toLowerCase()]||0) : 0;
     return n * (1 + tipoBonus + durBonus + modoBonus) + extraDano; // base (nível) + tipo de dano
@@ -336,7 +336,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (bPod){
       const labelBase='Nivel x (1+Tipo+TipoDano+Duração+Modo) + Bônus Ataque';
       bPod.textContent = (temArray? labelBase + ' + Arrays' : labelBase) + ' — ' + custoPod;
-  bPod.title = 'Custo por poder = Nível × (1 + bônus de Tipo + bônus de Tipo Dano + Duração + Modo) + Bônus de Ataque. Bônus: Tipo: +1 (cura/aprimorar). Tipo Dano (apenas Dano): +0 (físico), +2 (ácido/gelo/fogo/raio/veneno), +3 (mental/trovão), +5 (necrótico/radiante). Duração: +1 (concentração), +2 (sustentado). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +0,5 pp por ponto (aditivo, por poder). ' + (temArray ? 'Arrays: parte de Nível = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque. ' : '') + 'Total atual: ' + custoPod;
+  bPod.title = 'Custo por poder = Nível × (1 + bônus de Tipo + bônus de Tipo Dano + Duração + Modo) + Bônus de Ataque. Bônus: Tipo: +1 (cura/aprimorar). Tipo Dano (apenas Dano): +0 (físico), +2 (ácido/gelo/fogo/raio/veneno), +3 (mental/trovão), +5 (necrótico/radiante). Duração: +1 (concentração), +2 (sustentado), +3 (reação). Modo: +1 (ranged), +2 (área), +3 (percepção). Bônus de Ataque: +0,5 pp por ponto (aditivo, por poder). ' + (temArray ? 'Arrays: parte de Nível = maior base + (n−1); cada poder ainda soma seu próprio Bônus de Ataque. ' : '') + 'Total atual: ' + custoPod;
     }
   }
   const watch = [].concat(camposCaracteristicas, camposDefesas, camposPericias);
@@ -561,7 +561,7 @@ document.addEventListener('DOMContentLoaded', function(){
     const dur = (sel('duracao')?.value)||'';
     const modo = (sel('modo')?.value)||'';
     const tipoBonus = (tipo==='cura'||tipo==='aprimorar')?1:0;
-    const durBonus = dur==='concentracao'?1:(dur==='sustentado'?2:0);
+    const durBonus = dur==='concentracao'?1:(dur==='sustentado'?2:(dur==='reacao'?3:0));
     const modoBonus = modo==='ranged'?1:(modo==='area'?2:(modo==='percepcao'?3:0));
     const tipoDano = (sel('tipo_dano')?.value||'fisico').toLowerCase();
     const extraDano = tipo === 'dano' ? (custoTipoDano[tipoDano]||0) : 0;

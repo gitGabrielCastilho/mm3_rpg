@@ -197,6 +197,7 @@ class Poder(models.Model):
         ('instantaneo', 'Instantâneo'),
     ('concentracao', 'Concentração'),
     ('sustentado', 'Sustentado'),
+    ('reacao', 'Reação'),
     ]
     MODO_CHOICES = [
         ('area', 'Área'),
@@ -331,6 +332,7 @@ class Poder(models.Model):
             'instantaneo': 0,
             'concentracao': 1,
             'sustentado': 2,
+            'reacao': 3,
         }
         modo_bonus_map = {
             'melee': 0,

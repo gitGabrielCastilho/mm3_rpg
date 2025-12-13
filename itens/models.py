@@ -93,6 +93,7 @@ class ItemPoder(models.Model):
         ('instantaneo', 'Instantâneo'),
         ('concentracao', 'Concentração'),
         ('sustentado', 'Sustentado'),
+        ('reacao', 'Reação'),
     ]
     MODO_CHOICES = [
         ('area', 'Área'),

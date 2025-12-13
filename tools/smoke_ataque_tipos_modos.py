@@ -22,8 +22,7 @@ from salas.models import Sala
 from django.contrib.auth.models import User
 from combate.views import realizar_ataque
 from django.test import RequestFactory
-from django.contrib.auth.decorators import login_required
-from unittest.mock import Mock
+from unittest.mock import patch
 import traceback
 
 # Cores para output
@@ -44,223 +43,153 @@ def print_test(status, message):
         print(f"{BLUE}[INFO]{RESET}: {message}")
 
 def create_test_scenario():
-    """Cria um cenário de combate para testes"""
+    """Cria um cenário isolado de combate para um teste"""
     # Limpa dados antigos
     Combate.objects.all().delete()
     User.objects.filter(username__startswith="test_user_").delete()
-    
-    # Cria usuário
+
     user = User.objects.create_user(
         username='test_user_ataque',
         email='test@example.com',
         password='testpass'
     )
-    
-    # Cria sala
+
     sala = Sala.objects.create(
         nome="TEST_Sala",
         criador=user,
         game_master=user,
         ativa=True
     )
-    
-    # Cria personagens
-    p1 = Personagem.objects.create(
+
+    atacante = Personagem.objects.create(
         nome="Atacante",
         usuario=user,
         sala=sala,
-        forca=18,
-        destreza=16,
-        vigor=14,
-        inteligencia=12,
-        prontidao=13,
-        presenca=11
+        forca=10,
+        destreza=10,
+        vigor=10,
+        inteligencia=10,
+        prontidao=10,
+        presenca=10,
+        aparar=10,
+        esquivar=10,
+        resistencia=10,
+        fortitude=10,
+        vontade=10
     )
-    
-    p2 = Personagem.objects.create(
+
+    alvo = Personagem.objects.create(
         nome="Alvo",
         usuario=user,
         sala=sala,
         forca=10,
-        destreza=12,
-        vigor=16,
-        inteligencia=14,
-        prontidao=15,
-        presenca=10
+        destreza=10,
+        vigor=10,
+        inteligencia=10,
+        prontidao=10,
+        presenca=10,
+        aparar=10,
+        esquivar=10,
+        resistencia=10,
+        fortitude=10,
+        vontade=10
     )
-    
-    # Cria combate
-    combate = Combate.objects.create(
-        sala=sala
-    )
-    
-    # Cria participantes
-    par1 = Participante.objects.create(
-        combate=combate,
-        personagem=p1,
-        iniciativa=20
-    )
-    
-    par2 = Participante.objects.create(
-        combate=combate,
-        personagem=p2,
-        iniciativa=15
-    )
-    
-    # Cria turno
-    turno = Turno.objects.create(
-        combate=combate,
-        personagem=p1,
-        ordem=1
-    )
-    
-    return combate, par1, par2, p1, p2
 
-def get_or_create_power(personagem, tipo, modo, nome_base="TestePoder"):
-    """Busca ou cria um poder com o tipo e modo especificado"""
-    nome = f"{nome_base}_{tipo}_{modo}"
-    
-    try:
-        poder = Poder.objects.get(nome=nome, personagem=personagem)
-        return poder
-    except Poder.DoesNotExist:
-        pass
-    
-    # Cria poder
-    poder = Poder.objects.create(
+    combate = Combate.objects.create(sala=sala)
+
+    part_atacante = Participante.objects.create(combate=combate, personagem=atacante, iniciativa=20)
+    part_alvo = Participante.objects.create(combate=combate, personagem=alvo, iniciativa=15)
+
+    turno = Turno.objects.create(combate=combate, personagem=atacante, ordem=1, ativo=True)
+
+    return combate, part_atacante, part_alvo
+
+def create_power(personagem, tipo, modo, duracao='instantaneo', nome_base="TestePoder"):
+    nome = f"{nome_base}_{tipo}_{modo}_{duracao}"
+    Poder.objects.filter(nome=nome, personagem=personagem).delete()
+    return Poder.objects.create(
         nome=nome,
         personagem=personagem,
         tipo=tipo,
         modo=modo,
+        duracao=duracao,
         nivel_efeito=2,
         defesa_passiva='resistencia',
-        casting_ability='inteligencia',
-        duracao='instantaneo'
+        casting_ability='inteligencia'
     )
-    
-    return poder
 
-def mock_request(user):
-    """Cria um request mock com usuário autenticado"""
-    factory = RequestFactory()
-    request = factory.post('/combate/combate/1/atacar/')
-    request.user = user
-    request.method = 'POST'
-    request.POST = {}
-    return request
-
-def test_attack_combination(combate, atacante, alvo, tipo, modo, user, personagem_atacante):
-    """Testa uma combinação específica de tipo/modo (apenas validação de criação)"""
-    test_name = f"{tipo.upper()} - {modo.upper()}"
-    
+def run_attack_scenario(title, tipo, modo, duracao, rolls, alvo_obrigatorio=True):
+    """Executa a view realizar_ataque com dados mínimos e rolagens controladas."""
     try:
-        # Cria ou busca poder
-        poder = get_or_create_power(personagem_atacante, tipo, modo)
-        
-        # Valida se o poder foi criado com sucesso
-        if not poder:
-            print_test("FAIL", f"{test_name} - Poder não foi criado")
-            return False
-        
-        if poder.tipo != tipo:
-            print_test("FAIL", f"{test_name} - Tipo inválido: {poder.tipo}")
-            return False
-            
-        if poder.modo != modo:
-            print_test("FAIL", f"{test_name} - Modo inválido: {poder.modo}")
-            return False
-        
-        print_test("PASS", test_name)
-        return True
-            
+        combate, part_atacante, part_alvo = create_test_scenario()
+        poder = create_power(part_atacante.personagem, tipo, modo, duracao)
+
+        data = {
+            'personagem_acao': str(part_atacante.id),
+            'poder_id': str(poder.id),
+        }
+        if alvo_obrigatorio:
+            data['alvo_id'] = [str(part_alvo.id)]
+
+        factory = RequestFactory()
+        request = factory.post(
+            f'/combate/combate/{combate.id}/atacar/',
+            data,
+            content_type='application/x-www-form-urlencoded'
+        )
+        request.user = part_atacante.personagem.usuario
+
+        side_effect = list(rolls) + [10] * 10  # evita StopIteration se a view rolar mais vezes
+        with patch('random.randint', side_effect=side_effect):
+            response = realizar_ataque(request, combate.id)
+
+        if getattr(response, 'status_code', None) in (200, 302):
+            print_test("PASS", title)
+            return True
+        print_test("FAIL", f"{title} - status {getattr(response, 'status_code', None)}")
+        return False
     except Exception as e:
-        print_test("FAIL", f"{test_name} - Erro: {str(e)[:60]}")
+        print_test("FAIL", f"{title} - erro: {str(e)[:120]}")
+        traceback.print_exc()
         return False
 
 def main():
-    print(f"\n{BLUE}=== SMOKE TEST: Combinações Tipo/Modo ==={RESET}\n")
-    
-    # Cria cenário
-    try:
-        combate, atacante, alvo, p_atacante, p_alvo = create_test_scenario()
-        print_test("INFO", "Cenário de teste criado com sucesso")
-    except Exception as e:
-        print_test("FAIL", f"Não foi possível criar cenário: {e}")
-        traceback.print_exc()
-        return
-    
-    # Tipos e modos a testar
-    tipos = ['dano', 'aflicao', 'cura', 'buff', 'aprimorar', 'descritivo']
-    modos = ['area', 'percepcao', 'melee', 'ranged']
-    
-    # Mapeamento: tipo -> modos válidos
-    modos_validos = {
-        'dano': ['area', 'percepcao', 'melee', 'ranged'],
-        'aflicao': ['area', 'percepcao', 'melee', 'ranged'],
-        'cura': ['area'],  # cura geralmente é area ou direto
-        'buff': ['area'],  # buff geralmente é direto
-        'aprimorar': ['area', 'melee', 'ranged'],  # aprimorar pode ser vários
-        'descritivo': ['area'],  # descritivo não precisa de modo real
-    }
-    
-    resultados = {
-        'pass': 0,
-        'fail': 0,
-        'skip': 0,
-        'total': 0
-    }
-    
-    print(f"{BLUE}Testando combinações:{RESET}\n")
-    
-    for tipo in tipos:
-        modos_para_testar = modos_validos.get(tipo, ['area'])
-        
-        for modo in modos_para_testar:
-            resultados['total'] += 1
-            
-            try:
-                if test_attack_combination(combate, atacante, alvo, tipo, modo, atacante.personagem.usuario, p_atacante):
-                    resultados['pass'] += 1
-                else:
-                    resultados['fail'] += 1
-            except Exception as e:
-                print_test("FAIL", f"{tipo.upper()} - {modo.upper()} - Exceção não capturada: {e}")
-                resultados['fail'] += 1
-    
-    # Testes especiais: ataque contra si mesmo
-    print(f"\n{BLUE}Testando ataque contra si mesmo:{RESET}\n")
-    for tipo in ['dano', 'buff', 'cura']:
-        for modo in ['area', 'melee']:
-            resultados['total'] += 1
-            try:
-                poder = get_or_create_power(p_atacante, tipo, f"{modo}_self")
-                
-                # Validações
-                if poder.tipo == tipo and poder.modo == f"{modo}_self":
-                    print_test("PASS", f"{tipo.upper()} - {modo.upper()} (SELF)")
-                    resultados['pass'] += 1
-                else:
-                    print_test("FAIL", f"{tipo.upper()} - {modo.upper()} (SELF) - Tipo/Modo inválido")
-                    resultados['fail'] += 1
-            except Exception as e:
-                print_test("FAIL", f"{tipo.upper()} - {modo.upper()} (SELF) - {str(e)[:40]}")
-                resultados['fail'] += 1
-    
-    # Resumo
+    print(f"\n{BLUE}=== SMOKE TEST: Combinações completas ==={RESET}\n")
+
+    scenarios = [
+        # Dano
+        ("DANO melee hit+falha defesa (instant)", 'dano', 'melee', 'instantaneo', [20, 1], True),
+        ("DANO melee erra", 'dano', 'melee', 'instantaneo', [1], True),
+        ("DANO ranged hit+falha defesa", 'dano', 'ranged', 'instantaneo', [20, 1], True),
+        ("DANO ranged erra", 'dano', 'ranged', 'instantaneo', [1], True),
+        ("DANO area falha esquiva/defesa (sustentado)", 'dano', 'area', 'sustentado', [5, 5], True),
+
+        # Aflição
+        ("AFLICAO percepcao falha defesa (conc)", 'aflicao', 'percepcao', 'concentracao', [5], True),
+        ("AFLICAO melee hit+falha defesa", 'aflicao', 'melee', 'instantaneo', [20, 1], True),
+
+        # Buff/Cura/Aprimorar
+        ("BUFF area", 'buff', 'area', 'sustentado', [10], True),
+        ("CURA area", 'cura', 'area', 'instantaneo', [20], True),
+        ("APRIMORAR melee hit+falha defesa (conc)", 'aprimorar', 'melee', 'concentracao', [20, 1], True),
+
+        # Descritivo (sem alvo)
+        ("DESCRITIVO area", 'descritivo', 'area', 'instantaneo', [10], False),
+    ]
+
+    resultados = {'pass': 0, 'fail': 0}
+
+    for title, tipo, modo, duracao, rolls, precisa_alvo in scenarios:
+        ok = run_attack_scenario(title, tipo, modo, duracao, rolls, alvo_obrigatorio=precisa_alvo)
+        resultados['pass' if ok else 'fail'] += 1
+
     print(f"\n{BLUE}=== RESUMO ==={RESET}")
     print(f"{GREEN}PASS: {resultados['pass']}{RESET}")
     print(f"{RED}FAIL: {resultados['fail']}{RESET}")
-    print(f"{YELLOW}SKIP: {resultados['skip']}{RESET}")
-    print(f"TOTAL: {resultados['total']}")
-    
-    taxa_sucesso = (resultados['pass'] / resultados['total'] * 100) if resultados['total'] > 0 else 0
-    print(f"\nTaxa de sucesso: {taxa_sucesso:.1f}%")
-    
-    # Limpeza
-    print(f"\n{BLUE}Limpando dados de teste...{RESET}")
+
     Combate.objects.all().delete()
     User.objects.filter(username__startswith="test_user_").delete()
-    
+
     if resultados['fail'] == 0:
         print(f"{GREEN}Todos os testes passaram!{RESET}\n")
     else:
