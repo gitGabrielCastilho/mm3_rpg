@@ -17,6 +17,12 @@
   // Token assinado para autenticar WebSocket mesmo com bloqueio de cookies
   window._wsToken = "{{ ws_token }}";
   window._wsUserId = "{{ request.user.id }}";
+  console.log('ws_token definido:', !!window._wsToken);
+  console.log('ws_token type:', typeof window._wsToken);
+  console.log('ws_token length:', window._wsToken ? window._wsToken.length : 0);
+  if (window._wsToken) {
+    console.log('ws_token primeiros 30 chars:', window._wsToken.substring(0, 30));
+  }
 </script>
 <div id="combate-content" class="combate-detalhes-center" data-is-gm="{% if combate.sala.game_master == user %}true{% else %}false{% endif %}">
   <!-- Topo: info de turno + ações globais -->
@@ -919,6 +925,10 @@
     const wsToken = window._wsToken ? `?ws_token=${encodeURIComponent(window._wsToken)}` : '';
     const wsPath = `${wsScheme}://${window.location.host}/ws/combate/${combateId}/${wsToken}`;
     console.log('Tentando conectar WebSocket:', wsPath);
+    console.log('Token presente:', !!window._wsToken);
+    if (window._wsToken) {
+      console.log('Token primeiros 50 chars:', window._wsToken.substring(0, 50));
+    }
     let combateSocket = new WebSocket(wsPath);
   let lastEventAt = Date.now();
 
