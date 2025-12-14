@@ -918,6 +918,7 @@
     const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const wsToken = window._wsToken ? `?ws_token=${encodeURIComponent(window._wsToken)}` : '';
     const wsPath = `${wsScheme}://${window.location.host}/ws/combate/${combateId}/${wsToken}`;
+    console.log('Tentando conectar WebSocket:', wsPath);
     let combateSocket = new WebSocket(wsPath);
   let lastEventAt = Date.now();
 

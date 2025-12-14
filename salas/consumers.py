@@ -16,35 +16,54 @@ logger = logging.getLogger(__name__)
 
 class SalaConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.sala_id = self.scope["url_route"]["kwargs"]["sala_id"]
-        self.sala_group_name = f"sala_{self.sala_id}"
-        self._hb_task = None
-
-        # Requer usuário autenticado e membro (GM ou jogador) da sala
-        user = self.scope.get("user")
-        if not user or isinstance(user, AnonymousUser) or not user.is_authenticated:
-            return await self.close()
         try:
-            allowed = await self._user_allowed(int(self.sala_id), user.id)
-        except Exception:
-            logger.warning("Falha ao checar permissão no WS de sala", exc_info=True)
-            return await self.close()
-        if not allowed:
-            return await self.close()
+            self.sala_id = self.scope["url_route"]["kwargs"]["sala_id"]
+            self.sala_group_name = f"sala_{self.sala_id}"
+            self._hb_task = None
+            logger.info(f"WS sala {self.sala_id}: tentando conectar")
 
-        try:
-            await self.channel_layer.group_add(self.sala_group_name, self.channel_name)
-        except Exception:
-            logger.warning("Falha ao group_add no Channels (ignorado)", exc_info=True)
+            # Requer usuário autenticado e membro (GM ou jogador) da sala
+            user = self.scope.get("user")
+            logger.info(f"WS sala {self.sala_id}: user={user}, autenticado={getattr(user, 'is_authenticated', False)}")
+            
+            if not user or isinstance(user, AnonymousUser) or not user.is_authenticated:
+                logger.warning(f"WS sala {self.sala_id}: auth failed (user={user})")
+                await self.close(code=4001)
+                return
+            
+            try:
+                allowed = await self._user_allowed(int(self.sala_id), user.id)
+                logger.info(f"WS sala {self.sala_id}: user {user.id} allowed={allowed}")
+            except Exception as e:
+                logger.warning(f"WS sala {self.sala_id}: falha ao checar permissão: {e}", exc_info=True)
+                await self.close(code=4003)
+                return
+            
+            if not allowed:
+                logger.warning(f"WS sala {self.sala_id}: user {user.id} not allowed")
+                await self.close(code=4003)
+                return
 
-        await self.accept()
+            try:
+                await self.channel_layer.group_add(self.sala_group_name, self.channel_name)
+            except Exception as e:
+                logger.warning(f"WS sala {self.sala_id}: falha ao group_add: {e}", exc_info=True)
 
-        # Marca presença e notifica
-        await self._mark_presence(connected=True)
-        await self._broadcast_presence()
+            await self.accept()
+            logger.info(f"WS sala {self.sala_id}: user {user.id} connected")
 
-        # Inicia heartbeat periódico para manter TTL e disparar atualizações
-        self._hb_task = asyncio.create_task(self._heartbeat_loop())
+            # Marca presença e notifica
+            await self._mark_presence(connected=True)
+            await self._broadcast_presence()
+
+            # Inicia heartbeat periódico para manter TTL e disparar atualizações
+            self._hb_task = asyncio.create_task(self._heartbeat_loop())
+        except Exception as e:
+            logger.error(f"WS sala connection error: {e}", exc_info=True)
+            try:
+                await self.close(code=4000)
+            except Exception:
+                pass
 
     async def disconnect(self, close_code):
         # Para o heartbeat
