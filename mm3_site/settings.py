@@ -171,8 +171,15 @@ AUTH_PASSWORD_VALIDATORS = [
 
 _redis_url = os.getenv("REDIS_URL")
 _use_redis_in_dev = os.getenv("CHANNELS_USE_REDIS_IN_DEV", "false").lower() in ("1", "true", "yes")
-if _redis_url and (not DEBUG or _use_redis_in_dev):
+
+# Por padrão, desabilitar Redis em produção se usar plano gratuito (limite de requests)
+# Apenas ativar se explicitamente solicitado via FORCE_REDIS_CHANNELS=true
+_force_redis_channels = os.getenv("FORCE_REDIS_CHANNELS", "false").lower() in ("1", "true", "yes")
+
+if _redis_url and (not DEBUG or _use_redis_in_dev) and _force_redis_channels:
     # channels-redis detecta SSL automaticamente via rediss:// - não passar ssl=True explicitamente
+    # IMPORTANTE: Upstash tem limite de requisições. Se atingir limite, sistema cai.
+    # Considere usar um plano pago ou desabilitar Redis para Channels.
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
@@ -180,6 +187,9 @@ if _redis_url and (not DEBUG or _use_redis_in_dev):
         }
     }
 else:
+    # Usa InMemoryChannelLayer por padrão (mais estável, sem limites)
+    # Desvantagem: não funciona com múltiplos processos/workers
+    # Para produção com múltiplos workers, configure um Redis pago.
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels.layers.InMemoryChannelLayer",
