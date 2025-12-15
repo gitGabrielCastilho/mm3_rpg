@@ -12,15 +12,20 @@ class CombateConsumer(AsyncWebsocketConsumer):
         try:
             self.combate_id = self.scope['url_route']['kwargs']['combate_id']
             self.combate_group_name = f'combate_{self.combate_id}'
-            logger.info(f"WS combate {self.combate_id}: tentando conectar")
+            logger.info(f"WS combate {self.combate_id}: ===== CONNECT START =====")
+            logger.info(f"WS combate {self.combate_id}: scope keys={list(self.scope.keys())}")
+            logger.info(f"WS combate {self.combate_id}: query_string={self.scope.get('query_string')}")
             
             # Autorização: requer usuário autenticado e membro da sala do combate
             # O middleware TokenAuthMiddleware já cuidou da autenticação via token ou sessão
             user = self.scope.get('user')
-            logger.info(f"WS combate {self.combate_id}: user={user}, autenticado={getattr(user, 'is_authenticated', False)}")
+            logger.info(f"WS combate {self.combate_id}: user={user}")
+            logger.info(f"WS combate {self.combate_id}: user type={type(user)}")
+            logger.info(f"WS combate {self.combate_id}: user.is_authenticated={getattr(user, 'is_authenticated', 'N/A')}")
+            logger.info(f"WS combate {self.combate_id}: isinstance(user, AnonymousUser)={isinstance(user, AnonymousUser)}")
             
             if not user or isinstance(user, AnonymousUser) or not user.is_authenticated:
-                logger.warning(f"WS combate {self.combate_id}: auth failed (user={user})")
+                logger.warning(f"WS combate {self.combate_id}: ❌ AUTH FAILED (user={user})")
                 await self.close(code=4001)
                 return
             
@@ -42,7 +47,7 @@ class CombateConsumer(AsyncWebsocketConsumer):
                 self.channel_name
             )
             await self.accept()
-            logger.info(f"WS combate {self.combate_id}: user {user.id} connected")
+            logger.info(f"WS combate {self.combate_id}: ✅ CONNECTED user {user.id}")
         except Exception as e:
             logger.error(f"WS combate connection error: {e}", exc_info=True)
             try:
