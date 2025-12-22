@@ -141,18 +141,18 @@
 
   <h2>Resistências e Imunidades <span id="badge-res" class="section-cost-badge" title="Resistência: +5 pp por tipo. Imunidade: +10 pp por tipo.">Resist 5 / Imun 10 — 0</span></h2>
       <div style="margin-bottom:1.6rem;">
-        <div style="display: grid; grid-template-columns: auto auto 1fr; gap: 0.5rem 1rem; align-items: center; max-width: 500px;">
+        <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 0.8rem 2rem; align-items: center;">
+          <div style="font-weight: bold;">Tipo de Dano</div>
           <div style="font-weight: bold; text-align: center;">Resistência</div>
           <div style="font-weight: bold; text-align: center;">Imunidade</div>
-          <div style="font-weight: bold;">Tipo de Dano</div>
           {% for choice_value, choice_label in form.resistencias_dano.field.choices %}
+            <label style="margin: 0; cursor: pointer;">{{ choice_label }}</label>
             <div style="text-align: center;">
               <input type="checkbox" name="resistencias_dano" value="{{ choice_value }}" id="id_resistencias_dano_{{ forloop.counter0 }}" {% if choice_value in form.resistencias_dano.value %}checked{% endif %}>
             </div>
             <div style="text-align: center;">
               <input type="checkbox" name="imunidades_dano" value="{{ choice_value }}" id="id_imunidades_dano_{{ forloop.counter0 }}" {% if choice_value in form.imunidades_dano.value %}checked{% endif %}>
             </div>
-            <label style="margin: 0; cursor: pointer;">{{ choice_label }}</label>
           {% endfor %}
         </div>
       </div>
