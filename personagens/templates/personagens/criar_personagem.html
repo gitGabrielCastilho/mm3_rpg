@@ -140,26 +140,22 @@
       </div>
 
   <h2>Resistências e Imunidades <span id="badge-res" class="section-cost-badge" title="Resistência: +5 pp por tipo. Imunidade: +10 pp por tipo.">Resist 5 / Imun 10 — 0</span></h2>
-      <div class="resist-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:1.2rem 2rem; margin-bottom:1.6rem;">
-        <div>
-          <h4 style="margin:0 0 0.4rem;">Resistências</h4>
-          <div class="checkbox-grid">
-            {{ form.resistencias_dano }}
-          </div>
-        </div>
-        <div>
-          <h4 style="margin:0 0 0.4rem;">Imunidades</h4>
-          <div class="checkbox-grid">
-            {{ form.imunidades_dano }}
-          </div>
+      <div style="margin-bottom:1.6rem;">
+        <div style="display: grid; grid-template-columns: auto auto 1fr; gap: 0.5rem 1rem; align-items: center; max-width: 500px;">
+          <div style="font-weight: bold; text-align: center;">Resistência</div>
+          <div style="font-weight: bold; text-align: center;">Imunidade</div>
+          <div style="font-weight: bold;">Tipo de Dano</div>
+          {% for choice_value, choice_label in form.resistencias_dano.field.choices %}
+            <div style="text-align: center;">
+              <input type="checkbox" name="resistencias_dano" value="{{ choice_value }}" id="id_resistencias_dano_{{ forloop.counter0 }}" {% if choice_value in form.resistencias_dano.value %}checked{% endif %}>
+            </div>
+            <div style="text-align: center;">
+              <input type="checkbox" name="imunidades_dano" value="{{ choice_value }}" id="id_imunidades_dano_{{ forloop.counter0 }}" {% if choice_value in form.imunidades_dano.value %}checked{% endif %}>
+            </div>
+            <label style="margin: 0; cursor: pointer;">{{ choice_label }}</label>
+          {% endfor %}
         </div>
       </div>
-      <style>
-        .checkbox-grid ul { list-style: none; padding: 0; margin: 0; }
-        .checkbox-grid li { display: flex; align-items: center; margin-bottom: 0.35rem; }
-        .checkbox-grid label { display: flex; align-items: center; gap: 0.5rem; margin: 0; cursor: pointer; word-wrap: break-word; }
-        .checkbox-grid input[type="checkbox"] { margin: 0; flex-shrink: 0; cursor: pointer; }
-      </style>
 
   <h2>Perícias <span id="badge-per" class="section-cost-badge" title="Cada ponto em Perícias custa +0,5 pp.">+0,5 pp — 0</span></h2>
       <div style="margin-bottom:0.8rem;">
