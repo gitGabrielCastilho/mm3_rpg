@@ -1,5 +1,6 @@
 {# Template parcial para a tabela de participantes, reutilizável para AJAX #}
 {% load filtros %}
+{% load combate_extras %}
 <table id="tabela-participantes">
   <tr>
     <th>Foto</th>
@@ -23,7 +24,7 @@
         {% endif %}
       </td>
   <td>{{ p.display_nome|default:p.personagem.nome }}</td>
-      <td>{{ p.dano }}</td>
+      <td>{{ p.dano|dano_condicao }}</td>
       <td>{{ p.aflicao }}</td>
       <td>{{ p.ferimentos|default:0 }}</td>
       <td>

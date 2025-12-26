@@ -280,6 +280,84 @@ def _aflicao_condicao(caminho: str, nivel: int) -> str:
     except Exception:
         return ""
 
+def _dano_condicao(nivel: int) -> str:
+    """Mapeia o estado de dano (1-4) para a condição textual correspondente.
+    
+    Novo sistema de dano baseado em graus de falha:
+        1 -> Ferimento (apenas +1 Ferimento)
+        2 -> Tonto (Ferimento + Tonto)
+        3 -> Abatido (Ferimento + Abatido)
+        4 -> Incapacitado
+    """
+    if nivel <= 0:
+        return ""
+    tabela = {
+        1: 'Ferimento',
+        2: 'Tonto',
+        3: 'Abatido',
+        4: 'Incapacitado',
+    }
+    return tabela.get(nivel, '')
+
+def _aplicar_cura(alvo_part: Participante) -> tuple[bool, str]:
+    """Aplica cura removendo efeitos de dano progressivamente do mais grave ao menos grave.
+    
+    NOVO SISTEMA DE CURA:
+        - A cura atua EXCLUSIVAMENTE sobre os efeitos de dano.
+        - A cura NÃO remove aflições.
+        - Remove efeitos na ordem: Incapacitado → Abatido → Tonto → Ferimentos (um a um).
+        - O campo `dano` representa o estado da condição (1-4).
+        - O campo `ferimentos` representa ferimentos acumulados (penalidade em salvamentos).
+    
+    Ordem de Remoção:
+        1. Se dano == 4 (Incapacitado), reduz para 3 (Abatido)
+        2. Se dano == 3 (Abatido), reduz para 2 (Tonto)
+        3. Se dano == 2 (Tonto), reduz para 1 (Ferimento)
+        4. Se dano == 1 (Ferimento) e há ferimentos, remove 1 ferimento
+        5. Se dano == 1 e ferimentos == 0, zera o dano (completamente curado)
+    
+    Retorna (curou_algo, mensagem_descritiva)
+    """
+    dano_atual = int(getattr(alvo_part, 'dano', 0) or 0)
+    ferimentos_atual = int(getattr(alvo_part, 'ferimentos', 0) or 0)
+    
+    # Nada para curar
+    if dano_atual == 0 and ferimentos_atual == 0:
+        return False, "Nada para curar"
+    
+    # Remove efeitos de dano do mais grave ao menos grave
+    if dano_atual >= 4:
+        alvo_part.dano = 3
+        alvo_part.save()
+        return True, "Incapacitado → Abatido"
+    elif dano_atual == 3:
+        alvo_part.dano = 2
+        alvo_part.save()
+        return True, "Abatido → Tonto"
+    elif dano_atual == 2:
+        alvo_part.dano = 1
+        alvo_part.save()
+        return True, "Tonto → Ferimento"
+    elif dano_atual == 1:
+        if ferimentos_atual > 0:
+            # Remove 1 ferimento
+            alvo_part.ferimentos = max(0, ferimentos_atual - 1)
+            alvo_part.save()
+            return True, f"Ferimento removido ({ferimentos_atual} → {alvo_part.ferimentos})"
+        else:
+            # Sem ferimentos, zera o dano (completamente curado)
+            alvo_part.dano = 0
+            alvo_part.save()
+            return True, "Completamente curado (sem mais dano)"
+    
+    # Fallback: se só há ferimentos sem estado de dano
+    if ferimentos_atual > 0:
+        alvo_part.ferimentos = max(0, ferimentos_atual - 1)
+        alvo_part.save()
+        return True, f"Ferimento removido ({ferimentos_atual} → {alvo_part.ferimentos})"
+    
+    return False, "Nada para curar"
+
 # --- Regras de falha por grau (Dano/Aflição) ---
 def _calc_fail_degree(tipo: str, diff: int) -> int:
     """Calcula o grau de falha a partir da diferença (CD - total) > 0.
@@ -296,12 +374,17 @@ def _calc_fail_degree(tipo: str, diff: int) -> int:
 def _aplicar_falha_salvamento(alvo_part: Participante, tipo: str, degree: int, cd_usado: int | None = None, tipo_dano: str | None = None) -> tuple[bool, bool, str]:
     """Aplica efeitos de falha no salvamento.
 
-    Dano:
+    NOVO SISTEMA DE DANO:
         - Verifica imunidade ao tipo_dano (se fornecido). Imunidade bloqueia totalmente.
         - Resistência NÃO reduz grau; em vez disso, DEVE ter sido considerada no cálculo da defesa passiva (+5).
         - Sempre acumula Ferimentos em +1 por falha.
-        - Incrementa `dano` em +1 APENAS se o valor atual for menor que o grau atingido.
-        - "Incapacitado" é retornado quando `dano >= 4`.
+        - O campo `dano` armazena o ESTADO da condição (não é mais cumulativo):
+              grau 1 -> dano = 1 (Ferimento apenas)
+              grau 2 -> dano = 2 (Ferimento + Tonto)
+              grau 3 -> dano = 3 (Ferimento + Abatido)
+              grau 4+ -> dano = 4 (Incapacitado)
+        - Cada ataque aplica apenas UM estado de dano, conforme o grau de falha.
+        - O estado só é atualizado se o novo grau for MAIOR que o atual.
 
     Aflição (regras atualizadas):
         - NÃO gera Ferimentos nem Dano.
@@ -336,13 +419,18 @@ def _aplicar_falha_salvamento(alvo_part: Participante, tipo: str, degree: int, c
             msg_resist = "RESISTÊNCIA"
 
     if tipo == 'dano':
-        # Sempre acumula Ferimentos em falhas de Dano
+        # NOVO SISTEMA: Sempre acumula Ferimentos em falhas de Dano
         alvo_part.ferimentos = int(getattr(alvo_part, 'ferimentos', 0) or 0) + 1
+        
+        # O campo dano agora representa o ESTADO da condição (1-4), não é cumulativo
+        # Atualiza apenas se o novo grau for maior que o estado atual
         cur = int(getattr(alvo_part, 'dano', 0) or 0)
-        if cur < degree:
-            alvo_part.dano = cur + 1
+        novo_estado = min(degree, 4)  # Grau 4+ sempre resulta em estado 4 (Incapacitado)
+        
+        if novo_estado > cur:
+            alvo_part.dano = novo_estado
             aplicou_pontuacao = True
-            if alvo_part.dano >= 4:
+            if novo_estado >= 4:
                 incapacitado = True
     else:  # aflição
         # Nova regra: Aflição não causa Ferimentos/Dano, só níveis de aflição (0–3)
@@ -910,9 +998,12 @@ def iniciar_turno(request, combate_id):
                         if msg_resist != "IMUNE":
                             efeitos_txt.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
                             if aplicou:
-                                efeitos_txt.append("+1 de dano (acima do patamar atual)")
+                                # Obter a nova condição de dano
+                                novo_estado = int(getattr(alvo_part, 'dano', 0) or 0)
+                                condicao = _dano_condicao(novo_estado)
+                                efeitos_txt.append(f"Condição de Dano: {condicao}")
                             if incap:
-                                efeitos_txt.append("INCAPACITADO (dano 4)")
+                                efeitos_txt.append("INCAPACITADO")
                     else:
                         novo_af = int(getattr(alvo_part, 'aflicao', 0) or 0)
                         if antigo_af is not None and novo_af != antigo_af:
@@ -969,41 +1060,26 @@ def iniciar_turno(request, combate_id):
                     mensagens_tick.append(
                         f"{tick_label} {poder.nome} em {alvo.nome}: teste de {defesa_attr} ({defesa_msg}) contra CD {cd} — sem efeito."
                     )
-            # Cura: novo CD = 10 + penalidade acumulada do tipo priorizado
+            # Cura: usa novo sistema de remoção progressiva de efeitos de dano
             elif poder.tipo == 'cura':
                 roll = random.randint(1, 20) + int(getattr(poder, 'nivel_efeito', 0) or 0)
-                # Prioriza curar o valor mais alto entre Dano e Aflição
-                heal_type = None
-                if alvo_part.dano >= alvo_part.aflicao and alvo_part.dano > 0:
-                    heal_type = 'dano'
-                elif alvo_part.aflicao > alvo_part.dano and alvo_part.aflicao > 0:
-                    heal_type = 'aflicao'
-                # CD usa Ferimentos (penalidade única)
+                # CD baseado em Ferimentos (penalidade única)
                 cd = 10 + int(getattr(alvo_part, 'ferimentos', 0) or 0)
-                if heal_type and roll >= cd:
-                    if heal_type == 'dano':
-                        alvo_part.dano = max(0, int(getattr(alvo_part, 'dano', 0) or 0) - 1)
-                        alvo_part.save()
-                        mensagens_tick.append(f"{tick_label} {poder.nome} cura {alvo.nome} (Rolagem {roll} vs CD {cd}): Dano reduzido em 1.")
+                
+                if roll >= cd:
+                    curou, msg_cura = _aplicar_cura(alvo_part)
+                    if curou:
+                        mensagens_tick.append(
+                            f"{tick_label} {poder.nome} cura {alvo.nome} (Rolagem {roll} vs CD {cd}): {msg_cura}"
+                        )
                     else:
-                        alvo_part.aflicao = max(0, int(getattr(alvo_part, 'aflicao', 0) or 0) - 1)
-                        alvo_part.save()
-                        mensagens_tick.append(f"{tick_label} {poder.nome} cura {alvo.nome} (Rolagem {roll} vs CD {cd}): Aflição reduzida em 1.")
-                    # Se ficou completamente curado (0/0), zera penalidades acumuladas
-                    if int(getattr(alvo_part, 'dano', 0) or 0) == 0 and int(getattr(alvo_part, 'aflicao', 0) or 0) == 0:
-                        alvo_part.penalidade_salv_dano = 0
-                        alvo_part.penalidade_salv_aflicao = 0
-                        alvo_part.save()
-                elif not heal_type:
-                    # Nada para curar; ainda assim mostramos CD baseado na maior penalidade atual
-                    mensagens_tick.append(f"{tick_label} {poder.nome} cura {alvo.nome} (Rolagem {roll} vs CD {cd}): nada para curar.")
-                    # Se já está 0/0, também limpamos penalidades
-                    if int(getattr(alvo_part, 'dano', 0) or 0) == 0 and int(getattr(alvo_part, 'aflicao', 0) or 0) == 0:
-                        if int(getattr(alvo_part, 'ferimentos', 0) or 0):
-                            alvo_part.ferimentos = 0
-                            alvo_part.save()
+                        mensagens_tick.append(
+                            f"{tick_label} {poder.nome} cura {alvo.nome} (Rolagem {roll} vs CD {cd}): {msg_cura}"
+                        )
                 else:
-                    mensagens_tick.append(f"{tick_label} {poder.nome} tentou curar {alvo.nome} (Rolagem {roll} vs CD {cd}): falhou.")
+                    mensagens_tick.append(
+                        f"{tick_label} {poder.nome} tentou curar {alvo.nome} (Rolagem {roll} vs CD {cd}): falhou."
+                    )
             # Buff/Debuff (unificado): reaplica o modificador temporário
             elif poder.tipo == 'buff':
                 alvo_part.bonus_temporario += poder.nivel_efeito
@@ -1265,9 +1341,12 @@ def avancar_turno(request, combate_id):
                             if msg_resist != "IMUNE":
                                 efeitos_txt.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
                                 if aplicou:
-                                    efeitos_txt.append("+1 de dano (acima do patamar atual)")
+                                    # Obter a nova condição de dano
+                                    novo_estado = int(getattr(alvo_part, 'dano', 0) or 0)
+                                    condicao = _dano_condicao(novo_estado)
+                                    efeitos_txt.append(f"Condição de Dano: {condicao}")
                                 if incap:
-                                    efeitos_txt.append("INCAPACITADO (dano 4)")
+                                    efeitos_txt.append("INCAPACITADO")
                         else:
                             novo_af = int(getattr(alvo_part, 'aflicao', 0) or 0)
                             if antigo_af is not None and novo_af != antigo_af:
@@ -1306,29 +1385,16 @@ def avancar_turno(request, combate_id):
                     else:
                         mensagens_tick.append(f"{label} {poder.nome} em {alvo.nome}: teste de {defesa_attr} ({msg_def}) contra CD {cd} — sem efeito.")
                 elif poder.tipo == 'cura':
-                    # Cura: CD = 10 + penalidade acumulada do tipo priorizado (Dano/Aflição)
+                    # Cura: usa novo sistema de remoção progressiva de efeitos de dano
                     roll = random.randint(1, 20) + int(getattr(poder, 'nivel_efeito', 0) or 0)
-                    heal_type = None
-                    if alvo_part.dano >= alvo_part.aflicao and alvo_part.dano > 0:
-                        heal_type = 'dano'
-                    elif alvo_part.aflicao > alvo_part.dano and alvo_part.aflicao > 0:
-                        heal_type = 'aflicao'
                     cd = 10 + int(getattr(alvo_part, 'ferimentos', 0) or 0)
-                    if heal_type and roll >= cd:
-                        if heal_type == 'dano':
-                            Participante.objects.filter(pk=alvo_part.pk).update(dano=F('dano') - 1)
-                            mensagens_tick.append(f"{label} {poder.nome} cura {alvo.nome} (Rol {roll} vs {cd}): Dano -1.")
+                    
+                    if roll >= cd:
+                        curou, msg_cura = _aplicar_cura(alvo_part)
+                        if curou:
+                            mensagens_tick.append(f"{label} {poder.nome} cura {alvo.nome} (Rol {roll} vs {cd}): {msg_cura}")
                         else:
-                            Participante.objects.filter(pk=alvo_part.pk).update(aflicao=F('aflicao') - 1)
-                            mensagens_tick.append(f"{label} {poder.nome} cura {alvo.nome} (Rol {roll} vs {cd}): Aflição -1.")
-                        # Recarregar valores para verificar limpeza total
-                        alvo_part.refresh_from_db(fields=['dano', 'aflicao', 'ferimentos'])
-                        if alvo_part.dano == 0 and alvo_part.aflicao == 0:
-                            Participante.objects.filter(pk=alvo_part.pk).update(ferimentos=0)
-                    elif not heal_type:
-                        mensagens_tick.append(f"{label} {poder.nome} cura {alvo.nome} (Rol {roll} vs {cd}): nada para curar.")
-                        if alvo_part.dano == 0 and alvo_part.aflicao == 0 and int(getattr(alvo_part, 'ferimentos', 0) or 0):
-                            Participante.objects.filter(pk=alvo_part.pk).update(ferimentos=0)
+                            mensagens_tick.append(f"{label} {poder.nome} cura {alvo.nome} (Rol {roll} vs {cd}): {msg_cura}")
                     else:
                         mensagens_tick.append(f"{label} {poder.nome} tentou curar {alvo.nome} (Rol {roll} vs {cd}): falhou.")
                 elif poder.tipo == 'buff':
@@ -1989,52 +2055,34 @@ def realizar_ataque(request, combate_id):
                 resultado = None
 
                 if tipo == 'cura':
-                    # Cura: CD = 10 + penalidade acumulada do tipo priorizado (Dano/Aflição)
+                    # Cura: usa novo sistema de remoção progressiva de efeitos de dano
                     nivel_efeito = int(getattr(poder_atual, 'nivel_efeito', 0) or 0)
                     rolagem_base = random.randint(1, 20)
                     rolagem = rolagem_base + nivel_efeito
-                    heal_type = None
-                    if participante_alvo.dano >= participante_alvo.aflicao and participante_alvo.dano > 0:
-                        heal_type = 'dano'
-                    elif participante_alvo.aflicao > participante_alvo.dano and participante_alvo.aflicao > 0:
-                        heal_type = 'aflicao'
                     cd = 10 + int(getattr(participante_alvo, 'ferimentos', 0) or 0)
+                    
+                    if rolagem >= cd:
+                        curou, msg_cura = _aplicar_cura(participante_alvo)
+                        resultado_texto = 'SUCESSO' if curou else 'SEM EFEITO'
+                        efeitos_list = [msg_cura]
+                    else:
+                        resultado_texto = 'FALHOU'
+                        efeitos_list = ['Cura falhou']
                     
                     rolls_data = {
                         'Teste de Cura': {
                             'formula': f"{rolagem_base} + {nivel_efeito}",
                             'total': rolagem,
                             'vs': f"CD {cd}",
-                            'resultado': 'SUCESSO' if (heal_type and rolagem >= cd) else 'FALHOU'
+                            'resultado': resultado_texto
                         }
                     }
                     
-                    if heal_type and rolagem >= cd:
-                        if heal_type == 'dano':
-                            participante_alvo.dano = max(0, int(getattr(participante_alvo, 'dano', 0) or 0) - 1)
-                            efeitos_list = ['Dano -1']
-                        else:
-                            participante_alvo.aflicao = max(0, int(getattr(participante_alvo, 'aflicao', 0) or 0) - 1)
-                            efeitos_list = ['Aflição -1']
-                        participante_alvo.save()
-                        # Se completamente curado (0 e 0), zera penalidades acumuladas
-                        if participante_alvo.dano == 0 and participante_alvo.aflicao == 0:
-                            participante_alvo.ferimentos = 0
-                            participante_alvo.save()
-                            efeitos_list.append('Totalmente curado')
-                        if duracao_raw in ('concentracao', 'sustentado'):
-                            EfeitoConcentracao.objects.create(
-                                combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
-                                poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
-                            )
-                    elif not heal_type:
-                        efeitos_list = ['Nada para curar']
-                        # Se já está 0/0, também limpamos penalidades
-                        if int(getattr(participante_alvo, 'ferimentos', 0) or 0) and int(getattr(participante_alvo, 'dano', 0) or 0) == 0 and int(getattr(participante_alvo, 'aflicao', 0) or 0) == 0:
-                            participante_alvo.ferimentos = 0
-                            participante_alvo.save()
-                    else:
-                        efeitos_list = ['Cura falhou']
+                    if duracao_raw in ('concentracao', 'sustentado'):
+                        EfeitoConcentracao.objects.create(
+                            combate=combate, aplicador=atacante, alvo_participante=participante_alvo,
+                            poder=poder_atual, rodada_inicio=turno_ativo.ordem if turno_ativo else 0
+                        )
                     
                     resultado = _format_attack_html(
                         atacante.nome, poder_atual.nome, modo, tipo, duracao_raw,
@@ -2439,7 +2487,12 @@ def realizar_ataque(request, combate_id):
                                 if msg_resist != "IMUNE":
                                     efeitos_list.append("Ferimentos +1")
                                     if aplicou:
-                                        efeitos_list.append("+1 " + ("Dano" if tipo=='dano' else "Aflição"))
+                                        if tipo == 'dano':
+                                            novo_estado = int(getattr(participante_alvo, 'dano', 0) or 0)
+                                            condicao = _dano_condicao(novo_estado)
+                                            efeitos_list.append(f"Condição: {condicao}")
+                                        else:
+                                            efeitos_list.append("+1 Aflição")
                                 if incap:
                                     efeitos_list.append("INCAPACITADO")
                                 
@@ -2530,7 +2583,10 @@ def realizar_ataque(request, combate_id):
                                 if msg_resist != "IMUNE":
                                     efeitos_list.append("Ferimentos +1")
                                     if aplicou:
-                                        efeitos_list.append("+1 " + ("Dano" if tipo=='dano' else "Aflição"))
+                                        # Obter a nova condição de dano
+                                        novo_estado = int(getattr(participante_alvo, 'dano', 0) or 0)
+                                        condicao = _dano_condicao(novo_estado)
+                                        efeitos_list.append(f"Condição: {condicao}")
                                     if incap:
                                         efeitos_list.append("INCAPACITADO")
                                 
@@ -2620,9 +2676,11 @@ def realizar_ataque(request, combate_id):
                                 if msg_resist != "IMUNE":
                                     efeitos.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
                                     if aplicou:
-                                        efeitos.append("+1 de dano (acima do patamar atual)")
+                                        novo_estado = int(getattr(participante_alvo, 'dano', 0) or 0)
+                                        condicao = _dano_condicao(novo_estado)
+                                        efeitos.append(f"Condição de Dano: {condicao}")
                                     if incap:
-                                        efeitos.append("INCAPACITADO (dano 4)")
+                                        efeitos.append("INCAPACITADO")
                             else:
                                 novo_af = int(getattr(participante_alvo, 'aflicao', 0) or 0)
                                 if antigo_af is not None and novo_af != antigo_af:
@@ -2652,7 +2710,9 @@ def realizar_ataque(request, combate_id):
                                 if msg_resist != "IMUNE":
                                     efeitos_list.append("Ferimentos +1")
                                     if aplicou:
-                                        efeitos_list.append("+1 Dano")
+                                        novo_estado = int(getattr(participante_alvo, 'dano', 0) or 0)
+                                        condicao = _dano_condicao(novo_estado)
+                                        efeitos_list.append(f"Condição: {condicao}")
                                     if incap:
                                         efeitos_list.append("INCAPACITADO")
                             else:
@@ -2764,9 +2824,11 @@ def realizar_ataque(request, combate_id):
                                     if msg_resist != "IMUNE":
                                         efeitos.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
                                         if aplicou:
-                                            efeitos.append("+1 de dano (acima do patamar atual)")
+                                            novo_estado = int(getattr(participante_alvo, 'dano', 0) or 0)
+                                            condicao = _dano_condicao(novo_estado)
+                                            efeitos.append(f"Condição de Dano: {condicao}")
                                         if incap:
-                                            efeitos.append("INCAPACITADO (dano 4)")
+                                            efeitos.append("INCAPACITADO")
                                 else:
                                     novo_af = int(getattr(participante_alvo, 'aflicao', 0) or 0)
                                     if antigo_af is not None and novo_af != antigo_af:
@@ -2796,7 +2858,9 @@ def realizar_ataque(request, combate_id):
                                     if msg_resist != "IMUNE":
                                         efeitos_list.append("Ferimentos +1")
                                         if aplicou:
-                                            efeitos_list.append("+1 Dano")
+                                            novo_estado = int(getattr(participante_alvo, 'dano', 0) or 0)
+                                            condicao = _dano_condicao(novo_estado)
+                                            efeitos_list.append(f"Condição: {condicao}")
                                         if incap:
                                             efeitos_list.append("INCAPACITADO")
                                 else:
