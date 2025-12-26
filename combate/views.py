@@ -3231,6 +3231,7 @@ def adicionar_npc_participante(request, combate_id):
     iniciativa = random.randint(1, 20) + npc.prontidao
     max_idx = Participante.objects.filter(combate=combate, personagem=npc).aggregate(Max('nome_ordem')).get('nome_ordem__max') or 0
     participante = Participante.objects.create(personagem=npc, combate=combate, iniciativa=iniciativa, nome_ordem=max_idx + 1)
+    display_nome = f"{npc.nome} ({participante.nome_ordem})" if participante.nome_ordem and participante.nome_ordem > 1 else npc.nome
     mapa = combate.mapas.first()
     if mapa:
         PosicaoPersonagem.objects.create(mapa=mapa, participante=participante, x=10, y=10)
@@ -3247,7 +3248,10 @@ def adicionar_npc_participante(request, combate_id):
                     'participante': {
                         'id': participante.id,
                         'personagem_id': npc.id,
-                        'nome': npc.nome,
+                        'nome': display_nome,
+                        'display_nome': display_nome,
+                        'nome_ordem': participante.nome_ordem,
+                        'iniciativa': participante.iniciativa,
                         'usuario_id': npc.usuario_id,
                         'is_npc': True,
                     }
@@ -3264,7 +3268,9 @@ def adicionar_npc_participante(request, combate_id):
             'participante': {
                 'id': participante.id,
                 'personagem_id': npc.id,
-                'nome': npc.nome,
+                'nome': display_nome,
+                'display_nome': display_nome,
+                'nome_ordem': participante.nome_ordem,
                 'iniciativa': iniciativa,
                 'is_npc': True,
             }
@@ -3294,6 +3300,7 @@ def adicionar_participante(request, combate_id):
     iniciativa = random.randint(1, 20) + personagem.prontidao
     max_idx = Participante.objects.filter(combate=combate, personagem=personagem).aggregate(Max('nome_ordem')).get('nome_ordem__max') or 0
     participante = Participante.objects.create(personagem=personagem, combate=combate, iniciativa=iniciativa, nome_ordem=max_idx + 1)
+    display_nome = f"{personagem.nome} ({participante.nome_ordem})" if participante.nome_ordem and participante.nome_ordem > 1 else personagem.nome
     # Cria token inicial em todos os mapas
     for mapa in combate.mapas.all():
         if not PosicaoPersonagem.objects.filter(mapa=mapa, participante=participante).exists():
@@ -3311,7 +3318,10 @@ def adicionar_participante(request, combate_id):
                     'participante': {
                         'id': participante.id,
                         'personagem_id': personagem.id,
-                        'nome': personagem.nome,
+                        'nome': display_nome,
+                        'display_nome': display_nome,
+                        'nome_ordem': participante.nome_ordem,
+                        'iniciativa': participante.iniciativa,
                         'usuario_id': personagem.usuario_id,
                         'is_npc': False,
                     }
@@ -3328,7 +3338,9 @@ def adicionar_participante(request, combate_id):
             'participante': {
                 'id': participante.id,
                 'personagem_id': personagem.id,
-                'nome': personagem.nome,
+                'nome': display_nome,
+                'display_nome': display_nome,
+                'nome_ordem': participante.nome_ordem,
                 'iniciativa': iniciativa,
                 'is_npc': False,
             }

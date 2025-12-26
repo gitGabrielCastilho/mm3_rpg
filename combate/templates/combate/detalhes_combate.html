@@ -2121,6 +2121,20 @@
     }
 
     // ====== Helpers globais para atualizar selects (Alvos e Ações de) ======
+    function buildDisplayNome(part){
+      try {
+        if (!part) return '';
+        const idStr = String(part.id || '');
+        const idx = Number(part.nome_ordem || part.idx || part.ordem || 1);
+        const base = part.display_nome || part.nome || `#${idStr}`;
+        if (!base) return `#${idStr}`;
+        // Se o backend já enviou display_nome, preserve exatamente
+        if (part.display_nome) return base;
+        // Evita duplicar sufixo se o nome já contém o índice
+        if (idx > 1 && !base.includes(`(${idx})`)) return `${base} (${idx})`;
+        return base;
+      } catch(_) { return ''; }
+    }
     function ensureAlvoHasParticipant(part){
       try {
         const sel = document.getElementById('alvo');
@@ -2131,7 +2145,7 @@
         if (!exists) {
           const opt = document.createElement('option');
           opt.value = idStr;
-          const nome = part.nome || `#${idStr}`;
+          const nome = buildDisplayNome(part) || `#${idStr}`;
           const init = (typeof part.iniciativa !== 'undefined' && part.iniciativa !== null) ? part.iniciativa : '';
           opt.textContent = init !== '' ? `[Init ${init}] ${nome}` : nome;
           sel.appendChild(opt);
@@ -2165,7 +2179,7 @@
           ordered.forEach(p => {
             const opt = document.createElement('option');
             opt.value = p.id;
-            const nome = p.nome || `#${p.id}`;
+            const nome = buildDisplayNome(p) || `#${p.id}`;
             const init = (typeof p.iniciativa !== 'undefined' && p.iniciativa !== null) ? p.iniciativa : '';
             opt.textContent = init !== '' ? `[Init ${init}] ${nome}` : nome;
             if (selected.has(String(p.id))) opt.selected = true;
@@ -2186,7 +2200,8 @@
                 acaoSel.innerHTML='';
                 filtered.forEach(p=>{
                   const opt = document.createElement('option');
-                  opt.value = p.id; opt.textContent = p.nome; opt.dataset.personagemId = p.personagem_id; opt.setAttribute('data-personagem-id', p.personagem_id); acaoSel.appendChild(opt);
+                  const nome = buildDisplayNome(p) || `#${p.id}`;
+                  opt.value = p.id; opt.textContent = nome; opt.dataset.personagemId = p.personagem_id; opt.setAttribute('data-personagem-id', p.personagem_id); acaoSel.appendChild(opt);
                 });
                 // Restaura seleção
                 for (let i=0;i<acaoSel.options.length;i++){ if (String(acaoSel.options[i].value)===prevVal){ acaoSel.selectedIndex=i; break; } }
@@ -2209,7 +2224,7 @@
           opt.value = idStr;
           opt.dataset.personagemId = String(part.personagem_id || '');
           opt.setAttribute('data-personagem-id', String(part.personagem_id || ''));
-          opt.textContent = part.nome || `#${idStr}`;
+          opt.textContent = buildDisplayNome(part) || `#${idStr}`;
           sel.appendChild(opt);
         }
       } catch(_) {}
