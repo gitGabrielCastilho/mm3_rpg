@@ -1685,11 +1685,13 @@ input:focus, select:focus, textarea:focus {
 .acoes-participante {
   display: flex;
   flex-direction: row;
-  gap: 8px;
+  gap: 4px;
   align-items: center;
   justify-content: flex-start;
-  flex-wrap: nowrap; /* mantém tudo em uma linha */
-  overflow-x: auto; /* em telas estreitas, permite scroll horizontal */
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  margin: 0;
+  padding: 0;
 }
 
 /* Cada grupo (+/-, Afl+/-, Limpar/Descanso) alinhado lado a lado */
@@ -1710,27 +1712,30 @@ input:focus, select:focus, textarea:focus {
 }
 
 .acoes-coluna {
-  display: flex;
+  display: inline-flex;
   gap: 4px;
-  flex-wrap: nowrap;
   align-items: center;
-  white-space: nowrap;
+  margin: 0;
+  padding: 0;
 }
 
-.acoes-coluna form { display: inline-flex; margin: 0; }
-
 .btn-acao-mini {
-  padding: 2px 6px;
+  padding: 2px 5px;
   font-size: 0.7rem;
   min-width: 32px;
   border: 1px solid #444;
   background: #2a2a2a;
   color: #ddd;
-  border-radius: 4px;
+  border-radius: 3px;
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
   line-height: 1;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
 }
 
 .btn-acao-mini:hover {
@@ -1762,16 +1767,21 @@ input:focus, select:focus, textarea:focus {
 }
 
 .btn-acao-small {
-  padding: 3px 8px;
+  padding: 2px 6px;
   font-size: 0.75rem;
   border: 1px solid #444;
   background: #2a2a2a;
   color: #ddd;
-  border-radius: 4px;
+  border-radius: 3px;
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
   line-height: 1;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
 }
 
 .btn-acao-small:hover {
@@ -1810,15 +1820,20 @@ input:focus, select:focus, textarea:focus {
 
 #tabela-participantes th,
 #tabela-participantes td {
-  padding: 8px 10px;
+  padding: 4px 8px;
   text-align: center;
   vertical-align: middle;
+  height: 30px;
+  line-height: 1.2;
 }
 
 #tabela-participantes td.acoes-participante {
   text-align: left;
-  min-width: 420px; /* espaço mínimo para os três grupos de ações */
-  white-space: nowrap; /* garante uma única linha */
+  padding: 2px 6px;
+  min-width: 420px;
+  white-space: nowrap;
+  height: 30px;
+  overflow: hidden;
 }
 
 @media (max-width: 900px) {
