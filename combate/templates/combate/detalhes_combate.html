@@ -59,7 +59,7 @@
   {# Moved map selection next to the map title in the right column #}
   </div>
 
-  <!-- Grid: Histórico (esquerda) + Mapa/Status (centro-direita) + Ações Sidebar (direita) -->
+  <!-- Grid: Histórico (esquerda) + Mapa (centro-direita) + Ações Sidebar (direita) -->
   <div class="combate-layout-grid">
     <!-- Coluna esquerda: Histórico -->
   <div class="combate-col-left">
@@ -93,7 +93,7 @@
   </div>
     </div>
 
-    <!-- Coluna direita: Mapa + Status participantes -->
+    <!-- Coluna direita: Mapa -->
     <div class="combate-col-right">
       <div class="mapa-header-row">
         <h3 class="combate-section-title" style="margin:0">Mapa do Combate</h3>
@@ -211,10 +211,15 @@
         </form>
         {% endif %}
       {% endif %}
+    </div>
 
+  </div>
+
+  <!-- Participantes: centralizados abaixo do histórico e mapa -->
+  <div class="participantes-section-wrapper">
+    <div class="participantes-section">
       <div class="mapa-header-row">
         <h3 class="combate-section-title" style="margin:0">Status dos Participantes</h3>
-  {# Removido: formulário de adicionar_participante inexistente #}
         {% if combate.sala.game_master == user and personagens_disponiveis %}
         <form method="post" action="{% url 'adicionar_participante' combate.id %}" class="combate-inline-form form-add-participante">
           {% csrf_token %}
@@ -244,6 +249,7 @@
         {% include 'combate/_tabela_participantes.html' %}
       </div>
     </div>
+  </div>
 
     <!-- Sidebar direito: Ações -->
     <aside class="combate-sidebar-acoes closed" id="combate-sidebar-acoes">
@@ -2422,6 +2428,8 @@
     document.querySelectorAll('.form-limpar-historico').forEach(bindAjax);
   document.querySelectorAll('.mapa-remover-form').forEach(bindAjax);
   bindAjax(document.getElementById('form-encerrar-meus'));
+  // Bind dos novos formulários de ações de participantes
+  document.querySelectorAll('.form-acao-participante').forEach(bindAjax);
     }
 
     combateSocket.onmessage = async function(e) {
@@ -2661,6 +2669,11 @@
         case 'avancar_turno':
         case 'finalizar_combate': {
           await refreshSelectors(['.turno-topbar', '#historico-card', '#status-card']);
+          break;
+        }
+        case 'status_atualizado': {
+          // Atualiza apenas o status dos participantes quando há ações rápidas (buff/debuff/aflição/etc)
+          await refreshSelectors(['#status-card', '#historico-card']);
           break;
         }
         default: {

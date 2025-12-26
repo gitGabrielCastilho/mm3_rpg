@@ -3413,3 +3413,290 @@ def limpar_desenhos(request, mapa_id):
             logger.warning("Falha ao broadcast limpeza de desenhos", exc_info=True)
     
     return JsonResponse({'status': 'ok'})
+
+
+# ===== Novos endpoints para manipulação rápida de participantes =====
+
+@login_required
+@require_POST
+def ajustar_buff_debuff(request, combate_id, participante_id):
+    """Adiciona +5 ou -5 ao bônus/penalidade temporária do próximo teste do participante.
+    Permissões: GM da sala OU dono do personagem.
+    """
+    combate = get_object_or_404(Combate, id=combate_id)
+    participante = get_object_or_404(Participante.objects.select_related('personagem'), id=participante_id, combate=combate)
+    
+    # Verificar permissões
+    is_gm = combate.sala.game_master == request.user
+    is_owner = participante.personagem.usuario_id == request.user.id
+    if not (is_gm or is_owner):
+        return JsonResponse({'error': 'forbidden'}, status=403)
+    
+    # Ler o valor do ajuste (+5 ou -5)
+    ajuste = request.POST.get('valor', '0')
+    try:
+        ajuste = int(ajuste)
+    except ValueError:
+        return JsonResponse({'error': 'invalid value'}, status=400)
+    
+    if ajuste == 5:
+        participante.bonus_temporario += 5
+        msg = f"{participante.personagem.nome} recebeu +5 no próximo teste."
+    elif ajuste == -5:
+        participante.penalidade_temporaria += 5  # Penalidade é positiva internamente
+        msg = f"{participante.personagem.nome} recebeu -5 no próximo teste."
+    else:
+        return JsonResponse({'error': 'invalid value'}, status=400)
+    
+    participante.save(update_fields=['bonus_temporario', 'penalidade_temporaria'])
+    
+    # Log no histórico
+    turno_ativo = Turno.objects.filter(combate=combate, ativo=True).first()
+    if turno_ativo:
+        turno_ativo.descricao = (turno_ativo.descricao + "<br>" if turno_ativo.descricao else "") + msg
+        turno_ativo.save()
+    
+    # Broadcast WebSocket
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'combate_{combate.id}',
+            {'type': 'combate_message', 'message': json.dumps({'evento': 'status_atualizado', 'participante_id': participante.id})}
+        )
+    except Exception:
+        logger.warning("Falha ao enviar evento buff/debuff via WS", exc_info=True)
+    
+    if _expects_json(request):
+        return JsonResponse({'status': 'ok', 'evento': 'status_atualizado'})
+    return redirect('detalhes_combate', combate_id=combate.id)
+
+
+@login_required
+@require_POST
+def ajustar_aflicao(request, combate_id, participante_id):
+    """Adiciona +1 ou -1 ao grau de aflição do participante.
+    Permissões: GM da sala OU dono do personagem.
+    """
+    combate = get_object_or_404(Combate, id=combate_id)
+    participante = get_object_or_404(Participante.objects.select_related('personagem'), id=participante_id, combate=combate)
+    
+    is_gm = combate.sala.game_master == request.user
+    is_owner = participante.personagem.usuario_id == request.user.id
+    if not (is_gm or is_owner):
+        return JsonResponse({'error': 'forbidden'}, status=403)
+    
+    ajuste = request.POST.get('valor', '0')
+    try:
+        ajuste = int(ajuste)
+    except ValueError:
+        return JsonResponse({'error': 'invalid value'}, status=400)
+    
+    if ajuste == 1:
+        participante.aflicao = min(participante.aflicao + 1, 4)  # Máximo 4 (Incapacitado)
+        msg = f"{participante.personagem.nome} teve aflição aumentada para {participante.aflicao}."
+    elif ajuste == -1:
+        participante.aflicao = max(participante.aflicao - 1, 0)
+        msg = f"{participante.personagem.nome} teve aflição reduzida para {participante.aflicao}."
+    else:
+        return JsonResponse({'error': 'invalid value'}, status=400)
+    
+    participante.save(update_fields=['aflicao'])
+    
+    turno_ativo = Turno.objects.filter(combate=combate, ativo=True).first()
+    if turno_ativo:
+        turno_ativo.descricao = (turno_ativo.descricao + "<br>" if turno_ativo.descricao else "") + msg
+        turno_ativo.save()
+    
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'combate_{combate.id}',
+            {'type': 'combate_message', 'message': json.dumps({'evento': 'status_atualizado', 'participante_id': participante.id})}
+        )
+    except Exception:
+        logger.warning("Falha ao enviar evento aflição via WS", exc_info=True)
+    
+    if _expects_json(request):
+        return JsonResponse({'status': 'ok', 'evento': 'status_atualizado'})
+    return redirect('detalhes_combate', combate_id=combate.id)
+
+
+@login_required
+@require_POST
+def ajustar_ferimentos(request, combate_id, participante_id):
+    """Adiciona +1 ou -1 ao grau de ferimentos do participante.
+    Permissões: GM da sala OU dono do personagem.
+    """
+    combate = get_object_or_404(Combate, id=combate_id)
+    participante = get_object_or_404(Participante.objects.select_related('personagem'), id=participante_id, combate=combate)
+    
+    is_gm = combate.sala.game_master == request.user
+    is_owner = participante.personagem.usuario_id == request.user.id
+    if not (is_gm or is_owner):
+        return JsonResponse({'error': 'forbidden'}, status=403)
+    
+    ajuste = request.POST.get('valor', '0')
+    try:
+        ajuste = int(ajuste)
+    except ValueError:
+        return JsonResponse({'error': 'invalid value'}, status=400)
+    
+    if ajuste == 1:
+        participante.ferimentos += 1
+        msg = f"{participante.personagem.nome} teve ferimentos aumentados para {participante.ferimentos}."
+    elif ajuste == -1:
+        participante.ferimentos = max(participante.ferimentos - 1, 0)
+        msg = f"{participante.personagem.nome} teve ferimentos reduzidos para {participante.ferimentos}."
+    else:
+        return JsonResponse({'error': 'invalid value'}, status=400)
+    
+    participante.save(update_fields=['ferimentos'])
+    
+    turno_ativo = Turno.objects.filter(combate=combate, ativo=True).first()
+    if turno_ativo:
+        turno_ativo.descricao = (turno_ativo.descricao + "<br>" if turno_ativo.descricao else "") + msg
+        turno_ativo.save()
+    
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'combate_{combate.id}',
+            {'type': 'combate_message', 'message': json.dumps({'evento': 'status_atualizado', 'participante_id': participante.id})}
+        )
+    except Exception:
+        logger.warning("Falha ao enviar evento ferimentos via WS", exc_info=True)
+    
+    if _expects_json(request):
+        return JsonResponse({'status': 'ok', 'evento': 'status_atualizado'})
+    return redirect('detalhes_combate', combate_id=combate.id)
+
+
+@login_required
+@require_POST
+def ajustar_dano(request, combate_id, participante_id):
+    """Adiciona +1 ou -1 ao grau de dano do participante.
+    Permissões: GM da sala OU dono do personagem.
+    """
+    combate = get_object_or_404(Combate, id=combate_id)
+    participante = get_object_or_404(Participante.objects.select_related('personagem'), id=participante_id, combate=combate)
+    
+    is_gm = combate.sala.game_master == request.user
+    is_owner = participante.personagem.usuario_id == request.user.id
+    if not (is_gm or is_owner):
+        return JsonResponse({'error': 'forbidden'}, status=403)
+    
+    ajuste = request.POST.get('valor', '0')
+    try:
+        ajuste = int(ajuste)
+    except ValueError:
+        return JsonResponse({'error': 'invalid value'}, status=400)
+    
+    if ajuste == 1:
+        participante.dano += 1
+        msg = f"{participante.personagem.nome} teve dano aumentado para {participante.dano}."
+    elif ajuste == -1:
+        participante.dano = max(participante.dano - 1, 0)
+        msg = f"{participante.personagem.nome} teve dano reduzido para {participante.dano}."
+    else:
+        return JsonResponse({'error': 'invalid value'}, status=400)
+    
+    participante.save(update_fields=['dano'])
+    
+    turno_ativo = Turno.objects.filter(combate=combate, ativo=True).first()
+    if turno_ativo:
+        turno_ativo.descricao = (turno_ativo.descricao + "<br>" if turno_ativo.descricao else "") + msg
+        turno_ativo.save()
+    
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'combate_{combate.id}',
+            {'type': 'combate_message', 'message': json.dumps({'evento': 'status_atualizado', 'participante_id': participante.id})}
+        )
+    except Exception:
+        logger.warning("Falha ao enviar evento dano via WS", exc_info=True)
+    
+    if _expects_json(request):
+        return JsonResponse({'status': 'ok', 'evento': 'status_atualizado'})
+    return redirect('detalhes_combate', combate_id=combate.id)
+
+
+@login_required
+@require_POST
+def remover_aflicoes(request, combate_id, participante_id):
+    """Remove todos os graus de aflição do participante.
+    Permissões: GM da sala OU dono do personagem.
+    """
+    combate = get_object_or_404(Combate, id=combate_id)
+    participante = get_object_or_404(Participante.objects.select_related('personagem'), id=participante_id, combate=combate)
+    
+    is_gm = combate.sala.game_master == request.user
+    is_owner = participante.personagem.usuario_id == request.user.id
+    if not (is_gm or is_owner):
+        return JsonResponse({'error': 'forbidden'}, status=403)
+    
+    if participante.aflicao > 0:
+        participante.aflicao = 0
+        participante.save(update_fields=['aflicao'])
+        msg = f"{participante.personagem.nome} teve todas as aflições removidas."
+        
+        turno_ativo = Turno.objects.filter(combate=combate, ativo=True).first()
+        if turno_ativo:
+            turno_ativo.descricao = (turno_ativo.descricao + "<br>" if turno_ativo.descricao else "") + msg
+            turno_ativo.save()
+        
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'combate_{combate.id}',
+                {'type': 'combate_message', 'message': json.dumps({'evento': 'status_atualizado', 'participante_id': participante.id})}
+            )
+        except Exception:
+            logger.warning("Falha ao enviar evento remover aflições via WS", exc_info=True)
+    
+    if _expects_json(request):
+        return JsonResponse({'status': 'ok', 'evento': 'status_atualizado'})
+    return redirect('detalhes_combate', combate_id=combate.id)
+
+
+@login_required
+@require_POST
+def descansar_participante(request, combate_id, participante_id):
+    """Limpa dano, ferimentos e aflição do participante (descanço completo).
+    Permissões: GM da sala OU dono do personagem.
+    """
+    combate = get_object_or_404(Combate, id=combate_id)
+    participante = get_object_or_404(Participante.objects.select_related('personagem'), id=participante_id, combate=combate)
+    
+    is_gm = combate.sala.game_master == request.user
+    is_owner = participante.personagem.usuario_id == request.user.id
+    if not (is_gm or is_owner):
+        return JsonResponse({'error': 'forbidden'}, status=403)
+    
+    participante.dano = 0
+    participante.ferimentos = 0
+    participante.aflicao = 0
+    participante.bonus_temporario = 0
+    participante.penalidade_temporaria = 0
+    participante.save(update_fields=['dano', 'ferimentos', 'aflicao', 'bonus_temporario', 'penalidade_temporaria'])
+    
+    msg = f"{participante.personagem.nome} descansou e recuperou toda saúde (dano, ferimentos e aflições zerados)."
+    
+    turno_ativo = Turno.objects.filter(combate=combate, ativo=True).first()
+    if turno_ativo:
+        turno_ativo.descricao = (turno_ativo.descricao + "<br>" if turno_ativo.descricao else "") + msg
+        turno_ativo.save()
+    
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'combate_{combate.id}',
+            {'type': 'combate_message', 'message': json.dumps({'evento': 'status_atualizado', 'participante_id': participante.id})}
+        )
+    except Exception:
+        logger.warning("Falha ao enviar evento descansar via WS", exc_info=True)
+    
+    if _expects_json(request):
+        return JsonResponse({'status': 'ok', 'evento': 'status_atualizado'})
+    return redirect('detalhes_combate', combate_id=combate.id)
+

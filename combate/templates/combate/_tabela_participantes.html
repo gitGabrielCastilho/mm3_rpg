@@ -8,6 +8,7 @@
     <th>Dano</th>
     <th>Aflição</th>
     <th>Ferimentos</th>
+    <th>Ações</th>
     <th>Ficha</th>
   {% get_perfil as perfil %}
   {% if perfil and perfil.sala_atual and perfil.sala_atual.game_master == user %}
@@ -15,6 +16,9 @@
       {% endif %}
   </tr>
   {% for p in participantes %}
+    {% with is_gm=perfil.sala_atual.game_master|default:None == user %}
+    {% with is_owner=p.personagem.usuario == user %}
+    {% with can_control=is_gm or is_owner %}
     <tr>
       <td>
         {% if p.personagem.foto %}
@@ -27,6 +31,72 @@
       <td>{{ p.dano|dano_condicao }}</td>
       <td>{{ p.aflicao }}</td>
       <td>{{ p.ferimentos|default:0 }}</td>
+      <td class="acoes-participante">
+        {% if can_control %}
+          <div class="acoes-btn-group">
+            <form method="post" action="{% url 'ajustar_buff_debuff' combate.id p.id %}" class="form-acao-participante" style="display:inline;">
+              {% csrf_token %}
+              <input type="hidden" name="valor" value="5">
+              <button type="submit" class="btn-acao-mini btn-success" title="Adicionar +5 buff">+5</button>
+            </form>
+            <form method="post" action="{% url 'ajustar_buff_debuff' combate.id p.id %}" class="form-acao-participante" style="display:inline;">
+              {% csrf_token %}
+              <input type="hidden" name="valor" value="-5">
+              <button type="submit" class="btn-acao-mini btn-danger" title="Adicionar -5 penalidade">-5</button>
+            </form>
+          </div>
+          <div class="acoes-btn-group">
+            <form method="post" action="{% url 'ajustar_aflicao' combate.id p.id %}" class="form-acao-participante" style="display:inline;">
+              {% csrf_token %}
+              <input type="hidden" name="valor" value="1">
+              <button type="submit" class="btn-acao-mini" title="Adicionar +1 Aflição">Afl+</button>
+            </form>
+            <form method="post" action="{% url 'ajustar_aflicao' combate.id p.id %}" class="form-acao-participante" style="display:inline;">
+              {% csrf_token %}
+              <input type="hidden" name="valor" value="-1">
+              <button type="submit" class="btn-acao-mini" title="Remover -1 Aflição">Afl-</button>
+            </form>
+          </div>
+          <div class="acoes-btn-group">
+            <form method="post" action="{% url 'ajustar_ferimentos' combate.id p.id %}" class="form-acao-participante" style="display:inline;">
+              {% csrf_token %}
+              <input type="hidden" name="valor" value="1">
+              <button type="submit" class="btn-acao-mini" title="Adicionar +1 Ferimento">Fer+</button>
+            </form>
+            <form method="post" action="{% url 'ajustar_ferimentos' combate.id p.id %}" class="form-acao-participante" style="display:inline;">
+              {% csrf_token %}
+              <input type="hidden" name="valor" value="-1">
+              <button type="submit" class="btn-acao-mini" title="Remover -1 Ferimento">Fer-</button>
+            </form>
+          </div>
+          <div class="acoes-btn-group">
+            <form method="post" action="{% url 'ajustar_dano' combate.id p.id %}" class="form-acao-participante" style="display:inline;">
+              {% csrf_token %}
+              <input type="hidden" name="valor" value="1">
+              <button type="submit" class="btn-acao-mini" title="Adicionar +1 Dano">Dan+</button>
+            </form>
+            <form method="post" action="{% url 'ajustar_dano' combate.id p.id %}" class="form-acao-participante" style="display:inline;">
+              {% csrf_token %}
+              <input type="hidden" name="valor" value="-1">
+              <button type="submit" class="btn-acao-mini" title="Remover -1 Dano">Dan-</button>
+            </form>
+          </div>
+          <div class="acoes-btn-group">
+            <form method="post" action="{% url 'remover_aflicoes' combate.id p.id %}" class="form-acao-participante" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" class="btn-acao-small btn-warning" title="Remover todas as aflições">Limpar Afl</button>
+            </form>
+          </div>
+          <div class="acoes-btn-group">
+            <form method="post" action="{% url 'descansar_participante' combate.id p.id %}" class="form-acao-participante" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" class="btn-acao-small btn-info" title="Recuperação completa" onclick="return confirm('Descansar {{ p.personagem.nome }}? Isso irá zerar dano, ferimentos e aflições.');">Descanso</button>
+            </form>
+          </div>
+        {% else %}
+          <span style="color:#666;">—</span>
+        {% endif %}
+      </td>
       <td>
         {% if p.personagem.usuario == user %}
           <a href="{% url 'ficha_personagem' p.personagem.id %}" target="_blank" class="btn-link-ficha">Ver Ficha</a>
@@ -41,5 +111,9 @@
           </td>
         {% endif %}
     </tr>
+    {% endwith %}
+    {% endwith %}
+    {% endwith %}
   {% endfor %}
 </table>
+

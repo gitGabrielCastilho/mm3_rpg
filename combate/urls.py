@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .views import atualizar_posicao_token, remover_mapa_global, adicionar_mapa_global, listar_mapas, adicionar_mapa, remover_mapa, remover_participante, realizar_ataque, criar_combate, detalhes_combate, passar_turno, listar_combates, iniciar_turno, avancar_turno, deletar_combate, finalizar_combate, adicionar_npc_participante, adicionar_participante, limpar_historico, encerrar_efeito, encerrar_meus_efeitos, participantes_json, salvar_desenho, limpar_desenhos
+from .views import atualizar_posicao_token, remover_mapa_global, adicionar_mapa_global, listar_mapas, adicionar_mapa, remover_mapa, remover_participante, realizar_ataque, criar_combate, detalhes_combate, passar_turno, listar_combates, iniciar_turno, avancar_turno, deletar_combate, finalizar_combate, adicionar_npc_participante, adicionar_participante, limpar_historico, encerrar_efeito, encerrar_meus_efeitos, participantes_json, salvar_desenho, limpar_desenhos, ajustar_buff_debuff, ajustar_aflicao, ajustar_ferimentos, ajustar_dano, remover_aflicoes, descansar_participante
 from . import views_ajax
 
 urlpatterns = [
@@ -30,4 +30,11 @@ urlpatterns = [
     path('<int:combate_id>/tabela_participantes/', views_ajax.tabela_participantes, name='tabela_participantes'),
     path('mapa/<int:mapa_id>/salvar-desenho/', salvar_desenho, name='salvar_desenho'),
     path('mapa/<int:mapa_id>/limpar-desenhos/', limpar_desenhos, name='limpar_desenhos'),
+    # Novos endpoints para manipulação rápida de participantes
+    path('<int:combate_id>/participante/<int:participante_id>/buff-debuff/', ajustar_buff_debuff, name='ajustar_buff_debuff'),
+    path('<int:combate_id>/participante/<int:participante_id>/aflicao/', ajustar_aflicao, name='ajustar_aflicao'),
+    path('<int:combate_id>/participante/<int:participante_id>/ferimentos/', ajustar_ferimentos, name='ajustar_ferimentos'),
+    path('<int:combate_id>/participante/<int:participante_id>/dano/', ajustar_dano, name='ajustar_dano'),
+    path('<int:combate_id>/participante/<int:participante_id>/remover-aflicoes/', remover_aflicoes, name='remover_aflicoes'),
+    path('<int:combate_id>/participante/<int:participante_id>/descansar/', descansar_participante, name='descansar_participante'),
 ]

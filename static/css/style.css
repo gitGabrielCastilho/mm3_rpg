@@ -1680,3 +1680,144 @@ input:focus, select:focus, textarea:focus {
     top: 12px;
   }
 }
+
+/* Estilos para botões de ação nos participantes */
+.acoes-participante {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.acoes-btn-group {
+  display: flex;
+  gap: 4px;
+  flex-wrap: nowrap;
+}
+
+.btn-acao-mini {
+  padding: 2px 6px;
+  font-size: 0.7rem;
+  min-width: 32px;
+  border: 1px solid #444;
+  background: #2a2a2a;
+  color: #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-acao-mini:hover {
+  background: #3a3a3a;
+  border-color: var(--gold);
+  transform: translateY(-1px);
+}
+
+.btn-acao-mini.btn-success {
+  background: #1f4d1f;
+  border-color: #2d6b2d;
+  color: #a8f3a8;
+}
+
+.btn-acao-mini.btn-success:hover {
+  background: #2d6b2d;
+  border-color: #3d8b3d;
+}
+
+.btn-acao-mini.btn-danger {
+  background: #4d1f1f;
+  border-color: #6b2d2d;
+  color: #f3a8a8;
+}
+
+.btn-acao-mini.btn-danger:hover {
+  background: #6b2d2d;
+  border-color: #8b3d3d;
+}
+
+.btn-acao-small {
+  padding: 3px 8px;
+  font-size: 0.75rem;
+  border: 1px solid #444;
+  background: #2a2a2a;
+  color: #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-acao-small:hover {
+  background: #3a3a3a;
+  border-color: var(--gold);
+  transform: translateY(-1px);
+}
+
+.btn-acao-small.btn-warning {
+  background: #4d3d1f;
+  border-color: #6b562d;
+  color: #f3d8a8;
+}
+
+.btn-acao-small.btn-warning:hover {
+  background: #6b562d;
+  border-color: #8b763d;
+}
+
+.btn-acao-small.btn-info {
+  background: #1f3d4d;
+  border-color: #2d566b;
+  color: #a8d8f3;
+}
+
+.btn-acao-small.btn-info:hover {
+  background: #2d566b;
+  border-color: #3d768b;
+}
+
+#tabela-participantes {
+  margin: 0 auto;
+  width: 100%;
+  max-width: 100%;
+}
+
+#tabela-participantes th,
+#tabela-participantes td {
+  padding: 8px 10px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+#tabela-participantes td.acoes-participante {
+  text-align: left;
+  min-width: 200px;
+}
+
+@media (max-width: 900px) {
+  .acoes-btn-group {
+    flex-wrap: wrap;
+  }
+}
+
+/* Seção de participantes centralizada abaixo do grid */
+.participantes-section-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+  padding: 0 1rem;
+  box-sizing: border-box;
+}
+
+.participantes-section {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+@media (max-width: 1000px) {
+  .participantes-section-wrapper {
+    margin-top: 1.5rem;
+  }
+}
