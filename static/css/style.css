@@ -1701,8 +1701,12 @@ input:focus, select:focus, textarea:focus {
 
 .acoes-participante .btn-acao-mini,
 .acoes-participante .btn-acao-small {
-  line-height: 1.1;
-  padding: 2px 8px;
+  line-height: 1;
+  padding: 2px 6px;
+  font-size: 0.85rem;
+  height: 24px;
+  display: flex;
+  align-items: center;
 }
 
 .acoes-coluna {
