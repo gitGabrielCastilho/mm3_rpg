@@ -1099,8 +1099,11 @@ def iniciar_turno(request, combate_id):
                     attr_map = alvo_part.proximo_bonus_por_atributo or {}
                     a_next = int(attr_map.get(defesa_attr, 0))
                     base = random.randint(1, 20)
-                    defesa_valor = _atributo_efetivo(alvo, alvo_part, defesa_attr, combate.id)
-                    total = base + defesa_valor + a_next + buff - debuff
+                    tipo_dano_poder = getattr(poder, 'tipo_dano', None)
+                    defesa_valor = _defesa_efetiva(alvo, alvo_part, defesa_attr, combate.id, tipo_dano_poder)
+                    # Penalidade cumulativa única (Ferimentos)
+                    salv_pen = int(getattr(alvo_part, 'ferimentos', 0) or 0)
+                    total = base + defesa_valor + a_next + buff - debuff - salv_pen
                     # Consome bônus gerais e específico da defesa
                     Participante.objects.filter(pk=alvo_part.pk).update(bonus_temporario=0, penalidade_temporaria=0)
                     if a_next:
@@ -1112,11 +1115,12 @@ def iniciar_turno(request, combate_id):
                         alvo_part.save()
                     cd = 10 + abs(val)
                     a_piece = (f" + {a_next}" if a_next > 0 else (f" - {abs(a_next)}" if a_next < 0 else ""))
+                    pen_piece = f" - {salv_pen}" if salv_pen else ""
                     defesa_msg = (
                         f"{base} + {defesa_valor}"
                         f"{' + ' + str(buff) if buff else ''}"
                         f"{' - ' + str(debuff) if debuff else ''}"
-                        f"{a_piece} = {total}"
+                        f"{a_piece}{pen_piece} = {total}"
                     )
                     if total >= cd:
                         # Sucesso: termina o efeito
@@ -1414,8 +1418,11 @@ def avancar_turno(request, combate_id):
                         attr_map = alvo_part.proximo_bonus_por_atributo or {}
                         a_next = int(attr_map.get(defesa_attr, 0))
                         base = random.randint(1, 20)
-                        defesa_valor = _atributo_efetivo(alvo, alvo_part, defesa_attr, combate.id)
-                        total = base + defesa_valor + a_next + buff - debuff
+                        tipo_dano_poder = getattr(poder, 'tipo_dano', None)
+                        defesa_valor = _defesa_efetiva(alvo, alvo_part, defesa_attr, combate.id, tipo_dano_poder)
+                        # Penalidade cumulativa única (Ferimentos)
+                        salv_pen = int(getattr(alvo_part, 'ferimentos', 0) or 0)
+                        total = base + defesa_valor + a_next + buff - debuff - salv_pen
                         Participante.objects.filter(pk=alvo_part.pk).update(bonus_temporario=0, penalidade_temporaria=0)
                         if a_next:
                             try:
@@ -1426,11 +1433,12 @@ def avancar_turno(request, combate_id):
                             alvo_part.save()
                         cd = 10 + abs(val)
                         a_piece = (f" + {a_next}" if a_next > 0 else (f" - {abs(a_next)}" if a_next < 0 else ""))
+                        pen_piece = f" - {salv_pen}" if salv_pen else ""
                         defesa_msg = (
                             f"{base} + {defesa_valor}"
                             f"{' + ' + str(buff) if buff else ''}"
                             f"{' - ' + str(debuff) if debuff else ''}"
-                            f"{a_piece} = {total}"
+                            f"{a_piece}{pen_piece} = {total}"
                         )
                         if total >= cd:
                             # Sucesso: termina o efeito
@@ -2454,7 +2462,7 @@ def realizar_ataque(request, combate_id):
                             buff = participante_alvo.bonus_temporario
                             debuff = participante_alvo.penalidade_temporaria
                             d_base = random.randint(1, 20)
-                            d_valor = _atributo_efetivo(alvo, participante_alvo, defesa_attr, combate.id)
+                            d_valor = _defesa_efetiva(alvo, participante_alvo, defesa_attr, combate.id, tipo_dano_poder)
                             # Bônus específico para próxima rolagem daquela defesa
                             a_map = participante_alvo.proximo_bonus_por_atributo or {}
                             a_next = int(a_map.get(defesa_attr, 0))
@@ -2554,7 +2562,7 @@ def realizar_ataque(request, combate_id):
                             buff = participante_alvo.bonus_temporario
                             debuff = participante_alvo.penalidade_temporaria
                             d_base = random.randint(1, 20)
-                            d_valor = _atributo_efetivo(alvo, participante_alvo, defesa_attr, combate.id)
+                            d_valor = _defesa_efetiva(alvo, participante_alvo, defesa_attr, combate.id, tipo_dano_poder)
                             a_map = participante_alvo.proximo_bonus_por_atributo or {}
                             a_next = int(a_map.get(defesa_attr, 0))
                             d_total_bruto = d_base + d_valor + a_next + buff - debuff
