@@ -16,9 +16,14 @@
       {% endif %}
   </tr>
   {% for p in participantes %}
-    {% with is_gm=perfil.sala_atual.game_master|default:None == user %}
     {% with is_owner=p.personagem.usuario == user %}
-    {% with can_control=is_gm or is_owner %}
+    {% if perfil and perfil.sala_atual %}
+      {% with is_gm=perfil.sala_atual.game_master == user %}
+      {% with can_control=is_gm or is_owner %}
+    {% else %}
+      {% with is_gm=False %}
+      {% with can_control=is_owner %}
+    {% endif %}
     <tr>
       <td>
         {% if p.personagem.foto %}
