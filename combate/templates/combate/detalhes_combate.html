@@ -345,44 +345,22 @@
       function toggleCombateSidebar() {
         const sidebar = document.getElementById('combate-sidebar-acoes');
         const icon = document.getElementById('combate-sidebar-toggle-icon');
-        const grid = document.querySelector('.combate-layout-grid');
-        
         sidebar.classList.toggle('closed');
-        
         if (sidebar.classList.contains('closed')) {
           icon.textContent = '⮞';
           sidebar.setAttribute('aria-expanded', 'false');
-          // Quando fechado (40px), descontar apenas 40px
-          if (grid) {
-            grid.style.width = 'calc(100% - 40px)';
-            grid.style.marginRight = '40px';
-          }
         } else {
           icon.textContent = '⮜';
           sidebar.setAttribute('aria-expanded', 'true');
-          // Quando aberto (320px), descontar 320px
-          if (grid) {
-            grid.style.width = 'calc(100% - 320px)';
-            grid.style.marginRight = '320px';
-          }
         }
       }
       // Garante ícone correto ao carregar
       document.addEventListener('DOMContentLoaded', function() {
         const sidebar = document.getElementById('combate-sidebar-acoes');
         const icon = document.getElementById('combate-sidebar-toggle-icon');
-        const grid = document.querySelector('.combate-layout-grid');
-        
         if (sidebar && sidebar.classList.contains('closed')) {
           icon.textContent = '⮞';
           sidebar.setAttribute('aria-expanded', 'false');
-          if (grid) {
-            grid.style.width = 'calc(100% - 40px)';
-            grid.style.marginRight = '40px';
-          }
-        } else if (grid) {
-          grid.style.width = 'calc(100% - 320px)';
-          grid.style.marginRight = '320px';
         }
       });
     </script>
