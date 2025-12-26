@@ -77,7 +77,7 @@
   </div>
   <div id="historico-card" class="combate-card">
   <ul class="turnos-list">
-  {% for turno in turnos reversed %}
+  {% for turno in turnos %}
           <li class="turno-item {% if turno.ativo %}ativo{% endif %}" data-turno-id="{{ turno.id }}">
             <div class="turno-header">
               <strong>Rodada {{ turno.ordem }}</strong>
