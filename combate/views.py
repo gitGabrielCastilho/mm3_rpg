@@ -418,12 +418,29 @@ def _aplicar_falha_salvamento(alvo_part: Participante, tipo: str, degree: int, c
     if tipo == 'dano':
         # NOVO SISTEMA: Sempre acumula Ferimentos em falhas de Dano
         alvo_part.ferimentos = int(getattr(alvo_part, 'ferimentos', 0) or 0) + 1
-        
+
+        # Regra de Campanga: qualquer dano incapacita imediatamente
+        try:
+            if getattr(alvo_part.personagem, 'campanga', False):
+                # Marca estado de dano como incapacitado diretamente
+                alvo_part.dano = 4
+                aplicou_pontuacao = True
+                incapacitado = True
+                # Salva e retorna sem aplicar lógica de grau
+                try:
+                    alvo_part.save()
+                except Exception:
+                    pass
+                return aplicou_pontuacao, incapacitado, msg_resist
+        except Exception:
+            # Se não conseguir avaliar, segue fluxo padrão
+            pass
+
         # O campo dano agora representa o ESTADO da condição (1-4), não é cumulativo
         # Atualiza apenas se o novo grau for maior que o estado atual
         cur = int(getattr(alvo_part, 'dano', 0) or 0)
         novo_estado = min(degree, 4)  # Grau 4+ sempre resulta em estado 4 (Incapacitado)
-        
+
         if novo_estado > cur:
             alvo_part.dano = novo_estado
             aplicou_pontuacao = True

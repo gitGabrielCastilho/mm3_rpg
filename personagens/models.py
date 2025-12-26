@@ -57,6 +57,8 @@ DANO_TIPO_CUSTO = {
 
 class Personagem(models.Model):
     is_npc = models.BooleanField(default=False)
+    # NPC especial: se verdadeiro, fica incapacitado ao sofrer qualquer dano/ferimento
+    campanga = models.BooleanField(default=False)
     sala = models.ForeignKey(Sala, on_delete=models.CASCADE, null=True, blank=True, related_name='personagens')
 
     especialidade_casting_ability = models.CharField(

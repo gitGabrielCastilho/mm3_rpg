@@ -310,6 +310,7 @@ class PersonagemNPCForm(forms.ModelForm):
             'foto',
             'nome',
             'nivel_poder',
+            'campanga',
             # Características
             'forca', 'vigor', 'destreza', 'agilidade', 'luta', 'inteligencia', 'prontidao', 'presenca',
             # Defesas
