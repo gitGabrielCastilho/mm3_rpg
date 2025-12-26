@@ -2423,15 +2423,25 @@ def realizar_ataque(request, combate_id):
                 else:
                     # Modos ofensivos: area, percepcao, melee, ranged
                     # Auxiliares comuns
-                    def resolve_defesa(def_attr, buff, debuff):
+                    def resolve_defesa(def_attr, buff, debuff, tipo_dano_poder=None):
                         base = random.randint(1, 20)
-                        val = _atributo_efetivo(alvo, participante_alvo, def_attr, combate.id)
+                        # Usa defesa efetiva (defesa + característica associada + itens/aprimorar)
+                        val = _defesa_efetiva(alvo, participante_alvo, def_attr, combate.id, tipo_dano_poder)
                         # Bônus específico (Aprimorar instantâneo) para próxima rolagem daquela defesa
                         attr_map = participante_alvo.proximo_bonus_por_atributo or {}
                         a_next = int(attr_map.get(def_attr, 0))
                         # Penalidade cumulativa única (Ferimentos)
                         salv_pen = int(getattr(participante_alvo, 'ferimentos', 0) or 0)
-                        total = base + val + a_next + buff - debuff - salv_pen
+                        # Bônus de resistência a tipo de dano (+5) quando aplicável
+                        resist_bonus = 0
+                        if tipo_dano_poder:
+                            try:
+                                tem_res, _ = _verificar_resistencia_imunidade(alvo, tipo_dano_poder)
+                                if tem_res:
+                                    resist_bonus = 5
+                            except Exception:
+                                resist_bonus = 0
+                        total = base + val + a_next + buff - debuff - salv_pen + resist_bonus
                         # Consome bônus específico por defesa
                         if a_next:
                             try:
@@ -2440,7 +2450,7 @@ def realizar_ataque(request, combate_id):
                                 attr_map[def_attr] = 0
                             participante_alvo.proximo_bonus_por_atributo = attr_map
                             participante_alvo.save()
-                        return base, val, a_next, total, salv_pen
+                        return base, val, a_next, total, salv_pen, resist_bonus
 
                     if modo == 'area':
                         esquiva = _defesa_efetiva(alvo, participante_alvo, 'esquivar', combate.id)
@@ -2692,7 +2702,7 @@ def realizar_ataque(request, combate_id):
                         defesa_attr = poder_atual.defesa_passiva
                         buff = participante_alvo.bonus_temporario
                         debuff = participante_alvo.penalidade_temporaria
-                        base, val, a_next, total, salv_pen = resolve_defesa(defesa_attr, buff, debuff)
+                        base, val, a_next, total, salv_pen, resist_bonus = resolve_defesa(defesa_attr, buff, debuff, tipo_dano_poder)
                         participante_alvo.bonus_temporario = 0
                         participante_alvo.penalidade_temporaria = 0
                         participante_alvo.save()
@@ -2702,7 +2712,7 @@ def realizar_ataque(request, combate_id):
                             f"{base} + {val}"
                             f"{' + ' + str(buff) if buff else ''}"
                             f"{' - ' + str(debuff) if debuff else ''}"
-                            f"{a_piece}{pen_piece} = {total}"
+                            f"{a_piece}{pen_piece}{' + 5' if resist_bonus else ''} = {total}"
                         )
                         if total < cd:
                             diff = cd - total
@@ -2832,7 +2842,7 @@ def realizar_ataque(request, combate_id):
                             defesa_attr = poder_atual.defesa_passiva
                             buff = participante_alvo.bonus_temporario
                             debuff = participante_alvo.penalidade_temporaria
-                            d_base, d_val, a_next, d_total, salv_pen = resolve_defesa(defesa_attr, buff, debuff)
+                            d_base, d_val, a_next, d_total, salv_pen, resist_bonus = resolve_defesa(defesa_attr, buff, debuff, tipo_dano_poder)
                             participante_alvo.bonus_temporario = 0
                             participante_alvo.penalidade_temporaria = 0
                             participante_alvo.save()
@@ -2843,7 +2853,7 @@ def realizar_ataque(request, combate_id):
                                 f"{d_base} + {d_val}"
                                 f"{' + ' + str(buff) if buff else ''}"
                                 f"{' - ' + str(debuff) if debuff else ''}"
-                                f"{a_piece}{pen_piece} = {d_total}"
+                                f"{a_piece}{pen_piece}{' + 5' if resist_bonus else ''} = {d_total}"
                             )
                             try:
                                 if tipo == 'dano' and getattr(poder_atual, 'modo', '') == 'melee' and getattr(poder_atual, 'somar_forca_no_nivel', False):
