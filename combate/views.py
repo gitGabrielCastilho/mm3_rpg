@@ -93,7 +93,7 @@ def _defesa_efetiva(personagem: Personagem, participante: Participante, defesa: 
     Ambos componentes consideram:
     - bônus de itens (mods.defesas / mods.caracteristicas)
     - efeitos Aprimorar/Reduzir ativos
-    - bônus de resistência ao tipo_dano (+5 para defesa passiva)
+    - bônus de resistência ao tipo_dano (+5 para defesa passiva de resistência)
     """
     # Defesa em si (inclui bônus de item em defesas via _item_bonus + aprimorar)
     val_def = getattr(personagem, defesa, 0) + _item_bonus(personagem, 'defesas', defesa)
@@ -111,14 +111,11 @@ def _defesa_efetiva(personagem: Personagem, participante: Participante, defesa: 
     if assoc:
         val_def += _atributo_efetivo(personagem, participante, assoc, combate_id)
     
-    # Bônus de resistência: +5 para defesa passiva se houver resistência ao tipo_dano
-    logger.debug(f"_defesa_efetiva: personagem={personagem.nome}, defesa={defesa}, tipo_dano={tipo_dano}, val_def_antes_resist={val_def}")
+    # Bônus de resistência: +5 para defesa passiva de resistência se houver resistência ao tipo_dano
     if tipo_dano and defesa == 'resistencia':
         tem_resistencia, _ = _verificar_resistencia_imunidade(personagem, tipo_dano)
-        logger.debug(f"_defesa_efetiva: tem_resistencia={tem_resistencia}, resistencias_dano={getattr(personagem, 'resistencias_dano', [])}")
         if tem_resistencia:
             val_def += 5
-            logger.debug(f"_defesa_efetiva: APLICOU +5 de resistência, val_def_final={val_def}")
     
     return val_def
 
@@ -2168,9 +2165,10 @@ def realizar_ataque(request, combate_id):
                             attr_map = participante_alvo.proximo_bonus_por_atributo or {}
                             a_next = int(attr_map.get(defesa_attr, 0))
                             base = random.randint(1, 20)
+                            # Para poderes de dano, passar tipo de dano para calcular resistência
                             tipo_dano_poder = getattr(poder_atual, 'tipo_dano', None) if tipo == 'dano' else None
-                            logger.debug(f"Teste defesa melee/ranged: poder={poder_atual.nome}, tipo={tipo}, defesa_attr={defesa_attr}, tipo_dano_poder={tipo_dano_poder}")
                             defesa_val = _defesa_efetiva(alvo, participante_alvo, defesa_attr, combate.id, tipo_dano_poder)
+                            
                             # Penalidade cumulativa única (Ferimentos)
                             salv_pen = int(getattr(participante_alvo, 'ferimentos', 0) or 0)
                             total = base + defesa_val + a_next + buff - debuff - salv_pen
