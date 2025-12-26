@@ -16,14 +16,6 @@
       {% endif %}
   </tr>
   {% for p in participantes %}
-    {% with is_owner=p.personagem.usuario == user %}
-    {% if perfil and perfil.sala_atual %}
-      {% with is_gm=perfil.sala_atual.game_master == user %}
-      {% with can_control=is_gm or is_owner %}
-    {% else %}
-      {% with is_gm=False %}
-      {% with can_control=is_owner %}
-    {% endif %}
     <tr>
       <td>
         {% if p.personagem.foto %}
@@ -37,7 +29,7 @@
       <td>{{ p.aflicao }}</td>
       <td>{{ p.ferimentos|default:0 }}</td>
       <td class="acoes-participante">
-        {% if can_control %}
+        {% if perfil and perfil.sala_atual and perfil.sala_atual.game_master == user or p.personagem.usuario == user %}
           <div class="acoes-btn-group">
             <form method="post" action="{% url 'ajustar_buff_debuff' combate.id p.id %}" class="form-acao-participante" style="display:inline;">
               {% csrf_token %}
@@ -116,9 +108,6 @@
           </td>
         {% endif %}
     </tr>
-    {% endwith %}
-    {% endwith %}
-    {% endwith %}
   {% endfor %}
 </table>
 
