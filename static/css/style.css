@@ -1613,6 +1613,13 @@ input:focus, select:focus, textarea:focus {
   font-size: 0.9rem;
   line-height: 1.3;
 }
+/* Evita que o select cresça verticalmente por causa da regra global
+   .acao-top-row .select-md { flex: 1 1 320px } quando estamos no sidebar */
+.combate-sidebar-acoes .acao-top-row .select-md {
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+
 
 .combate-sidebar-acoes .acao-top-row form {
   margin: 0;
