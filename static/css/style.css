@@ -1696,9 +1696,10 @@ input:focus, select:focus, textarea:focus {
   gap: 4px;
   flex-wrap: nowrap;
   align-items: center;
+  white-space: nowrap;
 }
 
-.acoes-coluna form { display: inline-flex; }
+.acoes-coluna form { display: inline-flex; margin: 0; }
 
 .btn-acao-mini {
   padding: 2px 6px;
@@ -1711,6 +1712,7 @@ input:focus, select:focus, textarea:focus {
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
+  line-height: 1;
 }
 
 .btn-acao-mini:hover {
@@ -1751,6 +1753,7 @@ input:focus, select:focus, textarea:focus {
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
+  line-height: 1;
 }
 
 .btn-acao-small:hover {
