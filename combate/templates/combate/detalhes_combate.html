@@ -59,102 +59,10 @@
   {# Moved map selection next to the map title in the right column #}
   </div>
 
-  <!-- Grid 1/3 - 2/3 -->
+  <!-- Grid: Histórico (esquerda) + Mapa/Status (centro-direita) + Ações Sidebar (direita) -->
   <div class="combate-layout-grid">
-    <!-- Coluna esquerda: Ações + Histórico -->
+    <!-- Coluna esquerda: Histórico -->
   <div class="combate-col-left">
-
-      <h3 class="combate-section-title">Ações de</h3>
-      <div class="acao-top-row">
-        <select id="personagem_acao" name="personagem_acao" form="form-ataque" class="select-md">
-          {% if combate.sala.game_master == user %}
-            {% for p in participantes %}
-              {% if p.personagem.id in allowed_personagem_ids %}
-                <option value="{{ p.id }}" data-personagem-id="{{ p.personagem.id }}">{{ p.display_nome|default:p.personagem.nome }}</option>
-              {% endif %}
-            {% endfor %}
-          {% else %}
-            {% for p in participantes %}
-              {% if p.personagem.usuario == user and p.personagem.id in allowed_personagem_ids %}
-                <option value="{{ p.id }}" data-personagem-id="{{ p.personagem.id }}">{{ p.display_nome|default:p.personagem.nome }}</option>
-              {% endif %}
-            {% endfor %}
-          {% endif %}
-        </select>
-        <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-d20" class="inline-form">
-          {% csrf_token %}
-          <input type="hidden" name="personagem_acao" id="personagem_acao_hidden_d20" value="{{ participantes.0.id }}">
-          <button type="submit" name="rolar_d20" value="1" class="btn btn-sm">Rolar d20</button>
-        </form>
-        <form method="post" action="{% url 'encerrar_meus_efeitos' combate.id %}" class="inline-form" id="form-encerrar-meus">
-          {% csrf_token %}
-          <input type="hidden" name="personagem_acao" id="personagem_acao_hidden_end" value="{{ participantes.0.id }}">
-          <button type="submit" class="btn btn-sm" formnovalidate title="Encerrar todos os efeitos que este personagem está mantendo">Encerrar Efeitos</button>
-        </form>
-      </div>
-
-      <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-ataque" class="combate-card ataque-card">
-        {% csrf_token %}
-  <input type="hidden" name="personagem_acao" id="personagem_acao_hidden" value="{{ participantes.0.id }}">
-  <!-- Hidden extras para manter sincronização existente -->
-  <input type="hidden" id="personagem_acao_hidden_pericia" value="{{ participantes.0.id }}">
-  <input type="hidden" id="personagem_acao_hidden_caracteristica" value="{{ participantes.0.id }}">
-
-  <label for="alvo">Alvo(s):</label>
-        <small id="alvo_hint" class="form-hint" style="display:block; margin:-4px 0 6px; color:#666; font-size:12px;">
-          Segure Ctrl (Windows/Linux) ou Cmd (macOS) para selecionar múltiplos; use Shift para selecionar intervalos.
-        </small>
-  <select id="alvo" name="alvo_id" multiple size="4" class="multiselect-alvos" aria-describedby="alvo_hint" title="Segure Ctrl (Windows/Linux) ou Cmd (macOS) para seleção múltipla; Shift para intervalos.">
-          {# Ordena por iniciativa (maior primeiro) e exibe a iniciativa no texto #}
-          {% for p in participantes|dictsortreversed:"iniciativa" %}
-            {% if p.personagem.id in allowed_personagem_ids %}
-              <option value="{{ p.id }}">[Init {{ p.iniciativa }}] {{ p.display_nome|default:p.personagem.nome }}</option>
-            {% endif %}
-          {% endfor %}
-        </select>
-
-        <div class="acao-row poder-row">
-          <label for="poder">Poder:</label>
-          <select name="poder_id" id="poder" required class="select-md" data-tipos="{}" aria-describedby="poder_hint">
-            {% for poder in poderes_disponiveis %}
-              <option value="{{ poder.id }}"
-                      data-tipo="{{ poder.tipo }}"
-                      {% if poder.de_item %}data-de-item="1"{% endif %}
-                      {% if poder.item_origem %}data-item-origem="{{ poder.item_origem.nome|escape }}"{% endif %}>
-                {{ poder.nome }}{% if poder.de_item and poder.item_origem %} — item: {{ poder.item_origem.nome }}{% endif %}
-              </option>
-            {% empty %}
-              <option disabled>Nenhum poder disponível</option>
-            {% endfor %}
-          </select>
-          <button type="submit" class="btn btn-sm" id="btn-rolar-poder">Rolar</button>
-        </div>
-        <small id="poder_hint" class="form-hint" style="display:block; margin:-4px 0 6px; color:#666; font-size:12px;"></small>
-
-        <div class="acao-row">
-          <label for="pericia_rolar">Perícia:</label>
-          <select name="pericia" id="pericia_rolar" class="select-md">
-            <option value="">-- Selecione uma perícia --</option>
-            {% for pericia in pericias %}
-              <option value="{{ pericia }}">{{ pericia|capfirst }}</option>
-            {% endfor %}
-          </select>
-          <button type="submit" name="rolar_pericia" value="1" class="btn btn-sm" formnovalidate>Rolar</button>
-        </div>
-
-        <div class="acao-row">
-          <label for="caracteristica_rolar">Característica:</label>
-          <select name="caracteristica" id="caracteristica_rolar" class="select-md">
-            <option value="">-- Selecione uma característica --</option>
-            {% for c in caracteristicas %}
-              <option value="{{ c }}">{{ c|capfirst }}</option>
-            {% endfor %}
-          </select>
-          <button type="submit" name="rolar_caracteristica" value="1" class="btn btn-sm" formnovalidate>Rolar</button>
-        </div>
-      </form>
-
-      
 
   <div class="mapa-header-row">
     <h3 class="combate-section-title" style="margin:0">Histórico de Ataques</h3>
@@ -336,6 +244,99 @@
         {% include 'combate/_tabela_participantes.html' %}
       </div>
     </div>
+
+    <!-- Sidebar direito: Ações -->
+    <aside class="combate-sidebar-acoes">
+      <h3 class="combate-section-title">Ações de</h3>
+      <div class="acao-top-row">
+        <select id="personagem_acao" name="personagem_acao" form="form-ataque" class="select-md">
+          {% if combate.sala.game_master == user %}
+            {% for p in participantes %}
+              {% if p.personagem.id in allowed_personagem_ids %}
+                <option value="{{ p.id }}" data-personagem-id="{{ p.personagem.id }}">{{ p.display_nome|default:p.personagem.nome }}</option>
+              {% endif %}
+            {% endfor %}
+          {% else %}
+            {% for p in participantes %}
+              {% if p.personagem.usuario == user and p.personagem.id in allowed_personagem_ids %}
+                <option value="{{ p.id }}" data-personagem-id="{{ p.personagem.id }}">{{ p.display_nome|default:p.personagem.nome }}</option>
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+        </select>
+        <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-d20" class="inline-form">
+          {% csrf_token %}
+          <input type="hidden" name="personagem_acao" id="personagem_acao_hidden_d20" value="{{ participantes.0.id }}">
+          <button type="submit" name="rolar_d20" value="1" class="btn btn-sm">Rolar d20</button>
+        </form>
+        <form method="post" action="{% url 'encerrar_meus_efeitos' combate.id %}" class="inline-form" id="form-encerrar-meus">
+          {% csrf_token %}
+          <input type="hidden" name="personagem_acao" id="personagem_acao_hidden_end" value="{{ participantes.0.id }}">
+          <button type="submit" class="btn btn-sm" formnovalidate title="Encerrar todos os efeitos que este personagem está mantendo">Encerrar Efeitos</button>
+        </form>
+      </div>
+
+      <form method="post" action="{% url 'realizar_ataque' combate.id %}" id="form-ataque" class="combate-card ataque-card">
+        {% csrf_token %}
+  <input type="hidden" name="personagem_acao" id="personagem_acao_hidden" value="{{ participantes.0.id }}">
+  <!-- Hidden extras para manter sincronização existente -->
+  <input type="hidden" id="personagem_acao_hidden_pericia" value="{{ participantes.0.id }}">
+  <input type="hidden" id="personagem_acao_hidden_caracteristica" value="{{ participantes.0.id }}">
+
+  <label for="alvo">Alvo(s):</label>
+        <small id="alvo_hint" class="form-hint" style="display:block; margin:-4px 0 6px; color:#666; font-size:12px;">
+          Segure Ctrl (Windows/Linux) ou Cmd (macOS) para selecionar múltiplos; use Shift para selecionar intervalos.
+        </small>
+  <select id="alvo" name="alvo_id" multiple size="4" class="multiselect-alvos" aria-describedby="alvo_hint" title="Segure Ctrl (Windows/Linux) ou Cmd (macOS) para seleção múltipla; Shift para intervalos.">
+          {# Ordena por iniciativa (maior primeiro) e exibe a iniciativa no texto #}
+          {% for p in participantes|dictsortreversed:"iniciativa" %}
+            {% if p.personagem.id in allowed_personagem_ids %}
+              <option value="{{ p.id }}">[Init {{ p.iniciativa }}] {{ p.display_nome|default:p.personagem.nome }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+
+        <div class="acao-row poder-row">
+          <label for="poder">Poder:</label>
+          <select name="poder_id" id="poder" required class="select-md" data-tipos="{}" aria-describedby="poder_hint">
+            {% for poder in poderes_disponiveis %}
+              <option value="{{ poder.id }}"
+                      data-tipo="{{ poder.tipo }}"
+                      {% if poder.de_item %}data-de-item="1"{% endif %}
+                      {% if poder.item_origem %}data-item-origem="{{ poder.item_origem.nome|escape }}"{% endif %}>
+                {{ poder.nome }}{% if poder.de_item and poder.item_origem %} — item: {{ poder.item_origem.nome }}{% endif %}
+              </option>
+            {% empty %}
+              <option disabled>Nenhum poder disponível</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-sm" id="btn-rolar-poder">Rolar</button>
+        </div>
+        <small id="poder_hint" class="form-hint" style="display:block; margin:-4px 0 6px; color:#666; font-size:12px;"></small>
+
+        <div class="acao-row">
+          <label for="pericia_rolar">Perícia:</label>
+          <select name="pericia" id="pericia_rolar" class="select-md">
+            <option value="">-- Selecione uma perícia --</option>
+            {% for pericia in pericias %}
+              <option value="{{ pericia }}">{{ pericia|capfirst }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" name="rolar_pericia" value="1" class="btn btn-sm" formnovalidate>Rolar</button>
+        </div>
+
+        <div class="acao-row">
+          <label for="caracteristica_rolar">Característica:</label>
+          <select name="caracteristica" id="caracteristica_rolar" class="select-md">
+            <option value="">-- Selecione uma característica --</option>
+            {% for c in caracteristicas %}
+              <option value="{{ c }}">{{ c|capfirst }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" name="rolar_caracteristica" value="1" class="btn btn-sm" formnovalidate>Rolar</button>
+        </div>
+      </form>
+    </aside>
   </div>
 
   <script>
