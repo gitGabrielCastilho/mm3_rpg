@@ -1797,8 +1797,8 @@
             target.replaceWith(it.fresh);
           }
         }
-  // Reaplica comportamentos após substituições
-    rafEqualize();
+  // NÃO reaplica equalizarAlturas durante refresh para evitar mapa crescer ao atualizar histórico
+  // rafEqualize() será chamado apenas em resize real (window.addEventListener('resize', rafEqualize))
   // Restaura estados do mapa após substituição
         restoreMapStates();
   // Se não houver estado salvo (primeira vez), garanta cobertura
