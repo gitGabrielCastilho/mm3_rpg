@@ -1079,7 +1079,7 @@ body {
 .turno-item .turno-header::after { content:'▾'; position:absolute; right:0; top:50%; transform:translateY(-50%); opacity:0.6; }
 .turno-item.collapsed .turno-header::after { content:'▸'; }
 .historico-scroll { overflow-y:auto; }
-.mapa-area { position:relative; width:100%; max-width:100%; height:60vh; border:1px solid #333; border-radius:0.6rem; overflow:auto; background:#111; margin:0 0 1.2rem 0; box-shadow:0 4px 14px #000a; }
+.mapa-area { position:relative; width:100%; max-width:100%; height:75vh; border:1px solid #333; border-radius:0.6rem; overflow:auto; background:#111; margin:0 0 1.2rem 0; box-shadow:0 4px 14px #000a; }
 /* Histórico: altura estável baseada no viewport, independente do status à direita */
 #historico-card { max-height: 70vh; overflow-y: auto; }
 @media (max-width: 1000px){
