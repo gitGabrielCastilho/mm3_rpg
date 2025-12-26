@@ -1,0 +1,21 @@
+/* Fix: Garantir que o grid não seja afetado pelo toggle do sidebar */
+/* A sidebar está à direita com position:fixed, então o grid precisa descontar esse espaço */
+.combate-layout-grid {
+  width: calc(100% - 340px) !important;
+  margin-right: 340px !important;
+}
+
+/* Quando o sidebar está fechado (40px), ajustar o desconto */
+.combate-sidebar-acoes.closed ~ .combate-layout-grid,
+body.combate-sidebar-closed .combate-layout-grid {
+  width: calc(100% - 80px) !important;
+  margin-right: 80px !important;
+}
+
+/* Em telas menores, remover o desconto */
+@media (max-width: 1000px) {
+  .combate-layout-grid {
+    width: 100% !important;
+    margin-right: 0 !important;
+  }
+}
