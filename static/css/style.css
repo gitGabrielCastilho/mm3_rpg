@@ -1688,13 +1688,17 @@ input:focus, select:focus, textarea:focus {
   gap: 8px;
   align-items: center;
   justify-content: flex-start;
+  flex-wrap: nowrap; /* evita quebrar em duas linhas */
 }
 
 .acoes-coluna {
   display: flex;
   gap: 4px;
   flex-wrap: nowrap;
+  align-items: center;
 }
+
+.acoes-coluna form { display: inline-flex; }
 
 .btn-acao-mini {
   padding: 2px 6px;
@@ -1793,6 +1797,7 @@ input:focus, select:focus, textarea:focus {
 #tabela-participantes td.acoes-participante {
   text-align: left;
   min-width: 200px;
+  white-space: nowrap; /* garante uma única linha */
 }
 
 @media (max-width: 900px) {
