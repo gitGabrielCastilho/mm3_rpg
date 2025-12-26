@@ -998,10 +998,11 @@ def iniciar_turno(request, combate_id):
                         if msg_resist != "IMUNE":
                             efeitos_txt.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
                             if aplicou:
-                                # Obter a nova condição de dano
+                                # Obter a nova condição de dano (só mostra se >= 2)
                                 novo_estado = int(getattr(alvo_part, 'dano', 0) or 0)
-                                condicao = _dano_condicao(novo_estado)
-                                efeitos_txt.append(f"Condição de Dano: {condicao}")
+                                if novo_estado >= 2:
+                                    condicao = _dano_condicao(novo_estado)
+                                    efeitos_txt.append(f"Condição de Dano: {condicao}")
                             if incap:
                                 efeitos_txt.append("INCAPACITADO")
                     else:
@@ -1341,10 +1342,11 @@ def avancar_turno(request, combate_id):
                             if msg_resist != "IMUNE":
                                 efeitos_txt.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
                                 if aplicou:
-                                    # Obter a nova condição de dano
+                                    # Obter a nova condição de dano (só mostra se >= 2)
                                     novo_estado = int(getattr(alvo_part, 'dano', 0) or 0)
-                                    condicao = _dano_condicao(novo_estado)
-                                    efeitos_txt.append(f"Condição de Dano: {condicao}")
+                                    if novo_estado >= 2:
+                                        condicao = _dano_condicao(novo_estado)
+                                        efeitos_txt.append(f"Condição de Dano: {condicao}")
                                 if incap:
                                     efeitos_txt.append("INCAPACITADO")
                         else:
@@ -2489,8 +2491,9 @@ def realizar_ataque(request, combate_id):
                                     if aplicou:
                                         if tipo == 'dano':
                                             novo_estado = int(getattr(participante_alvo, 'dano', 0) or 0)
-                                            condicao = _dano_condicao(novo_estado)
-                                            efeitos_list.append(f"Condição: {condicao}")
+                                            if novo_estado >= 2:
+                                                condicao = _dano_condicao(novo_estado)
+                                                efeitos_list.append(f"Condição: {condicao}")
                                         else:
                                             efeitos_list.append("+1 Aflição")
                                 if incap:
@@ -2583,10 +2586,11 @@ def realizar_ataque(request, combate_id):
                                 if msg_resist != "IMUNE":
                                     efeitos_list.append("Ferimentos +1")
                                     if aplicou:
-                                        # Obter a nova condição de dano
+                                        # Obter a nova condição de dano (só mostra se >= 2)
                                         novo_estado = int(getattr(participante_alvo, 'dano', 0) or 0)
-                                        condicao = _dano_condicao(novo_estado)
-                                        efeitos_list.append(f"Condição: {condicao}")
+                                        if novo_estado >= 2:
+                                            condicao = _dano_condicao(novo_estado)
+                                            efeitos_list.append(f"Condição: {condicao}")
                                     if incap:
                                         efeitos_list.append("INCAPACITADO")
                                 
@@ -2677,8 +2681,9 @@ def realizar_ataque(request, combate_id):
                                     efeitos.append("Ferimentos +1 (penalidade cumulativa em salvamentos)")
                                     if aplicou:
                                         novo_estado = int(getattr(participante_alvo, 'dano', 0) or 0)
-                                        condicao = _dano_condicao(novo_estado)
-                                        efeitos.append(f"Condição de Dano: {condicao}")
+                                        if novo_estado >= 2:
+                                            condicao = _dano_condicao(novo_estado)
+                                            efeitos.append(f"Condição de Dano: {condicao}")
                                     if incap:
                                         efeitos.append("INCAPACITADO")
                             else:
@@ -2711,8 +2716,9 @@ def realizar_ataque(request, combate_id):
                                     efeitos_list.append("Ferimentos +1")
                                     if aplicou:
                                         novo_estado = int(getattr(participante_alvo, 'dano', 0) or 0)
-                                        condicao = _dano_condicao(novo_estado)
-                                        efeitos_list.append(f"Condição: {condicao}")
+                                        if novo_estado >= 2:
+                                            condicao = _dano_condicao(novo_estado)
+                                            efeitos_list.append(f"Condição: {condicao}")
                                     if incap:
                                         efeitos_list.append("INCAPACITADO")
                             else:
@@ -2859,8 +2865,9 @@ def realizar_ataque(request, combate_id):
                                         efeitos_list.append("Ferimentos +1")
                                         if aplicou:
                                             novo_estado = int(getattr(participante_alvo, 'dano', 0) or 0)
-                                            condicao = _dano_condicao(novo_estado)
-                                            efeitos_list.append(f"Condição: {condicao}")
+                                            if novo_estado >= 2:
+                                                condicao = _dano_condicao(novo_estado)
+                                                efeitos_list.append(f"Condição: {condicao}")
                                         if incap:
                                             efeitos_list.append("INCAPACITADO")
                                 else:
