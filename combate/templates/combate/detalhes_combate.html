@@ -1821,16 +1821,15 @@
   } catch(_) {}
         // Ajuste de scroll apenas se o card foi realmente substituído
         if (replacedHistorico) {
-          // Restaura scroll se usuário não estava no fim; autoscroll apenas se ele estava perto do fim
+          // Sempre faz scroll para o final do histórico após atualização
           const historico = document.getElementById('historico-card');
           if (historico) {
-            if (historicoWasNearBottom) {
-              if (historico.scrollHeight > historico.clientHeight) historico.scrollTop = historico.scrollHeight;
-            } else {
-              // Mantém posição anterior na medida do possível
-              const maxTop = Math.max(0, historico.scrollHeight - historico.clientHeight);
-              historico.scrollTop = Math.min(maxTop, historicoPrevScroll);
-            }
+            // Aguarda um tick para garantir que o DOM foi renderizado
+            setTimeout(() => {
+              if (historico.scrollHeight > historico.clientHeight) {
+                historico.scrollTop = historico.scrollHeight;
+              }
+            }, 0);
           }
         }
   // Rebind drag & drop após trocas da coluna direita
