@@ -93,7 +93,10 @@ def _defesa_efetiva(personagem: Personagem, participante: Participante, defesa: 
     Ambos componentes consideram:
     - bônus de itens (mods.defesas / mods.caracteristicas)
     - efeitos Aprimorar/Reduzir ativos
-    - bônus de resistência ao tipo_dano (+5 para defesa passiva de resistência)
+    
+    Observação: Resistência a tipo de dano (+5) é aplicada nos pontos de
+    chamada quando relevante (para tipos ofensivos de Dano), para maior
+    clareza do cálculo e evitar duplicidade.
     """
     # Defesa em si (inclui bônus de item em defesas via _item_bonus + aprimorar)
     val_def = getattr(personagem, defesa, 0) + _item_bonus(personagem, 'defesas', defesa)
@@ -110,12 +113,6 @@ def _defesa_efetiva(personagem: Personagem, participante: Participante, defesa: 
     assoc = _DEFESA_ASSOC_MAP.get(defesa)
     if assoc:
         val_def += _atributo_efetivo(personagem, participante, assoc, combate_id)
-    
-    # Bônus de resistência: +5 para defesa passiva de resistência se houver resistência ao tipo_dano
-    if tipo_dano and defesa == 'resistencia':
-        tem_resistencia, _ = _verificar_resistencia_imunidade(personagem, tipo_dano)
-        if tem_resistencia:
-            val_def += 5
     
     return val_def
 
@@ -415,8 +412,8 @@ def _aplicar_falha_salvamento(alvo_part: Participante, tipo: str, degree: int, c
             msg_resist = "IMUNE"
             return aplicou_pontuacao, incapacitado, msg_resist
         elif tem_resistencia:
-            # Resistência: já foi aplicada na defesa passiva (+5), mas registramos para exibição
-            msg_resist = "RESISTÊNCIA"
+            # Resistência: já aplicada na defesa (+5). Não altera grau aqui e não retorna msg.
+            msg_resist = ""
 
     if tipo == 'dano':
         # NOVO SISTEMA: Sempre acumula Ferimentos em falhas de Dano
@@ -956,6 +953,11 @@ def iniciar_turno(request, combate_id):
                 defesa_attr = getattr(poder, 'defesa_passiva', 'resistencia') or 'resistencia'
                 tipo_dano_poder = getattr(poder, 'tipo_dano', None) if poder.tipo == 'dano' else None
                 defesa_valor = _defesa_efetiva(alvo, alvo_part, defesa_attr, combate.id, tipo_dano_poder)
+                resist_bonus = 0
+                if tipo_dano_poder:
+                    tem_res, _ = _verificar_resistencia_imunidade(alvo, tipo_dano_poder)
+                    if tem_res:
+                        resist_bonus = 5
                 # Bônus específico (Aprimorar instantâneo) para próxima rolagem daquela defesa
                 attr_bonus_map = alvo_part.proximo_bonus_por_atributo or {}
                 attr_next_bonus = int(attr_bonus_map.get(defesa_attr, 0))
@@ -964,7 +966,7 @@ def iniciar_turno(request, combate_id):
                 rolagem_base = random.randint(1, 20)
                 # Penalidade cumulativa única (Ferimentos) em salvamentos
                 salv_pen = int(getattr(alvo_part, 'ferimentos', 0) or 0)
-                total_def = rolagem_base + defesa_valor + attr_next_bonus + buff - debuff - salv_pen
+                total_def = rolagem_base + defesa_valor + attr_next_bonus + buff - debuff - salv_pen + resist_bonus
                 # Consome buff/debuff do alvo sem sobrescrever outros campos atualizados por F()
                 Participante.objects.filter(pk=alvo_part.pk).update(bonus_temporario=0, penalidade_temporaria=0)
                 # Consome bônus específico por atributo (defesa)
@@ -981,7 +983,7 @@ def iniciar_turno(request, combate_id):
                     f"{rolagem_base} + {defesa_valor}"
                     f"{' + ' + str(buff) if buff else ''}"
                     f"{' - ' + str(debuff) if debuff else ''}"
-                    f"{attr_piece}{pen_piece} = {total_def}"
+                    f"{attr_piece}{pen_piece}{' + 5' if resist_bonus else ''} = {total_def}"
                 )
                 if total_def < cd:
                     diff = cd - total_def
@@ -2165,13 +2167,18 @@ def realizar_ataque(request, combate_id):
                             attr_map = participante_alvo.proximo_bonus_por_atributo or {}
                             a_next = int(attr_map.get(defesa_attr, 0))
                             base = random.randint(1, 20)
-                            # Para poderes de dano, passar tipo de dano para calcular resistência
+                            # Para poderes de dano, passar tipo de dano e calcular possível bônus de resistência (+5)
                             tipo_dano_poder = getattr(poder_atual, 'tipo_dano', None) if tipo == 'dano' else None
                             defesa_val = _defesa_efetiva(alvo, participante_alvo, defesa_attr, combate.id, tipo_dano_poder)
+                            resist_bonus = 0
+                            if tipo_dano_poder:
+                                tem_res, _ = _verificar_resistencia_imunidade(alvo, tipo_dano_poder)
+                                if tem_res:
+                                    resist_bonus = 5
                             
                             # Penalidade cumulativa única (Ferimentos)
                             salv_pen = int(getattr(participante_alvo, 'ferimentos', 0) or 0)
-                            total = base + defesa_val + a_next + buff - debuff - salv_pen
+                            total = base + defesa_val + a_next + buff - debuff - salv_pen + resist_bonus
                             # Consome bônus gerais e específico por defesa
                             participante_alvo.bonus_temporario = 0
                             participante_alvo.penalidade_temporaria = 0
@@ -2189,7 +2196,7 @@ def realizar_ataque(request, combate_id):
                                 f"{base} + {defesa_val}"
                                 f"{' + ' + str(buff) if buff else ''}"
                                 f"{' - ' + str(debuff) if debuff else ''}"
-                                f"{a_piece}{pen_piece} = {total}"
+                                f"{a_piece}{pen_piece}{' + 5' if resist_bonus else ''} = {total}"
                             )
                             ataque_msg = atk_msg
                             if total < cd:
@@ -2342,9 +2349,14 @@ def realizar_ataque(request, combate_id):
                             base = random.randint(1, 20)
                             tipo_dano_poder = getattr(poder_atual, 'tipo_dano', None) if tipo == 'dano' else None
                             defesa_val = _defesa_efetiva(alvo, participante_alvo, defesa_attr, combate.id, tipo_dano_poder)
+                            resist_bonus = 0
+                            if tipo_dano_poder:
+                                tem_res, _ = _verificar_resistencia_imunidade(alvo, tipo_dano_poder)
+                                if tem_res:
+                                    resist_bonus = 5
                             # Penalidade cumulativa única (Ferimentos)
                             salv_pen = int(getattr(participante_alvo, 'ferimentos', 0) or 0)
-                            total = base + defesa_val + a_next + buff - debuff - salv_pen
+                            total = base + defesa_val + a_next + buff - debuff - salv_pen + resist_bonus
                             participante_alvo.bonus_temporario = 0
                             participante_alvo.penalidade_temporaria = 0
                             if a_next:
@@ -2361,7 +2373,7 @@ def realizar_ataque(request, combate_id):
                                 f"{base} + {defesa_val}"
                                 f"{' + ' + str(buff) if buff else ''}"
                                 f"{' - ' + str(debuff) if debuff else ''}"
-                                f"{a_piece}{pen_piece} = {total}"
+                                f"{a_piece}{pen_piece}{' + 5' if resist_bonus else ''} = {total}"
                             )
                             if total < cd:
                                 if duracao_raw in ('concentracao', 'sustentado'):
@@ -2465,10 +2477,15 @@ def realizar_ataque(request, combate_id):
                             debuff = participante_alvo.penalidade_temporaria
                             d_base = random.randint(1, 20)
                             d_valor = _defesa_efetiva(alvo, participante_alvo, defesa_attr, combate.id, tipo_dano_poder)
+                            resist_bonus = 0
+                            if tipo_dano_poder:
+                                tem_res, _ = _verificar_resistencia_imunidade(alvo, tipo_dano_poder)
+                                if tem_res:
+                                    resist_bonus = 5
                             # Bônus específico para próxima rolagem daquela defesa
                             a_map = participante_alvo.proximo_bonus_por_atributo or {}
                             a_next = int(a_map.get(defesa_attr, 0))
-                            d_total_bruto = d_base + d_valor + a_next + buff - debuff
+                            d_total_bruto = d_base + d_valor + a_next + buff - debuff + resist_bonus
                             # Penalidade cumulativa única (Ferimentos)
                             salv_pen = int(getattr(participante_alvo, 'ferimentos', 0) or 0)
                             d_total = d_total_bruto - salv_pen
@@ -2489,7 +2506,7 @@ def realizar_ataque(request, combate_id):
                                 f"{d_base} + {d_valor}"
                                 f"{' + ' + str(buff) if buff else ''}"
                                 f"{' - ' + str(debuff) if debuff else ''}"
-                                f"{a_piece}{pen_piece} = {d_total}"
+                                f"{a_piece}{pen_piece}{' + 5' if resist_bonus else ''} = {d_total}"
                             )
                             esq_piece = (f" + {esq_next}" if esq_next > 0 else (f" - {abs(esq_next)}" if esq_next < 0 else ""))
                             if d_total < cd:
@@ -2565,9 +2582,14 @@ def realizar_ataque(request, combate_id):
                             debuff = participante_alvo.penalidade_temporaria
                             d_base = random.randint(1, 20)
                             d_valor = _defesa_efetiva(alvo, participante_alvo, defesa_attr, combate.id, tipo_dano_poder)
+                            resist_bonus = 0
+                            if tipo_dano_poder:
+                                tem_res, _ = _verificar_resistencia_imunidade(alvo, tipo_dano_poder)
+                                if tem_res:
+                                    resist_bonus = 5
                             a_map = participante_alvo.proximo_bonus_por_atributo or {}
                             a_next = int(a_map.get(defesa_attr, 0))
-                            d_total_bruto = d_base + d_valor + a_next + buff - debuff
+                            d_total_bruto = d_base + d_valor + a_next + buff - debuff + resist_bonus
                             salv_pen = int(getattr(participante_alvo, 'ferimentos', 0) or 0)
                             d_total = d_total_bruto - salv_pen
                             participante_alvo.bonus_temporario = 0
@@ -2586,7 +2608,7 @@ def realizar_ataque(request, combate_id):
                                 f"{d_base} + {d_valor}"
                                 f"{' + ' + str(buff) if buff else ''}"
                                 f"{' - ' + str(debuff) if debuff else ''}"
-                                f"{a_piece}{pen_piece} = {d_total}"
+                                f"{a_piece}{pen_piece}{' + 5' if resist_bonus else ''} = {d_total}"
                             )
                             esq_piece = (f" + {esq_next}" if esq_next > 0 else (f" - {abs(esq_next)}" if esq_next < 0 else ""))
                             if d_total < cd_sucesso:

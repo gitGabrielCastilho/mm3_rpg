@@ -82,14 +82,14 @@ def test_aplicar_falha_salvamento():
     print(f"  ✅ Teste 1: Imunidade bloqueia completamente (msg='{msg}')")
     
     # Teste 2: Dano com resistência (AGORA: resistência é +5 na defesa, NÃO reduz grau)
-    # Resistência não reduz grau aqui, aplica dano normal
+    # Resistência não reduz grau aqui, aplica dano normal mapeando estado pelo grau
     part2 = MockParticipante()
     part2.personagem = MockPersonagem()
     aplicou, incap, msg = _aplicar_falha_salvamento(part2, 'dano', degree=2, cd_usado=None, tipo_dano='fogo')
-    assert msg == '', f'Esperado vazio (resistência não reduz grau), recebido "{msg}"'
+    assert msg == '', f'Esperado vazio (resistência aplicada na defesa), recebido "{msg}"'
     assert part2.ferimentos == 1, f'Ferimentos deveria ser 1 (dano normal), é {part2.ferimentos}'
-    assert part2.dano == 1, f'Dano deveria ser 1, é {part2.dano}'
-    print(f"  ✅ Teste 2: Resistência NÃO reduz grau aqui (aplica dano normal, ferimentos={part2.ferimentos})")
+    assert part2.dano == 2, f'Dano deveria ser 2 (grau 2), é {part2.dano}'
+    print(f"  ✅ Teste 2: Resistência aplicada na defesa; dano segue o grau (ferimentos={part2.ferimentos}, dano={part2.dano})")
     
     # Teste 3: Dano sem proteção
     part3 = MockParticipante()
@@ -97,7 +97,7 @@ def test_aplicar_falha_salvamento():
     aplicou, incap, msg = _aplicar_falha_salvamento(part3, 'dano', degree=2, cd_usado=None, tipo_dano='acido')
     assert msg == '', f'Esperado vazio, recebido "{msg}"'
     assert part3.ferimentos == 1, f'Ferimentos deveria ser 1, é {part3.ferimentos}'
-    assert part3.dano == 1, f'Dano deveria ser 1, é {part3.dano}'
+    assert part3.dano == 2, f'Dano deveria ser 2 (grau 2), é {part3.dano}'
     print(f"  ✅ Teste 3: Sem proteção aplica dano normal (ferimentos={part3.ferimentos}, dano={part3.dano})")
     
     # Teste 4: Resistência em grau 1 (resistência NÃO afeta aqui, a defesa já sofreu +5)
@@ -115,7 +115,7 @@ def test_aplicar_falha_salvamento():
     aplicou, incap, msg = _aplicar_falha_salvamento(part5, 'dano', degree=3, cd_usado=None, tipo_dano='fogo')
     assert msg == '', f'Esperado vazio, recebido "{msg}"'
     assert part5.ferimentos == 1, f'Ferimentos deveria ser 1, é {part5.ferimentos}'
-    assert part5.dano == 1, f'Dano deveria ser 1 (grau 3), é {part5.dano}'
+    assert part5.dano == 3, f'Dano deveria ser 3 (grau 3), é {part5.dano}'
     print(f"  ✅ Teste 5: Grau 3 com resistência (ferimentos={part5.ferimentos}, dano={part5.dano})")
     
     # Teste 6: Dano sem tipo_dano especificado
@@ -124,7 +124,7 @@ def test_aplicar_falha_salvamento():
     aplicou, incap, msg = _aplicar_falha_salvamento(part6, 'dano', degree=2, cd_usado=None, tipo_dano=None)
     assert msg == '', f'Esperado vazio (sem tipo_dano), recebido "{msg}"'
     assert part6.ferimentos == 1, f'Ferimentos deveria ser 1, é {part6.ferimentos}'
-    assert part6.dano == 1, f'Dano deveria ser 1, é {part6.dano}'
+    assert part6.dano == 2, f'Dano deveria ser 2 (grau 2), é {part6.dano}'
     print(f"  ✅ Teste 6: Sem tipo_dano não verifica resistência (dano normal)")
     
     # Teste 7: Aflição não é afetada por resistência/imunidade
