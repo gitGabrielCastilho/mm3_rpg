@@ -24,7 +24,12 @@
           <span>—</span>
         {% endif %}
       </td>
-  <td>{{ p.display_nome|default:p.personagem.nome }}</td>
+  <td>
+    {{ p.display_nome|default:p.personagem.nome }}
+    {% if p.personagem.is_npc and p.personagem.campanga %}
+      <span class="badge-campanga" title="Campanga">C</span>
+    {% endif %}
+  </td>
       <td>{{ p.dano|dano_condicao }}</td>
       <td>{{ p.aflicao }}</td>
       <td>{{ p.ferimentos|default:0 }}</td>
@@ -84,4 +89,18 @@
     </tr>
   {% endfor %}
 </table>
+
+<style>
+.badge-campanga {
+  display:inline-block;
+  margin-left:6px;
+  padding:2px 6px;
+  border-radius:10px;
+  background:#b3471f;
+  color:#fff;
+  font-size:0.75rem;
+  font-weight:700;
+  line-height:1;
+}
+</style>
 
