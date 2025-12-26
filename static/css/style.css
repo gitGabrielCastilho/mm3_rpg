@@ -1689,6 +1689,20 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
   justify-content: flex-start;
   flex-wrap: nowrap; /* mantém tudo em uma linha */
+  overflow-x: auto; /* em telas estreitas, permite scroll horizontal */
+}
+
+/* Cada grupo (+/-, Afl+/-, Limpar/Descanso) alinhado lado a lado */
+.acoes-coluna {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.acoes-participante .btn-acao-mini,
+.acoes-participante .btn-acao-small {
+  line-height: 1.1;
+  padding: 2px 8px;
 }
 
 .acoes-coluna {
