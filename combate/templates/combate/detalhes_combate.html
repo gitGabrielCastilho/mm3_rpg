@@ -246,7 +246,10 @@
     </div>
 
     <!-- Sidebar direito: Ações -->
-    <aside class="combate-sidebar-acoes">
+    <aside class="combate-sidebar-acoes closed" id="combate-sidebar-acoes">
+      <button id="combate-sidebar-toggle" class="sidebar-toggle" onclick="toggleCombateSidebar()" title="Abrir/Fechar ações">
+        <span id="combate-sidebar-toggle-icon">⮜</span>
+      </button>
       <h3 class="combate-section-title">Ações de</h3>
       <div class="acao-top-row">
         <select id="personagem_acao" name="personagem_acao" form="form-ataque" class="select-md">
@@ -337,6 +340,30 @@
         </div>
       </form>
     </aside>
+
+    <script>
+      function toggleCombateSidebar() {
+        const sidebar = document.getElementById('combate-sidebar-acoes');
+        const icon = document.getElementById('combate-sidebar-toggle-icon');
+        sidebar.classList.toggle('closed');
+        if (sidebar.classList.contains('closed')) {
+          icon.textContent = '⮞';
+          sidebar.setAttribute('aria-expanded', 'false');
+        } else {
+          icon.textContent = '⮜';
+          sidebar.setAttribute('aria-expanded', 'true');
+        }
+      }
+      // Garante ícone correto ao carregar
+      document.addEventListener('DOMContentLoaded', function() {
+        const sidebar = document.getElementById('combate-sidebar-acoes');
+        const icon = document.getElementById('combate-sidebar-toggle-icon');
+        if (sidebar && sidebar.classList.contains('closed')) {
+          icon.textContent = '⮞';
+          sidebar.setAttribute('aria-expanded', 'false');
+        }
+      });
+    </script>
   </div>
 
   <script>
