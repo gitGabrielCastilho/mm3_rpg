@@ -2238,7 +2238,9 @@ def realizar_ataque(request, combate_id):
                                 base = random.randint(1, 20)
                                 tipo_dano_poder = getattr(poder_atual, 'tipo_dano', None) if tipo == 'dano' else None
                                 defesa_val = _defesa_efetiva(alvo, participante_alvo, defesa_attr, combate.id, tipo_dano_poder)
-                                total = base + defesa_val + a_next + buff - debuff
+                                # Penalidade cumulativa única (Ferimentos)
+                                salv_pen = int(getattr(participante_alvo, 'ferimentos', 0) or 0)
+                                total = base + defesa_val + a_next + buff - debuff - salv_pen
                                 participante_alvo.bonus_temporario = 0
                                 participante_alvo.penalidade_temporaria = 0
                                 if a_next:
@@ -2249,11 +2251,12 @@ def realizar_ataque(request, combate_id):
                                     participante_alvo.proximo_bonus_por_atributo = attr_map
                                 participante_alvo.save()
                                 a_piece = (f" + {a_next}" if a_next > 0 else (f" - {abs(a_next)}" if a_next < 0 else ""))
+                                pen_piece = f" - {salv_pen}" if salv_pen else ""
                                 defesa_msg = (
                                     f"{base} + {defesa_val}"
                                     f"{' + ' + str(buff) if buff else ''}"
                                     f"{' - ' + str(debuff) if debuff else ''}"
-                                    f"{a_piece} = {total}"
+                                    f"{a_piece}{pen_piece} = {total}"
                                 )
                                 return total, defesa_msg, cd_uso
 
