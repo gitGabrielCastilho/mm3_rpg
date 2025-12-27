@@ -1687,14 +1687,15 @@ input:focus, select:focus, textarea:focus {
   flex-direction: row;
   gap: 1px;
   align-items: center;
-  justify-content: flex-start;
-  flex-wrap: nowrap;
+  justify-content: center;
+  flex-wrap: wrap;
   margin: 0;
   padding: 0;
-  height: 28px;
+  height: auto;
+  min-height: 28px;
   line-height: 28px;
-  max-height: 28px;
-  overflow: hidden;
+  max-height: none;
+  overflow: visible;
 }
 
 .form-acao-participante {
