@@ -57,6 +57,9 @@ def itens(request):
                 data[k] = v
             for k, v in (per or {}).items():
                 data[k] = v
+            for k in ('resistencias_dano', 'imunidades_dano'):
+                if k in (it.mods or {}):
+                    data[k] = (it.mods or {}).get(k) or []
         except Exception:
             pass
         return data

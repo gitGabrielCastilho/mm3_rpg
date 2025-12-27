@@ -1,6 +1,7 @@
 from .models import Item, ItemPoder
 from django import forms
 from django.forms import inlineformset_factory
+from personagens.models import DANO_TIPO_CHOICES
 
 class ItemForm(forms.ModelForm):
     class Meta:
@@ -49,6 +50,34 @@ class ItemModsForm(forms.Form):
     sobrevivencia = forms.IntegerField(initial=0, required=False)
     arcana = forms.IntegerField(initial=0, required=False)
     religiao = forms.IntegerField(initial=0, required=False)
+    resistencias_dano = forms.MultipleChoiceField(
+        choices=DANO_TIPO_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        label="Resistências a dano"
+    )
+    imunidades_dano = forms.MultipleChoiceField(
+        choices=DANO_TIPO_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        label="Imunidades a dano"
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        res = cleaned_data.get('resistencias_dano') or []
+        imu = cleaned_data.get('imunidades_dano') or []
+        res_set = set(res)
+        imu_set = set(imu)
+        conflito = res_set & imu_set
+        if conflito:
+            raise forms.ValidationError(
+                "Não é possível ter Resistência e Imunidade ao mesmo tipo de dano: "
+                + ", ".join(sorted(conflito))
+            )
+        cleaned_data['resistencias_dano'] = list(res_set)
+        cleaned_data['imunidades_dano'] = list(imu_set)
+        return cleaned_data
 
     def to_mods(self):
         cd = self.cleaned_data
@@ -64,6 +93,13 @@ class ItemModsForm(forms.Form):
             'defesas': {k: int(cd.get(k) or 0) for k in def_keys if cd.get(k)},
             'pericias': {k: int(cd.get(k) or 0) for k in per_keys if cd.get(k)},
         }
+        # Resistências e imunidades ficam no topo do JSON para fácil leitura
+        res = cd.get('resistencias_dano') or []
+        imu = cd.get('imunidades_dano') or []
+        if res:
+            mods['resistencias_dano'] = list(res)
+        if imu:
+            mods['imunidades_dano'] = list(imu)
         # remove vazios
         for section in list(mods.keys()):
             if not mods[section]:
