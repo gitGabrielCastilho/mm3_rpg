@@ -3,6 +3,7 @@ services:
     name: mm3-rpg
     env: python
     plan: free
+    numInstances: 1  # Single worker required for InMemoryChannelLayer (without Redis)
     buildCommand: >-
       bash -lc 'pip install -r requirements.txt &&
       mkdir -p static/img &&
