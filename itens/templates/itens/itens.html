@@ -43,19 +43,31 @@
       </div>
 
         <h2 style="margin-top:1rem;">Resistências e Imunidades <span id="badge-item-res" class="section-cost-badge" title="Resistência: +5 pp por tipo. Imunidade: +10 pp por tipo.">Resist 5 / Imun 10 — 0</span></h2>
-        <div class="resist-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:1.2rem 2rem; margin-bottom:1.6rem;">
-          <div>
-            <h4 style="margin:0 0 0.4rem;">Resistências</h4>
-            <div class="checkbox-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:0.35rem 0.6rem;">
-              {{ mods_form.resistencias_dano }}
-            </div>
-          </div>
-          <div>
-            <h4 style="margin:0 0 0.4rem;">Imunidades</h4>
-            <div class="checkbox-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:0.35rem 0.6rem;">
-              {{ mods_form.imunidades_dano }}
-            </div>
-          </div>
+        <div class="resist-tabela-wrap" style="margin-bottom:1.6rem;">
+          {% with res_vals=mods_form.resistencias_dano.value imu_vals=mods_form.imunidades_dano.value %}
+          <table class="resist-table">
+            <thead>
+              <tr>
+                <th>Tipo de Dano</th>
+                <th>Resistência</th>
+                <th>Imunidade</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for val,label in mods_form.resistencias_dano.field.choices %}
+              <tr>
+                <td>{{ label }}</td>
+                <td class="resist-col">
+                  <input type="checkbox" name="{{ mods_form.resistencias_dano.html_name }}" value="{{ val }}" id="res-item-{{ forloop.counter0 }}" {% if res_vals and val in res_vals %}checked{% endif %}>
+                </td>
+                <td class="resist-col">
+                  <input type="checkbox" name="{{ mods_form.imunidades_dano.html_name }}" value="{{ val }}" id="imun-item-{{ forloop.counter0 }}" {% if imu_vals and val in imu_vals %}checked{% endif %}>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% endwith %}
         </div>
 
         <h2 style="margin-top:1rem;">Perícias</h2>
@@ -418,5 +430,10 @@ document.addEventListener('DOMContentLoaded', function() {
 #tabela-itens a { color: var(--gold); text-decoration: none; font-weight: 600; }
 #tabela-itens a:visited { color: var(--gold); }
 #tabela-itens a:hover, #tabela-itens a:focus { color: #fff; text-decoration: underline; }
+.resist-table { width: 100%; border-collapse: collapse; }
+.resist-table th, .resist-table td { padding: 6px 8px; text-align: left; }
+.resist-table th { text-align: center; }
+.resist-table .resist-col { text-align: center; width: 120px; }
+.resist-table input[type="checkbox"] { transform: scale(1.1); }
 </style>
 {% endblock %}
