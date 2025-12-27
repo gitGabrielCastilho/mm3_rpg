@@ -1685,12 +1685,14 @@ input:focus, select:focus, textarea:focus {
 .acoes-participante {
   display: flex;
   flex-direction: row;
-  gap: 2px;
+  gap: 1px;
   align-items: center;
   justify-content: flex-start;
   flex-wrap: nowrap;
   margin: 0;
   padding: 0;
+  height: 28px;
+  line-height: 28px;
 }
 
 .form-acao-participante {
@@ -1708,9 +1710,9 @@ input:focus, select:focus, textarea:focus {
 }
 
 .btn-acao-mini {
-  padding: 2px 5px;
+  padding: 0 3px;
   font-size: 0.7rem;
-  min-width: 32px;
+  min-width: 28px;
   border: 1px solid #444;
   background: #2a2a2a;
   color: #ddd;
@@ -1719,11 +1721,12 @@ input:focus, select:focus, textarea:focus {
   transition: all 0.2s;
   white-space: nowrap;
   line-height: 1;
-  height: 22px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0;
+  flex-shrink: 0;
 }
 
 .btn-acao-mini:hover {
@@ -1755,7 +1758,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .btn-acao-small {
-  padding: 2px 6px;
+  padding: 0 3px;
   font-size: 0.75rem;
   border: 1px solid #444;
   background: #2a2a2a;
@@ -1765,11 +1768,12 @@ input:focus, select:focus, textarea:focus {
   transition: all 0.2s;
   white-space: nowrap;
   line-height: 1;
-  height: 22px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0;
+  flex-shrink: 0;
 }
 
 .btn-acao-small:hover {
@@ -1804,29 +1808,34 @@ input:focus, select:focus, textarea:focus {
   margin: 0 auto;
   width: 100%;
   max-width: 100%;
+  border-collapse: collapse;
 }
 
 #tabela-participantes th,
 #tabela-participantes td {
-  padding: 0;
+  border: 1px solid #444;
   text-align: center;
   vertical-align: middle;
-  height: 30px;
-  line-height: 30px;
+  height: 28px;
+  padding: 0 6px;
+  line-height: 28px;
 }
 
-#tabela-participantes td {
-  padding: 0 8px;
+#tabela-participantes th {
+  padding: 0 6px;
+  line-height: 28px;
 }
 
 #tabela-participantes td.acoes-participante {
   text-align: left;
-  padding: 0 6px;
+  padding: 0 4px;
   min-width: 420px;
-  white-space: nowrap;
-  height: 30px;
+  height: 28px;
+  line-height: 28px;
   overflow: hidden;
-  line-height: 1;
+  vertical-align: middle;
+  display: flex;
+  align-items: center;
 }
 
 @media (max-width: 900px) {
