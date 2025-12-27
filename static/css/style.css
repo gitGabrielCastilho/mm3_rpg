@@ -1808,20 +1808,25 @@ input:focus, select:focus, textarea:focus {
 
 #tabela-participantes th,
 #tabela-participantes td {
-  padding: 4px 8px;
+  padding: 0;
   text-align: center;
   vertical-align: middle;
   height: 30px;
-  line-height: 1.2;
+  line-height: 30px;
+}
+
+#tabela-participantes td {
+  padding: 0 8px;
 }
 
 #tabela-participantes td.acoes-participante {
   text-align: left;
-  padding: 2px 6px;
+  padding: 0 6px;
   min-width: 420px;
   white-space: nowrap;
   height: 30px;
   overflow: hidden;
+  line-height: 1;
 }
 
 @media (max-width: 900px) {
