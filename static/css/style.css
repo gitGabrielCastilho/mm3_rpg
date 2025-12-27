@@ -1701,6 +1701,7 @@ input:focus, select:focus, textarea:focus {
   display: inline-flex !important;
   margin: 0 !important;
   padding: 0 !important;
+  vertical-align: middle !important;
 }
 
 .acoes-coluna {
@@ -1819,31 +1820,33 @@ input:focus, select:focus, textarea:focus {
   text-align: center;
   vertical-align: middle;
   height: 28px;
+  max-height: 28px;
   padding: 0 6px;
-  line-height: 28px;
+  line-height: 1;
+  box-sizing: border-box;
 }
 
 #tabela-participantes th {
   padding: 0 6px;
-  line-height: 28px;
+  line-height: 1;
 }
 
 #tabela-participantes tr {
   height: 28px;
+  max-height: 28px;
 }
 
 #tabela-participantes td.acoes-participante {
   text-align: left;
   padding: 0 4px;
   min-width: 420px;
-  max-height: 28px;
   height: 28px;
-  line-height: 28px;
+  max-height: 28px;
   overflow: hidden;
   vertical-align: middle;
-  display: flex;
-  align-items: center;
-  flex-wrap: nowrap;
+  white-space: nowrap;
+  box-sizing: border-box;
+  line-height: 1;
 }
 
 @media (max-width: 900px) {
