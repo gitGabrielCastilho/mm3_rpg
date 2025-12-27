@@ -1724,12 +1724,13 @@ input:focus, select:focus, textarea:focus {
   transition: all 0.2s;
   white-space: nowrap;
   line-height: 1;
-  height: 18px;
-  display: flex;
+  height: 24px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   margin: 0;
   flex-shrink: 0;
+  vertical-align: middle;
 }
 
 .btn-acao-mini:hover {
@@ -1771,12 +1772,13 @@ input:focus, select:focus, textarea:focus {
   transition: all 0.2s;
   white-space: nowrap;
   line-height: 1;
-  height: 18px;
-  display: flex;
+  height: 24px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   margin: 0;
   flex-shrink: 0;
+  vertical-align: middle;
 }
 
 .btn-acao-small:hover {
@@ -1838,7 +1840,7 @@ input:focus, select:focus, textarea:focus {
 
 #tabela-participantes td.acoes-participante {
   text-align: left;
-  padding: 0 4px;
+  padding: 0;
   min-width: 420px;
   height: 28px;
   max-height: 28px;
@@ -1847,6 +1849,7 @@ input:focus, select:focus, textarea:focus {
   white-space: nowrap;
   box-sizing: border-box;
   line-height: 1;
+  font-size: 0;
 }
 
 @media (max-width: 900px) {
