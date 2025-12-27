@@ -2,6 +2,9 @@
 {% block content %}
 <div class="personagens-center">
   <h1 class="personagens-title">Meus NPCs</h1>
+  <div class="busca-wrap" style="margin-bottom: 12px;">
+    <input id="busca-npcs" type="text" placeholder="Buscar NPC..." style="width:100%; max-width:420px; padding:8px 10px; border:1px solid #666; border-radius:4px; background:#1e1e1e; color:#fff;">
+  </div>
   <ul class="personagens-list npcs-inline">
     {% for npc in npcs %}
       <li class="npc-item">
@@ -23,4 +26,21 @@
     {% endfor %}
   </ul>
 </div>
+  <script>
+  document.addEventListener('DOMContentLoaded', function(){
+    const busca = document.getElementById('busca-npcs');
+    const itens = Array.from(document.querySelectorAll('.personagens-list.npcs-inline > li'));
+    function filtrar(){
+      const termo = (busca.value || '').toLowerCase();
+      itens.forEach(li => {
+        const texto = li.textContent.toLowerCase();
+        li.style.display = !termo || texto.includes(termo) ? '' : 'none';
+      });
+    }
+    if (busca) {
+      busca.addEventListener('input', filtrar);
+    }
+    filtrar();
+  });
+  </script>
 {% endblock %}

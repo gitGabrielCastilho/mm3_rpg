@@ -6,6 +6,9 @@
   <div class="combate-card">
     <form method="post" class="combate-form-selecao">
       {% csrf_token %}
+      <div class="busca-wrap" style="margin-bottom: 0.8rem;">
+        <input type="text" id="busca-participante" class="busca-input" placeholder="Buscar personagem ou NPC..." style="width:100%; max-width: 420px; padding: 8px 10px; border: 1px solid #666; border-radius: 4px; background:#1e1e1e; color:#fff;">
+      </div>
       <div class="personagens-grid">
         {% for personagem in personagens %}
           <label class="personagem-check">
@@ -23,4 +26,21 @@
     </form>
   </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const busca = document.getElementById('busca-participante');
+  const labels = Array.from(document.querySelectorAll('.personagens-grid .personagem-check'));
+  function filtrar(){
+    const termo = (busca.value || '').toLowerCase();
+    labels.forEach(lb => {
+      const texto = lb.textContent.toLowerCase();
+      lb.style.display = !termo || texto.includes(termo) ? '' : 'none';
+    });
+  }
+  if (busca) {
+    busca.addEventListener('input', filtrar);
+  }
+  filtrar();
+});
+</script>
 {% endblock %}

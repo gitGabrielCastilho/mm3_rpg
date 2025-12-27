@@ -358,14 +358,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     linhas.forEach(tr => {
       const nome = tr.querySelector('.nome-item').textContent.toLowerCase();
+      const descricao = tr.querySelector('.descricao-item').textContent.toLowerCase();
       const tipoItem = tr.querySelector('.tipo-item').textContent.toLowerCase();
       const rar = tr.querySelector('.raridade-item').textContent.toLowerCase();
 
-      const matchNome = nome.includes(texto);
+      const matchTexto = !texto || nome.includes(texto) || descricao.includes(texto);
       const matchTipo = !tipo || tipoItem === tipo;
       const matchRaridade = !raridade || rar === raridade;
 
-      if (matchNome && matchTipo && matchRaridade) {
+      if (matchTexto && matchTipo && matchRaridade) {
         tr.style.display = '';
       } else {
         tr.style.display = 'none';
