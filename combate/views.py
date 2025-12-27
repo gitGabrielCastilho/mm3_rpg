@@ -122,18 +122,41 @@ def _verificar_resistencia_imunidade(personagem: Personagem, tipo_dano: str) -> 
     
     Retorna (tem_resistencia, tem_imunidade).
     tipo_dano deve ser comparado case-insensitive com as listas resistencias_dano e imunidades_dano.
+    Inclui resistências/imunidades do personagem e de itens equipados.
     """
     if not tipo_dano:
         return False, False
     
     tipo_lower = str(tipo_dano).lower()
     
-    # Verifica resistências
-    resistencias = getattr(personagem, 'resistencias_dano', None) or []
-    tem_resistencia = any(str(r).lower() == tipo_lower for r in resistencias)
+    # Verifica resistências do personagem
+    resistencias = list(getattr(personagem, 'resistencias_dano', None) or [])
     
-    # Verifica imunidades
-    imunidades = getattr(personagem, 'imunidades_dano', None) or []
+    # Verifica imunidades do personagem
+    imunidades = list(getattr(personagem, 'imunidades_dano', None) or [])
+    
+    # Adiciona resistências/imunidades dos itens equipados
+    try:
+        inventario = getattr(personagem, 'inventario', None)
+        if inventario is not None:
+            for item in inventario.itens.all():
+                mods = getattr(item, 'mods', {}) or {}
+                if isinstance(mods, dict):
+                    # Adiciona resistências do item
+                    item_res = mods.get('resistencias_dano') or []
+                    if isinstance(item_res, list):
+                        resistencias.extend(item_res)
+                    
+                    # Adiciona imunidades do item
+                    item_imu = mods.get('imunidades_dano') or []
+                    if isinstance(item_imu, list):
+                        imunidades.extend(item_imu)
+    except Exception:
+        # Se algo falhar ao buscar itens, continua com resistências do personagem
+        pass
+    
+    # Verifica se tem resistência ou imunidade (case-insensitive)
+    tem_resistencia = any(str(r).lower() == tipo_lower for r in resistencias)
     tem_imunidade = any(str(i).lower() == tipo_lower for i in imunidades)
     
     return tem_resistencia, tem_imunidade
