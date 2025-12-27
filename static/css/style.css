@@ -1693,6 +1693,8 @@ input:focus, select:focus, textarea:focus {
   padding: 0;
   height: 28px;
   line-height: 28px;
+  max-height: 28px;
+  overflow: hidden;
 }
 
 .form-acao-participante {
@@ -1826,16 +1828,22 @@ input:focus, select:focus, textarea:focus {
   line-height: 28px;
 }
 
+#tabela-participantes tr {
+  height: 28px;
+}
+
 #tabela-participantes td.acoes-participante {
   text-align: left;
   padding: 0 4px;
   min-width: 420px;
+  max-height: 28px;
   height: 28px;
   line-height: 28px;
   overflow: hidden;
   vertical-align: middle;
   display: flex;
   align-items: center;
+  flex-wrap: nowrap;
 }
 
 @media (max-width: 900px) {
