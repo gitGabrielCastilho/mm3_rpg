@@ -681,6 +681,23 @@ def detalhes_combate(request, combate_id):
     )
     turnos = Turno.objects.filter(combate=combate).order_by('criado_em')  # ou por ordem
     turno_ativo = turnos.filter(ativo=True).first()
+    # Nome exibido do turno ativo com desambiguação por participante.nome_ordem
+    turno_ativo_display = None
+    try:
+        if turno_ativo:
+            # Participantes ordenados por iniciativa
+            parts_all = list(participantes)
+            same = [p for p in parts_all if p.personagem_id == turno_ativo.personagem_id]
+            if same:
+                total_turnos_personagem = Turno.objects.filter(combate=combate, personagem_id=turno_ativo.personagem_id).count()
+                idx_grupo = (max(1, total_turnos_personagem) - 1) % len(same)
+                ativo_part = same[idx_grupo]
+                base = ativo_part.personagem.nome
+                turno_ativo_display = f"{base} ({ativo_part.nome_ordem})" if (getattr(ativo_part, 'nome_ordem', 1) or 1) > 1 else base
+            else:
+                turno_ativo_display = turno_ativo.personagem.nome
+    except Exception:
+        turno_ativo_display = turno_ativo.personagem.nome if turno_ativo else None
     mapas_globais = Mapa.objects.filter(combate__isnull=True, criado_por=request.user).order_by('-id')
     mapa = combate.mapas.first()
     posicoes = PosicaoPersonagem.objects.filter(mapa=mapa).select_related('participante__personagem') if mapa else []
@@ -755,6 +772,7 @@ def detalhes_combate(request, combate_id):
         'participantes': participantes,
         'turnos': turnos,
         'turno_ativo': turno_ativo,
+        'turno_ativo_display': turno_ativo_display,
         'poderes_disponiveis': poderes_disponiveis,  
         'defesas': defesas_disponiveis,
         'personagens_disponiveis': personagens_disponiveis,
@@ -1198,7 +1216,9 @@ def iniciar_turno(request, combate_id):
                 logger.warning("Falha ao enviar evento 'concentracao_tick' via Channels (ignorado)", exc_info=True)
     except Exception:
         logger.warning("Falha ao processar tique de concentração no início do turno", exc_info=True)
-    messages.success(request, f"Turno iniciado para {primeiro_participante.personagem.nome}.")
+    # Nome exibido com índice persistente salvo em nome_ordem
+    display_nome_inicio = f"{primeiro_participante.personagem.nome} ({primeiro_participante.nome_ordem})" if (getattr(primeiro_participante, 'nome_ordem', 1) or 1) > 1 else primeiro_participante.personagem.nome
+    messages.success(request, f"Turno iniciado para {display_nome_inicio}.")
     # Notifica todos os participantes sobre o início do turno
     try:
         channel_layer = get_channel_layer()
@@ -1206,7 +1226,14 @@ def iniciar_turno(request, combate_id):
             f'combate_{combate.id}',
             {
                 'type': 'combate_message',
-                'message': json.dumps({'evento': 'iniciar_turno', 'descricao': f'Turno iniciado para {primeiro_participante.personagem.nome}.'})
+                'message': json.dumps({
+                    'evento': 'iniciar_turno',
+                    'descricao': f'Turno iniciado para {display_nome_inicio}.',
+                    'display_nome': display_nome_inicio,
+                    'personagem_id': primeiro_participante.personagem.id,
+                    'participante_id': primeiro_participante.id,
+                    'nome_ordem': getattr(primeiro_participante, 'nome_ordem', 1) or 1
+                })
             }
         )
     except Exception:
@@ -1218,6 +1245,9 @@ def iniciar_turno(request, combate_id):
             'combate_id': combate.id,
             'turno': {
                 'personagem_id': primeiro_participante.personagem.id,
+                'participante_id': primeiro_participante.id,
+                'nome_ordem': getattr(primeiro_participante, 'nome_ordem', 1) or 1,
+                'display_nome': display_nome_inicio,
                 'ordem': 0,
                 'ativo': True,
             }
@@ -1268,7 +1298,9 @@ def avancar_turno(request, combate_id):
             idx_atual = participantes.index(participante_atual)
             proximo_idx = (idx_atual + 1) % len(participantes)
         
-        personagem_proximo = participantes[proximo_idx].personagem
+        participante_proximo = participantes[proximo_idx]
+        personagem_proximo = participante_proximo.personagem
+        display_nome_proximo = f"{personagem_proximo.nome} ({participante_proximo.nome_ordem})" if (getattr(participante_proximo, 'nome_ordem', 1) or 1) > 1 else personagem_proximo.nome
         novo_turno = Turno.objects.create(combate=combate, personagem=personagem_proximo, ordem=turno_ativo.ordem + 1, ativo=True)
         # Processa efeitos de concentração / sustentado
         try:
@@ -1516,7 +1548,14 @@ def avancar_turno(request, combate_id):
                 f'combate_{combate.id}',
                 {
                     'type': 'combate_message',
-                    'message': json.dumps({'evento': 'avancar_turno', 'descricao': f'Turno avançado para {personagem_proximo.nome}.'})
+                    'message': json.dumps({
+                        'evento': 'avancar_turno',
+                        'descricao': f'Turno avançado para {display_nome_proximo}.',
+                        'display_nome': display_nome_proximo,
+                        'personagem_id': personagem_proximo.id,
+                        'participante_id': participante_proximo.id,
+                        'nome_ordem': getattr(participante_proximo, 'nome_ordem', 1) or 1
+                    })
                 }
             )
         except Exception:
@@ -1526,6 +1565,9 @@ def avancar_turno(request, combate_id):
         try:
             resp['turno'] = {
                 'personagem_id': personagem_proximo.id,
+                'participante_id': participante_proximo.id,
+                'nome_ordem': getattr(participante_proximo, 'nome_ordem', 1) or 1,
+                'display_nome': display_nome_proximo,
                 'ordem': turno_ativo.ordem + 1 if turno_ativo else 0,
                 'ativo': True,
             }

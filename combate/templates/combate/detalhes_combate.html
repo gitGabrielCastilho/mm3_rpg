@@ -30,7 +30,7 @@
     <div class="turno-topbar-row">
       <div class="turno-topbar-info">
       {% if turno_ativo %}
-        <strong>Turno:</strong> <span id="turno-ativo-nome" data-personagem-id="{{ turno_ativo.personagem.id }}">{{ turno_ativo.personagem.nome }}</span>
+        <strong>Turno:</strong> <span id="turno-ativo-nome" data-personagem-id="{{ turno_ativo.personagem.id }}">{{ turno_ativo_display|default:turno_ativo.personagem.nome }}</span>
       {% else %}
         <strong>Sem turno ativo</strong>
       {% endif %}
@@ -94,37 +94,17 @@
     </div>
 
     <script>
-      // Disambiguate repeated personagem names across turn history and topbar
-      (function(){
+      // Apply server-provided display name for current turn when WS events arrive or after partial refresh
+      window.applyTurnNameDisambiguation = function(){
         try {
-          const items = Array.from(document.querySelectorAll('.turnos-list .turno-item[data-personagem-id]'));
-          const seen = Object.create(null);
-          items.forEach(li => {
-            const pid = String(li.getAttribute('data-personagem-id')||'');
-            if (!pid) return;
-            seen[pid] = (seen[pid]||0) + 1;
-            const occ = seen[pid];
-            li.setAttribute('data-occurrence', String(occ));
-            const nomeSpan = li.querySelector('.turno-nome');
-            const baseNome = (li.getAttribute('data-personagem-nome')|| (nomeSpan ? nomeSpan.textContent : '') || '').trim();
-            if (nomeSpan && baseNome) {
-              nomeSpan.textContent = occ > 1 ? baseNome + ' (' + occ + ')' : baseNome;
-            }
-          });
-          // Update topbar active turn name with occurrence suffix if available
-          const active = document.querySelector('.turnos-list .turno-item.ativo[data-personagem-id]');
           const topName = document.getElementById('turno-ativo-nome');
-          if (active && topName) {
-            const pidTop = String(topName.getAttribute('data-personagem-id')||'');
-            const pidActive = String(active.getAttribute('data-personagem-id')||'');
-            if (pidTop && pidActive && pidTop === pidActive) {
-              const occ = Number(active.getAttribute('data-occurrence')||'1');
-              const baseNome = (topName.textContent||'').trim();
-              if (baseNome) topName.textContent = occ > 1 ? baseNome + ' (' + occ + ')' : baseNome;
-            }
-          }
+          if (!topName) return;
+          // If server rendered display name already, nothing to do.
+          // This function is kept for compatibility; actual updates use WS payloads.
         } catch(_) {}
-      })();
+      };
+      // Initial run (no-op)
+      try { window.applyTurnNameDisambiguation(); } catch(_) {}
     </script>
 
     <!-- Coluna direita: Mapa -->
@@ -1904,6 +1884,13 @@
       }
     }
   } catch(_) {}
+  // Reaplica label do turno ativo se houver valor server-side mais preciso
+  try {
+    if (window._lastTurnDisplayNome) {
+      const el = document.getElementById('turno-ativo-nome');
+      if (el) el.textContent = window._lastTurnDisplayNome;
+    }
+  } catch(_) {}
         // Restaura posição de scroll global se estava próximo ao fim
         if (replacedHistorico || (selectors||[]).includes('#historico-card')) {
           try {
@@ -2713,7 +2700,19 @@
           break;
         }
         case 'iniciar_turno':
-        case 'avancar_turno':
+        case 'avancar_turno': {
+          // Update active turn name immediately if server provided it
+          try {
+            const nm = payload && payload.display_nome;
+            if (nm) {
+              const el = document.getElementById('turno-ativo-nome');
+              if (el) el.textContent = nm;
+            }
+          } catch(_) {}
+          try { window._lastTurnDisplayNome = payload && payload.display_nome; } catch(_) {}
+          await refreshSelectors(['.turno-topbar', '#historico-card', '#status-card']);
+          break;
+        }
         case 'finalizar_combate': {
           await refreshSelectors(['.turno-topbar', '#historico-card', '#status-card']);
           break;
