@@ -15,6 +15,11 @@
     --text-muted: #a0a0a0;
   }
 
+  .content-wrapper {
+    margin-left: 2rem;
+    margin-right: 2rem;
+  }
+
   .page-header {
     margin-bottom: 2rem;
     padding-bottom: 1rem;
@@ -176,11 +181,12 @@
   }
 </style>
 
-<div class="breadcrumb">
-  <a href="{% url 'domain_list' %}">Domínios</a> / Todas as Unidades
-</div>
+<div class="content-wrapper">
+  <div class="breadcrumb">
+    <a href="{% url 'domain_list' %}">Domínios</a> / Todas as Unidades
+  </div>
 
-<div class="page-header">
+  <div class="page-header">
   <h1>⚔️ Todas as Unidades</h1>
   <div class="stats">
     Total: {{ total_units }} unidade{{ total_units|pluralize }} em {{ units_by_domain|length }} domínio{{ units_by_domain|length|pluralize }}
@@ -270,5 +276,7 @@
     <a href="{% url 'domain_list' %}" class="btn btn-primary">Ver Domínios</a>
   </div>
 {% endif %}
+
+</div>
 
 {% endblock %}
