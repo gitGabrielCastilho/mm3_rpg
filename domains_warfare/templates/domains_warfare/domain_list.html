@@ -18,55 +18,60 @@
 
   {% if domains %}
     <div class="domains-grid">
-      {% for domain in domains %}
+      {% for item in domains %}
         <div class="domain-card">
           <div class="domain-card-header">
-            <h3>{{ domain.nome }}</h3>
-            {% if domain.governante %}
-              <span class="domain-ruler">👑 {{ domain.governante.nome }}</span>
+            <h3>{{ item.domain.nome }}</h3>
+            {% if item.domain.governante %}
+              <span class="domain-ruler">👑 {{ item.domain.governante.nome }}</span>
             {% endif %}
-            <span class="domain-level">Nível {{ domain.nivel }}</span>
+            <span class="domain-level">Nível {{ item.domain.nivel }}</span>
           </div>
           
           <div class="domain-card-body">
-            {% if domain.brasao %}
+            {% if item.domain.brasao %}
               <div class="domain-brasao">
-                <img src="{{ domain.brasao.url }}" alt="Brasão de {{ domain.nome }}">
+                <img src="{{ item.domain.brasao.url }}" alt="Brasão de {{ item.domain.nome }}">
               </div>
             {% endif %}
             
-            {% if domain.descricao %}
-              <p class="domain-description">{{ domain.descricao|truncatewords:20 }}</p>
+            {% if item.domain.descricao %}
+              <p class="domain-description">{{ item.domain.descricao|truncatewords:20 }}</p>
             {% endif %}
             
             <div class="domain-stats">
               <div class="stat-item">
                 <span class="stat-label">💰 Ouro:</span>
-                <span class="stat-value">{{ domain.ouro }}</span>
+                <span class="stat-value">{{ item.domain.ouro }}</span>
               </div>
               <div class="stat-item">
                 <span class="stat-label">💎 Dragonshards:</span>
-                <span class="stat-value">{{ domain.dragonshards }}</span>
+                <span class="stat-value">{{ item.domain.dragonshards }}</span>
               </div>
               <div class="stat-item">
                 <span class="stat-label">🎯 Diplomacy:</span>
-                <span class="stat-value {% if domain.diplomacy < 0 %}negative{% elif domain.diplomacy > 0 %}positive{% endif %}">{{ domain.diplomacy|add_sign }}</span>
+                <span class="stat-value {% if item.domain.diplomacy < 0 %}negative{% elif item.domain.diplomacy > 0 %}positive{% endif %}">{{ item.domain.diplomacy|add_sign }}</span>
               </div>
               <div class="stat-item">
                 <span class="stat-label">🕵️ Espionage:</span>
-                <span class="stat-value {% if domain.espionage < 0 %}negative{% elif domain.espionage > 0 %}positive{% endif %}">{{ domain.espionage|add_sign }}</span>
+                <span class="stat-value {% if item.domain.espionage < 0 %}negative{% elif item.domain.espionage > 0 %}positive{% endif %}">{{ item.domain.espionage|add_sign }}</span>
               </div>
             </div>
             
             <div class="domain-meta">
-              <small>🏛️ Sala: {{ domain.sala.nome }}</small>
-              <small>👤 Criador: {{ domain.criador.username }}</small>
+              <small>🏛️ Sala: {{ item.domain.sala.nome }}</small>
+              <small>👤 Criador: {{ item.domain.criador.username }}{% if item.domain.criado_por_gm %} (GM){% endif %}</small>
             </div>
           </div>
           
           <div class="domain-card-footer">
-            <a href="{% url 'domain_detail' domain.pk %}" class="btn btn-sm btn-secondary">Ver Detalhes</a>
-            <a href="{% url 'domain_edit' domain.pk %}" class="btn btn-sm btn-primary">Editar</a>
+            <a href="{% url 'domain_detail' item.domain.pk %}" class="btn btn-sm btn-secondary">Ver Detalhes</a>
+            {% if item.pode_editar %}
+              <a href="{% url 'domain_edit' item.domain.pk %}" class="btn btn-sm btn-primary">Editar</a>
+            {% endif %}
+            {% if item.pode_deletar %}
+              <a href="{% url 'domain_delete' item.domain.pk %}" class="btn btn-sm btn-danger">Deletar</a>
+            {% endif %}
           </div>
         </div>
       {% endfor %}
@@ -268,6 +273,16 @@
     display: flex;
     gap: 0.5rem;
     justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+  
+  .btn-danger {
+    background-color: #e74c3c;
+    color: white;
+  }
+  
+  .btn-danger:hover {
+    background-color: #c0392b;
   }
   
   .empty-state {

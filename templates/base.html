@@ -59,9 +59,7 @@
           <button class="dropbtn">Domains & Warfare ▾</button>
           <div class="dropdown-content">
             <a href="{% url 'domain_list' %}">Ver Domínios</a>
-            {% if perfil.tipo == 'game_master' %}
-              <a href="{% url 'domain_create' %}">Criar Domínio</a>
-            {% endif %}
+            <a href="{% url 'domain_create' %}">Criar Domínio</a>
           </div>
         </div>
         <a href="{% url 'notas_sala' perfil.sala_atual.id %}">Notas da Sessão</a>

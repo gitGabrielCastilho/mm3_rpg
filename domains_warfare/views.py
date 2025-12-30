@@ -9,18 +9,29 @@ from salas.models import Sala
 
 @login_required
 def domain_list(request):
-    """Lista todos os domínios que o usuário tem acesso."""
-    # Domínios onde o usuário é mestre da sala, tem acesso direto, ou é staff
-    if request.user.is_staff or request.user.is_superuser:
-        domains = Domain.objects.all()
-    else:
-        domains = Domain.objects.filter(
-            Q(sala__mestre=request.user) |
-            Q(jogadores_acesso=request.user)
-        ).distinct()
+    """Lista TODOS os domínios disponíveis na sala do usuário."""
+    from personagens.models import Perfil
+    
+    perfil = Perfil.objects.filter(user=request.user).first()
+    
+    if not perfil or not perfil.sala_atual:
+        messages.error(request, "Você precisa estar em uma sala para acessar esta página.")
+        return redirect('home')
+    
+    # Todos os domínios da sala do usuário
+    domains = Domain.objects.filter(sala=perfil.sala_atual).order_by('nome')
+    
+    # Preparar contexto com permissões para cada domain
+    domains_with_perms = []
+    for domain in domains:
+        domains_with_perms.append({
+            'domain': domain,
+            'pode_editar': domain.pode_editar(request.user),
+            'pode_deletar': domain.pode_deletar(request.user),
+        })
     
     context = {
-        'domains': domains,
+        'domains': domains_with_perms,
     }
     return render(request, 'domains_warfare/domain_list.html', context)
 
