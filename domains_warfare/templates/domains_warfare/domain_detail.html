@@ -314,15 +314,15 @@
   }
   
   .card {
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 8px;
+    background: var(--card-bg);
+    border: 1px solid #3a3a3a;
+    border-radius: var(--border-radius);
     overflow: hidden;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: var(--card-shadow);
   }
   
   .card-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #c53131 0%, #8b2323 100%);
     color: white;
     padding: 1rem;
   }
@@ -340,7 +340,7 @@
     display: flex;
     justify-content: space-between;
     padding: 0.75rem 0;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #3a3a3a;
   }
   
   .info-row:last-child {
@@ -353,11 +353,11 @@
   
   .info-label {
     font-weight: 600;
-    color: #666;
+    color: #999;
   }
   
   .info-value {
-    color: #2c3e50;
+    color: var(--text-main);
   }
   
   .resource-item {
@@ -365,8 +365,9 @@
     align-items: center;
     padding: 1rem;
     margin-bottom: 1rem;
-    background: #f8f9fa;
+    background: #2c2c2c;
     border-radius: 8px;
+    border: 1px solid #3a3a3a;
   }
   
   .resource-item:last-child {
@@ -385,13 +386,13 @@
   
   .resource-label {
     font-size: 0.875rem;
-    color: #666;
+    color: #999;
   }
   
   .resource-value {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #2c3e50;
+    color: var(--gold);
   }
   
   .brasao-container {
@@ -403,9 +404,9 @@
     max-width: 150px;
     max-height: 150px;
     border-radius: 50%;
-    border: 4px solid #667eea;
+    border: 4px solid var(--gold);
     object-fit: cover;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 12px rgba(230, 194, 0, 0.2);
   }
   
   .characteristic-item {
@@ -426,7 +427,7 @@
   .characteristic-bar {
     width: 100%;
     height: 2.5rem;
-    background: linear-gradient(90deg, #e74c3c 0%, #f39c12 50%, #27ae60 100%);
+    background: linear-gradient(90deg, #ef5350 0%, #fbc02d 50%, #66bb6a 100%);
     border-radius: 4px;
     overflow: hidden;
     position: relative;
@@ -434,7 +435,7 @@
   
   .characteristic-fill {
     height: 100%;
-    background: rgba(255,255,255,0.3);
+    background: rgba(0,0,0,0.2);
     display: flex;
     align-items: center;
     justify-content: center;

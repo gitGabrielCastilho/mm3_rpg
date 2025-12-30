@@ -55,7 +55,7 @@
   
   .header-section h1 {
     margin: 0;
-    color: #e74c3c;
+    color: var(--accent);
   }
   
   .btn {
@@ -70,33 +70,33 @@
   }
   
   .btn-secondary {
-    background-color: #95a5a6;
+    background-color: #555;
     color: white;
   }
   
   .btn-secondary:hover {
-    background-color: #7f8c8d;
+    background-color: #777;
   }
   
   .btn-danger {
-    background-color: #e74c3c;
+    background-color: var(--accent);
     color: white;
   }
   
   .btn-danger:hover {
-    background-color: #c0392b;
+    background-color: #a02828;
   }
   
   .confirm-container {
-    background: white;
-    border: 2px solid #e74c3c;
-    border-radius: 8px;
+    background: var(--card-bg);
+    border: 2px solid var(--accent);
+    border-radius: var(--border-radius);
     overflow: hidden;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    box-shadow: var(--card-shadow);
   }
   
   .warning-box {
-    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    background: linear-gradient(135deg, var(--accent) 0%, #8b2323 100%);
     color: white;
     padding: 2rem;
     text-align: center;
@@ -125,12 +125,13 @@
   
   .domain-info {
     padding: 2rem;
-    background: #f8f9fa;
+    background: #2c2c2c;
+    border-top: 1px solid #3a3a3a;
   }
   
   .domain-info h3 {
     margin: 0 0 1rem 0;
-    color: #2c3e50;
+    color: var(--text-main);
   }
   
   .domain-info ul {
@@ -141,15 +142,17 @@
   
   .domain-info li {
     padding: 0.75rem;
-    background: white;
+    background: #1a1a1a;
     margin-bottom: 0.5rem;
     border-radius: 4px;
-    border-left: 3px solid #e74c3c;
+    border-left: 3px solid var(--accent);
+    color: var(--text-main);
   }
   
   .confirm-form {
     padding: 2rem;
-    background: white;
+    background: #1a1a1a;
+    border-top: 1px solid #3a3a3a;
   }
   
   .form-actions {

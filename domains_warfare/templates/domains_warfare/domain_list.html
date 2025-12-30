@@ -101,7 +101,7 @@
   
   .header-section h1 {
     margin: 0;
-    color: #2c3e50;
+    color: var(--text-main);
   }
   
   .btn {
@@ -116,21 +116,21 @@
   }
   
   .btn-primary {
-    background-color: #3498db;
+    background-color: var(--accent);
     color: white;
   }
   
   .btn-primary:hover {
-    background-color: #2980b9;
+    background-color: #a02828;
   }
   
   .btn-secondary {
-    background-color: #95a5a6;
+    background-color: #555;
     color: white;
   }
   
   .btn-secondary:hover {
-    background-color: #7f8c8d;
+    background-color: #777;
   }
   
   .btn-sm {
@@ -145,15 +145,15 @@
   }
   
   .alert-success {
-    background-color: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
+    background-color: #1e4620;
+    color: #66bb6a;
+    border: 1px solid #2e7d32;
   }
   
   .alert-error {
-    background-color: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
+    background-color: #5c2c2c;
+    color: #ef5350;
+    border: 1px solid #c53131;
   }
   
   .domains-grid {
@@ -163,20 +163,20 @@
   }
   
   .domain-card {
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 8px;
+    background: var(--card-bg);
+    border: 1px solid #3a3a3a;
+    border-radius: var(--border-radius);
     overflow: hidden;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: var(--card-shadow);
     transition: box-shadow 0.2s;
   }
   
   .domain-card:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 20px rgba(230, 194, 0, 0.15);
   }
   
   .domain-card-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #c53131 0%, #8b2323 100%);
     color: white;
     padding: 1rem;
   }
@@ -194,7 +194,7 @@
   
   .domain-level {
     font-size: 0.875rem;
-    background: rgba(255,255,255,0.2);
+    background: rgba(230, 194, 0, 0.2);
     padding: 0.25rem 0.5rem;
     border-radius: 12px;
     display: inline-block;
@@ -210,7 +210,7 @@
     max-width: 100px;
     max-height: 100px;
     border-radius: 50%;
-    border: 3px solid #667eea;
+    border: 3px solid var(--gold);
     object-fit: cover;
   }
   
@@ -220,7 +220,7 @@
   
   .domain-description {
     margin: 0 0 1rem 0;
-    color: #555;
+    color: #bbb;
     font-size: 0.9rem;
   }
   
@@ -235,33 +235,33 @@
     display: flex;
     justify-content: space-between;
     padding: 0.375rem 0.5rem;
-    background: #f8f9fa;
+    background: #2c2c2c;
     border-radius: 4px;
     font-size: 0.875rem;
   }
   
   .stat-label {
-    color: #666;
+    color: #999;
     font-weight: 500;
   }
   
   .stat-value {
-    color: #2c3e50;
+    color: var(--text-main);
     font-weight: 600;
   }
   
   .stat-value.positive {
-    color: #27ae60;
+    color: #66bb6a;
   }
   
   .stat-value.negative {
-    color: #e74c3c;
+    color: #ef5350;
   }
   
   .domain-meta {
     padding-top: 0.5rem;
-    border-top: 1px solid #eee;
-    color: #666;
+    border-top: 1px solid #3a3a3a;
+    color: #999;
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
@@ -269,7 +269,7 @@
   
   .domain-card-footer {
     padding: 1rem;
-    background: #f8f9fa;
+    background: #2c2c2c;
     display: flex;
     gap: 0.5rem;
     justify-content: flex-end;
@@ -277,23 +277,24 @@
   }
   
   .btn-danger {
-    background-color: #e74c3c;
+    background-color: var(--accent);
     color: white;
   }
   
   .btn-danger:hover {
-    background-color: #c0392b;
+    background-color: #a02828;
   }
   
   .empty-state {
     text-align: center;
     padding: 3rem 1rem;
-    background: #f8f9fa;
-    border-radius: 8px;
+    background: #2c2c2c;
+    border-radius: var(--border-radius);
+    border: 1px solid #3a3a3a;
   }
   
   .empty-state p {
-    color: #666;
+    color: #999;
     margin-bottom: 1rem;
   }
 </style>
