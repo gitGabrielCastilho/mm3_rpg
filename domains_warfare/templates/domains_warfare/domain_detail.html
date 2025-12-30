@@ -82,7 +82,7 @@
         <div class="characteristic-item">
           <span class="characteristic-label">🎯 Diplomacy</span>
           <div class="characteristic-bar">
-            <div class="characteristic-fill" style="width: {% widthratio domain.diplomacy|add:3 1 16.67 %}%">
+            <div class="characteristic-fill" style="width: {% widthratio domain.diplomacy|add:3 1 6 %}%">
               <span class="characteristic-value {% if domain.diplomacy < 0 %}negative{% elif domain.diplomacy > 0 %}positive{% endif %}">
                 {{ domain.diplomacy|add_sign }}
               </span>
@@ -93,7 +93,7 @@
         <div class="characteristic-item">
           <span class="characteristic-label">🕵️ Espionage</span>
           <div class="characteristic-bar">
-            <div class="characteristic-fill" style="width: {% widthratio domain.espionage|add:3 1 16.67 %}%">
+            <div class="characteristic-fill" style="width: {% widthratio domain.espionage|add:3 1 6 %}%">
               <span class="characteristic-value {% if domain.espionage < 0 %}negative{% elif domain.espionage > 0 %}positive{% endif %}">
                 {{ domain.espionage|add_sign }}
               </span>
@@ -104,7 +104,7 @@
         <div class="characteristic-item">
           <span class="characteristic-label">📚 Lore</span>
           <div class="characteristic-bar">
-            <div class="characteristic-fill" style="width: {% widthratio domain.lore|add:3 1 16.67 %}%">
+            <div class="characteristic-fill" style="width: {% widthratio domain.lore|add:3 1 6 %}%">
               <span class="characteristic-value {% if domain.lore < 0 %}negative{% elif domain.lore > 0 %}positive{% endif %}">
                 {{ domain.lore|add_sign }}
               </span>
@@ -115,7 +115,7 @@
         <div class="characteristic-item">
           <span class="characteristic-label">⚔️ Operations</span>
           <div class="characteristic-bar">
-            <div class="characteristic-fill" style="width: {% widthratio domain.operations|add:3 1 16.67 %}%">
+            <div class="characteristic-fill" style="width: {% widthratio domain.operations|add:3 1 6 %}%">
               <span class="characteristic-value {% if domain.operations < 0 %}negative{% elif domain.operations > 0 %}positive{% endif %}">
                 {{ domain.operations|add_sign }}
               </span>
@@ -241,7 +241,7 @@
   
   .header-section h1 {
     margin: 0;
-    color: #2c3e50;
+    color: var(--gold);
   }
   
   .header-actions {
@@ -421,7 +421,7 @@
     display: block;
     margin-bottom: 0.5rem;
     font-weight: 600;
-    color: #2c3e50;
+    color: var(--text-main);
   }
   
   .characteristic-bar {
