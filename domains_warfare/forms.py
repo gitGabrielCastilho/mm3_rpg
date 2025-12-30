@@ -41,28 +41,32 @@ class DomainForm(forms.ModelForm):
         
         # Filtrar salas disponíveis
         if user:
-            from personagens.models import Perfil
-            perfil = Perfil.objects.filter(user=user).first()
-            
-            if user.is_staff or user.is_superuser:
-                salas = Sala.objects.all()
-            elif perfil and perfil.sala_atual:
-                # Jogadores veem apenas sua sala atual
-                salas = Sala.objects.filter(id=perfil.sala_atual.id)
-            else:
-                salas = Sala.objects.none()
-            
-            self.fields['sala'].queryset = salas
-            
-            # Se está editando, define a sala atual
-            if not self.instance.pk and perfil and perfil.sala_atual:
-                self.fields['sala'].initial = perfil.sala_atual
-            
-            # Filtrar governantes (apenas personagens das salas disponíveis)
-            if salas.exists():
-                self.fields['governante'].queryset = Personagem.objects.filter(sala__in=salas)
-            else:
-                self.fields['governante'].queryset = Personagem.objects.none()
+            try:
+                from personagens.models import Perfil
+                perfil = Perfil.objects.filter(user=user).first()
+                
+                if user.is_staff or user.is_superuser:
+                    salas = Sala.objects.all()
+                elif perfil and perfil.sala_atual:
+                    # Jogadores veem apenas sua sala atual
+                    salas = Sala.objects.filter(id=perfil.sala_atual.id)
+                else:
+                    salas = Sala.objects.none()
+                
+                self.fields['sala'].queryset = salas
+                
+                # Se está criando novo, define a sala atual
+                if not self.instance.pk and perfil and perfil.sala_atual:
+                    self.fields['sala'].initial = perfil.sala_atual
+                
+                # Filtrar governantes (apenas personagens das salas disponíveis)
+                if salas.exists():
+                    self.fields['governante'].queryset = Personagem.objects.filter(sala__in=salas)
+                else:
+                    self.fields['governante'].queryset = Personagem.objects.none()
+            except Exception as e:
+                # Se houver erro, deixa os querysets padrão
+                pass
         
         # Valores padrão
         if not self.instance.pk:
