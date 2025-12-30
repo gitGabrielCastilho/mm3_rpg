@@ -74,6 +74,7 @@ INSTALLED_APPS = [
     'combate',
     'salas',
     'itens',
+    'domains_warfare',
     'channels',
 ]
 

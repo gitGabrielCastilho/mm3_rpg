@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+  <div class="header-section">
+    <h1>Deletar Domínio</h1>
+    <a href="{% url 'domain_detail' domain.pk %}" class="btn btn-secondary">← Voltar</a>
+  </div>
+
+  <div class="confirm-container">
+    <div class="warning-box">
+      <div class="warning-icon">⚠️</div>
+      <h2>Atenção!</h2>
+      <p>Você tem certeza que deseja deletar o domínio <strong>{{ domain.nome }}</strong>?</p>
+      <p class="warning-text">Esta ação é irreversível e todos os dados associados serão perdidos permanentemente.</p>
+    </div>
+
+    <div class="domain-info">
+      <h3>Informações do Domínio:</h3>
+      <ul>
+        <li><strong>Nome:</strong> {{ domain.nome }}</li>
+        <li><strong>Sala:</strong> {{ domain.sala.nome }}</li>
+        {% if domain.governante %}
+          <li><strong>Governante:</strong> {{ domain.governante.nome }}</li>
+        {% endif %}
+        <li><strong>Ouro:</strong> {{ domain.ouro }}</li>
+        <li><strong>População:</strong> {{ domain.populacao }}</li>
+        <li><strong>Territórios:</strong> {{ domain.territorio }}</li>
+      </ul>
+    </div>
+
+    <form method="post" class="confirm-form">
+      {% csrf_token %}
+      <div class="form-actions">
+        <button type="submit" class="btn btn-danger">🗑️ Sim, Deletar Permanentemente</button>
+        <a href="{% url 'domain_detail' domain.pk %}" class="btn btn-secondary">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  .container {
+    max-width: 700px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+  }
+  
+  .header-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
+  
+  .header-section h1 {
+    margin: 0;
+    color: #e74c3c;
+  }
+  
+  .btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    font-weight: 500;
+    transition: background-color 0.2s;
+  }
+  
+  .btn-secondary {
+    background-color: #95a5a6;
+    color: white;
+  }
+  
+  .btn-secondary:hover {
+    background-color: #7f8c8d;
+  }
+  
+  .btn-danger {
+    background-color: #e74c3c;
+    color: white;
+  }
+  
+  .btn-danger:hover {
+    background-color: #c0392b;
+  }
+  
+  .confirm-container {
+    background: white;
+    border: 2px solid #e74c3c;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  }
+  
+  .warning-box {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    color: white;
+    padding: 2rem;
+    text-align: center;
+  }
+  
+  .warning-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+  }
+  
+  .warning-box h2 {
+    margin: 0 0 1rem 0;
+    font-size: 1.75rem;
+  }
+  
+  .warning-box p {
+    margin: 0.5rem 0;
+    font-size: 1.1rem;
+  }
+  
+  .warning-text {
+    font-weight: 600;
+    font-size: 1rem !important;
+    margin-top: 1rem !important;
+  }
+  
+  .domain-info {
+    padding: 2rem;
+    background: #f8f9fa;
+  }
+  
+  .domain-info h3 {
+    margin: 0 0 1rem 0;
+    color: #2c3e50;
+  }
+  
+  .domain-info ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .domain-info li {
+    padding: 0.75rem;
+    background: white;
+    margin-bottom: 0.5rem;
+    border-radius: 4px;
+    border-left: 3px solid #e74c3c;
+  }
+  
+  .confirm-form {
+    padding: 2rem;
+    background: white;
+  }
+  
+  .form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+  }
+</style>
+{% endblock %}

@@ -13,6 +13,7 @@ urlpatterns = [
     path('accounts/', include('django.contrib.auth.urls')),
     path('accounts/cadastro/', cadastrar_usuario, name='cadastrar_usuario'),
     path('itens/', include('itens.urls')),
+    path('domains/', include('domains_warfare.urls')),
 ]
 
 # Serve MEDIA only in DEBUG or when not using Cloudinary storage
