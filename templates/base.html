@@ -58,8 +58,11 @@
         <div class="dropdown">
           <button class="dropbtn">Domains & Warfare ▾</button>
           <div class="dropdown-content">
-            <a href="{% url 'domain_list' %}">Ver Domínios</a>
-            <a href="{% url 'domain_create' %}">Criar Domínio</a>
+            <a href="{% url 'domain_list' %}">📜 Ver Domínios</a>
+            <a href="{% url 'domain_create' %}">➕ Criar Domínio</a>
+            <div class="dropdown-divider"></div>
+            <span class="dropdown-subtitle">Gerenciar Unidades:</span>
+            <a href="{% url 'domain_list' %}">⚔️ Ver Unidades por Domínio</a>
           </div>
         </div>
         <a href="{% url 'notas_sala' perfil.sala_atual.id %}">Notas da Sessão</a>

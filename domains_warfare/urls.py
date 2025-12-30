@@ -15,4 +15,7 @@ urlpatterns = [
     path('domain/<int:domain_pk>/units/create/', views.unit_create, name='unit_create'),
     path('domain/<int:domain_pk>/units/<int:pk>/edit/', views.unit_edit, name='unit_edit'),
     path('domain/<int:domain_pk>/units/<int:pk>/delete/', views.unit_delete, name='unit_delete'),
+    
+    # AJAX endpoints
+    path('ajax/calculate-unit-cost/', views.calculate_unit_cost, name='calculate_unit_cost'),
 ]

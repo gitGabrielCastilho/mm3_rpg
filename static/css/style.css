@@ -1300,6 +1300,24 @@ body {
   color: #fff !important;
 }
 
+.dropdown-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 0.5rem 0;
+  opacity: 0.3;
+}
+
+.dropdown-subtitle {
+  color: var(--text-muted);
+  padding: 0.5rem 1.25rem 0.3rem;
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+}
+
 .logout-form button {
   background: var(--accent);
   color: #fff !important;

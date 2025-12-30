@@ -2,7 +2,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q
-from .models import Domain, Unit
+from django.http import JsonResponse
+from .models import Domain, Unit, UnitAncestry, UnitType, UnitSize, UnitExperience, UnitEquipment, UnitTrait
 from .forms import DomainForm, UnitForm
 from salas.models import Sala
 
@@ -327,3 +328,139 @@ def unit_delete(request, domain_pk, pk):
     except Exception as e:
         messages.error(request, f"Erro ao deletar unidade: {str(e)}")
         return redirect('unit_list', domain_pk=domain_pk)
+
+
+@login_required
+def calculate_unit_cost(request):
+    """
+    Endpoint AJAX para calcular o custo de uma unidade em tempo real.
+    Retorna o custo total e o upkeep baseado nos atributos fornecidos.
+    """
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método não permitido'}, status=405)
+    
+    try:
+        # Extrair parâmetros da query string
+        ancestry_id = request.GET.get('ancestry')
+        unit_type_id = request.GET.get('unit_type')
+        size_id = request.GET.get('size')
+        experience_id = request.GET.get('experience')
+        equipment_id = request.GET.get('equipment')
+        trait_ids = request.GET.getlist('traits')
+        
+        # Atributos base
+        ataque = int(request.GET.get('ataque', 1))
+        poder = int(request.GET.get('poder', 1))
+        defesa = int(request.GET.get('defesa', 1))
+        resistencia = int(request.GET.get('resistencia', 1))
+        moral = int(request.GET.get('moral', 1))
+        
+        # Calcular modificadores de cada componente
+        mods = {
+            'ataque': 0,
+            'poder': 0,
+            'defesa': 0,
+            'resistencia': 0,
+            'moral': 0,
+        }
+        
+        # Modificadores de ancestry
+        if ancestry_id:
+            try:
+                ancestry = UnitAncestry.objects.get(id=ancestry_id)
+                ancestry_mods = ancestry.get_modificadores()
+                for key, value in ancestry_mods.items():
+                    mods[key] += value
+            except UnitAncestry.DoesNotExist:
+                pass
+        
+        # Modificadores de experience
+        if experience_id:
+            try:
+                experience = UnitExperience.objects.get(id=experience_id)
+                experience_mods = experience.get_modificadores()
+                for key, value in experience_mods.items():
+                    mods[key] += value
+            except UnitExperience.DoesNotExist:
+                pass
+        
+        # Modificadores de equipment
+        if equipment_id:
+            try:
+                equipment = UnitEquipment.objects.get(id=equipment_id)
+                equipment_mods = equipment.get_modificadores()
+                for key, value in equipment_mods.items():
+                    mods[key] += value
+            except UnitEquipment.DoesNotExist:
+                pass
+        
+        # Modificadores de unit type
+        type_multiplier = 1.0
+        if unit_type_id:
+            try:
+                unit_type = UnitType.objects.get(id=unit_type_id)
+                type_mods = unit_type.get_modificadores()
+                for key, value in type_mods.items():
+                    mods[key] += value
+                type_multiplier = float(unit_type.multiplicador_custo)
+            except UnitType.DoesNotExist:
+                pass
+        
+        # Size multiplier
+        size_multiplier = 1.0
+        if size_id:
+            try:
+                size = UnitSize.objects.get(id=size_id)
+                size_multiplier = float(size.multiplicador_custo)
+            except UnitSize.DoesNotExist:
+                pass
+        
+        # Calcular atributos finais
+        final_ataque = max(1, ataque + mods['ataque'])
+        final_poder = max(1, poder + mods['poder'])
+        final_defesa = max(1, defesa + mods['defesa'])
+        final_resistencia = max(1, resistencia + mods['resistencia'])
+        final_moral = moral + mods['moral']
+        
+        # Calcular bônus (diferença do base 1)
+        bonus_ataque = max(0, final_ataque - 1)
+        bonus_poder = max(0, final_poder - 1)
+        bonus_defesa = max(0, final_defesa - 1)
+        bonus_resistencia = max(0, final_resistencia - 1)
+        bonus_moral = max(0, final_moral - 1)
+        
+        # Somar bônus (morale conta dobrado)
+        total_bonus = (bonus_ataque + bonus_poder + bonus_defesa + 
+                      bonus_resistencia + (2 * bonus_moral))
+        
+        # Aplicar multiplicadores
+        custo_base = total_bonus * type_multiplier * size_multiplier * 10
+        
+        # Adicionar custo dos traits
+        trait_cost = 0
+        if trait_ids:
+            traits = UnitTrait.objects.filter(id__in=trait_ids)
+            trait_cost = sum(trait.custo for trait in traits)
+        
+        # Custo total
+        custo_total = int(custo_base) + trait_cost + 30
+        upkeep = int(custo_total * 0.1)
+        
+        return JsonResponse({
+            'success': True,
+            'custo_ouro': custo_total,
+            'upkeep': upkeep,
+            'final_attributes': {
+                'ataque': final_ataque,
+                'poder': final_poder,
+                'defesa': final_defesa,
+                'resistencia': final_resistencia,
+                'moral': final_moral,
+            },
+            'modifiers': mods,
+        })
+        
+    except ValueError as e:
+        return JsonResponse({'error': f'Valor inválido: {str(e)}'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Erro ao calcular custo: {str(e)}'}, status=500)

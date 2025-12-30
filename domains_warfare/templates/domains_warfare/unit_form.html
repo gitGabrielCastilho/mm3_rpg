@@ -273,6 +273,24 @@
                 <small>Ancestria que define os modificadores de atributos</small>
             </div>
 
+            <div class="form-group {% if form.unit_type.errors %}errors{% endif %}">
+                <label for="{{ form.unit_type.id_for_label }}">Tipo de Unidade</label>
+                {{ form.unit_type }}
+                {% if form.unit_type.errors %}
+                    {{ form.unit_type.errors }}
+                {% endif %}
+                <small>Tipo estratégico da unidade (Infantry, Cavalry, etc) - afeta modificadores e custo</small>
+            </div>
+
+            <div class="form-group {% if form.size.errors %}errors{% endif %}">
+                <label for="{{ form.size.id_for_label }}">Tamanho da Unidade</label>
+                {{ form.size }}
+                {% if form.size.errors %}
+                    {{ form.size.errors }}
+                {% endif %}
+                <small>Tamanho da unidade (1d4, 1d6, etc) - afeta o custo final</small>
+            </div>
+
             <div class="form-group {% if form.experience.errors %}errors{% endif %}">
                 <label for="{{ form.experience.id_for_label }}">Nível de Experiência</label>
                 {{ form.experience }}
@@ -365,25 +383,59 @@
             </div>
         </div>
 
-        <!-- Custos -->
+        <!-- Custos Calculados -->
         <div class="form-section">
             <h3>Custos de Recrutamento</h3>
+            <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 15px;">
+                Os custos são calculados automaticamente baseados nos atributos, tipo, tamanho e traits selecionados.
+            </p>
             
-            <div class="form-row">
-                <div class="form-group {% if form.custo_ouro.errors %}errors{% endif %}">
-                    <label for="{{ form.custo_ouro.id_for_label }}">Ouro</label>
-                    {{ form.custo_ouro }}
-                    {% if form.custo_ouro.errors %}
-                        {{ form.custo_ouro.errors }}
-                    {% endif %}
+            <div class="cost-display" style="background-color: var(--primary-bg); border: 2px solid var(--gold); border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <div style="color: var(--text-muted); font-size: 12px; margin-bottom: 5px;">Custo Total</div>
+                        <div style="color: var(--gold); font-size: 28px; font-weight: bold;">
+                            <span id="cost-display">---</span>
+                            <span style="font-size: 16px; margin-left: 5px;">⚜ Ouro</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-muted); font-size: 12px; margin-bottom: 5px;">Manutenção (10%)</div>
+                        <div style="color: var(--accent); font-size: 28px; font-weight: bold;">
+                            <span id="upkeep-display">---</span>
+                            <span style="font-size: 16px; margin-left: 5px;">⚜/turno</span>
+                        </div>
+                    </div>
                 </div>
-
-                <div class="form-group {% if form.custo_dragonshards.errors %}errors{% endif %}">
-                    <label for="{{ form.custo_dragonshards.id_for_label }}">Dragonshards</label>
-                    {{ form.custo_dragonshards }}
-                    {% if form.custo_dragonshards.errors %}
-                        {{ form.custo_dragonshards.errors }}
-                    {% endif %}
+                
+                <div id="attribute-display" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--text-muted);">
+                    <div style="color: var(--text-muted); font-size: 12px; margin-bottom: 10px;">Atributos Finais (com modificadores)</div>
+                    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; text-align: center;">
+                        <div>
+                            <div style="color: var(--text-muted); font-size: 11px;">Ataque</div>
+                            <div id="final-ataque" style="color: var(--text-main); font-size: 20px; font-weight: bold;">-</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-muted); font-size: 11px;">Poder</div>
+                            <div id="final-poder" style="color: var(--text-main); font-size: 20px; font-weight: bold;">-</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-muted); font-size: 11px;">Defesa</div>
+                            <div id="final-defesa" style="color: var(--text-main); font-size: 20px; font-weight: bold;">-</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-muted); font-size: 11px;">Resistência</div>
+                            <div id="final-resistencia" style="color: var(--text-main); font-size: 20px; font-weight: bold;">-</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-muted); font-size: 11px;">Moral</div>
+                            <div id="final-moral" style="color: var(--text-main); font-size: 20px; font-weight: bold;">-</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="cost-calculation-status" style="margin-top: 15px; text-align: center; color: var(--text-muted); font-size: 12px;">
+                    Preencha os campos para calcular o custo
                 </div>
             </div>
         </div>
@@ -407,4 +459,142 @@
         </div>
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Elementos do formulário que afetam o custo
+    const ancestrySelect = document.getElementById('{{ form.ancestry.id_for_label }}');
+    const unitTypeSelect = document.getElementById('{{ form.unit_type.id_for_label }}');
+    const sizeSelect = document.getElementById('{{ form.size.id_for_label }}');
+    const experienceSelect = document.getElementById('{{ form.experience.id_for_label }}');
+    const equipmentSelect = document.getElementById('{{ form.equipment.id_for_label }}');
+    const ataqueInput = document.getElementById('{{ form.ataque.id_for_label }}');
+    const poderInput = document.getElementById('{{ form.poder.id_for_label }}');
+    const defesaInput = document.getElementById('{{ form.defesa.id_for_label }}');
+    const resistenciaInput = document.getElementById('{{ form.resistencia.id_for_label }}');
+    const moralInput = document.getElementById('{{ form.moral.id_for_label }}');
+    
+    // Elementos de exibição
+    const costDisplay = document.getElementById('cost-display');
+    const upkeepDisplay = document.getElementById('upkeep-display');
+    const statusDisplay = document.getElementById('cost-calculation-status');
+    const finalAtaque = document.getElementById('final-ataque');
+    const finalPoder = document.getElementById('final-poder');
+    const finalDefesa = document.getElementById('final-defesa');
+    const finalResistencia = document.getElementById('final-resistencia');
+    const finalMoral = document.getElementById('final-moral');
+    
+    // Checkboxes de traits
+    const traitCheckboxes = document.querySelectorAll('input[name="traits"]');
+    
+    let calculationTimeout = null;
+    
+    // Função para calcular o custo
+    function calculateCost() {
+        // Cancelar cálculo anterior se ainda estiver pendente
+        if (calculationTimeout) {
+            clearTimeout(calculationTimeout);
+        }
+        
+        // Aguardar 300ms após a última mudança para fazer a requisição
+        calculationTimeout = setTimeout(function() {
+            // Preparar parâmetros
+            const params = new URLSearchParams();
+            
+            if (ancestrySelect && ancestrySelect.value) {
+                params.append('ancestry', ancestrySelect.value);
+            }
+            if (unitTypeSelect && unitTypeSelect.value) {
+                params.append('unit_type', unitTypeSelect.value);
+            }
+            if (sizeSelect && sizeSelect.value) {
+                params.append('size', sizeSelect.value);
+            }
+            if (experienceSelect && experienceSelect.value) {
+                params.append('experience', experienceSelect.value);
+            }
+            if (equipmentSelect && equipmentSelect.value) {
+                params.append('equipment', equipmentSelect.value);
+            }
+            
+            // Atributos
+            params.append('ataque', ataqueInput.value || '1');
+            params.append('poder', poderInput.value || '1');
+            params.append('defesa', defesaInput.value || '1');
+            params.append('resistencia', resistenciaInput.value || '1');
+            params.append('moral', moralInput.value || '1');
+            
+            // Traits selecionados
+            traitCheckboxes.forEach(function(checkbox) {
+                if (checkbox.checked) {
+                    params.append('traits', checkbox.value);
+                }
+            });
+            
+            // Mostrar loading
+            statusDisplay.textContent = 'Calculando...';
+            statusDisplay.style.color = 'var(--accent)';
+            
+            // Fazer requisição AJAX
+            fetch('{% url "calculate_unit_cost" %}?' + params.toString())
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Atualizar exibição de custos
+                        costDisplay.textContent = data.custo_ouro.toLocaleString('pt-BR');
+                        upkeepDisplay.textContent = data.upkeep.toLocaleString('pt-BR');
+                        
+                        // Atualizar atributos finais
+                        finalAtaque.textContent = data.final_attributes.ataque;
+                        finalPoder.textContent = data.final_attributes.poder;
+                        finalDefesa.textContent = data.final_attributes.defesa;
+                        finalResistencia.textContent = data.final_attributes.resistencia;
+                        finalMoral.textContent = data.final_attributes.moral;
+                        
+                        // Status de sucesso
+                        statusDisplay.textContent = 'Custo calculado com sucesso';
+                        statusDisplay.style.color = '#2ecc71';
+                        
+                        // Fade out do status após 2 segundos
+                        setTimeout(function() {
+                            statusDisplay.style.opacity = '0';
+                            setTimeout(function() {
+                                statusDisplay.textContent = '';
+                                statusDisplay.style.opacity = '1';
+                            }, 500);
+                        }, 2000);
+                    } else {
+                        statusDisplay.textContent = 'Erro: ' + data.error;
+                        statusDisplay.style.color = '#e74c3c';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao calcular custo:', error);
+                    statusDisplay.textContent = 'Erro ao calcular custo';
+                    statusDisplay.style.color = '#e74c3c';
+                });
+        }, 300);
+    }
+    
+    // Adicionar event listeners para todos os campos
+    if (ancestrySelect) ancestrySelect.addEventListener('change', calculateCost);
+    if (unitTypeSelect) unitTypeSelect.addEventListener('change', calculateCost);
+    if (sizeSelect) sizeSelect.addEventListener('change', calculateCost);
+    if (experienceSelect) experienceSelect.addEventListener('change', calculateCost);
+    if (equipmentSelect) equipmentSelect.addEventListener('change', calculateCost);
+    
+    ataqueInput.addEventListener('input', calculateCost);
+    poderInput.addEventListener('input', calculateCost);
+    defesaInput.addEventListener('input', calculateCost);
+    resistenciaInput.addEventListener('input', calculateCost);
+    moralInput.addEventListener('input', calculateCost);
+    
+    traitCheckboxes.forEach(function(checkbox) {
+        checkbox.addEventListener('change', calculateCost);
+    });
+    
+    // Calcular custo inicial ao carregar a página (para edição)
+    calculateCost();
+});
+</script>
 {% endblock %}
