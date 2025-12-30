@@ -136,7 +136,7 @@ class Domain(models.Model):
     
     def eh_gm(self, user):
         """Verifica se o usuário é GM da sala."""
-        return user.is_staff or user.is_superuser or self.sala.mestre == user
+        return user.is_staff or user.is_superuser or self.sala.game_master == user
     
     def pode_editar(self, user):
         """Verifica se um usuário pode editar este domínio."""

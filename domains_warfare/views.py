@@ -87,7 +87,7 @@ def domain_create(request):
                 domain.criado_por_gm = (
                     request.user.is_staff or 
                     request.user.is_superuser or 
-                    perfil.sala_atual.mestre == request.user
+                    perfil.sala_atual.game_master == request.user
                 )
                 domain.save()
                 form.save_m2m()  # Salva relações many-to-many
