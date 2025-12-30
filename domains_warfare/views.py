@@ -11,9 +11,9 @@ from salas.models import Sala
 def domain_list(request):
     """Lista TODOS os domínios disponíveis na sala do usuário."""
     try:
-        from personagens.models import Perfil
+        from personagens.models import PerfilUsuario
         
-        perfil = Perfil.objects.filter(user=request.user).first()
+        perfil = PerfilUsuario.objects.filter(user=request.user).first()
         
         if not perfil or not perfil.sala_atual:
             messages.error(request, "Você precisa estar em uma sala para acessar domínios.")
@@ -47,8 +47,8 @@ def domain_detail(request, pk):
         domain = get_object_or_404(Domain, pk=pk)
         
         # Verificar se o usuário está na mesma sala
-        from personagens.models import Perfil
-        perfil = Perfil.objects.filter(user=request.user).first()
+        from personagens.models import PerfilUsuario
+        perfil = PerfilUsuario.objects.filter(user=request.user).first()
         
         if not perfil or perfil.sala_atual != domain.sala:
             messages.error(request, "Você não tem acesso a este domínio.")
@@ -69,9 +69,9 @@ def domain_detail(request, pk):
 def domain_create(request):
     """Cria um novo domínio."""
     try:
-        from personagens.models import Perfil
+        from personagens.models import PerfilUsuario
         
-        perfil = Perfil.objects.filter(user=request.user).first()
+        perfil = PerfilUsuario.objects.filter(user=request.user).first()
         
         if not perfil or not perfil.sala_atual:
             messages.error(request, "Você precisa estar em uma sala para criar um domínio.")

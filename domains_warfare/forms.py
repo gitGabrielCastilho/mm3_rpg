@@ -42,8 +42,8 @@ class DomainForm(forms.ModelForm):
         # Filtrar salas disponíveis
         if user:
             try:
-                from personagens.models import Perfil
-                perfil = Perfil.objects.filter(user=user).first()
+                from personagens.models import PerfilUsuario
+                perfil = PerfilUsuario.objects.filter(user=user).first()
                 
                 if user.is_staff or user.is_superuser:
                     salas = Sala.objects.all()
