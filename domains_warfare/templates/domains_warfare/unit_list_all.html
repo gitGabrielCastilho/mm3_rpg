@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Todas as Unidades{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --primary-bg: #1a1a1a;
+    --secondary-bg: #2d2d2d;
+    --card-bg: #3a3a3a;
+    --accent: #4a90e2;
+    --gold: #d4af37;
+    --text-main: #e0e0e0;
+    --text-muted: #a0a0a0;
+  }
+
+  .page-header {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--gold);
+  }
+
+  .page-header h1 {
+    color: var(--gold);
+    margin: 0 0 0.5rem 0;
+  }
+
+  .stats {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  .domain-section {
+    margin-bottom: 3rem;
+  }
+
+  .domain-header {
+    background: var(--secondary-bg);
+    border-left: 4px solid var(--gold);
+    padding: 1rem 1.5rem;
+    margin-bottom: 1rem;
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .domain-header h2 {
+    margin: 0;
+    color: var(--gold);
+    font-size: 1.5rem;
+  }
+
+  .unit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .unit-card {
+    background: var(--card-bg);
+    border: 1px solid var(--gold);
+    border-radius: 8px;
+    padding: 1.5rem;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+  }
+
+  .unit-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 12px rgba(212, 175, 55, 0.2);
+  }
+
+  .unit-name {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: var(--gold);
+    margin-bottom: 0.5rem;
+  }
+
+  .unit-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--text-muted);
+  }
+
+  .unit-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+  }
+
+  .unit-info-label {
+    color: var(--text-muted);
+  }
+
+  .unit-info-value {
+    color: var(--text-main);
+    font-weight: 600;
+  }
+
+  .cost-badge {
+    background: linear-gradient(135deg, var(--gold), #b8860b);
+    color: #000;
+    padding: 0.3rem 0.8rem;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.9rem;
+  }
+
+  .unit-actions {
+    margin-top: 1rem;
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+    transition: background 0.2s;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #3a7bc8;
+  }
+
+  .btn-secondary {
+    background: var(--secondary-bg);
+    color: var(--text-main);
+    border: 1px solid var(--text-muted);
+  }
+
+  .btn-secondary:hover {
+    background: var(--card-bg);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-muted);
+  }
+
+  .empty-state h3 {
+    margin-bottom: 1rem;
+  }
+
+  .breadcrumb {
+    margin-bottom: 2rem;
+    color: var(--text-muted);
+  }
+
+  .breadcrumb a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .breadcrumb a:hover {
+    text-decoration: underline;
+  }
+</style>
+
+<div class="breadcrumb">
+  <a href="{% url 'domain_list' %}">Domínios</a> / Todas as Unidades
+</div>
+
+<div class="page-header">
+  <h1>⚔️ Todas as Unidades</h1>
+  <div class="stats">
+    Total: {{ total_units }} unidade{{ total_units|pluralize }} em {{ units_by_domain|length }} domínio{{ units_by_domain|length|pluralize }}
+  </div>
+</div>
+
+{% if units_by_domain %}
+  {% for domain_name, data in units_by_domain.items %}
+    <div class="domain-section">
+      <div class="domain-header">
+        <h2>{{ domain_name }}</h2>
+        {% if data.pode_adicionar %}
+          <a href="{% url 'unit_create' domain_pk=data.domain.pk %}" class="btn btn-primary">
+            ➕ Adicionar Unidade
+          </a>
+        {% endif %}
+      </div>
+
+      {% if data.units %}
+        <div class="unit-grid">
+          {% for unit_data in data.units %}
+            <div class="unit-card" onclick="window.location.href='{% url 'unit_detail' domain_pk=data.domain.pk pk=unit_data.unit.pk %}'">
+              <div class="unit-name">{{ unit_data.unit.nome }}</div>
+              
+              <div class="unit-info">
+                {% if unit_data.unit.ancestry %}
+                  <div class="unit-info-row">
+                    <span class="unit-info-label">Ancestria:</span>
+                    <span class="unit-info-value">{{ unit_data.unit.ancestry }}</span>
+                  </div>
+                {% endif %}
+                
+                {% if unit_data.unit.unit_type %}
+                  <div class="unit-info-row">
+                    <span class="unit-info-label">Tipo:</span>
+                    <span class="unit-info-value">{{ unit_data.unit.unit_type }}</span>
+                  </div>
+                {% endif %}
+                
+                {% if unit_data.unit.size %}
+                  <div class="unit-info-row">
+                    <span class="unit-info-label">Tamanho:</span>
+                    <span class="unit-info-value">{{ unit_data.unit.size }}</span>
+                  </div>
+                {% endif %}
+                
+                <div class="unit-info-row">
+                  <span class="unit-info-label">Quantidade:</span>
+                  <span class="unit-info-value">{{ unit_data.unit.quantidade }} soldado{{ unit_data.unit.quantidade|pluralize }}</span>
+                </div>
+                
+                <div class="unit-info-row">
+                  <span class="unit-info-label">Custo:</span>
+                  <span class="cost-badge">{{ unit_data.custos.custo_ouro }} ⚜</span>
+                </div>
+              </div>
+
+              <div class="unit-actions">
+                <a href="{% url 'unit_detail' domain_pk=data.domain.pk pk=unit_data.unit.pk %}" class="btn btn-primary" onclick="event.stopPropagation()">
+                  👁️ Ver Detalhes
+                </a>
+                {% if unit_data.pode_editar %}
+                  <a href="{% url 'unit_edit' domain_pk=data.domain.pk pk=unit_data.unit.pk %}" class="btn btn-secondary" onclick="event.stopPropagation()">
+                    ✏️ Editar
+                  </a>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <p>Nenhuma unidade neste domínio.</p>
+          {% if data.pode_adicionar %}
+            <a href="{% url 'unit_create' domain_pk=data.domain.pk %}" class="btn btn-primary">
+              Criar Primeira Unidade
+            </a>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="empty-state">
+    <h3>Nenhuma unidade encontrada</h3>
+    <p>Ainda não há unidades criadas nos domínios desta sala.</p>
+    <a href="{% url 'domain_list' %}" class="btn btn-primary">Ver Domínios</a>
+  </div>
+{% endif %}
+
+{% endblock %}

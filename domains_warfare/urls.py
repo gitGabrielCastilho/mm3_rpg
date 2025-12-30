@@ -10,6 +10,7 @@ urlpatterns = [
     path('domain/<int:pk>/delete/', views.domain_delete, name='domain_delete'),
     
     # Unit URLs
+    path('units/', views.unit_list_all, name='unit_list_all'),
     path('domain/<int:domain_pk>/units/', views.unit_list, name='unit_list'),
     path('domain/<int:domain_pk>/units/<int:pk>/', views.unit_detail, name='unit_detail'),
     path('domain/<int:domain_pk>/units/create/', views.unit_create, name='unit_create'),

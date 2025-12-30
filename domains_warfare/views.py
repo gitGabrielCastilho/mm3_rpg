@@ -270,6 +270,52 @@ def unit_create(request, domain_pk):
 
 
 @login_required
+def unit_list_all(request):
+    """Lista todas as unidades dos domínios acessíveis ao usuário."""
+    try:
+        from personagens.models import PerfilUsuario
+        
+        perfil = PerfilUsuario.objects.filter(user=request.user).first()
+        
+        if not perfil or not perfil.sala_atual:
+            messages.error(request, "Você precisa estar em uma sala para acessar unidades.")
+            return redirect('listar_salas')
+        
+        # Buscar todos os domínios da sala do usuário
+        domains = Domain.objects.filter(sala=perfil.sala_atual).order_by('nome')
+        
+        # Buscar todas as unidades desses domínios
+        units = Unit.objects.filter(domain__in=domains).select_related(
+            'domain', 'ancestry', 'unit_type', 'size', 'experience', 'equipment', 'criador'
+        ).order_by('domain__nome', 'nome')
+        
+        # Agrupar unidades por domínio
+        units_by_domain = {}
+        for unit in units:
+            if unit.domain.nome not in units_by_domain:
+                units_by_domain[unit.domain.nome] = {
+                    'domain': unit.domain,
+                    'units': [],
+                    'pode_adicionar': unit.domain.pode_editar(request.user)
+                }
+            units_by_domain[unit.domain.nome]['units'].append({
+                'unit': unit,
+                'pode_editar': unit.pode_editar(request.user),
+                'pode_deletar': unit.pode_deletar(request.user),
+                'custos': unit.get_custos_finais(),
+            })
+        
+        context = {
+            'units_by_domain': units_by_domain,
+            'total_units': units.count(),
+        }
+        return render(request, 'domains_warfare/unit_list_all.html', context)
+    except Exception as e:
+        messages.error(request, f"Erro ao carregar unidades: {str(e)}")
+        return redirect('domain_list')
+
+
+@login_required
 def unit_edit(request, domain_pk, pk):
     """Edita uma unidade existente."""
     try:
