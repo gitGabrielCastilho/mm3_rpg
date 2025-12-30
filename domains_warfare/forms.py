@@ -1,6 +1,5 @@
 from django import forms
 from .models import Domain
-from salas.models import Sala
 from personagens.models import Personagem
 
 
@@ -10,7 +9,7 @@ class DomainForm(forms.ModelForm):
     class Meta:
         model = Domain
         fields = [
-            'nome', 'descricao', 'brasao', 'governante', 'sala', 'jogadores_acesso',
+            'nome', 'descricao', 'brasao', 'governante', 'jogadores_acesso',
             'nivel', 'diplomacy', 'espionage', 'lore', 'operations',
             'ouro', 'dragonshards',
             'keep', 'tower', 'temple', 'establishment'
@@ -20,7 +19,6 @@ class DomainForm(forms.ModelForm):
             'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
             'brasao': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
             'governante': forms.Select(attrs={'class': 'form-control'}),
-            'sala': forms.Select(attrs={'class': 'form-control'}),
             'jogadores_acesso': forms.SelectMultiple(attrs={'class': 'form-control', 'size': '5'}),
             'nivel': forms.NumberInput(attrs={'class': 'form-control', 'min': '1', 'max': '5'}),
             'diplomacy': forms.NumberInput(attrs={'class': 'form-control', 'min': '-3', 'max': '3'}),
@@ -39,33 +37,19 @@ class DomainForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.user = user
         
-        # Filtrar salas disponíveis
+        # Filtrar governantes disponíveis
         if user:
             try:
                 from personagens.models import PerfilUsuario
                 perfil = PerfilUsuario.objects.filter(user=user).first()
                 
-                if user.is_staff or user.is_superuser:
-                    salas = Sala.objects.all()
-                elif perfil and perfil.sala_atual:
-                    # Jogadores veem apenas sua sala atual
-                    salas = Sala.objects.filter(id=perfil.sala_atual.id)
-                else:
-                    salas = Sala.objects.none()
-                
-                self.fields['sala'].queryset = salas
-                
-                # Se está criando novo, define a sala atual
-                if not self.instance.pk and perfil and perfil.sala_atual:
-                    self.fields['sala'].initial = perfil.sala_atual
-                
-                # Filtrar governantes (apenas personagens das salas disponíveis)
-                if salas.exists():
-                    self.fields['governante'].queryset = Personagem.objects.filter(sala__in=salas)
+                # Governantes são personagens da sala do usuário
+                if perfil and perfil.sala_atual:
+                    self.fields['governante'].queryset = Personagem.objects.filter(sala=perfil.sala_atual)
                 else:
                     self.fields['governante'].queryset = Personagem.objects.none()
             except Exception as e:
-                # Se houver erro, deixa os querysets padrão
+                # Se houver erro, deixa o queryset padrão
                 pass
         
         # Valores padrão

@@ -151,8 +151,12 @@ class Domain(models.Model):
         if self.criado_por_gm:
             return False
         
-        # Jogadores podem editar domains criados por outros jogadores
-        return True
+        # Criador pode editar seu próprio domain
+        if self.criador == user:
+            return True
+        
+        # Outros jogadores só podem editar se estão em jogadores_acesso
+        return self.jogadores_acesso.filter(id=user.id).exists()
     
     def pode_deletar(self, user):
         """Verifica se um usuário pode deletar este domínio."""

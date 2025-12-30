@@ -82,11 +82,12 @@ def domain_create(request):
             if form.is_valid():
                 domain = form.save(commit=False)
                 domain.criador = request.user
+                domain.sala = perfil.sala_atual  # Define a sala automaticamente
                 # Define se foi criado por GM
                 domain.criado_por_gm = (
                     request.user.is_staff or 
                     request.user.is_superuser or 
-                    domain.sala.mestre == request.user
+                    perfil.sala_atual.mestre == request.user
                 )
                 domain.save()
                 form.save_m2m()  # Salva relações many-to-many

@@ -55,14 +55,6 @@
         </div>
         
         <div class="form-group">
-          <label for="{{ form.sala.id_for_label }}">{{ form.sala.label }}</label>
-          {{ form.sala }}
-          {% if form.sala.errors %}
-            <span class="error">{{ form.sala.errors.0 }}</span>
-          {% endif %}
-        </div>
-        
-        <div class="form-group">
           <label for="{{ form.governante.id_for_label }}">{{ form.governante.label }}</label>
           {{ form.governante }}
           {% if form.governante.errors %}
