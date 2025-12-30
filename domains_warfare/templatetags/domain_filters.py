@@ -22,3 +22,14 @@ def add_sign(value):
         return str(num)
     except (ValueError, TypeError):
         return str(value)
+
+
+@register.filter
+def split(value, arg):
+    """Divide uma string pelo separador especificado."""
+    if not value:
+        return []
+    try:
+        return [item.strip() for item in value.split(arg)]
+    except (ValueError, TypeError, AttributeError):
+        return [value]
