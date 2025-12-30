@@ -191,9 +191,16 @@
         margin-right: 8px;
         margin-bottom: 8px;
     }
+
+    .content-wrapper {
+        margin-left: 340px;
+        margin-right: 2rem;
+        padding: 1rem;
+    }
 </style>
 
-<div class="breadcrumb">
+<div class="content-wrapper">
+    <div class="breadcrumb">
     <a href="{% url 'domain_list' %}">Domínios</a> 
     / 
     <a href="{% url 'domain_detail' pk=domain.pk %}">{{ domain.nome }}</a> 
@@ -455,5 +462,7 @@
             <a href="{% url 'unit_delete' domain_pk=domain.pk pk=unit.pk %}" class="btn btn-danger">Deletar Unidade</a>
         {% endif %}
     </div>
+</div>
+
 </div>
 {% endblock %}

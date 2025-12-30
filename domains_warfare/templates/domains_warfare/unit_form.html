@@ -223,9 +223,16 @@
     .form-group.errors textarea {
         border-color: #e74c3c;
     }
+
+    .content-wrapper {
+        margin-left: 340px;
+        margin-right: 2rem;
+        padding: 1rem;
+    }
 </style>
 
-<div class="breadcrumb">
+<div class="content-wrapper">
+    <div class="breadcrumb">
     <a href="{% url 'domain_list' %}">Domínios</a> 
     / 
     <a href="{% url 'domain_detail' pk=domain.pk %}">{{ domain.nome }}</a> 
@@ -597,4 +604,6 @@ document.addEventListener('DOMContentLoaded', function() {
     calculateCost();
 });
 </script>
+
+</div>
 {% endblock %}
