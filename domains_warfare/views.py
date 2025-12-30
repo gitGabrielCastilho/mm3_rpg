@@ -2,8 +2,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q
-from .models import Domain
-from .forms import DomainForm
+from .models import Domain, Unit
+from .forms import DomainForm, UnitForm
 from salas.models import Sala
 
 
@@ -161,3 +161,169 @@ def domain_delete(request, pk):
         messages.error(request, f"Erro ao deletar domínio: {str(e)}")
         return redirect('domain_list')
 
+
+# ============================================================================
+# UNIT VIEWS
+# ============================================================================
+
+@login_required
+def unit_list(request, domain_pk):
+    """Lista todas as unidades de um domínio."""
+    try:
+        domain = get_object_or_404(Domain, pk=domain_pk)
+        
+        # Verificar acesso ao domínio
+        from personagens.models import PerfilUsuario
+        perfil = PerfilUsuario.objects.filter(user=request.user).first()
+        
+        if not perfil or perfil.sala_atual != domain.sala:
+            messages.error(request, "Você não tem acesso a este domínio.")
+            return redirect('domain_list')
+        
+        # Listar unidades do domínio
+        units = Unit.objects.filter(domain=domain).select_related('ancestry', 'criador').order_by('-criado_em')
+        
+        # Preparar contexto com permissões
+        units_with_perms = []
+        for unit in units:
+            units_with_perms.append({
+                'unit': unit,
+                'pode_editar': unit.pode_editar(request.user),
+                'pode_deletar': unit.pode_deletar(request.user),
+            })
+        
+        context = {
+            'domain': domain,
+            'units': units_with_perms,
+            'pode_criar': domain.pode_editar(request.user),
+        }
+        return render(request, 'domains_warfare/unit_list.html', context)
+    except Exception as e:
+        messages.error(request, f"Erro ao carregar unidades: {str(e)}")
+        return redirect('domain_list')
+
+
+@login_required
+def unit_detail(request, domain_pk, pk):
+    """Exibe detalhes de uma unidade."""
+    try:
+        domain = get_object_or_404(Domain, pk=domain_pk)
+        unit = get_object_or_404(Unit, pk=pk, domain=domain)
+        
+        # Verificar acesso
+        from personagens.models import PerfilUsuario
+        perfil = PerfilUsuario.objects.filter(user=request.user).first()
+        
+        if not perfil or perfil.sala_atual != domain.sala:
+            messages.error(request, "Você não tem acesso a esta unidade.")
+            return redirect('domain_list')
+        
+        # Calcular atributos finais com modificadores
+        atributos_finais = unit.get_atributos_finais()
+        
+        context = {
+            'domain': domain,
+            'unit': unit,
+            'atributos_finais': atributos_finais,
+            'pode_editar': unit.pode_editar(request.user),
+            'pode_deletar': unit.pode_deletar(request.user),
+        }
+        return render(request, 'domains_warfare/unit_detail.html', context)
+    except Exception as e:
+        messages.error(request, f"Erro ao carregar unidade: {str(e)}")
+        return redirect('domain_list')
+
+
+@login_required
+def unit_create(request, domain_pk):
+    """Cria uma nova unidade em um domínio."""
+    try:
+        domain = get_object_or_404(Domain, pk=domain_pk)
+        
+        # Verificar se pode editar o domínio
+        if not domain.pode_editar(request.user):
+            messages.error(request, "Você não tem permissão para adicionar unidades a este domínio.")
+            return redirect('unit_list', domain_pk=domain_pk)
+        
+        if request.method == 'POST':
+            form = UnitForm(request.POST, domain=domain)
+            if form.is_valid():
+                unit = form.save(commit=False)
+                unit.domain = domain
+                unit.criador = request.user
+                unit.save()
+                messages.success(request, f"Unidade '{unit.nome}' criada com sucesso!")
+                return redirect('unit_detail', domain_pk=domain_pk, pk=unit.pk)
+        else:
+            form = UnitForm(domain=domain)
+        
+        context = {
+            'domain': domain,
+            'form': form,
+            'action': 'Criar',
+        }
+        return render(request, 'domains_warfare/unit_form.html', context)
+    except Exception as e:
+        messages.error(request, f"Erro ao criar unidade: {str(e)}")
+        return redirect('unit_list', domain_pk=domain_pk)
+
+
+@login_required
+def unit_edit(request, domain_pk, pk):
+    """Edita uma unidade existente."""
+    try:
+        domain = get_object_or_404(Domain, pk=domain_pk)
+        unit = get_object_or_404(Unit, pk=pk, domain=domain)
+        
+        # Verificar permissão
+        if not unit.pode_editar(request.user):
+            messages.error(request, "Você não tem permissão para editar esta unidade.")
+            return redirect('unit_detail', domain_pk=domain_pk, pk=pk)
+        
+        if request.method == 'POST':
+            form = UnitForm(request.POST, instance=unit, domain=domain)
+            if form.is_valid():
+                unit = form.save()
+                messages.success(request, f"Unidade '{unit.nome}' atualizada com sucesso!")
+                return redirect('unit_detail', domain_pk=domain_pk, pk=unit.pk)
+        else:
+            form = UnitForm(instance=unit, domain=domain)
+        
+        context = {
+            'domain': domain,
+            'unit': unit,
+            'form': form,
+            'action': 'Editar',
+        }
+        return render(request, 'domains_warfare/unit_form.html', context)
+    except Exception as e:
+        messages.error(request, f"Erro ao editar unidade: {str(e)}")
+        return redirect('unit_list', domain_pk=domain_pk)
+
+
+@login_required
+def unit_delete(request, domain_pk, pk):
+    """Deleta uma unidade."""
+    try:
+        domain = get_object_or_404(Domain, pk=domain_pk)
+        unit = get_object_or_404(Unit, pk=pk, domain=domain)
+        
+        # Apenas criador ou GM podem deletar
+        if not unit.pode_deletar(request.user):
+            messages.error(request, "Você não tem permissão para deletar esta unidade.")
+            return redirect('unit_detail', domain_pk=domain_pk, pk=pk)
+        
+        if request.method == 'POST':
+            nome = unit.nome
+            unit.delete()
+            messages.success(request, f"Unidade '{nome}' deletada com sucesso!")
+            return redirect('unit_list', domain_pk=domain_pk)
+        
+        context = {
+            'domain': domain,
+            'unit': unit,
+        }
+        return render(request, 'domains_warfare/unit_confirm_delete.html', context)
+    except Exception as e:
+        messages.error(request, f"Erro ao deletar unidade: {str(e)}")
+        return redirect('unit_list', domain_pk=domain_pk)

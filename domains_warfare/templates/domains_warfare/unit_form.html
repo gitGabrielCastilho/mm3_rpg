@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ action }} Unidade{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --primary-bg: #1a1a1a;
+        --secondary-bg: #2d2d2d;
+        --card-bg: #3a3a3a;
+        --accent: #4a90e2;
+        --gold: #d4af37;
+        --text-main: #e0e0e0;
+        --text-muted: #a0a0a0;
+    }
+
+    .form-container {
+        background-color: var(--card-bg);
+        border: 1px solid var(--gold);
+        border-radius: 8px;
+        padding: 30px;
+        max-width: 600px;
+        margin: 0 auto 30px;
+    }
+
+    .form-header {
+        border-bottom: 2px solid var(--gold);
+        padding-bottom: 20px;
+        margin-bottom: 30px;
+    }
+
+    .form-header h1 {
+        color: var(--gold);
+        margin: 0;
+        font-size: 28px;
+    }
+
+    .form-header p {
+        color: var(--text-muted);
+        margin: 5px 0 0 0;
+        font-size: 14px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        color: var(--gold);
+        font-weight: bold;
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 12px;
+        background-color: var(--secondary-bg);
+        border: 1px solid var(--text-muted);
+        border-radius: 4px;
+        color: var(--text-main);
+        font-family: inherit;
+        font-size: 14px;
+        transition: border-color 0.3s;
+        box-sizing: border-box;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: var(--gold);
+        background-color: var(--primary-bg);
+    }
+
+    .form-group textarea {
+        resize: vertical;
+        min-height: 100px;
+    }
+
+    .form-group select {
+        cursor: pointer;
+    }
+
+    .form-group select option {
+        background-color: var(--secondary-bg);
+        color: var(--text-main);
+    }
+
+    .form-group small {
+        display: block;
+        color: var(--text-muted);
+        margin-top: 5px;
+        font-size: 12px;
+    }
+
+    .form-section {
+        background-color: var(--secondary-bg);
+        border: 1px solid var(--text-muted);
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .form-section h3 {
+        color: var(--gold);
+        margin-top: 0;
+        margin-bottom: 15px;
+        font-size: 16px;
+        border-bottom: 1px solid var(--gold);
+        padding-bottom: 10px;
+    }
+
+    .form-section .form-group:last-child {
+        margin-bottom: 0;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+
+    .form-row .form-group {
+        margin-bottom: 0;
+    }
+
+    .trait-checkbox {
+        margin-right: 20px;
+        margin-bottom: 15px;
+    }
+
+    .trait-checkbox input[type="checkbox"] {
+        margin-right: 8px;
+    }
+
+    .trait-checkbox label {
+        color: var(--text-main);
+        font-weight: normal;
+        margin-bottom: 0;
+        display: inline;
+        cursor: pointer;
+    }
+
+    .trait-cost {
+        color: var(--text-muted);
+        font-size: 12px;
+        margin-left: 5px;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid var(--text-muted);
+    }
+
+    .btn {
+        padding: 12px 24px;
+        border-radius: 5px;
+        text-decoration: none;
+        transition: background-color 0.3s;
+        border: none;
+        font-size: 14px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    .btn-primary {
+        background-color: var(--accent);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background-color: #357abd;
+    }
+
+    .btn-secondary {
+        background-color: var(--secondary-bg);
+        color: var(--gold);
+        border: 1px solid var(--gold);
+    }
+
+    .btn-secondary:hover {
+        background-color: var(--card-bg);
+    }
+
+    .breadcrumb {
+        margin-bottom: 20px;
+        color: var(--text-muted);
+        font-size: 14px;
+    }
+
+    .breadcrumb a {
+        color: var(--accent);
+        text-decoration: none;
+    }
+
+    .breadcrumb a:hover {
+        text-decoration: underline;
+    }
+
+    .errorlist {
+        list-style: none;
+        padding: 0;
+        margin: 8px 0;
+    }
+
+    .errorlist li {
+        color: #e74c3c;
+        font-size: 12px;
+        margin-bottom: 4px;
+    }
+
+    .form-group.errors input,
+    .form-group.errors select,
+    .form-group.errors textarea {
+        border-color: #e74c3c;
+    }
+</style>
+
+<div class="breadcrumb">
+    <a href="{% url 'domain_list' %}">Domínios</a> 
+    / 
+    <a href="{% url 'domain_detail' pk=domain.pk %}">{{ domain.nome }}</a> 
+    / 
+    <a href="{% url 'unit_list' domain_pk=domain.pk %}">Unidades</a> 
+    / {{ action }}
+</div>
+
+<div class="form-container">
+    <div class="form-header">
+        <h1>{{ action }} Unidade</h1>
+        <p>Domínio: <strong>{{ domain.nome }}</strong></p>
+    </div>
+
+    <form method="POST" class="unit-form">
+        {% csrf_token %}
+
+        <!-- Informações Básicas -->
+        <div class="form-section">
+            <h3>Informações Básicas</h3>
+            
+            <div class="form-group {% if form.nome.errors %}errors{% endif %}">
+                <label for="{{ form.nome.id_for_label }}">Nome da Unidade</label>
+                {{ form.nome }}
+                {% if form.nome.errors %}
+                    {{ form.nome.errors }}
+                {% endif %}
+            </div>
+
+            <div class="form-group {% if form.descricao.errors %}errors{% endif %}">
+                <label for="{{ form.descricao.id_for_label }}">Descrição</label>
+                {{ form.descricao }}
+                {% if form.descricao.errors %}
+                    {{ form.descricao.errors }}
+                {% endif %}
+                <small>Informações adicionais sobre a unidade (opcional)</small>
+            </div>
+
+            <div class="form-group {% if form.ancestry.errors %}errors{% endif %}">
+                <label for="{{ form.ancestry.id_for_label }}">Ancestria</label>
+                {{ form.ancestry }}
+                {% if form.ancestry.errors %}
+                    {{ form.ancestry.errors }}
+                {% endif %}
+                <small>Ancestria que define os modificadores de atributos</small>
+            </div>
+
+            <div class="form-group {% if form.experience.errors %}errors{% endif %}">
+                <label for="{{ form.experience.id_for_label }}">Nível de Experiência</label>
+                {{ form.experience }}
+                {% if form.experience.errors %}
+                    {{ form.experience.errors }}
+                {% endif %}
+                <small>Nível de treinamento e experiência da unidade (aplicará modificadores adicionais)</small>
+            </div>
+
+            <div class="form-group {% if form.equipment.errors %}errors{% endif %}">
+                <label for="{{ form.equipment.id_for_label }}">Equipamento</label>
+                {{ form.equipment }}
+                {% if form.equipment.errors %}
+                    {{ form.equipment.errors }}
+                {% endif %}
+                <small>Tipo de equipamento que fornecerá modificadores de Poder e Defesa</small>
+            </div>
+        </div>
+
+        <!-- Atributos -->
+        <div class="form-section">
+            <h3>Atributos Base</h3>
+            <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 15px;">
+                Os valores base da unidade. Os modificadores da ancestria serão aplicados automaticamente.
+            </p>
+            
+            <div class="form-row">
+                <div class="form-group {% if form.ataque.errors %}errors{% endif %}">
+                    <label for="{{ form.ataque.id_for_label }}">Ataque</label>
+                    {{ form.ataque }}
+                    {% if form.ataque.errors %}
+                        {{ form.ataque.errors }}
+                    {% endif %}
+                </div>
+
+                <div class="form-group {% if form.poder.errors %}errors{% endif %}">
+                    <label for="{{ form.poder.id_for_label }}">Poder</label>
+                    {{ form.poder }}
+                    {% if form.poder.errors %}
+                        {{ form.poder.errors }}
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group {% if form.defesa.errors %}errors{% endif %}">
+                    <label for="{{ form.defesa.id_for_label }}">Defesa</label>
+                    {{ form.defesa }}
+                    {% if form.defesa.errors %}
+                        {{ form.defesa.errors }}
+                    {% endif %}
+                </div>
+
+                <div class="form-group {% if form.resistencia.errors %}errors{% endif %}">
+                    <label for="{{ form.resistencia.id_for_label }}">Resistência</label>
+                    {{ form.resistencia }}
+                    {% if form.resistencia.errors %}
+                        {{ form.resistencia.errors }}
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-group {% if form.moral.errors %}errors{% endif %}">
+                <label for="{{ form.moral.id_for_label }}">Moral</label>
+                {{ form.moral }}
+                {% if form.moral.errors %}
+                    {{ form.moral.errors }}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Traits -->
+        <div class="form-section">
+            <h3>Traits Adquiridos</h3>
+            <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 15px;">
+                Selecione traits adicionais que a unidade adquiriu (além dos inatos da ancestry). Cada trait tem um custo em pontos.
+            </p>
+            
+            <div class="form-group {% if form.traits.errors %}errors{% endif %}">
+                {% if form.traits.errors %}
+                    {{ form.traits.errors }}
+                {% endif %}
+                
+                {% for checkbox in form.traits %}
+                    <div style="margin-bottom: 10px; padding: 10px; background-color: var(--primary-bg); border-radius: 4px;">
+                        {{ checkbox }}
+                        {% comment %} Nota: O custo será mostrado dinamicamente ou na seleção {% endcomment %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Custos -->
+        <div class="form-section">
+            <h3>Custos de Recrutamento</h3>
+            
+            <div class="form-row">
+                <div class="form-group {% if form.custo_ouro.errors %}errors{% endif %}">
+                    <label for="{{ form.custo_ouro.id_for_label }}">Ouro</label>
+                    {{ form.custo_ouro }}
+                    {% if form.custo_ouro.errors %}
+                        {{ form.custo_ouro.errors }}
+                    {% endif %}
+                </div>
+
+                <div class="form-group {% if form.custo_dragonshards.errors %}errors{% endif %}">
+                    <label for="{{ form.custo_dragonshards.id_for_label }}">Dragonshards</label>
+                    {{ form.custo_dragonshards }}
+                    {% if form.custo_dragonshards.errors %}
+                        {{ form.custo_dragonshards.errors }}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Composição -->
+        <div class="form-section">
+            <h3>Composição</h3>
+            
+            <div class="form-group {% if form.quantidade.errors %}errors{% endif %}">
+                <label for="{{ form.quantidade.id_for_label }}">Quantidade de Soldados</label>
+                {{ form.quantidade }}
+                {% if form.quantidade.errors %}
+                    {{ form.quantidade.errors }}
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a href="{% url 'unit_list' domain_pk=domain.pk %}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">{{ action }} Unidade</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

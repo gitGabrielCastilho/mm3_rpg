@@ -1,5 +1,5 @@
 from django import forms
-from .models import Domain
+from .models import Domain, Unit, UnitAncestry, UnitTrait, UnitExperience, UnitEquipment, UnitType, UnitSize
 from personagens.models import Personagem
 
 
@@ -65,3 +65,51 @@ class DomainForm(forms.ModelForm):
             self.fields['tower'].initial = 0
             self.fields['temple'].initial = 0
             self.fields['establishment'].initial = 0
+
+
+class UnitForm(forms.ModelForm):
+    """Formulário para criar/editar unidades."""
+    
+    class Meta:
+        model = Unit
+        fields = [
+            'nome', 'descricao', 'ancestry', 'unit_type', 'size', 'experience', 'equipment', 'traits',
+            'ataque', 'poder', 'defesa', 'resistencia', 'moral',
+            'quantidade'
+        ]
+        widgets = {
+            'nome': forms.TextInput(attrs={'class': 'form-control'}),
+            'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+            'ancestry': forms.Select(attrs={'class': 'form-control'}),
+            'unit_type': forms.Select(attrs={'class': 'form-control'}),
+            'size': forms.Select(attrs={'class': 'form-control'}),
+            'experience': forms.Select(attrs={'class': 'form-control'}),
+            'equipment': forms.Select(attrs={'class': 'form-control'}),
+            'traits': forms.CheckboxSelectMultiple(attrs={'class': 'trait-checkbox'}),
+            'ataque': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+            'poder': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+            'defesa': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+            'resistencia': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+            'moral': forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'max': '10'}),
+            'quantidade': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+        }
+    
+    def __init__(self, *args, domain=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.domain = domain
+        
+        # Valores padrão
+        if not self.instance.pk:
+            self.fields['ataque'].initial = 1
+            self.fields['poder'].initial = 1
+            self.fields['defesa'].initial = 1
+            self.fields['resistencia'].initial = 1
+            self.fields['moral'].initial = 5
+            self.fields['quantidade'].initial = 1
+            # Tenta definir experience como Green, ou deixa vazio se não existir
+            try:
+                green = UnitExperience.objects.get(nome='green')
+                self.fields['experience'].initial = green
+            except UnitExperience.DoesNotExist:
+                pass
+

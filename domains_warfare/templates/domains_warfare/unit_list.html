@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Unidades de {{ domain.nome }}{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --primary-bg: #1a1a1a;
+        --secondary-bg: #2d2d2d;
+        --card-bg: #3a3a3a;
+        --accent: #4a90e2;
+        --gold: #d4af37;
+        --text-main: #e0e0e0;
+        --text-muted: #a0a0a0;
+        --danger: #e74c3c;
+    }
+
+    .units-container {
+        background-color: var(--card-bg);
+        border: 1px solid var(--gold);
+        border-radius: 8px;
+        padding: 30px;
+        margin-bottom: 30px;
+    }
+
+    .units-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        border-bottom: 2px solid var(--gold);
+        padding-bottom: 15px;
+    }
+
+    .units-header h1 {
+        color: var(--gold);
+        margin: 0;
+        font-size: 28px;
+    }
+
+    .units-header p {
+        color: var(--text-muted);
+        margin: 0;
+        font-size: 14px;
+    }
+
+    .btn-primary {
+        background-color: var(--accent);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 5px;
+        text-decoration: none;
+        transition: background-color 0.3s;
+    }
+
+    .btn-primary:hover {
+        background-color: #357abd;
+    }
+
+    .units-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+
+    .unit-card {
+        background-color: var(--secondary-bg);
+        border: 1px solid var(--text-muted);
+        border-radius: 8px;
+        padding: 20px;
+        transition: transform 0.3s, border-color 0.3s;
+    }
+
+    .unit-card:hover {
+        transform: translateY(-5px);
+        border-color: var(--gold);
+    }
+
+    .unit-name {
+        color: var(--gold);
+        font-size: 18px;
+        font-weight: bold;
+        margin-bottom: 8px;
+    }
+
+    .unit-ancestry {
+        color: var(--accent);
+        font-size: 13px;
+        margin-bottom: 12px;
+    }
+
+    .unit-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-bottom: 12px;
+        font-size: 12px;
+    }
+
+    .stat {
+        background-color: var(--primary-bg);
+        padding: 8px;
+        border-radius: 4px;
+        text-align: center;
+    }
+
+    .stat-label {
+        color: var(--text-muted);
+        font-size: 10px;
+        text-transform: uppercase;
+        margin-bottom: 2px;
+    }
+
+    .stat-value {
+        color: var(--gold);
+        font-weight: bold;
+        font-size: 14px;
+    }
+
+    .unit-traits {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px dashed var(--gold);
+    }
+
+    .unit-traits p {
+        color: var(--text-muted);
+        font-size: 10px;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+        margin: 0;
+    }
+
+    .trait-pill {
+        display: inline-block;
+        background-color: var(--accent);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 10px;
+        margin-right: 4px;
+        margin-bottom: 4px;
+    }
+
+    .unit-quantity {
+        color: var(--text-muted);
+        font-size: 12px;
+        margin-bottom: 12px;
+    }
+
+    .unit-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: space-between;
+    }
+
+    .btn-small {
+        flex: 1;
+        padding: 8px 12px;
+        border-radius: 4px;
+        text-align: center;
+        text-decoration: none;
+        font-size: 12px;
+        transition: background-color 0.3s;
+    }
+
+    .btn-edit {
+        background-color: var(--accent);
+        color: white;
+    }
+
+    .btn-edit:hover {
+        background-color: #357abd;
+    }
+
+    .btn-delete {
+        background-color: var(--danger);
+        color: white;
+    }
+
+    .btn-delete:hover {
+        background-color: #c0392b;
+    }
+
+    .btn-view {
+        background-color: var(--gold);
+        color: #000;
+    }
+
+    .btn-view:hover {
+        background-color: #e4c158;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--text-muted);
+    }
+
+    .empty-state p {
+        font-size: 16px;
+        margin-bottom: 20px;
+    }
+
+    .breadcrumb {
+        margin-bottom: 20px;
+        color: var(--text-muted);
+        font-size: 14px;
+    }
+
+    .breadcrumb a {
+        color: var(--accent);
+        text-decoration: none;
+    }
+
+    .breadcrumb a:hover {
+        text-decoration: underline;
+    }
+</style>
+
+<div class="breadcrumb">
+    <a href="{% url 'domain_list' %}">Domínios</a> 
+    / 
+    <a href="{% url 'domain_detail' pk=domain.pk %}">{{ domain.nome }}</a> 
+    / Unidades
+</div>
+
+<div class="units-container">
+    <div class="units-header">
+        <div>
+            <h1>Unidades de {{ domain.nome }}</h1>
+            <p>Total: {{ units|length }} unidade(s)</p>
+        </div>
+        {% if pode_criar %}
+        <a href="{% url 'unit_create' domain_pk=domain.pk %}" class="btn-primary">+ Criar Unidade</a>
+        {% endif %}
+    </div>
+
+    {% if units %}
+        <div class="units-grid">
+            {% for unit_info in units %}
+                <div class="unit-card">
+                    <div class="unit-name">{{ unit_info.unit.nome }}</div>
+                    <div class="unit-ancestry">
+                        {{ unit_info.unit.ancestry.get_nome_display }}
+                        {% if unit_info.unit.experience %}
+                            <span style="color: var(--text-muted); margin-left: 8px;">•</span>
+                            <span style="color: var(--accent); margin-left: 8px;">{{ unit_info.unit.experience.get_nome_display }}</span>
+                        {% endif %}
+                        {% if unit_info.unit.equipment %}
+                            <span style="color: var(--text-muted); margin-left: 8px;">•</span>
+                            <span style="color: var(--gold); margin-left: 8px; font-size: 11px;">{{ unit_info.unit.equipment.get_nome_display }}</span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="unit-stats">
+                        <div class="stat">
+                            <div class="stat-label">ATQ</div>
+                            <div class="stat-value">{{ unit_info.unit.ataque }}</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">POD</div>
+                            <div class="stat-value">{{ unit_info.unit.poder }}</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">DEF</div>
+                            <div class="stat-value">{{ unit_info.unit.defesa }}</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">RES</div>
+                            <div class="stat-value">{{ unit_info.unit.resistencia }}</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">MOR</div>
+                            <div class="stat-value">{{ unit_info.unit.moral }}</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">QTD</div>
+                            <div class="stat-value">{{ unit_info.unit.quantidade }}</div>
+                        </div>
+                    </div>
+
+                    <div class="unit-quantity">
+                        <strong>Criador:</strong> {{ unit_info.unit.criador.get_full_name|default:unit_info.unit.criador.username }}
+                    </div>
+
+                    {% if unit_info.unit.traits.all or unit_info.unit.ancestry.traits %}
+                        <div class="unit-traits">
+                            <p>Traits</p>
+                            {% if unit_info.unit.ancestry.traits %}
+                                {% for trait in unit_info.unit.ancestry.traits|split:"," %}
+                                    <span class="trait-pill">{{ trait|strip }}</span>
+                                {% endfor %}
+                            {% endif %}
+                            {% for trait in unit_info.unit.traits.all %}
+                                <span class="trait-pill">{{ trait.get_nome_display }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <div class="unit-actions">
+                        <a href="{% url 'unit_detail' domain_pk=domain.pk pk=unit_info.unit.pk %}" class="btn-small btn-view">Detalhes</a>
+                        {% if unit_info.pode_editar %}
+                            <a href="{% url 'unit_edit' domain_pk=domain.pk pk=unit_info.unit.pk %}" class="btn-small btn-edit">Editar</a>
+                        {% endif %}
+                        {% if unit_info.pode_deletar %}
+                            <a href="{% url 'unit_delete' domain_pk=domain.pk pk=unit_info.unit.pk %}" class="btn-small btn-delete">Deletar</a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <p>Nenhuma unidade foi criada para este domínio ainda.</p>
+            {% if pode_criar %}
+                <a href="{% url 'unit_create' domain_pk=domain.pk %}" class="btn-primary">Criar Primeira Unidade</a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

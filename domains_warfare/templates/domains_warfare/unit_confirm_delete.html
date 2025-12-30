@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Deletar Unidade - {{ unit.nome }}{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --primary-bg: #1a1a1a;
+        --secondary-bg: #2d2d2d;
+        --card-bg: #3a3a3a;
+        --accent: #4a90e2;
+        --gold: #d4af37;
+        --text-main: #e0e0e0;
+        --text-muted: #a0a0a0;
+        --danger: #e74c3c;
+    }
+
+    .delete-container {
+        background-color: var(--card-bg);
+        border: 2px solid var(--danger);
+        border-radius: 8px;
+        padding: 40px;
+        max-width: 500px;
+        margin: 0 auto 30px;
+    }
+
+    .delete-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .delete-header h1 {
+        color: var(--danger);
+        margin: 0 0 10px 0;
+        font-size: 28px;
+    }
+
+    .delete-header p {
+        color: var(--text-muted);
+        margin: 0;
+        font-size: 14px;
+    }
+
+    .warning-box {
+        background-color: var(--secondary-bg);
+        border-left: 4px solid var(--danger);
+        padding: 20px;
+        margin-bottom: 30px;
+        border-radius: 4px;
+    }
+
+    .warning-box p {
+        color: var(--text-main);
+        margin: 0;
+        line-height: 1.6;
+    }
+
+    .unit-info {
+        background-color: var(--primary-bg);
+        border: 1px solid var(--text-muted);
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 30px;
+    }
+
+    .unit-info-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        font-size: 14px;
+    }
+
+    .unit-info-label {
+        color: var(--text-muted);
+        font-weight: bold;
+    }
+
+    .unit-info-value {
+        color: var(--text-main);
+    }
+
+    .confirm-text {
+        background-color: var(--secondary-bg);
+        border: 1px dashed var(--gold);
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+
+    .confirm-text p {
+        color: var(--text-muted);
+        margin: 5px 0;
+        font-size: 13px;
+    }
+
+    .confirm-text .unit-name {
+        color: var(--danger);
+        font-weight: bold;
+        font-size: 16px;
+        margin: 10px 0;
+    }
+
+    .actions {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+    }
+
+    .btn {
+        padding: 12px 30px;
+        border-radius: 5px;
+        text-decoration: none;
+        transition: background-color 0.3s;
+        border: none;
+        font-size: 14px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    .btn-cancel {
+        background-color: var(--accent);
+        color: white;
+    }
+
+    .btn-cancel:hover {
+        background-color: #357abd;
+    }
+
+    .btn-delete {
+        background-color: var(--danger);
+        color: white;
+    }
+
+    .btn-delete:hover {
+        background-color: #c0392b;
+    }
+
+    .breadcrumb {
+        margin-bottom: 20px;
+        color: var(--text-muted);
+        font-size: 14px;
+    }
+
+    .breadcrumb a {
+        color: var(--accent);
+        text-decoration: none;
+    }
+
+    .breadcrumb a:hover {
+        text-decoration: underline;
+    }
+</style>
+
+<div class="breadcrumb">
+    <a href="{% url 'domain_list' %}">Domínios</a> 
+    / 
+    <a href="{% url 'domain_detail' pk=domain.pk %}">{{ domain.nome }}</a> 
+    / 
+    <a href="{% url 'unit_list' domain_pk=domain.pk %}">Unidades</a> 
+    / 
+    <a href="{% url 'unit_detail' domain_pk=domain.pk pk=unit.pk %}">{{ unit.nome }}</a> 
+    / Deletar
+</div>
+
+<div class="delete-container">
+    <div class="delete-header">
+        <h1>⚠️ Deletar Unidade</h1>
+        <p>Esta ação é irreversível</p>
+    </div>
+
+    <div class="warning-box">
+        <p>
+            Você está prestes a deletar permanentemente a unidade <strong>{{ unit.nome }}</strong>. 
+            Esta ação <strong>não pode ser desfeita</strong> e removerá todos os dados associados a esta unidade.
+        </p>
+    </div>
+
+    <div class="unit-info">
+        <div class="unit-info-row">
+            <span class="unit-info-label">Unidade:</span>
+            <span class="unit-info-value">{{ unit.nome }}</span>
+        </div>
+        <div class="unit-info-row">
+            <span class="unit-info-label">Ancestria:</span>
+            <span class="unit-info-value">{{ unit.ancestry.get_nome_display }}</span>
+        </div>
+        <div class="unit-info-row">
+            <span class="unit-info-label">Quantidade:</span>
+            <span class="unit-info-value">{{ unit.quantidade }}</span>
+        </div>
+        <div class="unit-info-row">
+            <span class="unit-info-label">Criador:</span>
+            <span class="unit-info-value">{{ unit.criador.get_full_name|default:unit.criador.username }}</span>
+        </div>
+    </div>
+
+    <div class="confirm-text">
+        <p>Para confirmar, clique no botão "Deletar Unidade" abaixo</p>
+        <div class="unit-name">{{ unit.nome }}</div>
+    </div>
+
+    <form method="POST">
+        {% csrf_token %}
+        <div class="actions">
+            <a href="{% url 'unit_detail' domain_pk=domain.pk pk=unit.pk %}" class="btn btn-cancel">Cancelar</a>
+            <button type="submit" class="btn btn-delete">Deletar Unidade</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

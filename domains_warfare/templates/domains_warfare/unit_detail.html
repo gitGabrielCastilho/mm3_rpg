@@ -1,0 +1,459 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ unit.nome }}{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --primary-bg: #1a1a1a;
+        --secondary-bg: #2d2d2d;
+        --card-bg: #3a3a3a;
+        --accent: #4a90e2;
+        --gold: #d4af37;
+        --text-main: #e0e0e0;
+        --text-muted: #a0a0a0;
+    }
+
+    .detail-container {
+        background-color: var(--card-bg);
+        border: 1px solid var(--gold);
+        border-radius: 8px;
+        padding: 30px;
+        margin-bottom: 30px;
+    }
+
+    .detail-header {
+        border-bottom: 2px solid var(--gold);
+        padding-bottom: 20px;
+        margin-bottom: 30px;
+    }
+
+    .detail-header h1 {
+        color: var(--gold);
+        margin: 0 0 5px 0;
+        font-size: 32px;
+    }
+
+    .detail-header p {
+        color: var(--text-muted);
+        margin: 0;
+        font-size: 14px;
+    }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .detail-section {
+        background-color: var(--secondary-bg);
+        border: 1px solid var(--text-muted);
+        border-radius: 8px;
+        padding: 20px;
+    }
+
+    .section-title {
+        color: var(--gold);
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 15px;
+        border-bottom: 1px solid var(--gold);
+        padding-bottom: 10px;
+    }
+
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        font-size: 14px;
+    }
+
+    .info-label {
+        color: var(--text-muted);
+        font-weight: bold;
+    }
+
+    .info-value {
+        color: var(--text-main);
+    }
+
+    .stat-box {
+        text-align: center;
+        margin-bottom: 15px;
+    }
+
+    .stat-label {
+        color: var(--text-muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+    }
+
+    .stat-value {
+        color: var(--gold);
+        font-size: 24px;
+        font-weight: bold;
+    }
+
+    .stat-modifier {
+        color: var(--accent);
+        font-size: 12px;
+        margin-top: 2px;
+    }
+
+    .description {
+        background-color: var(--primary-bg);
+        border-left: 3px solid var(--gold);
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+        color: var(--text-main);
+        line-height: 1.6;
+    }
+
+    .actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid var(--text-muted);
+    }
+
+    .btn {
+        padding: 10px 20px;
+        border-radius: 5px;
+        text-decoration: none;
+        transition: background-color 0.3s;
+        text-align: center;
+    }
+
+    .btn-primary {
+        background-color: var(--accent);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background-color: #357abd;
+    }
+
+    .btn-secondary {
+        background-color: var(--secondary-bg);
+        color: var(--gold);
+        border: 1px solid var(--gold);
+    }
+
+    .btn-secondary:hover {
+        background-color: var(--card-bg);
+    }
+
+    .btn-danger {
+        background-color: #e74c3c;
+        color: white;
+    }
+
+    .btn-danger:hover {
+        background-color: #c0392b;
+    }
+
+    .breadcrumb {
+        margin-bottom: 20px;
+        color: var(--text-muted);
+        font-size: 14px;
+    }
+
+    .breadcrumb a {
+        color: var(--accent);
+        text-decoration: none;
+    }
+
+    .breadcrumb a:hover {
+        text-decoration: underline;
+    }
+
+    .traits-section {
+        background-color: var(--primary-bg);
+        border: 1px dashed var(--gold);
+        padding: 15px;
+        border-radius: 4px;
+        margin-top: 10px;
+    }
+
+    .trait-badge {
+        display: inline-block;
+        background-color: var(--accent);
+        color: white;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        margin-right: 8px;
+        margin-bottom: 8px;
+    }
+</style>
+
+<div class="breadcrumb">
+    <a href="{% url 'domain_list' %}">Domínios</a> 
+    / 
+    <a href="{% url 'domain_detail' pk=domain.pk %}">{{ domain.nome }}</a> 
+    / 
+    <a href="{% url 'unit_list' domain_pk=domain.pk %}">Unidades</a> 
+    / {{ unit.nome }}
+</div>
+
+<div class="detail-container">
+    <div class="detail-header">
+        <h1>{{ unit.nome }}</h1>
+        <p>Ancestria: <strong>{{ unit.ancestry.get_nome_display }}</strong></p>
+    </div>
+
+    {% if unit.descricao %}
+        <div class="description">
+            {{ unit.descricao }}
+        </div>
+    {% endif %}
+
+    <div class="detail-grid">
+        <!-- Atributos Base -->
+        <div class="detail-section">
+            <div class="section-title">Atributos Base</div>
+            
+            <div class="stat-box">
+                <div class="stat-label">Ataque</div>
+                <div class="stat-value">{{ unit.ataque }}</div>
+                {% if atributos_finais.ataque != unit.ataque %}
+                    <div class="stat-modifier">Modificado: {{ atributos_finais.ataque }}</div>
+                {% endif %}
+            </div>
+
+            <div class="stat-box">
+                <div class="stat-label">Poder</div>
+                <div class="stat-value">{{ unit.poder }}</div>
+                {% if atributos_finais.poder != unit.poder %}
+                    <div class="stat-modifier">Modificado: {{ atributos_finais.poder }}</div>
+                {% endif %}
+            </div>
+
+            <div class="stat-box">
+                <div class="stat-label">Defesa</div>
+                <div class="stat-value">{{ unit.defesa }}</div>
+                {% if atributos_finais.defesa != unit.defesa %}
+                    <div class="stat-modifier">Modificado: {{ atributos_finais.defesa }}</div>
+                {% endif %}
+            </div>
+
+            <div class="stat-box">
+                <div class="stat-label">Resistência</div>
+                <div class="stat-value">{{ unit.resistencia }}</div>
+                {% if atributos_finais.resistencia != unit.resistencia %}
+                    <div class="stat-modifier">Modificado: {{ atributos_finais.resistencia }}</div>
+                {% endif %}
+            </div>
+
+            <div class="stat-box">
+                <div class="stat-label">Moral</div>
+                <div class="stat-value">{{ unit.moral }}</div>
+                {% if atributos_finais.moral != unit.moral %}
+                    <div class="stat-modifier">Modificado: {{ atributos_finais.moral }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Ancestry Info -->
+        <div class="detail-section">
+            <div class="section-title">{{ unit.ancestry.get_nome_display }}</div>
+            
+            {% if unit.ancestry.descricao %}
+                <div class="info-row" style="margin-bottom: 15px;">
+                    <div style="color: var(--text-main); font-size: 12px;">{{ unit.ancestry.descricao }}</div>
+                </div>
+            {% endif %}
+
+            <div class="info-row">
+                <span class="info-label">Modificadores:</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Ataque:</span>
+                <span class="info-value">{{ unit.ancestry.modificador_ataque|add:0 }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Poder:</span>
+                <span class="info-value">{{ unit.ancestry.modificador_poder|add:0 }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Defesa:</span>
+                <span class="info-value">{{ unit.ancestry.modificador_defesa|add:0 }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Resistência:</span>
+                <span class="info-value">{{ unit.ancestry.modificador_resistencia|add:0 }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Moral:</span>
+                <span class="info-value">{{ unit.ancestry.modificador_moral|add:0 }}</span>
+            </div>
+
+            {% if unit.ancestry.traits %}
+                <div class="traits-section">
+                    <div class="info-label" style="margin-bottom: 10px;">Traits Inatos:</div>
+                    {% for trait in unit.ancestry.traits|split:"," %}
+                        <span class="trait-badge">{{ trait|strip }}</span>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Experience Level Info -->
+        {% if unit.experience %}
+            <div class="detail-section">
+                <div class="section-title">{{ unit.experience.get_nome_display }}</div>
+                
+                {% if unit.experience.descricao %}
+                    <div class="info-row" style="margin-bottom: 15px;">
+                        <div style="color: var(--text-main); font-size: 12px;">{{ unit.experience.descricao }}</div>
+                    </div>
+                {% endif %}
+
+                <div class="info-row">
+                    <span class="info-label">Modificadores de Experiência:</span>
+                </div>
+                {% if unit.experience.modificador_ataque != 0 %}
+                    <div class="info-row">
+                        <span class="info-label">Ataque:</span>
+                        <span class="info-value">{{ unit.experience.modificador_ataque|add:0 }}</span>
+                    </div>
+                {% endif %}
+                {% if unit.experience.modificador_resistencia != 0 %}
+                    <div class="info-row">
+                        <span class="info-label">Resistência:</span>
+                        <span class="info-value">{{ unit.experience.modificador_resistencia|add:0 }}</span>
+                    </div>
+                {% endif %}
+                {% if unit.experience.modificador_moral != 0 %}
+                    <div class="info-row">
+                        <span class="info-label">Moral:</span>
+                        <span class="info-value">{{ unit.experience.modificador_moral|add:0 }}</span>
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        <!-- Equipment Info -->
+        {% if unit.equipment %}
+            <div class="detail-section">
+                <div class="section-title">{{ unit.equipment.get_nome_display }}</div>
+                
+                {% if unit.equipment.descricao %}
+                    <div class="info-row" style="margin-bottom: 15px;">
+                        <div style="color: var(--text-main); font-size: 12px;">{{ unit.equipment.descricao }}</div>
+                    </div>
+                {% endif %}
+
+                <div class="info-row">
+                    <span class="info-label">Modificadores de Equipamento:</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Poder:</span>
+                    <span class="info-value">{{ unit.equipment.modificador_poder|add:0 }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Defesa:</span>
+                    <span class="info-value">{{ unit.equipment.modificador_defesa|add:0 }}</span>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Traits Adquiridos -->
+        {% if unit.traits.all %}
+            <div class="detail-section">
+                <div class="section-title">Traits Adquiridos</div>
+                
+                {% for trait in unit.traits.all %}
+                    <div class="info-row" style="margin-bottom: 15px; border-bottom: 1px solid var(--text-muted); padding-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; width: 100%;">
+                            <div>
+                                <div style="color: var(--gold); font-weight: bold; margin-bottom: 4px;">
+                                    {{ trait.get_nome_display }}
+                                </div>
+                                <div style="color: var(--text-main); font-size: 12px; line-height: 1.4;">
+                                    {{ trait.descricao }}
+                                </div>
+                            </div>
+                            <div style="color: var(--accent); font-weight: bold; margin-left: 20px; white-space: nowrap;">
+                                {{ trait.custo }} pts
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- Composição -->
+        <div class="detail-section">
+            <div class="section-title">Composição & Custos</div>
+            <div class="info-row">
+                <span class="info-label">Quantidade:</span>
+                <span class="info-value">{{ unit.quantidade }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Custo Ouro (base):</span>
+                <span class="info-value">{{ unit.custo_ouro }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Custo Dragonshards (base):</span>
+                <span class="info-value">{{ unit.custo_dragonshards }}</span>
+            </div>
+            {% if unit.traits.all %}
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--text-muted);">
+                    <div style="color: var(--text-muted); font-size: 12px; margin-bottom: 8px;">Custo de Traits Adquiridos</div>
+                    {% with total_trait_cost=unit.traits.all|dictsort:"custo"|length %}
+                        {% for trait in unit.traits.all %}
+                            <div class="info-row" style="font-size: 12px;">
+                                <span class="info-label">{{ trait.get_nome_display }}:</span>
+                                <span class="info-value">{{ trait.custo }}</span>
+                            </div>
+                        {% endfor %}
+                        <div class="info-row" style="border-top: 1px dashed var(--gold); margin-top: 8px; padding-top: 8px; font-weight: bold;">
+                            <span class="info-label">Total Traits:</span>
+                            <span class="info-value" style="color: var(--gold);">
+                                {% load humanize %}
+                                {% with traits_total=unit.traits.all|length %}
+                                    {{ unit.traits.count }} trait{% if unit.traits.count != 1 %}s{% endif %}
+                                {% endwith %}
+                            </span>
+                        </div>
+                    {% endwith %}
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Metadados -->
+        <div class="detail-section">
+            <div class="section-title">Informações</div>
+            <div class="info-row">
+                <span class="info-label">Criador:</span>
+                <span class="info-value">{{ unit.criador.get_full_name|default:unit.criador.username }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Criado em:</span>
+                <span class="info-value">{{ unit.criado_em|date:"d/m/Y H:i" }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Atualizado em:</span>
+                <span class="info-value">{{ unit.atualizado_em|date:"d/m/Y H:i" }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="actions">
+        <a href="{% url 'unit_list' domain_pk=domain.pk %}" class="btn btn-secondary">← Voltar</a>
+        {% if pode_editar %}
+            <a href="{% url 'unit_edit' domain_pk=domain.pk pk=unit.pk %}" class="btn btn-primary">Editar Unidade</a>
+        {% endif %}
+        {% if pode_deletar %}
+            <a href="{% url 'unit_delete' domain_pk=domain.pk pk=unit.pk %}" class="btn btn-danger">Deletar Unidade</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
