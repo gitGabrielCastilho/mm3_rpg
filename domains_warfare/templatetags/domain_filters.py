@@ -33,3 +33,14 @@ def split(value, arg):
         return [item.strip() for item in value.split(arg)]
     except (ValueError, TypeError, AttributeError):
         return [value]
+
+
+@register.filter
+def strip(value):
+    """Remove espaços em branco do início e fim da string."""
+    if not value:
+        return value
+    try:
+        return value.strip()
+    except AttributeError:
+        return value
