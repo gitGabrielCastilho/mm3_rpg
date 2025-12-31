@@ -310,6 +310,7 @@ def unit_list_all(request):
                 'pode_editar': unit.pode_editar(request.user),
                 'pode_deletar': unit.pode_deletar(request.user),
                 'custos': unit.get_custos_finais(),
+                'atributos_finais': unit.get_atributos_finais(),
             })
         
         context = {

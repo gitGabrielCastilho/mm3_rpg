@@ -254,8 +254,32 @@
                   <span class="unit-info-label">Quantidade:</span>
                   <span class="unit-info-value">{{ unit_data.unit.quantidade }} soldado{{ unit_data.unit.quantidade|pluralize }}</span>
                 </div>
+
+                <!-- Atributos Totais -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--text-muted);">
+                  <div style="font-size: 0.8rem; text-align: center;">
+                    <div style="color: var(--text-muted);">ATQ</div>
+                    <div style="color: var(--gold); font-weight: bold;">{{ unit_data.atributos_finais.ataque }}</div>
+                  </div>
+                  <div style="font-size: 0.8rem; text-align: center;">
+                    <div style="color: var(--text-muted);">POD</div>
+                    <div style="color: var(--gold); font-weight: bold;">{{ unit_data.atributos_finais.poder }}</div>
+                  </div>
+                  <div style="font-size: 0.8rem; text-align: center;">
+                    <div style="color: var(--text-muted);">DEF</div>
+                    <div style="color: var(--gold); font-weight: bold;">{{ unit_data.atributos_finais.defesa }}</div>
+                  </div>
+                  <div style="font-size: 0.8rem; text-align: center;">
+                    <div style="color: var(--text-muted);">RES</div>
+                    <div style="color: var(--gold); font-weight: bold;">{{ unit_data.atributos_finais.resistencia }}</div>
+                  </div>
+                  <div style="font-size: 0.8rem; text-align: center;">
+                    <div style="color: var(--text-muted);">MOR</div>
+                    <div style="color: var(--gold); font-weight: bold;">{{ unit_data.atributos_finais.moral }}</div>
+                  </div>
+                </div>
                 
-                <div class="unit-info-row">
+                <div class="unit-info-row" style="margin-top: 0.5rem;">
                   <span class="unit-info-label">Custo:</span>
                   <span class="cost-badge">{{ unit_data.custos.custo_ouro }} ⚜</span>
                 </div>
