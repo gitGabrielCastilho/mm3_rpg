@@ -73,23 +73,18 @@ class UnitForm(forms.ModelForm):
     class Meta:
         model = Unit
         fields = [
-            'nome', 'descricao', 'ancestry', 'unit_type', 'size', 'experience', 'equipment', 'traits',
-            'ataque', 'poder', 'defesa', 'resistencia', 'moral'
+            'nome', 'descricao', 'imagem', 'ancestry', 'unit_type', 'size', 'experience', 'equipment', 'traits'
         ]
         widgets = {
             'nome': forms.TextInput(attrs={'class': 'form-control'}),
             'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+            'imagem': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
             'ancestry': forms.Select(attrs={'class': 'form-control'}),
             'unit_type': forms.Select(attrs={'class': 'form-control'}),
             'size': forms.Select(attrs={'class': 'form-control'}),
             'experience': forms.Select(attrs={'class': 'form-control'}),
             'equipment': forms.Select(attrs={'class': 'form-control'}),
             'traits': forms.CheckboxSelectMultiple(attrs={'class': 'trait-checkbox'}),
-            'ataque': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
-            'poder': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
-            'defesa': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
-            'resistencia': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
-            'moral': forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'max': '10'}),
         }
     
     def __init__(self, *args, domain=None, **kwargs):
@@ -98,11 +93,14 @@ class UnitForm(forms.ModelForm):
         
         # Valores padrão
         if not self.instance.pk:
-            self.fields['ataque'].initial = 1
-            self.fields['poder'].initial = 1
-            self.fields['defesa'].initial = 1
-            self.fields['resistencia'].initial = 1
-            self.fields['moral'].initial = 5
+            # Valores padrão de atributos base
+            self.fields_defaults = {
+                'ataque': 0,
+                'poder': 0,
+                'defesa': 10,
+                'resistencia': 10,
+                'moral': 0,
+            }
             # Tenta definir experience como Green, ou deixa vazio se não existir
             try:
                 green = UnitExperience.objects.get(nome='green')

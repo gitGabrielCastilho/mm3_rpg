@@ -248,7 +248,7 @@
         <p>Domínio: <strong>{{ domain.nome }}</strong></p>
     </div>
 
-    <form method="POST" class="unit-form">
+    <form method="POST" class="unit-form" enctype="multipart/form-data">
         {% csrf_token %}
 
         <!-- Informações Básicas -->
@@ -270,6 +270,15 @@
                     {{ form.descricao.errors }}
                 {% endif %}
                 <small>Informações adicionais sobre a unidade (opcional)</small>
+            </div>
+
+            <div class="form-group {% if form.imagem.errors %}errors{% endif %}">
+                <label for="{{ form.imagem.id_for_label }}">Imagem</label>
+                {{ form.imagem }}
+                {% if form.imagem.errors %}
+                    {{ form.imagem.errors }}
+                {% endif %}
+                <small>Imagem representativa da unidade (opcional - JPG, PNG, GIF)</small>
             </div>
 
             <div class="form-group {% if form.ancestry.errors %}errors{% endif %}">
@@ -315,58 +324,6 @@
                     {{ form.equipment.errors }}
                 {% endif %}
                 <small>Tipo de equipamento que fornecerá modificadores de Poder e Defesa</small>
-            </div>
-        </div>
-
-        <!-- Atributos -->
-        <div class="form-section">
-            <h3>Atributos Base</h3>
-            <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 15px;">
-                Os valores base da unidade. Os modificadores da ancestria serão aplicados automaticamente.
-            </p>
-            
-            <div class="form-row">
-                <div class="form-group {% if form.ataque.errors %}errors{% endif %}">
-                    <label for="{{ form.ataque.id_for_label }}">Ataque</label>
-                    {{ form.ataque }}
-                    {% if form.ataque.errors %}
-                        {{ form.ataque.errors }}
-                    {% endif %}
-                </div>
-
-                <div class="form-group {% if form.poder.errors %}errors{% endif %}">
-                    <label for="{{ form.poder.id_for_label }}">Poder</label>
-                    {{ form.poder }}
-                    {% if form.poder.errors %}
-                        {{ form.poder.errors }}
-                    {% endif %}
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group {% if form.defesa.errors %}errors{% endif %}">
-                    <label for="{{ form.defesa.id_for_label }}">Defesa</label>
-                    {{ form.defesa }}
-                    {% if form.defesa.errors %}
-                        {{ form.defesa.errors }}
-                    {% endif %}
-                </div>
-
-                <div class="form-group {% if form.resistencia.errors %}errors{% endif %}">
-                    <label for="{{ form.resistencia.id_for_label }}">Resistência</label>
-                    {{ form.resistencia }}
-                    {% if form.resistencia.errors %}
-                        {{ form.resistencia.errors }}
-                    {% endif %}
-                </div>
-            </div>
-
-            <div class="form-group {% if form.moral.errors %}errors{% endif %}">
-                <label for="{{ form.moral.id_for_label }}">Moral</label>
-                {{ form.moral }}
-                {% if form.moral.errors %}
-                    {{ form.moral.errors }}
-                {% endif %}
             </div>
         </div>
 

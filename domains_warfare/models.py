@@ -584,6 +584,15 @@ class Unit(models.Model):
         verbose_name="Descrição"
     )
     
+    # Imagem da unidade
+    imagem = models.ImageField(
+        upload_to='units/',
+        blank=True,
+        null=True,
+        verbose_name="Imagem",
+        help_text="Imagem representativa da unidade"
+    )
+    
     # Características da Unidade
     ancestry = models.ForeignKey(
         UnitAncestry,

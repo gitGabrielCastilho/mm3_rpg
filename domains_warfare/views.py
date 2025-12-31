@@ -252,7 +252,14 @@ def unit_create(request, domain_pk):
                 unit = form.save(commit=False)
                 unit.domain = domain
                 unit.criador = request.user
+                # Definir valores fixos de atributos
+                unit.ataque = 0
+                unit.poder = 0
+                unit.defesa = 10
+                unit.resistencia = 10
+                unit.moral = 0
                 unit.save()
+                form.save_m2m()  # Salvar relacionamentos ManyToMany (traits)
                 messages.success(request, f"Unidade '{unit.nome}' criada com sucesso!")
                 return redirect('unit_detail', domain_pk=domain_pk, pk=unit.pk)
         else:
@@ -330,7 +337,15 @@ def unit_edit(request, domain_pk, pk):
         if request.method == 'POST':
             form = UnitForm(request.POST, instance=unit, domain=domain)
             if form.is_valid():
-                unit = form.save()
+                unit = form.save(commit=False)
+                # Garantir que os atributos mantêm os valores fixos
+                unit.ataque = 0
+                unit.poder = 0
+                unit.defesa = 10
+                unit.resistencia = 10
+                unit.moral = 0
+                unit.save()
+                form.save_m2m()  # Salvar relacionamentos ManyToMany (traits)
                 messages.success(request, f"Unidade '{unit.nome}' atualizada com sucesso!")
                 return redirect('unit_detail', domain_pk=domain_pk, pk=unit.pk)
         else:

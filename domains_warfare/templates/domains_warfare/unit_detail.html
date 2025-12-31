@@ -222,6 +222,12 @@
         </div>
     {% endif %}
 
+    {% if unit.imagem %}
+        <div style="margin-bottom: 20px; text-align: center;">
+            <img src="{{ unit.imagem.url }}" alt="{{ unit.nome }}" style="max-width: 100%; max-height: 400px; border-radius: 8px; border: 1px solid var(--gold);">
+        </div>
+    {% endif %}
+
     <div class="detail-grid">
         <!-- Atributos Base -->
         <div class="detail-section">
