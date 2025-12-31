@@ -63,6 +63,10 @@
             <div class="dropdown-divider"></div>
             <div class="dropdown-subtitle">Unidades</div>
             <a href="{% url 'unit_list_all' %}">⚔️ Ver Todas as Unidades</a>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-subtitle">Warfare</div>
+            <a href="{% url 'warfare_listar' %}">🏰 Combates Warfare</a>
+            <a href="{% url 'warfare_criar' %}">⚔️ Novo Combate</a>
           </div>
         </div>
         <a href="{% url 'notas_sala' perfil.sala_atual.id %}">Notas da Sessão</a>

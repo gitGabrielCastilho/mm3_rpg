@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="warfare-container">
+  <div class="header-section">
+    <h1>⚔️ Combates Warfare</h1>
+    <a href="{% url 'warfare_criar' %}" class="btn btn-primary">+ Novo Combate</a>
+  </div>
+
+  {% if combates %}
+    <div class="combates-grid">
+      {% for combate in combates %}
+        <div class="combate-card">
+          <div class="combate-header">
+            <h3>{{ combate.nome }}</h3>
+            <span class="combate-status {% if combate.ativo %}ativo{% else %}finalizado{% endif %}">
+              {% if combate.ativo %}🔥 Ativo{% else %}✓ Finalizado{% endif %}
+            </span>
+          </div>
+          
+          <div class="combate-body">
+            <div class="combate-info">
+              <div class="info-item">
+                <span class="label">Sala:</span>
+                <span class="value">{{ combate.sala.nome }}</span>
+              </div>
+              
+              <div class="info-item">
+                <span class="label">Domains:</span>
+                <span class="value">{{ combate.participantes.count }}</span>
+              </div>
+              
+              <div class="info-item">
+                <span class="label">Criado:</span>
+                <span class="value">{{ combate.criado_em|date:"d/m/Y H:i" }}</span>
+              </div>
+            </div>
+            
+            <div class="combate-domains">
+              {% for participante in combate.participantes.all|slice:":3" %}
+                <div class="domain-badge">{{ participante.domain.nome }}</div>
+              {% endfor %}
+              {% if combate.participantes.count > 3 %}
+                <div class="domain-badge more">+{{ combate.participantes.count|add:"-3" }}</div>
+              {% endif %}
+            </div>
+          </div>
+          
+          <div class="combate-actions">
+            <a href="{% url 'warfare_detalhes' combate.pk %}" class="btn btn-primary btn-sm">Entrar</a>
+            {% if combate.ativo and combate.sala.game_master == user %}
+              <form method="post" action="{% url 'warfare_finalizar' combate.pk %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Finalizar este combate?');">Finalizar</button>
+              </form>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <p>Nenhum combate warfare disponível.</p>
+      <a href="{% url 'warfare_criar' %}" class="btn btn-primary">Criar Primeiro Combate</a>
+    </div>
+  {% endif %}
+</div>
+
+<style>
+  .warfare-container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+  }
+  
+  .header-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
+  
+  .header-section h1 {
+    color: var(--gold);
+    margin: 0;
+  }
+  
+  .btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+  
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+  }
+  
+  .btn-primary:hover {
+    opacity: 0.9;
+  }
+  
+  .btn-danger {
+    background: #e74c3c;
+    color: white;
+  }
+  
+  .btn-danger:hover {
+    background: #c0392b;
+  }
+  
+  .btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+  }
+  
+  .combates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+  }
+  
+  .combate-card {
+    background: var(--card-bg);
+    border: 1px solid #3a3a3a;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  
+  .combate-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  
+  .combate-header {
+    background: linear-gradient(135deg, #c53131 0%, #8b2323 100%);
+    color: white;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .combate-header h3 {
+    margin: 0;
+    font-size: 1.125rem;
+  }
+  
+  .combate-status {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  
+  .combate-status.ativo {
+    background: rgba(46, 204, 113, 0.2);
+    color: #2ecc71;
+  }
+  
+  .combate-status.finalizado {
+    background: rgba(149, 165, 166, 0.2);
+    color: #95a5a6;
+  }
+  
+  .combate-body {
+    padding: 1rem;
+  }
+  
+  .combate-info {
+    margin-bottom: 1rem;
+  }
+  
+  .info-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #3a3a3a;
+    font-size: 0.875rem;
+  }
+  
+  .info-item:last-child {
+    border-bottom: none;
+  }
+  
+  .info-item .label {
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  
+  .info-item .value {
+    color: var(--text-main);
+  }
+  
+  .combate-domains {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .domain-badge {
+    background: var(--accent);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  
+  .domain-badge.more {
+    background: #7f8c8d;
+  }
+  
+  .combate-actions {
+    padding: 1rem;
+    background: #2c2c2c;
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: var(--card-bg);
+    border: 1px solid #3a3a3a;
+    border-radius: 8px;
+  }
+  
+  .empty-state p {
+    color: var(--text-muted);
+    font-size: 1.125rem;
+    margin-bottom: 1.5rem;
+  }
+</style>
+{% endblock %}

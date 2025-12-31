@@ -851,3 +851,12 @@ class Unit(models.Model):
         }
 
 
+# Importar modelos de warfare
+from .models_warfare import (
+    CombateWarfare,
+    ParticipanteWarfare,
+    StatusUnitWarfare,
+    TurnoWarfare,
+    MapaWarfare,
+    PosicaoUnitWarfare,
+)

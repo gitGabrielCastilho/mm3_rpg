@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import views_warfare
 
 urlpatterns = [
     # Domain URLs
@@ -16,6 +17,12 @@ urlpatterns = [
     path('domain/<int:domain_pk>/units/create/', views.unit_create, name='unit_create'),
     path('domain/<int:domain_pk>/units/<int:pk>/edit/', views.unit_edit, name='unit_edit'),
     path('domain/<int:domain_pk>/units/<int:pk>/delete/', views.unit_delete, name='unit_delete'),
+    
+    # Warfare Combat URLs
+    path('warfare/', views_warfare.warfare_listar, name='warfare_listar'),
+    path('warfare/criar/', views_warfare.warfare_criar, name='warfare_criar'),
+    path('warfare/<int:pk>/', views_warfare.warfare_detalhes, name='warfare_detalhes'),
+    path('warfare/<int:pk>/finalizar/', views_warfare.warfare_finalizar, name='warfare_finalizar'),
     
     # AJAX endpoints
     path('ajax/calculate-unit-cost/', views.calculate_unit_cost, name='calculate_unit_cost'),
