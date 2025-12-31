@@ -170,15 +170,17 @@
             <!-- Breakdown por Unidade -->
             <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--text-muted);">
               <div style="color: var(--gold); font-weight: bold; font-size: 12px; text-transform: uppercase; margin-bottom: 10px;">Custo por Unidade:</div>
-              {% for item in units_custos %}
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 8px; background-color: var(--primary-bg); border-radius: 4px; font-size: 12px;">
-                  <span style="color: var(--text-main);">{{ item.unit.nome }}</span>
-                  <div style="display: flex; gap: 15px; align-items: center;">
-                    <span style="color: var(--gold); font-weight: bold;">{{ item.custos.custo_ouro }} ⚜</span>
-                    <span style="color: var(--text-muted);">(↓ {{ item.custos.upkeep }})</span>
+              <div style="max-height: 300px; overflow-y: auto; padding-right: 5px;">
+                {% for item in units_custos %}
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 8px; background-color: var(--primary-bg); border-radius: 4px; font-size: 12px;">
+                    <span style="color: var(--text-main);">{{ item.unit.nome }}</span>
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                      <span style="color: var(--gold); font-weight: bold;">{{ item.custos.custo_ouro }} ⚜</span>
+                      <span style="color: var(--text-muted);">(↓ {{ item.custos.upkeep }})</span>
+                    </div>
                   </div>
-                </div>
-              {% endfor %}
+                {% endfor %}
+              </div>
             </div>
           </div>
         {% endif %}
@@ -715,6 +717,25 @@
 
   .upkeep-total .total-value {
     color: #3498db;
+  }
+
+  /* Scrollbar customizada para lista de unidades */
+  .card-body > div > div[style*="overflow-y: auto"]::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .card-body > div > div[style*="overflow-y: auto"]::-webkit-scrollbar-track {
+    background: var(--primary-bg);
+    border-radius: 4px;
+  }
+
+  .card-body > div > div[style*="overflow-y: auto"]::-webkit-scrollbar-thumb {
+    background: var(--gold);
+    border-radius: 4px;
+  }
+
+  .card-body > div > div[style*="overflow-y: auto"]::-webkit-scrollbar-thumb:hover {
+    background: #e4c158;
   }
 </style>
 {% endblock %}
