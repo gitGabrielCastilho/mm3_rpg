@@ -143,14 +143,21 @@ def warfare_detalhes(request, pk):
         units_status = []
         for participante in participantes:
             for unit in participante.domain.units.all():
-                status = StatusUnitWarfare.objects.filter(combate=combate, unit=unit).first()
-                if status:
-                    units_status.append({
-                        'unit': unit,
-                        'domain': participante.domain,
-                        'status': status,
-                        'atributos': unit.get_atributos_finais(),
-                    })
+                # Buscar ou criar status se não existir
+                status, created = StatusUnitWarfare.objects.get_or_create(
+                    combate=combate,
+                    unit=unit,
+                    defaults={
+                        'hp_maximo': _get_hp_from_size(unit.size),
+                        'hp_atual': _get_hp_from_size(unit.size)
+                    }
+                )
+                units_status.append({
+                    'unit': unit,
+                    'domain': participante.domain,
+                    'status': status,
+                    'atributos': unit.get_atributos_finais(),
+                })
         
         # Histórico de turnos
         turnos = combate.turnos_warfare.select_related(
@@ -248,3 +255,33 @@ def warfare_finalizar(request, pk):
     except Exception as e:
         messages.error(request, f"Erro ao finalizar combate: {str(e)}")
         return redirect('warfare_detalhes', pk=pk)
+
+
+@login_required
+def warfare_deletar(request, pk):
+    """Deleta um combate warfare (apenas GM)."""
+    if request.method != 'POST':
+        return redirect('warfare_listar')
+    
+    try:
+        combate = get_object_or_404(CombateWarfare, pk=pk)
+        perfil = PerfilUsuario.objects.filter(user=request.user).first()
+        
+        if not perfil or perfil.sala_atual != combate.sala:
+            messages.error(request, "Você não tem acesso a este combate.")
+            return redirect('domain_list')
+        
+        # Apenas GM pode deletar
+        if combate.sala.game_master != request.user:
+            messages.error(request, "Apenas o GM pode deletar o combate.")
+            return redirect('warfare_listar')
+        
+        nome_combate = combate.nome
+        combate.delete()
+        
+        messages.success(request, f"Combate '{nome_combate}' deletado com sucesso.")
+        return redirect('warfare_listar')
+        
+    except Exception as e:
+        messages.error(request, f"Erro ao deletar combate: {str(e)}")
+        return redirect('warfare_listar')

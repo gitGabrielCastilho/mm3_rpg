@@ -48,10 +48,16 @@
           
           <div class="combate-actions">
             <a href="{% url 'warfare_detalhes' combate.pk %}" class="btn btn-primary btn-sm">Entrar</a>
-            {% if combate.ativo and combate.sala.game_master == user %}
-              <form method="post" action="{% url 'warfare_finalizar' combate.pk %}" style="display:inline;">
+            {% if combate.sala.game_master == user %}
+              {% if combate.ativo %}
+                <form method="post" action="{% url 'warfare_finalizar' combate.pk %}" style="display:inline;">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-warning btn-sm" onclick="return confirm('Finalizar este combate?');">Finalizar</button>
+                </form>
+              {% endif %}
+              <form method="post" action="{% url 'warfare_deletar' combate.pk %}" style="display:inline;">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Finalizar este combate?');">Finalizar</button>
+                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Deletar este combate permanentemente? Esta ação não pode ser desfeita.');">Deletar</button>
               </form>
             {% endif %}
           </div>
@@ -112,6 +118,15 @@
   
   .btn-danger:hover {
     background: #c0392b;
+  }
+  
+  .btn-warning {
+    background: #f39c12;
+    color: white;
+  }
+  
+  .btn-warning:hover {
+    background: #e67e22;
   }
   
   .btn-sm {
