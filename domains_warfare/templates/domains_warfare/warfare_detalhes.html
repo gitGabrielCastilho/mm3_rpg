@@ -1,0 +1,367 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div id="warfare-content" class="combate-detalhes-center" data-is-gm="{% if is_gm %}true{% else %}false{% endif %}">
+  <!-- Topo: info de turno + ações globais -->
+  <div class="turno-topbar combate-card">
+    <div class="turno-topbar-row">
+      <div class="turno-topbar-info">
+        <strong>Combate Warfare:</strong> {{ combate.nome }}
+        {% if turno_ativo %}
+        <span style="margin-left: 20px;"><strong>Turno:</strong> <span id="turno-ativo-nome">{{ turno_ativo.unit_atacante.nome }} ({{ turno_ativo.unit_atacante.domain.nome }})</span></span>
+        {% else %}
+        <span style="margin-left: 20px;"><strong>Sem turno ativo</strong></span>
+        {% endif %}
+      </div>
+      <div class="turno-topbar-actions">
+        {% if combate.ativo and is_gm %}
+        <form method="post" action="{% url 'warfare_finalizar' combate.id %}" class="inline-form">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-danger" formnovalidate>Finalizar Combate</button>
+        </form>
+        {% endif %}
+        <a href="{% url 'warfare_listar' %}" class="btn btn-sm">Voltar</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grid: Histórico (esquerda) + Mapa (centro) + Participantes (direita) -->
+  <div class="combate-layout-grid" style="grid-template-columns: 1fr 2fr 1fr;">
+    
+    <!-- Coluna esquerda: Histórico de Ações -->
+    <div class="combate-col-left">
+      <div class="mapa-header-row">
+        <h3 class="combate-section-title" style="margin:0">Histórico de Ações</h3>
+      </div>
+      <div id="historico-card" class="combate-card" style="max-height: 600px; overflow-y: auto;">
+        <ul class="turnos-list">
+          {% for turno in turnos %}
+          <li class="turno-item" data-turno-id="{{ turno.id }}">
+            <div class="turno-header">
+              <strong>{{ turno.unit_atacante.nome }}</strong> 
+              <span style="color: #888;">({{ turno.unit_atacante.domain.nome }})</span>
+              <span class="turno-data">{{ turno.criado_em|date:"H:i" }}</span>
+            </div>
+            <div class="turno-desc">
+              {% if turno.unit_alvo %}
+              Atacou <strong>{{ turno.unit_alvo.nome }}</strong> ({{ turno.unit_alvo.domain.nome }})
+              <br>
+              {% if turno.sucesso_ataque %}
+              ✓ Ataque: {{ turno.roll_ataque }} vs DEF
+              {% if turno.sucesso_poder %}
+              → ✓ Poder vs RES → <span style="color: #d33;">1 dano</span>
+              {% else %}
+              → ✗ Poder resistido
+              {% endif %}
+              {% else %}
+              ✗ Ataque falhou: {{ turno.roll_ataque }} vs DEF
+              {% endif %}
+              {% if turno.roll_moral %}
+              <br>Moral: {{ turno.roll_moral }}
+              {% endif %}
+              {% endif %}
+            </div>
+          </li>
+          {% empty %}
+          <li class="turno-item vazio"><em>Nenhuma ação registrada ainda.</em></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    <!-- Coluna central: Mapa -->
+    <div class="combate-col-right">
+      <div class="mapa-header-row">
+        <h3 class="combate-section-title" style="margin:0">Mapa de Warfare</h3>
+      </div>
+      <div class="combate-card" style="min-height: 400px; display: flex; align-items: center; justify-content: center; background: #1a1a1a;">
+        {% if mapa_ativo %}
+        <div class="mapa-wrapper">
+          <div id="mapa-area-{{ mapa_ativo.id }}" class="mapa-area" data-scale="1">
+            <div class="mapa-canvas">
+              <img src="{{ mapa_ativo.imagem.url }}" alt="{{ mapa_ativo.nome }}" class="mapa-img" draggable="false" style="max-width: 100%; height: auto;">
+              
+              {% for posicao in posicoes %}
+              <div id="token-{{ posicao.id }}" 
+                   class="mapa-token token-fallback"
+                   style="left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:60px; height:60px; background: #1e88e5; border: 2px solid #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 10px; text-align: center; line-height: 1.2;"
+                   draggable="true"
+                   title="{{ posicao.unit.nome }} ({{ posicao.unit.domain.nome }})">
+                {{ posicao.unit.nome|slice:":10" }}
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="mapa-zoom" style="margin-top: 10px;">
+            <button type="button" class="btn btn-sm" onclick="zoomMap(-0.1)">−</button>
+            <button type="button" class="btn btn-sm" onclick="resetZoom()">Reset</button>
+            <button type="button" class="btn btn-sm" onclick="zoomMap(0.1)">+</button>
+          </div>
+        </div>
+        {% else %}
+        <div style="text-align: center; color: #888;">
+          <p>Nenhum mapa ativo.</p>
+          {% if is_gm %}
+          <p><em>GM pode adicionar mapas futuramente.</em></p>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Coluna direita: Participantes (Domains e Units) -->
+    <div class="combate-col-left">
+      <div class="mapa-header-row">
+        <h3 class="combate-section-title" style="margin:0">Participantes</h3>
+      </div>
+      <div class="combate-card" style="max-height: 600px; overflow-y: auto;">
+        {% for participante in participantes %}
+        <div class="participante-domain-card" style="margin-bottom: 15px; padding: 10px; background: #2a2a2a; border-radius: 8px; border-left: 3px solid #d4af37;">
+          <div style="font-weight: bold; color: #d4af37; margin-bottom: 8px;">
+            {{ participante.domain.nome }} (Nível {{ participante.domain.level }})
+          </div>
+          
+          {% for unit_data in units_status %}
+            {% if unit_data.domain.id == participante.domain.id %}
+            <div class="unit-status-card" style="margin-bottom: 8px; padding: 8px; background: #1a1a1a; border-radius: 4px; {% if unit_data.status.incapacitado %}opacity: 0.5;{% endif %}">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <strong style="{% if unit_data.status.incapacitado %}text-decoration: line-through; color: #666;{% endif %}">
+                  {{ unit_data.unit.nome }}
+                </strong>
+                <span style="font-size: 12px; color: #888;">
+                  Size: {{ unit_data.unit.size.nome }}
+                </span>
+              </div>
+              
+              <!-- HP Bar -->
+              <div style="margin-bottom: 4px;">
+                <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 2px;">
+                  <span>HP: {{ unit_data.status.hp_atual }}/{{ unit_data.status.hp_maximo }}</span>
+                  {% if unit_data.status.diminished %}
+                  <span style="color: #f9a825;">⚠ Diminished</span>
+                  {% endif %}
+                  {% if unit_data.status.incapacitado %}
+                  <span style="color: #d33;">✗ Incapacitado</span>
+                  {% endif %}
+                </div>
+                <div style="background: #333; height: 12px; border-radius: 6px; overflow: hidden;">
+                  <div style="background: {% if unit_data.status.hp_atual == 0 %}#666{% elif unit_data.status.diminished %}#f9a825{% else %}#2e7d32{% endif %}; height: 100%; width: {% widthratio unit_data.status.hp_atual unit_data.status.hp_maximo 100 %}%; transition: width 0.3s;"></div>
+                </div>
+              </div>
+              
+              <!-- Atributos -->
+              <div style="display: flex; gap: 8px; font-size: 11px; color: #aaa;">
+                <span>ATQ: {{ unit_data.atributos.ataque }}</span>
+                <span>POD: {{ unit_data.atributos.poder }}</span>
+                <span>DEF: {{ unit_data.atributos.defesa }}</span>
+                <span>RES: {{ unit_data.atributos.resistencia }}</span>
+                <span>MOR: {{ unit_data.atributos.moral }}</span>
+              </div>
+            </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+        {% empty %}
+        <p style="color: #888; text-align: center; padding: 20px;"><em>Nenhum participante.</em></p>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+.combate-detalhes-center {
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.turno-topbar {
+  margin-bottom: 20px;
+}
+
+.turno-topbar-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.turno-topbar-info {
+  flex: 1;
+  min-width: 300px;
+}
+
+.turno-topbar-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.combate-layout-grid {
+  display: grid;
+  gap: 20px;
+  align-items: start;
+}
+
+.combate-card {
+  background: #2a2a2a;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.combate-section-title {
+  color: #d4af37;
+  font-size: 1.2em;
+  margin-bottom: 10px;
+}
+
+.mapa-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.turnos-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.turno-item {
+  padding: 10px;
+  margin-bottom: 8px;
+  background: #1a1a1a;
+  border-radius: 4px;
+  border-left: 3px solid #555;
+}
+
+.turno-item.vazio {
+  text-align: center;
+  color: #888;
+  border-left: none;
+}
+
+.turno-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.turno-data {
+  font-size: 12px;
+  color: #888;
+}
+
+.turno-desc {
+  font-size: 14px;
+  color: #ccc;
+  line-height: 1.6;
+}
+
+.inline-form {
+  display: inline;
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: none;
+  background: #3a3a3a;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.btn:hover {
+  background: #4a4a4a;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.btn-danger {
+  background: #d33;
+}
+
+.btn-danger:hover {
+  background: #b22;
+}
+
+.mapa-wrapper {
+  position: relative;
+}
+
+.mapa-area {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.mapa-canvas {
+  position: relative;
+  width: 100%;
+}
+
+.mapa-img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.mapa-token {
+  position: absolute;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.2s;
+}
+
+.mapa-token:hover {
+  transform: scale(1.1);
+  z-index: 10;
+}
+
+.mapa-zoom {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+@media (max-width: 1200px) {
+  .combate-layout-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+</style>
+
+<script>
+let currentZoom = 1;
+
+function zoomMap(delta) {
+  currentZoom = Math.max(0.5, Math.min(3, currentZoom + delta));
+  const mapaArea = document.querySelector('.mapa-area');
+  if (mapaArea) {
+    mapaArea.style.transform = `scale(${currentZoom})`;
+    mapaArea.style.transformOrigin = 'top left';
+  }
+}
+
+function resetZoom() {
+  currentZoom = 1;
+  const mapaArea = document.querySelector('.mapa-area');
+  if (mapaArea) {
+    mapaArea.style.transform = 'scale(1)';
+  }
+}
+</script>
+{% endblock %}
