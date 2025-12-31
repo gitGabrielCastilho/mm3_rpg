@@ -229,47 +229,47 @@
     {% endif %}
 
     <div class="detail-grid">
-        <!-- Atributos Base -->
+        <!-- Atributos Finais -->
         <div class="detail-section">
-            <div class="section-title">Atributos Base</div>
+            <div class="section-title">Atributos (Com Modificadores)</div>
             
             <div class="stat-box">
                 <div class="stat-label">Ataque</div>
-                <div class="stat-value">{{ unit.ataque }}</div>
+                <div class="stat-value">{{ atributos_finais.ataque }}</div>
                 {% if atributos_finais.ataque != unit.ataque %}
-                    <div class="stat-modifier">Total: {{ atributos_finais.ataque }}</div>
+                    <div class="stat-modifier">(Base: {{ unit.ataque }})</div>
                 {% endif %}
             </div>
 
             <div class="stat-box">
                 <div class="stat-label">Poder</div>
-                <div class="stat-value">{{ unit.poder }}</div>
+                <div class="stat-value">{{ atributos_finais.poder }}</div>
                 {% if atributos_finais.poder != unit.poder %}
-                    <div class="stat-modifier">Total: {{ atributos_finais.poder }}</div>
+                    <div class="stat-modifier">(Base: {{ unit.poder }})</div>
                 {% endif %}
             </div>
 
             <div class="stat-box">
                 <div class="stat-label">Defesa</div>
-                <div class="stat-value">{{ unit.defesa }}</div>
+                <div class="stat-value">{{ atributos_finais.defesa }}</div>
                 {% if atributos_finais.defesa != unit.defesa %}
-                    <div class="stat-modifier">Total: {{ atributos_finais.defesa }}</div>
+                    <div class="stat-modifier">(Base: {{ unit.defesa }})</div>
                 {% endif %}
             </div>
 
             <div class="stat-box">
                 <div class="stat-label">Resistência</div>
-                <div class="stat-value">{{ unit.resistencia }}</div>
+                <div class="stat-value">{{ atributos_finais.resistencia }}</div>
                 {% if atributos_finais.resistencia != unit.resistencia %}
-                    <div class="stat-modifier">Total: {{ atributos_finais.resistencia }}</div>
+                    <div class="stat-modifier">(Base: {{ unit.resistencia }})</div>
                 {% endif %}
             </div>
 
             <div class="stat-box">
                 <div class="stat-label">Moral</div>
-                <div class="stat-value">{{ unit.moral }}</div>
+                <div class="stat-value">{{ atributos_finais.moral }}</div>
                 {% if atributos_finais.moral != unit.moral %}
-                    <div class="stat-modifier">Total: {{ atributos_finais.moral }}</div>
+                    <div class="stat-modifier">(Base: {{ unit.moral }})</div>
                 {% endif %}
             </div>
         </div>

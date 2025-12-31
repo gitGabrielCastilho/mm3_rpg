@@ -222,6 +222,8 @@
 
     .content-wrapper {
         margin-left: 340px;
+        margin-right: 2rem;
+        padding: 1rem;
     }
 </style>
 
@@ -264,23 +266,23 @@
                     <div class="unit-stats">
                         <div class="stat">
                             <div class="stat-label">ATQ</div>
-                            <div class="stat-value">{{ unit_info.unit.ataque }}</div>
+                            <div class="stat-value">{{ unit_info.atributos_finais.ataque }}</div>
                         </div>
                         <div class="stat">
                             <div class="stat-label">POD</div>
-                            <div class="stat-value">{{ unit_info.unit.poder }}</div>
+                            <div class="stat-value">{{ unit_info.atributos_finais.poder }}</div>
                         </div>
                         <div class="stat">
                             <div class="stat-label">DEF</div>
-                            <div class="stat-value">{{ unit_info.unit.defesa }}</div>
+                            <div class="stat-value">{{ unit_info.atributos_finais.defesa }}</div>
                         </div>
                         <div class="stat">
                             <div class="stat-label">RES</div>
-                            <div class="stat-value">{{ unit_info.unit.resistencia }}</div>
+                            <div class="stat-value">{{ unit_info.atributos_finais.resistencia }}</div>
                         </div>
                         <div class="stat">
                             <div class="stat-label">MOR</div>
-                            <div class="stat-value">{{ unit_info.unit.moral }}</div>
+                            <div class="stat-value">{{ unit_info.atributos_finais.moral }}</div>
                         </div>
                         <div class="stat">
                             <div class="stat-label">QTD</div>

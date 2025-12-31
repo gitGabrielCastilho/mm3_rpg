@@ -182,7 +182,9 @@ def unit_list(request, domain_pk):
             return redirect('domain_list')
         
         # Listar unidades do domínio
-        units = Unit.objects.filter(domain=domain).select_related('ancestry', 'criador').order_by('-criado_em')
+        units = Unit.objects.filter(domain=domain).select_related(
+            'ancestry', 'unit_type', 'size', 'experience', 'equipment', 'criador'
+        ).order_by('-criado_em')
         
         # Preparar contexto com permissões
         units_with_perms = []
@@ -191,6 +193,8 @@ def unit_list(request, domain_pk):
                 'unit': unit,
                 'pode_editar': unit.pode_editar(request.user),
                 'pode_deletar': unit.pode_deletar(request.user),
+                'atributos_finais': unit.get_atributos_finais(),
+                'custos': unit.get_custos_finais(),
             })
         
         context = {
