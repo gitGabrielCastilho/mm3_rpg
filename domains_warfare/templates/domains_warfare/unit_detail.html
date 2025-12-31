@@ -312,6 +312,24 @@
             {% endif %}
         </div>
 
+        <!-- Unit Type Info -->
+        {% if unit.unit_type %}
+            <div class="detail-section">
+                <div class="section-title">{{ unit.unit_type.get_nome_display }}</div>
+                
+                {% if unit.unit_type.descricao %}
+                    <div class="info-row" style="margin-bottom: 15px;">
+                        <div style="color: var(--text-main); font-size: 12px;">{{ unit.unit_type.descricao }}</div>
+                    </div>
+                {% endif %}
+
+                <div class="info-row">
+                    <span class="info-label">Modificador de Custo:</span>
+                    <span class="info-value">×{{ unit.unit_type.modificador_custo }}</span>
+                </div>
+            </div>
+        {% endif %}
+
         <!-- Experience Level Info -->
         {% if unit.experience %}
             <div class="detail-section">
