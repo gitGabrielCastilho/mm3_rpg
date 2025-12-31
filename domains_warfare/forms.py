@@ -74,8 +74,7 @@ class UnitForm(forms.ModelForm):
         model = Unit
         fields = [
             'nome', 'descricao', 'ancestry', 'unit_type', 'size', 'experience', 'equipment', 'traits',
-            'ataque', 'poder', 'defesa', 'resistencia', 'moral',
-            'quantidade'
+            'ataque', 'poder', 'defesa', 'resistencia', 'moral'
         ]
         widgets = {
             'nome': forms.TextInput(attrs={'class': 'form-control'}),
@@ -91,7 +90,6 @@ class UnitForm(forms.ModelForm):
             'defesa': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
             'resistencia': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
             'moral': forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'max': '10'}),
-            'quantidade': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
         }
     
     def __init__(self, *args, domain=None, **kwargs):
@@ -105,7 +103,6 @@ class UnitForm(forms.ModelForm):
             self.fields['defesa'].initial = 1
             self.fields['resistencia'].initial = 1
             self.fields['moral'].initial = 5
-            self.fields['quantidade'].initial = 1
             # Tenta definir experience como Green, ou deixa vazio se não existir
             try:
                 green = UnitExperience.objects.get(nome='green')

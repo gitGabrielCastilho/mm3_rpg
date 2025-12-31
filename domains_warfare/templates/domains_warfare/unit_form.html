@@ -448,19 +448,6 @@
             </div>
         </div>
 
-        <!-- Composição -->
-        <div class="form-section">
-            <h3>Composição</h3>
-            
-            <div class="form-group {% if form.quantidade.errors %}errors{% endif %}">
-                <label for="{{ form.quantidade.id_for_label }}">Quantidade de Soldados</label>
-                {{ form.quantidade }}
-                {% if form.quantidade.errors %}
-                    {{ form.quantidade.errors }}
-                {% endif %}
-            </div>
-        </div>
-
         <div class="form-actions">
             <a href="{% url 'unit_list' domain_pk=domain.pk %}" class="btn btn-secondary">Cancelar</a>
             <button type="submit" class="btn btn-primary">{{ action }} Unidade</button>
