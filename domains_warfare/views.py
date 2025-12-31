@@ -27,7 +27,7 @@ def domain_list(request):
         domains_with_perms = []
         for domain in domains:
             # Calcular custos totais das unidades do domínio
-            units = domain.unit_set.all()
+            units = domain.units.all()
             total_custo_ouro = 0
             total_upkeep = 0
             
@@ -68,7 +68,7 @@ def domain_detail(request, pk):
             return redirect('domain_list')
         
         # Calcular custos totais das unidades
-        units = domain.unit_set.all()
+        units = domain.units.all()
         total_custo_ouro = 0
         total_upkeep = 0
         units_custos = []
