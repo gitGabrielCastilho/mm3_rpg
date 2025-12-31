@@ -26,10 +26,22 @@ def domain_list(request):
         # Preparar contexto com permissões para cada domain
         domains_with_perms = []
         for domain in domains:
+            # Calcular custos totais das unidades do domínio
+            units = domain.unit_set.all()
+            total_custo_ouro = 0
+            total_upkeep = 0
+            
+            for unit in units:
+                custos = unit.get_custos_finais()
+                total_custo_ouro += custos['custo_ouro']
+                total_upkeep += custos['upkeep']
+            
             domains_with_perms.append({
                 'domain': domain,
                 'pode_editar': domain.pode_editar(request.user),
                 'pode_deletar': domain.pode_deletar(request.user),
+                'total_custo_ouro': total_custo_ouro,
+                'total_upkeep': total_upkeep,
             })
         
         context = {
@@ -55,10 +67,28 @@ def domain_detail(request, pk):
             messages.error(request, "Você não tem acesso a este domínio.")
             return redirect('domain_list')
         
+        # Calcular custos totais das unidades
+        units = domain.unit_set.all()
+        total_custo_ouro = 0
+        total_upkeep = 0
+        units_custos = []
+        
+        for unit in units:
+            custos = unit.get_custos_finais()
+            total_custo_ouro += custos['custo_ouro']
+            total_upkeep += custos['upkeep']
+            units_custos.append({
+                'unit': unit,
+                'custos': custos
+            })
+        
         context = {
             'domain': domain,
             'pode_editar': domain.pode_editar(request.user),
             'pode_deletar': domain.pode_deletar(request.user),
+            'units_custos': units_custos,
+            'total_custo_ouro': total_custo_ouro,
+            'total_upkeep': total_upkeep,
         }
         return render(request, 'domains_warfare/domain_detail.html', context)
     except Exception as e:

@@ -215,6 +215,42 @@
         {% endif %}
       </div>
     </div>
+
+    <!-- Custos de Unidades -->
+    <div class="card">
+      <div class="card-header">
+        <h2>⚔️ Custos de Unidades</h2>
+      </div>
+      <div class="card-body">
+        {% if units_custos %}
+          <div class="units-costs-list">
+            {% for item in units_custos %}
+              <div class="unit-cost-row">
+                <div class="unit-cost-name">{{ item.unit.nome }}</div>
+                <div class="unit-cost-values">
+                  <span class="cost-badge">{{ item.custos.custo_ouro }} ⚜</span>
+                  <span class="upkeep-badge">{{ item.custos.upkeep }}/turno</span>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+          <div class="cost-total">
+            <div class="total-row">
+              <span class="total-label">Total Custo:</span>
+              <span class="total-value">{{ total_custo_ouro }} ⚜</span>
+            </div>
+            <div class="total-row upkeep-total">
+              <span class="total-label">Total Upkeep/Turno:</span>
+              <span class="total-value">{{ total_upkeep }}</span>
+            </div>
+          </div>
+        {% else %}
+          <div class="info-row">
+            <span class="info-label">Nenhuma unidade criada</span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
   </div>
 
   <!-- Metadados -->
@@ -563,6 +599,87 @@
     background: #2c2c2c;
     border-radius: var(--border-radius);
     border: 1px solid #3a3a3a;
+  }
+
+  .units-costs-list {
+    margin-bottom: 1.5rem;
+  }
+
+  .unit-cost-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: #2c2c2c;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+  }
+
+  .unit-cost-row:last-child {
+    margin-bottom: 0;
+  }
+
+  .unit-cost-name {
+    color: var(--gold);
+    font-weight: 600;
+    flex: 1;
+  }
+
+  .unit-cost-values {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  .cost-badge {
+    background: linear-gradient(135deg, var(--gold), #b8860b);
+    color: #000;
+    padding: 0.3rem 0.8rem;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.9rem;
+  }
+
+  .upkeep-badge {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    padding: 0.3rem 0.8rem;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.9rem;
+  }
+
+  .cost-total {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 2px solid var(--gold);
+  }
+
+  .total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    font-weight: 600;
+  }
+
+  .total-label {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+  }
+
+  .total-value {
+    color: var(--gold);
+    font-size: 1.1rem;
+  }
+
+  .upkeep-total .total-label {
+    color: var(--text-muted);
+  }
+
+  .upkeep-total .total-value {
+    color: #3498db;
   }
 </style>
 {% endblock %}
