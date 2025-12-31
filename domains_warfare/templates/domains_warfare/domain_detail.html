@@ -147,6 +147,41 @@
             <span class="resource-value">{{ domain.dragonshards }}</span>
           </div>
         </div>
+
+        <!-- Custos de Unidades -->
+        {% if units_custos %}
+          <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--text-muted);">
+            <div class="resource-item">
+              <span class="resource-icon">⚔️</span>
+              <div class="resource-info">
+                <span class="resource-label">Custo Total (Unidades)</span>
+                <span class="resource-value">{{ total_custo_ouro }}</span>
+              </div>
+            </div>
+            
+            <div class="resource-item">
+              <span class="resource-icon">📊</span>
+              <div class="resource-info">
+                <span class="resource-label">Upkeep (10%)</span>
+                <span class="resource-value">{{ total_upkeep }}</span>
+              </div>
+            </div>
+
+            <!-- Breakdown por Unidade -->
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--text-muted);">
+              <div style="color: var(--gold); font-weight: bold; font-size: 12px; text-transform: uppercase; margin-bottom: 10px;">Custo por Unidade:</div>
+              {% for item in units_custos %}
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 8px; background-color: var(--primary-bg); border-radius: 4px; font-size: 12px;">
+                  <span style="color: var(--text-main);">{{ item.unit.nome }}</span>
+                  <div style="display: flex; gap: 15px; align-items: center;">
+                    <span style="color: var(--gold); font-weight: bold;">{{ item.custos.custo_ouro }} ⚜</span>
+                    <span style="color: var(--text-muted);">(↓ {{ item.custos.upkeep }})</span>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
       </div>
     </div>
 
