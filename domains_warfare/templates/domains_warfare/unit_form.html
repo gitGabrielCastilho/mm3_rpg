@@ -420,11 +420,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const sizeSelect = document.getElementById('{{ form.size.id_for_label }}');
     const experienceSelect = document.getElementById('{{ form.experience.id_for_label }}');
     const equipmentSelect = document.getElementById('{{ form.equipment.id_for_label }}');
-    const ataqueInput = document.getElementById('{{ form.ataque.id_for_label }}');
-    const poderInput = document.getElementById('{{ form.poder.id_for_label }}');
-    const defesaInput = document.getElementById('{{ form.defesa.id_for_label }}');
-    const resistenciaInput = document.getElementById('{{ form.resistencia.id_for_label }}');
-    const moralInput = document.getElementById('{{ form.moral.id_for_label }}');
     
     // Elementos de exibição
     const costDisplay = document.getElementById('cost-display');
@@ -469,12 +464,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 params.append('equipment', equipmentSelect.value);
             }
             
-            // Atributos
-            params.append('ataque', ataqueInput.value || '1');
-            params.append('poder', poderInput.value || '1');
-            params.append('defesa', defesaInput.value || '1');
-            params.append('resistencia', resistenciaInput.value || '1');
-            params.append('moral', moralInput.value || '1');
+            // Atributos com valores padrão (os atributos base agora são fixos na view)
+            params.append('ataque', '0');
+            params.append('poder', '0');
+            params.append('defesa', '10');
+            params.append('resistencia', '10');
+            params.append('moral', '0');
             
             // Traits selecionados
             traitCheckboxes.forEach(function(checkbox) {
@@ -534,12 +529,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (sizeSelect) sizeSelect.addEventListener('change', calculateCost);
     if (experienceSelect) experienceSelect.addEventListener('change', calculateCost);
     if (equipmentSelect) equipmentSelect.addEventListener('change', calculateCost);
-    
-    ataqueInput.addEventListener('input', calculateCost);
-    poderInput.addEventListener('input', calculateCost);
-    defesaInput.addEventListener('input', calculateCost);
-    resistenciaInput.addEventListener('input', calculateCost);
-    moralInput.addEventListener('input', calculateCost);
     
     traitCheckboxes.forEach(function(checkbox) {
         checkbox.addEventListener('change', calculateCost);
