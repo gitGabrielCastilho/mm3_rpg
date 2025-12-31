@@ -30,7 +30,8 @@ def warfare_criar(request):
             return redirect('listar_salas')
         
         # Apenas GM pode criar combates warfare
-        if not perfil.is_gm:
+        sala = perfil.sala_atual
+        if sala.game_master != request.user:
             messages.error(request, "Apenas o GM pode criar combates warfare.")
             return redirect('domain_list')
         
@@ -74,7 +75,7 @@ def warfare_criar(request):
         
         # GET: Listar domains disponíveis
         # GM pode ver todos, jogadores veem apenas os seus
-        if perfil.is_gm:
+        if sala.game_master == request.user:
             domains = Domain.objects.filter(sala=perfil.sala_atual).order_by('nome')
         else:
             domains = Domain.objects.filter(
@@ -131,7 +132,7 @@ def warfare_detalhes(request, pk):
             participacoes_warfare__combate=combate
         ).distinct()
         
-        if not perfil.is_gm and not user_domains.exists():
+        if combate.sala.game_master != request.user and not user_domains.exists():
             messages.error(request, "Você não participa deste combate.")
             return redirect('domain_list')
         
@@ -175,7 +176,7 @@ def warfare_detalhes(request, pk):
             'mapas': mapas,
             'mapa_ativo': mapa_ativo,
             'posicoes': posicoes,
-            'is_gm': perfil.is_gm,
+            'is_gm': combate.sala.game_master == request.user,
         }
         return render(request, 'domains_warfare/warfare_detalhes.html', context)
         
@@ -195,7 +196,8 @@ def warfare_listar(request):
             return redirect('listar_salas')
         
         # Listar combates da sala
-        if perfil.is_gm:
+        sala = perfil.sala_atual
+        if sala.game_master == request.user:
             combates = CombateWarfare.objects.filter(sala=perfil.sala_atual).order_by('-criado_em')
         else:
             # Jogadores veem apenas combates dos quais participam
@@ -233,7 +235,7 @@ def warfare_finalizar(request, pk):
             return redirect('domain_list')
         
         # Apenas GM pode finalizar
-        if not perfil.is_gm:
+        if combate.sala.game_master != request.user:
             messages.error(request, "Apenas o GM pode finalizar o combate.")
             return redirect('warfare_detalhes', pk=pk)
         

@@ -322,11 +322,13 @@ def unit_list_all(request):
             messages.error(request, "Você precisa estar em uma sala para acessar unidades.")
             return redirect('listar_salas')
         
+        sala = perfil.sala_atual
+        
         # Buscar domínios da sala aos quais o usuário tem acesso
         from django.db.models import Q
         
         # GM pode ver todos
-        if perfil.is_gm:
+        if sala.game_master == request.user:
             domains = Domain.objects.filter(sala=perfil.sala_atual).order_by('nome')
         else:
             # Jogadores só veem domínios que criaram ou estão em jogadores_acesso
