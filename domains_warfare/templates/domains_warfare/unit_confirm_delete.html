@@ -151,8 +151,13 @@
     .breadcrumb a:hover {
         text-decoration: underline;
     }
+
+    .content-wrapper {
+        margin-left: 340px;
+    }
 </style>
 
+<div class="content-wrapper">
 <div class="breadcrumb">
     <a href="{% url 'domain_list' %}">Domínios</a> 
     / 
@@ -208,5 +213,6 @@
             <button type="submit" class="btn btn-delete">Deletar Unidade</button>
         </div>
     </form>
+</div>
 </div>
 {% endblock %}
