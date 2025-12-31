@@ -7,6 +7,7 @@
     <h1>{{ domain.nome }}</h1>
     <div class="header-actions">
       {% if pode_editar %}
+        <a href="{% url 'unit_list' domain_pk=domain.pk %}" class="btn btn-primary">⚔️ Ver Unidades</a>
         <a href="{% url 'domain_edit' domain.pk %}" class="btn btn-primary">✏️ Editar</a>
       {% endif %}
       {% if pode_deletar %}
