@@ -13,7 +13,21 @@
         {% else %}
         <span style="margin-left: 20px;"><strong>Sem turno ativo</strong></span>
         {% endif %}
+      </div>
+      <div class="turno-topbar-actions">
+        {% if combate.ativo and is_gm %}
+        <form method="post" action="{% url 'warfare_finalizar' combate.id %}" class="inline-form">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-danger" formnovalidate>Finalizar Combate</button>
+        </form>
+        {% endif %}
+        <a href="{% url 'warfare_listar' %}" class="btn btn-sm">Voltar</a>
+      </div>
+    </div>
+  </div>
 
+  <!-- Grid: Histórico (esquerda) + Mapa (centro) -->
+  <div class="combate-layout-grid" style="grid-template-columns: 1fr 2fr;">
     <!-- Coluna esquerda: Histórico de Ações -->
     <div class="combate-col-left">
       <div class="mapa-header-row">

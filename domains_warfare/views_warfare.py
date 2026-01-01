@@ -168,8 +168,8 @@ def warfare_detalhes(request, pk):
         # Turno ativo
         turno_ativo = combate.get_turno_ativo()
         
-        # Mapas
-        mapas = combate.mapas_warfare.filter(ativo=True)
+        # Mapas (usar todos, não apenas ativos)
+        mapas = combate.mapas_warfare.all()
         mapa_ativo = mapas.first()
         posicoes = PosicaoUnitWarfare.objects.filter(mapa__combate=combate).select_related('mapa', 'unit')
         mapas_existentes = MapaWarfare.objects.all().order_by('-adicionado_em')
