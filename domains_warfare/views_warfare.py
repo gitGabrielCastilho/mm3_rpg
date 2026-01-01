@@ -308,32 +308,28 @@ def warfare_adicionar_mapa(request, pk):
         form = MapaWargameForm()
         
         if request.method == 'POST':
-            # Se enviou um novo mapa
-            if request.POST.get('criar_novo'):
-                form = MapaWargameForm(request.POST, request.FILES)
-                if form.is_valid():
-                    mapa = form.save(commit=False)
-                    mapa.combate = combate
-                    mapa.save()
-                    
-                    # Criar posições para todas as unidades
-                    for status in combate.status_units.all():
-                        PosicaoUnitWarfare.objects.get_or_create(
-                            mapa=mapa,
-                            unit=status.unit,
-                            defaults={'x': 50, 'y': 50}
-                        )
-                    
-                    messages.success(request, f"Mapa '{mapa.nome}' adicionado com sucesso!")
-                    return redirect('warfare_detalhes', pk=pk)
-                else:
-                    messages.error(request, "Erro ao criar mapa.")
+            form = MapaWargameForm(request.POST, request.FILES)
+            if form.is_valid():
+                mapa = form.save(commit=False)
+                mapa.combate = combate
+                mapa.save()
+                
+                # Criar posições para todas as unidades
+                for status in combate.status_units.all():
+                    PosicaoUnitWarfare.objects.get_or_create(
+                        mapa=mapa,
+                        unit=status.unit,
+                        defaults={'x': 50, 'y': 50}
+                    )
+                
+                messages.success(request, f"Mapa '{mapa.nome}' adicionado com sucesso!")
+                return redirect('warfare_detalhes', pk=pk)
         
         context = {
             'combate': combate,
             'form': form,
         }
-        return render(request, 'domains_warfare/warfare_adicionar_mapa.html', context)
+        return render(request, 'combate/adicionar_mapa.html', context)
         
     except Exception as e:
         messages.error(request, f"Erro ao adicionar mapa: {str(e)}")
