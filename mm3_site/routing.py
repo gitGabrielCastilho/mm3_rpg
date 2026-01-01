@@ -9,6 +9,7 @@ django_asgi_app = get_asgi_application()
 
 import combate.routing  # noqa: E402
 import salas.routing    # noqa: E402
+import domains_warfare.routing  # noqa: E402
 
 application = ProtocolTypeRouter({
     "http": django_asgi_app,

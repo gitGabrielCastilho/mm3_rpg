@@ -97,7 +97,8 @@
                 <img src="{{ mapa.imagem.url }}" alt="{{ mapa.nome }}" class="mapa-img" draggable="false">
                 {% for posicao in posicoes %}
                   {% if posicao.mapa.id == mapa.id %}
-                  <div id="token-{{ posicao.id }}" class="mapa-token token-unit"
+                     <div id="token-{{ posicao.id }}" class="mapa-token token-unit"
+                       data-posicao-id="{{ posicao.id }}" data-mapa-id="{{ posicao.mapa.id }}"
                        style="left:{{ posicao.x|default:50 }}px; top:{{ posicao.y|default:50 }}px; width:{{ posicao.token_size|default:60 }}px; height:{{ posicao.token_size|default:60 }}px; border:2px solid #fff; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:11px; text-align:center; line-height:1.1; cursor:grab; background:#1976d2;"
                        draggable="true"
                        title="{{ posicao.display_label|default:posicao.unit.nome }}">
@@ -249,10 +250,116 @@
             });
           });
         }
+
+        // Ctrl+scroll zoom
+        area.addEventListener('wheel', function(e){
+          if (!e.ctrlKey) return;
+          e.preventDefault();
+          let scale = parseFloat(area.dataset.scale || '1') || 1;
+          const delta = -e.deltaY * 0.0015;
+          scale = Math.max(0.2, Math.min(3, scale + delta));
+          applyScale(parseFloat(scale.toFixed(2)));
+        }, { passive: false });
+
+        // Drag & drop move tokens
+        area.addEventListener('dragover', function(e){ e.preventDefault(); });
+        area.addEventListener('drop', function(e){
+          e.preventDefault();
+          const tokenId = e.dataTransfer ? e.dataTransfer.getData('tokenId') : null;
+          if (!tokenId) return;
+          const token = document.getElementById('token-' + tokenId);
+          if (!token) return;
+          const rect = canvas.getBoundingClientRect();
+          const scale = parseFloat(area.dataset.scale || '1') || 1;
+          let x = (e.clientX - rect.left) / scale;
+          let y = (e.clientY - rect.top) / scale;
+          const tokenSize = parseFloat(token.style.width || '60') || 60;
+          x = x - (tokenSize / 2);
+          y = y - (tokenSize / 2);
+          const baseW = parseFloat(canvas.dataset.baseWidth || '0');
+          const baseH = parseFloat(canvas.dataset.baseHeight || '0');
+          if (baseW) x = Math.max(0, Math.min(baseW - tokenSize, x));
+          if (baseH) y = Math.max(0, Math.min(baseH - tokenSize, y));
+          sendTokenUpdate(tokenId, x, y, tokenSize);
+          applyTokenPosition(tokenId, x, y);
+        });
+
+        // Store scaler for external use
+        area._applyScale = applyScale;
       });
     }
 
+    // ===== WebSocket tempo real =====
+    const combateId = '{{ combate.id }}';
+    const wsToken = '{{ ws_token|default:"" }}';
+    const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const wsTokenQuery = wsToken ? `?ws_token=${encodeURIComponent(wsToken)}` : '';
+    const wsUrl = `${wsScheme}://${window.location.host}/ws/warfare/${combateId}/${wsTokenQuery}`;
+    let warfareSocket = null;
+
+    function connectWs(){
+      try {
+        warfareSocket = new WebSocket(wsUrl);
+        warfareSocket.onmessage = function(e){
+          let payload = null;
+          try { payload = JSON.parse(e.data); } catch(_) { return; }
+          if (!payload || !payload.evento) return;
+          if (payload.evento === 'token_move') {
+            applyTokenPosition(payload.posicao_id, payload.x, payload.y);
+          } else if (payload.evento === 'token_resize') {
+            applyTokenSize(payload.posicao_id, payload.size);
+          }
+        };
+        warfareSocket.onclose = function(){
+          setTimeout(connectWs, 1500);
+        };
+      } catch(_) {}
+    }
+
+    function csrfToken(){
+      const m = document.cookie.match(/csrftoken=([^;]+)/);
+      return m ? m[1] : '';
+    }
+
+    const updateUrlTemplate = "{% url 'warfare_atualizar_posicao_token' combate.id 0 %}";
+
+    function sendTokenUpdate(tokenId, x, y, size){
+      const url = updateUrlTemplate.replace(/0\/?$/, `${tokenId}/`);
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken(),
+        },
+        body: JSON.stringify({x, y, size}),
+        credentials: 'same-origin',
+      }).catch(() => {});
+    }
+
+    function applyTokenPosition(tokenId, x, y){
+      const token = document.getElementById('token-' + tokenId);
+      if (!token) return;
+      token.style.left = `${x}px`;
+      token.style.top = `${y}px`;
+    }
+
+    function applyTokenSize(tokenId, size){
+      const token = document.getElementById('token-' + tokenId);
+      if (!token || !size) return;
+      token.style.width = `${size}px`;
+      token.style.height = `${size}px`;
+    }
+
+    // Bind dragstart to carry token id
+    document.addEventListener('dragstart', function(e){
+      const t = e.target.closest && e.target.closest('.mapa-token');
+      if (t && e.dataTransfer) {
+        e.dataTransfer.setData('tokenId', t.dataset.posicaoId || t.id.replace('token-',''));
+      }
+    });
+
     setupMapAreas();
+    connectWs();
   });
 </script>
 <style>

@@ -5,7 +5,11 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
+from django.core import signing
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from django.db.models import Q
+import json
 from personagens.models import PerfilUsuario
 from combate.models import Mapa
 from .models import Domain, Unit
@@ -188,6 +192,7 @@ def warfare_detalhes(request, pk):
             'posicoes': posicoes,
             'is_gm': combate.sala.game_master == request.user,
             'mapas_globais': mapas_globais,
+            'ws_token': signing.dumps({'uid': request.user.id}, salt='ws-warfare'),
         }
         return render(request, 'domains_warfare/warfare_detalhes.html', context)
         
@@ -371,4 +376,66 @@ def warfare_remover_mapa(request, pk, mapa_id):
     except Exception as e:
         messages.error(request, f"Erro ao remover mapa: {str(e)}")
         return redirect('warfare_detalhes', pk=pk)
+
+
+@login_required
+def warfare_atualizar_posicao_token(request, pk, posicao_id):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'method_not_allowed'}, status=405)
+
+    posicao = get_object_or_404(PosicaoUnitWarfare, id=posicao_id, mapa__combate_id=pk)
+    combate = posicao.mapa.combate
+
+    # Permissão: GM da sala ou jogador que controla o domain da unidade
+    domain = posicao.unit.domain
+    is_gm = combate.sala.game_master == request.user
+    is_domain_owner = domain.criador_id == request.user.id
+    has_access = domain.jogadores_acesso.filter(id=request.user.id).exists()
+    if not (is_gm or is_domain_owner or has_access):
+        return JsonResponse({'error': 'forbidden'}, status=403)
+
+    try:
+        data = json.loads(request.body or '{}')
+    except Exception:
+        data = {}
+
+    try:
+        posicao.x = float(data.get('x', posicao.x))
+        posicao.y = float(data.get('y', posicao.y))
+        size = data.get('size')
+        if isinstance(size, (int, float)):
+            posicao.token_size = max(10, min(200, int(size)))
+        posicao.save()
+
+        # Broadcast para todos conectados
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'warfare_{combate.id}',
+            {
+                'type': 'combate_message',
+                'message': json.dumps({
+                    'evento': 'token_move',
+                    'posicao_id': posicao.id,
+                    'mapa_id': posicao.mapa_id,
+                    'x': posicao.x,
+                    'y': posicao.y,
+                })
+            }
+        )
+        if isinstance(size, (int, float)):
+            async_to_sync(channel_layer.group_send)(
+                f'warfare_{combate.id}',
+                {
+                    'type': 'combate_message',
+                    'message': json.dumps({
+                        'evento': 'token_resize',
+                        'posicao_id': posicao.id,
+                        'size': posicao.token_size,
+                    })
+                }
+            )
+    except Exception:
+        return JsonResponse({'error': 'server_error'}, status=500)
+
+    return JsonResponse({'status': 'ok'})
 
