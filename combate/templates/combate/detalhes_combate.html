@@ -2048,6 +2048,25 @@
           }
         }
 
+        // Initialize dimensions and scale when image loads
+        const img = canvas ? canvas.querySelector('.mapa-img') : null;
+        if (img) {
+          function initDimensions(){
+            const w = img.naturalWidth || img.width || 0;
+            const h = img.naturalHeight || img.height || 0;
+            if (w && h) {
+              canvas.dataset.baseWidth = w;
+              canvas.dataset.baseHeight = h;
+              setScale(parseFloat(mapaArea.dataset.scale || '1') || 1);
+            }
+          }
+          if (img.complete) {
+            initDimensions();
+          } else {
+            img.addEventListener('load', initDimensions);
+          }
+        }
+
         // Zoom controls removed - use Ctrl+Scroll
 
         // Clamp scroll so it never goes beyond the scaled image area
