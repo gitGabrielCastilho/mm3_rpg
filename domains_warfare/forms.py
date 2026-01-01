@@ -108,3 +108,35 @@ class UnitForm(forms.ModelForm):
             except UnitExperience.DoesNotExist:
                 pass
 
+
+class MapaWargameForm(forms.ModelForm):
+    """Formulário para criar mapas de warfare."""
+    
+    class Meta:
+        from .models_warfare import MapaWarfare
+        model = MapaWarfare
+        fields = ['nome', 'imagem']
+        widgets = {
+            'nome': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Nome do mapa'
+            }),
+            'imagem': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': 'image/*'
+            }),
+        }
+    
+    def clean_imagem(self):
+        f = self.cleaned_data.get('imagem')
+        if not f:
+            raise forms.ValidationError("Uma imagem é necessária.")
+        
+        # Verificar tamanho máximo (10MB por padrão)
+        max_mb = 10
+        max_bytes = max_mb * 1024 * 1024
+        
+        if hasattr(f, 'size') and f.size > max_bytes:
+            raise forms.ValidationError(f"Arquivo muito grande. Máximo: {max_mb}MB")
+        
+        return f

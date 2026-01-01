@@ -24,6 +24,7 @@ urlpatterns = [
     path('warfare/<int:pk>/', views_warfare.warfare_detalhes, name='warfare_detalhes'),
     path('warfare/<int:pk>/finalizar/', views_warfare.warfare_finalizar, name='warfare_finalizar'),
     path('warfare/<int:pk>/deletar/', views_warfare.warfare_deletar, name='warfare_deletar'),
+    path('warfare/<int:pk>/mapa/', views_warfare.warfare_adicionar_mapa, name='warfare_adicionar_mapa'),
     
     # AJAX endpoints
     path('ajax/calculate-unit-cost/', views.calculate_unit_cost, name='calculate_unit_cost'),

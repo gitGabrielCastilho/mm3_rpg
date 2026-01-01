@@ -74,6 +74,9 @@
     <div class="combate-col-right">
       <div class="mapa-header-row">
         <h3 class="combate-section-title" style="margin:0">Mapa de Warfare</h3>
+        {% if is_gm %}
+        <a href="{% url 'warfare_adicionar_mapa' combate.id %}" target="_blank" rel="noopener" class="btn btn-sm" style="background: #2e7d32;">+ Adicionar Mapa</a>
+        {% endif %}
       </div>
       <div class="combate-card mapa-expandido">
         {% if mapa_ativo %}
@@ -82,13 +85,19 @@
             <div class="mapa-canvas">
               <img src="{{ mapa_ativo.imagem.url }}" alt="{{ mapa_ativo.nome }}" class="mapa-img" draggable="false">
               
-              {% for posicao in posicoes %}
-              <div id="token-{{ posicao.id }}" 
-                   class="mapa-token token-fallback"
-                   style="left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:60px; height:60px; background: #1e88e5; border: 2px solid #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 10px; text-align: center; line-height: 1.2;"
+              <!-- Tokens das unidades -->
+              {% for unit_data in units_status %}
+              <div id="token-{{ unit_data.unit.id }}" 
+                   class="mapa-token token-unit"
+                   data-unit-id="{{ unit_data.unit.id }}"
+                   data-domain-id="{{ unit_data.domain.id }}"
+                   style="left:50px; top:50px; width:60px; height:60px; border: 2px solid #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 11px; text-align: center; line-height: 1.1; cursor: grab; background: {% cycle '#d32f2f' '#1976d2' '#388e3c' '#f57c00' '#7b1fa2' '#00838f' %};"
                    draggable="true"
-                   title="{{ posicao.unit.nome }} ({{ posicao.unit.domain.nome }})">
-                {{ posicao.unit.nome|slice:":10" }}
+                   title="{% if unit_data.status.incapacitado %}❌ {% endif %}{{ unit_data.unit.nome }} ({{ unit_data.domain.nome }}) - HP: {{ unit_data.status.hp_atual }}/{{ unit_data.status.hp_maximo }}{% if unit_data.status.diminished %} ⚠ Diminished{% endif %}">
+                <div style="white-space: pre-wrap;">
+                  {{ unit_data.unit.nome|slice:":8" }}<br>
+                  <small style="font-size: 9px;">HP: {{ unit_data.status.hp_atual }}/{{ unit_data.status.hp_maximo }}</small>
+                </div>
               </div>
               {% endfor %}
             </div>
@@ -321,14 +330,33 @@
 
 .mapa-token {
   position: absolute;
-  cursor: pointer;
+  cursor: grab;
   user-select: none;
-  transition: transform 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
+  padding: 4px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+  box-shadow: 0 0 8px rgba(0,0,0,0.5);
 }
 
 .mapa-token:hover {
-  transform: scale(1.1);
+  transform: scale(1.15);
   z-index: 10;
+  box-shadow: 0 0 12px rgba(255,255,255,0.5);
+}
+
+.mapa-token:active {
+  cursor: grabbing;
+}
+
+.token-unit {
+  animation: tokenPulse 0.3s ease-in-out;
+}
+
+@keyframes tokenPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
 }
 
 .mapa-zoom {

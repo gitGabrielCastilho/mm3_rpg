@@ -285,3 +285,79 @@ def warfare_deletar(request, pk):
     except Exception as e:
         messages.error(request, f"Erro ao deletar combate: {str(e)}")
         return redirect('warfare_listar')
+
+
+@login_required
+def warfare_adicionar_mapa(request, pk):
+    """Adiciona um mapa ao combate warfare."""
+    try:
+        from .forms import MapaWargameForm
+        
+        combate = get_object_or_404(CombateWarfare, pk=pk)
+        perfil = PerfilUsuario.objects.filter(user=request.user).first()
+        
+        if not perfil or perfil.sala_atual != combate.sala:
+            messages.error(request, "Você não tem acesso a este combate.")
+            return redirect('domain_list')
+        
+        # Apenas GM pode adicionar mapas
+        if combate.sala.game_master != request.user:
+            messages.error(request, "Apenas o GM pode adicionar mapas.")
+            return redirect('warfare_detalhes', pk=pk)
+        
+        form = MapaWargameForm()
+        mapas_globais = MapaWarfare.objects.filter(combate__isnull=True, criado_por=request.user).order_by('-criado_em')
+        
+        if request.method == 'POST':
+            # Se enviou um novo mapa
+            if request.POST.get('criar_novo'):
+                form = MapaWargameForm(request.POST, request.FILES)
+                if form.is_valid():
+                    mapa = form.save(commit=False)
+                    mapa.combate = combate
+                    mapa.criado_por = request.user
+                    mapa.save()
+                    
+                    # Criar posições para todas as unidades
+                    for status in combate.status_units_warfare.all():
+                        PosicaoUnitWarfare.objects.get_or_create(
+                            combate=combate,
+                            unit=status.unit,
+                            defaults={'mapa': mapa, 'x': 50, 'y': 50}
+                        )
+                    
+                    messages.success(request, f"Mapa '{mapa.nome}' adicionado com sucesso!")
+                    return redirect('warfare_detalhes', pk=pk)
+                else:
+                    messages.error(request, "Erro ao criar mapa.")
+            
+            # Se selecionou um mapa existente
+            elif request.POST.get('usar_existente'):
+                mapa_id = request.POST.get('mapa_existente')
+                if mapa_id:
+                    mapa = get_object_or_404(MapaWarfare, id=mapa_id, criado_por=request.user, combate__isnull=True)
+                    mapa.combate = combate
+                    mapa.save()
+                    
+                    # Criar posições para todas as unidades
+                    for status in combate.status_units_warfare.all():
+                        PosicaoUnitWarfare.objects.get_or_create(
+                            combate=combate,
+                            unit=status.unit,
+                            defaults={'mapa': mapa, 'x': 50, 'y': 50}
+                        )
+                    
+                    messages.success(request, f"Mapa '{mapa.nome}' adicionado com sucesso!")
+                    return redirect('warfare_detalhes', pk=pk)
+        
+        context = {
+            'combate': combate,
+            'form': form,
+            'mapas_globais': mapas_globais,
+        }
+        return render(request, 'domains_warfare/warfare_adicionar_mapa.html', context)
+        
+    except Exception as e:
+        messages.error(request, f"Erro ao adicionar mapa: {str(e)}")
+        return redirect('warfare_detalhes', pk=pk)
+
