@@ -74,74 +74,68 @@
     <div class="combate-col-right">
       <div class="mapa-header-row">
         <h3 class="combate-section-title" style="margin:0">Mapa de Warfare</h3>
-      </div>
-      {% if is_gm %}
-      <div class="combate-card mapa-inline-forms">
-        <div class="mapa-inline-col">
-          <h4 class="mapa-inline-title">Criar novo mapa</h4>
-          <form method="post" action="{% url 'warfare_adicionar_mapa' combate.id %}" enctype="multipart/form-data" class="mapa-inline-form">
-            {% csrf_token %}
-            {{ mapa_form.as_p }}
-            <button type="submit" name="criar_novo" class="btn btn-sm" style="background:#2e7d32;">Salvar novo mapa</button>
-          </form>
-        </div>
-        {% if mapas_existentes %}
-        <div class="mapa-inline-col">
-          <h4 class="mapa-inline-title">Usar mapa existente</h4>
-          <form method="post" action="{% url 'warfare_adicionar_mapa' combate.id %}" class="mapa-inline-form">
-            {% csrf_token %}
-            <label for="mapa_id" class="mapa-inline-label">Selecione:</label>
-            <select name="mapa_id" id="mapa_id" class="mapa-inline-select" required>
-              <option value="">-- Escolha um mapa --</option>
-              {% for mapa in mapas_existentes %}
+        {% if is_gm %}
+        <div class="mapa-header-actions">
+          <label for="mapa_existente_top" class="sr-only">Selecionar mapa</label>
+          <select id="mapa_existente_top" class="select-sm" title="Selecionar mapa">
+            <option value="">– mapa –</option>
+            {% for mapa in mapas_globais %}
               <option value="{{ mapa.id }}">{{ mapa.nome }}</option>
-              {% endfor %}
-            </select>
-            <button type="submit" name="usar_existente" class="btn btn-sm" style="background:#1976d2;">Usar selecionado</button>
-          </form>
+            {% endfor %}
+          </select>
+          <button type="button" id="btn-usar-mapa" class="btn btn-sm">Usar</button>
+          <a href="{% url 'warfare_adicionar_mapa' combate.id %}" target="_blank" rel="noopener" id="btn-add-mapa-link" class="btn btn-sm">Novo</a>
         </div>
         {% endif %}
       </div>
-      {% endif %}
-      <div class="combate-card mapa-expandido">
-        {% if mapa_ativo %}
-        <div class="mapa-wrapper">
-          <div id="mapa-area-{{ mapa_ativo.id }}" class="mapa-area" data-scale="1">
-            <div class="mapa-canvas">
-              <img src="{{ mapa_ativo.imagem.url }}" alt="{{ mapa_ativo.nome }}" class="mapa-img" draggable="false">
-              
-              <!-- Tokens das unidades -->
-              {% for unit_data in units_status %}
-              <div id="token-{{ unit_data.unit.id }}" 
-                   class="mapa-token token-unit"
-                   data-unit-id="{{ unit_data.unit.id }}"
-                   data-domain-id="{{ unit_data.domain.id }}"
-                   style="left:50px; top:50px; width:60px; height:60px; border: 2px solid #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 11px; text-align: center; line-height: 1.1; cursor: grab; background: {% cycle '#d32f2f' '#1976d2' '#388e3c' '#f57c00' '#7b1fa2' '#00838f' %};"
-                   draggable="true"
-                   title="{% if unit_data.status.incapacitado %}❌ {% endif %}{{ unit_data.unit.nome }} ({{ unit_data.domain.nome }}) - HP: {{ unit_data.status.hp_atual }}/{{ unit_data.status.hp_maximo }}{% if unit_data.status.diminished %} ⚠ Diminished{% endif %}">
-                <div style="white-space: pre-wrap;">
-                  {{ unit_data.unit.nome|slice:":8" }}<br>
-                  <small style="font-size: 9px;">HP: {{ unit_data.status.hp_atual }}/{{ unit_data.status.hp_maximo }}</small>
-                </div>
+
+      {% if mapas %}
+        {% for mapa in mapas %}
+        <div class="combate-card mapa-expandido">
+          <div class="mapa-wrapper">
+            <div id="mapa-area-{{ mapa.id }}" class="mapa-area" data-scale="1">
+              <div class="mapa-canvas">
+                <img src="{{ mapa.imagem.url }}" alt="{{ mapa.nome }}" class="mapa-img" draggable="false">
+                {% for posicao in posicoes %}
+                  {% if posicao.mapa.id == mapa.id %}
+                  <div id="token-{{ posicao.id }}" class="mapa-token token-unit"
+                       style="left:{{ posicao.x|default:50 }}px; top:{{ posicao.y|default:50 }}px; width:{{ posicao.token_size|default:60 }}px; height:{{ posicao.token_size|default:60 }}px; border:2px solid #fff; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:11px; text-align:center; line-height:1.1; cursor:grab; background:#1976d2;"
+                       draggable="true"
+                       title="{{ posicao.display_label|default:posicao.unit.nome }}">
+                    <div style="white-space: pre-wrap;">
+                      {{ posicao.display_label|default:posicao.unit.nome|slice:":10" }}
+                    </div>
+                  </div>
+                  {% endif %}
+                {% endfor %}
               </div>
-              {% endfor %}
             </div>
           </div>
-          <div class="mapa-zoom" style="margin-top: 10px;">
-            <button type="button" class="btn btn-sm" onclick="zoomMap(-0.1)">−</button>
-            <button type="button" class="btn btn-sm" onclick="resetZoom()">Reset</button>
-            <button type="button" class="btn btn-sm" onclick="zoomMap(0.1)">+</button>
-          </div>
         </div>
-        {% else %}
-        <div style="text-align: center; color: #888;">
-          <p>Nenhum mapa ativo.</p>
-          {% if is_gm %}
-          <p><em>GM pode adicionar mapas futuramente.</em></p>
-          {% endif %}
-        </div>
-        {% endif %}
+        {% endfor %}
+      {% else %}
+      <div class="combate-card mapa-expandido" style="text-align: center; color: #888;">
+        <p>Nenhum mapa disponível.</p>
+        {% if is_gm %}<p><em>Use a área abaixo para enviar um mapa.</em></p>{% endif %}
       </div>
+      {% endif %}
+
+      {% if is_gm %}
+        {% if mapas|length == 0 %}
+        <form method="post" enctype="multipart/form-data" action="{% url 'warfare_adicionar_mapa' combate.id %}" class="combate-card mapa-upload-form" id="form-mapa">
+          {% csrf_token %}
+          <input type="hidden" name="mapa_existente" id="mapa_existente_hidden" value="">
+          <strong>Envie um Mapa:</strong>
+          {{ mapa_form.as_p }}
+        </form>
+        {% else %}
+        <!-- Form oculto apenas para permitir a ação "Usar Selecionado" do topo -->
+        <form method="post" action="{% url 'warfare_adicionar_mapa' combate.id %}" id="form-mapa" style="display:none">
+          {% csrf_token %}
+          <input type="hidden" name="mapa_existente" id="mapa_existente_hidden" value="">
+        </form>
+        {% endif %}
+      {% endif %}
     </div>
 
   </div>
@@ -198,6 +192,22 @@
 </div>
 
 <style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function(){
+    const select = document.getElementById('mapa_existente_top');
+    const btn = document.getElementById('btn-usar-mapa');
+    const hidden = document.getElementById('mapa_existente_hidden');
+    const form = document.getElementById('form-mapa');
+    if (btn && select && hidden && form) {
+      btn.addEventListener('click', function(){
+        if (!select.value) { return; }
+        hidden.value = select.value;
+        form.submit();
+      });
+    }
+  });
+</script>
 .combate-detalhes-center {
   max-width: 1800px;
   margin: 0 auto;
@@ -390,46 +400,6 @@
   gap: 8px;
 }
 
-.mapa-inline-forms {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  margin-bottom: 12px;
-}
-
-.mapa-inline-col {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.mapa-inline-title {
-  color: #d4af37;
-  margin: 0;
-  font-size: 0.95rem;
-}
-
-.mapa-inline-form p {
-  margin: 0 0 8px;
-}
-
-.mapa-inline-select,
-.mapa-inline-form input[type="text"],
-.mapa-inline-form input[type="file"] {
-  width: 100%;
-  padding: 8px;
-  background: #1a1a1a;
-  border: 1px solid #3a3a3a;
-  border-radius: 4px;
-  color: #fff;
-}
-
-.mapa-inline-label {
-  display: block;
-  margin-bottom: 4px;
-  color: #aaa;
-  font-weight: 600;
-}
 
 .participantes-section {
   margin-top: 20px;
