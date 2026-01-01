@@ -640,3 +640,82 @@ def warfare_resolver_ataque(request, pk):
     )
     return redirect('warfare_detalhes', pk=pk)
 
+
+@login_required
+def warfare_ajustar_hp_unit(request, pk, unit_id):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'method_not_allowed'}, status=405)
+
+    combate = get_object_or_404(CombateWarfare, pk=pk)
+    perfil = PerfilUsuario.objects.filter(user=request.user).first()
+
+    if not perfil or perfil.sala_atual != combate.sala:
+        return JsonResponse({'error': 'forbidden'}, status=403)
+
+    # Permissão: GM ou controlador do domain
+    unit = get_object_or_404(Unit, pk=unit_id, domain__participacoes_warfare__combate=combate)
+    is_gm = combate.sala.game_master_id == request.user.id
+    controla = (
+        is_gm
+        or unit.domain.criador_id == request.user.id
+        or unit.domain.jogadores_acesso.filter(id=request.user.id).exists()
+    )
+    if not controla:
+        return JsonResponse({'error': 'forbidden'}, status=403)
+
+    status, _ = StatusUnitWarfare.objects.get_or_create(
+        combate=combate,
+        unit=unit,
+        defaults={
+            'hp_maximo': _get_hp_from_size(unit.size),
+            'hp_atual': _get_hp_from_size(unit.size),
+        }
+    )
+
+    try:
+        data = json.loads(request.body or '{}') if request.body else {}
+    except Exception:
+        data = {}
+
+    action = data.get('action') or ''
+    delta = int(data.get('delta', 1) or 1)
+
+    if action == 'reset':
+        status.hp_atual = status.hp_maximo
+        status.diminished = False
+        status.incapacitado = False
+        status.save(update_fields=['hp_atual', 'diminished', 'incapacitado', 'atualizado_em'])
+    elif action == 'dano':
+        delta = abs(delta)
+        status.aplicar_dano(delta)
+    elif action == 'curar':
+        delta = abs(delta)
+        status.curar(delta)
+    else:
+        return JsonResponse({'error': 'invalid_action'}, status=400)
+
+    status_data = {
+        'unit_id': unit.id,
+        'hp_atual': status.hp_atual,
+        'hp_max': status.hp_maximo,
+        'diminished': status.diminished,
+        'incapacitado': status.incapacitado,
+    }
+
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'warfare_{combate.id}',
+            {
+                'type': 'combate_message',
+                'message': json.dumps({
+                    'evento': 'status_update',
+                    'status': status_data,
+                })
+            }
+        )
+    except Exception:
+        pass
+
+    return JsonResponse({'status': 'ok', 'unit_status': status_data})
+

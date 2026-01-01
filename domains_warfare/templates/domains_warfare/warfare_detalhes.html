@@ -217,6 +217,12 @@
               </div>
             </div>
 
+            <div class="unit-actions">
+              <button type="button" class="btn btn-sm btn-danger unit-action-btn" data-unit-id="{{ unit_data.unit.id }}" data-action="dano" data-delta="1">+1 Dano</button>
+              <button type="button" class="btn btn-sm btn-success unit-action-btn" data-unit-id="{{ unit_data.unit.id }}" data-action="curar" data-delta="1">-1 Dano</button>
+              <button type="button" class="btn btn-sm btn-secondary unit-action-btn" data-unit-id="{{ unit_data.unit.id }}" data-action="reset">Descanso</button>
+            </div>
+
             <div class="unit-attrs">
               <span>ATQ: {{ unit_data.atributos.ataque }}</span>
               <span>POD: {{ unit_data.atributos.poder }}</span>
@@ -416,6 +422,10 @@
             if (payload.alvo_status) {
               updateUnitHp(payload.alvo_status);
             }
+          } else if (payload.evento === 'status_update') {
+            if (payload.status) {
+              updateUnitHp(payload.status);
+            }
           }
         };
         warfareSocket.onclose = function(){
@@ -430,6 +440,7 @@
     }
 
     const updateUrlTemplate = "{% url 'warfare_atualizar_posicao_token' combate.id 0 %}";
+    const statusUrlTemplate = "{% url 'warfare_ajustar_hp_unit' combate.id 0 %}";
 
     function sendTokenUpdate(tokenId, x, y, size){
       const url = updateUrlTemplate.replace(/0\/?$/, `${tokenId}/`);
@@ -442,6 +453,27 @@
         body: JSON.stringify({x, y, size}),
         credentials: 'same-origin',
       }).catch(() => {});
+    }
+
+    function sendStatusAction(unitId, action, delta){
+      if (!unitId || !action) return;
+      const url = statusUrlTemplate.replace(/0\/?$/, `${unitId}/`);
+      const payload = {action};
+      if (typeof delta !== 'undefined') payload.delta = delta;
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken(),
+        },
+        body: JSON.stringify(payload),
+        credentials: 'same-origin',
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.unit_status) updateUnitHp(data.unit_status);
+      })
+      .catch(() => {});
     }
 
     function applyTokenPosition(tokenId, x, y){
@@ -575,8 +607,21 @@
       });
     }
 
+    function wireUnitActionButtons(){
+      document.querySelectorAll('.unit-action-btn').forEach(function(btn){
+        btn.addEventListener('click', function(e){
+          e.preventDefault();
+          const unitId = btn.dataset.unitId;
+          const action = btn.dataset.action;
+          const delta = btn.dataset.delta ? parseInt(btn.dataset.delta, 10) : undefined;
+          sendStatusAction(unitId, action, delta);
+        });
+      });
+    }
+
     setupMapAreas();
     wireTokenSelection();
+    wireUnitActionButtons();
     connectWs();
   });
 </script>
@@ -934,6 +979,13 @@
   flex-wrap: wrap;
   font-size: 11px;
   color: #aaa;
+}
+
+.unit-actions {
+  margin-top: 8px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 @media (max-width: 1200px) {
