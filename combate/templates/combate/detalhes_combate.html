@@ -17,12 +17,6 @@
   // Token assinado para autenticar WebSocket mesmo com bloqueio de cookies
   window._wsToken = "{{ ws_token }}";
   window._wsUserId = "{{ request.user.id }}";
-  console.log('ws_token definido:', !!window._wsToken);
-  console.log('ws_token type:', typeof window._wsToken);
-  console.log('ws_token length:', window._wsToken ? window._wsToken.length : 0);
-  if (window._wsToken) {
-    console.log('ws_token primeiros 30 chars:', window._wsToken.substring(0, 30));
-  }
 </script>
 <div id="combate-content" class="combate-detalhes-center" data-is-gm="{% if combate.sala.game_master == user %}true{% else %}false{% endif %}">
   <!-- Topo: info de turno + ações globais -->
@@ -164,9 +158,9 @@
           <div class="mapa-wrapper">
             <div id="mapa-area-{{ mapa.id }}" class="mapa-area" data-scale="1">
               <div class="mapa-canvas">
-  <img src="{{ mapa.imagem.url }}" alt="{{ mapa.nome }}" class="mapa-img" title="{{ mapa.imagem.url }}" data-fallback="{% static 'img/mapa_placeholder.svg' %}" onerror="this.onerror=null;this.src=this.dataset.fallback;" draggable="false">
+  <img src="{{ mapa.imagem.url }}" alt="{{ mapa.nome }}" class="mapa-img" title="{{ mapa.imagem.url }}" data-fallback="{% static 'img/mapa_placeholder.svg' %}" onerror="this.onerror=null;this.src=this.dataset.fallback;" draggable="false" loading="lazy" decoding="async">
   {% if combate.sala.game_master == user %}
-    <div class="mapa-debug-url" style="font-size:12px;color:#888;margin-top:4px;word-break:break-all;">URL: {{ mapa.imagem.url }}</div>
+    <div class="mapa-debug-url">URL: {{ mapa.imagem.url }}</div>
   {% endif %}
             {% for posicao in posicoes %}
               {% if posicao.mapa.id == mapa.id %}
@@ -178,7 +172,8 @@
               class="mapa-token"
               style="left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:{{ posicao.token_size|default:40 }}px; height:{{ posicao.token_size|default:40 }}px;"
               draggable="true"
-              ondragstart="drag(event, {{ posicao.id }})">
+              ondragstart="drag(event, {{ posicao.id }})"
+              loading="lazy" decoding="async">
                 {% else %}
          <div id="token-{{ posicao.id }}" class="mapa-token token-fallback"
            style="left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:{{ posicao.token_size|default:40 }}px; height:{{ posicao.token_size|default:40 }}px;"
@@ -755,6 +750,8 @@
     .mapa-draw-layer{ cursor: crosshair; }
     .mapa-canvas, .mapa-img, canvas.mapa-draw-layer, canvas.mapa-draw-preview { user-select:none; }
     .mapa-canvas { position: relative; }
+    .mapa-img { display:block; max-width:100%; height:auto; object-fit:contain; }
+    .mapa-debug-url { font-size:12px; color:#888; margin-top:4px; word-break:break-all; }
     
     /* Estilos para logs de ataque formatados */
     .ataque-log {
