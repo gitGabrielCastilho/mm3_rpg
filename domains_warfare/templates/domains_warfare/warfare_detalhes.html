@@ -26,8 +26,8 @@
     </div>
   </div>
 
-  <!-- Grid: Histórico (esquerda) + Mapa (centro) + Participantes (direita) -->
-  <div class="combate-layout-grid" style="grid-template-columns: 1fr 2fr 1fr;">
+  <!-- Grid: Histórico (esquerda) + Mapa (centro) -->
+  <div class="combate-layout-grid" style="grid-template-columns: 1fr 2fr;">
     
     <!-- Coluna esquerda: Histórico de Ações -->
     <div class="combate-col-left">
@@ -70,17 +70,17 @@
       </div>
     </div>
 
-    <!-- Coluna central: Mapa -->
+    <!-- Coluna central: Mapa expandido -->
     <div class="combate-col-right">
       <div class="mapa-header-row">
         <h3 class="combate-section-title" style="margin:0">Mapa de Warfare</h3>
       </div>
-      <div class="combate-card" style="min-height: 400px; display: flex; align-items: center; justify-content: center; background: #1a1a1a;">
+      <div class="combate-card mapa-expandido">
         {% if mapa_ativo %}
         <div class="mapa-wrapper">
           <div id="mapa-area-{{ mapa_ativo.id }}" class="mapa-area" data-scale="1">
             <div class="mapa-canvas">
-              <img src="{{ mapa_ativo.imagem.url }}" alt="{{ mapa_ativo.nome }}" class="mapa-img" draggable="false" style="max-width: 100%; height: auto;">
+              <img src="{{ mapa_ativo.imagem.url }}" alt="{{ mapa_ativo.nome }}" class="mapa-img" draggable="false">
               
               {% for posicao in posicoes %}
               <div id="token-{{ posicao.id }}" 
@@ -110,64 +110,56 @@
       </div>
     </div>
 
-    <!-- Coluna direita: Participantes (Domains e Units) -->
-    <div class="combate-col-left">
-      <div class="mapa-header-row">
-        <h3 class="combate-section-title" style="margin:0">Participantes</h3>
-      </div>
-      <div class="combate-card" style="max-height: 600px; overflow-y: auto;">
-        {% for participante in participantes %}
-        <div class="participante-domain-card" style="margin-bottom: 15px; padding: 10px; background: #2a2a2a; border-radius: 8px; border-left: 3px solid #d4af37;">
-          <div style="font-weight: bold; color: #d4af37; margin-bottom: 8px;">
-            {{ participante.domain.nome }} (Nível {{ participante.domain.level }})
-          </div>
-          
-          {% for unit_data in units_status %}
-            {% if unit_data.domain.id == participante.domain.id %}
-            <div class="unit-status-card" style="margin-bottom: 8px; padding: 8px; background: #1a1a1a; border-radius: 4px; {% if unit_data.status.incapacitado %}opacity: 0.5;{% endif %}">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                <strong style="{% if unit_data.status.incapacitado %}text-decoration: line-through; color: #666;{% endif %}">
-                  {{ unit_data.unit.nome }}
-                </strong>
-                <span style="font-size: 12px; color: #888;">
-                  Size: {{ unit_data.unit.size.nome }}
+  </div>
+
+  <!-- Participantes abaixo do mapa, em grade paralela -->
+  <div class="participantes-section">
+    <div class="mapa-header-row">
+      <h3 class="combate-section-title" style="margin:0">Participantes</h3>
+    </div>
+    <div class="participantes-grid">
+      {% for participante in participantes %}
+      <div class="participante-domain-card">
+        <div class="participante-header">
+          <div class="participante-nome">{{ participante.domain.nome }} (Nível {{ participante.domain.level }})</div>
+        </div>
+        
+        {% for unit_data in units_status %}
+          {% if unit_data.domain.id == participante.domain.id %}
+          <div class="unit-status-card" {% if unit_data.status.incapacitado %}style="opacity:0.5;"{% endif %}>
+            <div class="unit-status-top">
+              <strong class="unit-nome" {% if unit_data.status.incapacitado %}style="text-decoration: line-through; color: #666;"{% endif %}>{{ unit_data.unit.nome }}</strong>
+              <span class="unit-size">Size: {{ unit_data.unit.size.nome }}</span>
+            </div>
+
+            <div class="unit-hp-row">
+              <div class="unit-hp-labels">
+                <span>HP: {{ unit_data.status.hp_atual }}/{{ unit_data.status.hp_maximo }}</span>
+                <span class="unit-flags">
+                  {% if unit_data.status.diminished %}<span class="badge-warning">⚠ Diminished</span>{% endif %}
+                  {% if unit_data.status.incapacitado %}<span class="badge-danger">✗ Incapacitado</span>{% endif %}
                 </span>
               </div>
-              
-              <!-- HP Bar -->
-              <div style="margin-bottom: 4px;">
-                <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 2px;">
-                  <span>HP: {{ unit_data.status.hp_atual }}/{{ unit_data.status.hp_maximo }}</span>
-                  {% if unit_data.status.diminished %}
-                  <span style="color: #f9a825;">⚠ Diminished</span>
-                  {% endif %}
-                  {% if unit_data.status.incapacitado %}
-                  <span style="color: #d33;">✗ Incapacitado</span>
-                  {% endif %}
-                </div>
-                <div style="background: #333; height: 12px; border-radius: 6px; overflow: hidden;">
-                  <div style="background: {% if unit_data.status.hp_atual == 0 %}#666{% elif unit_data.status.diminished %}#f9a825{% else %}#2e7d32{% endif %}; height: 100%; width: {% widthratio unit_data.status.hp_atual unit_data.status.hp_maximo 100 %}%; transition: width 0.3s;"></div>
-                </div>
-              </div>
-              
-              <!-- Atributos -->
-              <div style="display: flex; gap: 8px; font-size: 11px; color: #aaa;">
-                <span>ATQ: {{ unit_data.atributos.ataque }}</span>
-                <span>POD: {{ unit_data.atributos.poder }}</span>
-                <span>DEF: {{ unit_data.atributos.defesa }}</span>
-                <span>RES: {{ unit_data.atributos.resistencia }}</span>
-                <span>MOR: {{ unit_data.atributos.moral }}</span>
+              <div class="unit-hp-bar">
+                <div class="unit-hp-fill {% if unit_data.status.hp_atual == 0 %}hp-zero{% elif unit_data.status.diminished %}hp-dim{% else %}hp-ok{% endif %}" style="width: {% widthratio unit_data.status.hp_atual unit_data.status.hp_maximo 100 %}%;"></div>
               </div>
             </div>
-            {% endif %}
-          {% endfor %}
-        </div>
-        {% empty %}
-        <p style="color: #888; text-align: center; padding: 20px;"><em>Nenhum participante.</em></p>
+
+            <div class="unit-attrs">
+              <span>ATQ: {{ unit_data.atributos.ataque }}</span>
+              <span>POD: {{ unit_data.atributos.poder }}</span>
+              <span>DEF: {{ unit_data.atributos.defesa }}</span>
+              <span>RES: {{ unit_data.atributos.resistencia }}</span>
+              <span>MOR: {{ unit_data.atributos.moral }}</span>
+            </div>
+          </div>
+          {% endif %}
         {% endfor %}
       </div>
+      {% empty %}
+      <p style="color: #888; text-align: center; padding: 20px;"><em>Nenhum participante.</em></p>
+      {% endfor %}
     </div>
-
   </div>
 </div>
 
@@ -205,6 +197,14 @@
   display: grid;
   gap: 20px;
   align-items: start;
+}
+
+.mapa-expandido {
+  min-height: 520px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1a1a1a;
 }
 
 .combate-card {
@@ -335,6 +335,110 @@
   display: flex;
   justify-content: center;
   gap: 8px;
+}
+
+.participantes-section {
+  margin-top: 20px;
+}
+
+.participantes-grid {
+  display: grid;
+  gap: 15px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.participante-domain-card {
+  padding: 12px;
+  background: #2a2a2a;
+  border-radius: 10px;
+  border: 1px solid #3a3a3a;
+}
+
+.participante-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.participante-nome {
+  font-weight: bold;
+  color: #d4af37;
+}
+
+.unit-status-card {
+  margin-bottom: 10px;
+  padding: 10px;
+  background: #1a1a1a;
+  border-radius: 6px;
+  border: 1px solid #333;
+}
+
+.unit-status-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.unit-nome {
+  color: #fff;
+}
+
+.unit-size {
+  font-size: 12px;
+  color: #888;
+}
+
+.unit-hp-row {
+  margin-bottom: 6px;
+}
+
+.unit-hp-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #ccc;
+}
+
+.unit-flags {
+  display: flex;
+  gap: 6px;
+}
+
+.badge-warning {
+  color: #f9a825;
+  font-size: 11px;
+}
+
+.badge-danger {
+  color: #d33;
+  font-size: 11px;
+}
+
+.unit-hp-bar {
+  background: #333;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.unit-hp-fill {
+  height: 100%;
+  transition: width 0.3s;
+}
+
+.hp-zero { background: #666; }
+.hp-dim { background: #f9a825; }
+.hp-ok { background: #2e7d32; }
+
+.unit-attrs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: #aaa;
 }
 
 @media (max-width: 1200px) {
