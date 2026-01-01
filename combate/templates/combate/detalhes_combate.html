@@ -1991,15 +1991,14 @@
           const minScale = Math.max(fitW, fitH);
           const maxScale = 3;
           newScale = Math.max(minScale, Math.min(maxScale, newScale));
-          // Force canvas to fill area at minimum
-          canvas.style.minWidth = '100%';
-          canvas.style.minHeight = '100%';
           // Apply transform and enlarge scrollable box so scrollbars match zoom
           mapaArea.dataset.scale = String(newScale);
           canvas.style.transformOrigin = 'top left';
           canvas.style.transform = `scale(${newScale})`;
           canvas.style.width = baseW + 'px';
           canvas.style.height = baseH + 'px';
+          canvas.style.minWidth = (baseW * newScale) + 'px';
+          canvas.style.minHeight = (baseH * newScale) + 'px';
           // Clamp scroll to prevent black bars
           requestAnimationFrame(function(){
             const maxScrollX = Math.max(0, mapaArea.scrollWidth - mapaArea.clientWidth);
