@@ -83,7 +83,7 @@
             {% endfor %}
           </select>
           <button type="button" id="btn-usar-mapa" class="btn btn-sm">Usar</button>
-          <a href="{% url 'warfare_adicionar_mapa' combate.id %}" target="_blank" rel="noopener" id="btn-add-mapa-link" class="btn btn-sm">Novo</a>
+          <a href="{% url 'adicionar_mapa_global' %}" target="_blank" rel="noopener" id="btn-add-mapa-link" class="btn btn-sm">Novo</a>
         </div>
         {% endif %}
       </div>
@@ -126,25 +126,14 @@
       {% else %}
       <div class="combate-card mapa-expandido" style="text-align: center; color: #888;">
         <p>Nenhum mapa disponível.</p>
-        {% if is_gm %}<p><em>Use o botão "Novo" para adicionar um mapa ou envie um novo abaixo.</em></p>{% endif %}
+        {% if is_gm %}<p><em>Use o botão "Novo" para criar um mapa em Meus Mapas e depois clique em Usar.</em></p>{% endif %}
       </div>
       {% endif %}
-
       {% if is_gm %}
-        {% if mapas|length == 0 %}
-        <form method="post" enctype="multipart/form-data" action="{% url 'warfare_adicionar_mapa' combate.id %}" class="combate-card mapa-upload-form" id="form-mapa">
-          {% csrf_token %}
-          <input type="hidden" name="mapa_existente" id="mapa_existente_hidden" value="">
-          <strong>Envie um Mapa:</strong>
-          {{ mapa_form.as_p }}
-        </form>
-        {% else %}
-        <!-- Form oculto apenas para permitir a ação "Usar Selecionado" do topo -->
-        <form method="post" action="{% url 'warfare_adicionar_mapa' combate.id %}" id="form-mapa" style="display:none">
-          {% csrf_token %}
-          <input type="hidden" name="mapa_existente" id="mapa_existente_hidden" value="">
-        </form>
-        {% endif %}
+      <form method="post" action="{% url 'warfare_adicionar_mapa' combate.id %}" id="form-mapa" style="display:none">
+        {% csrf_token %}
+        <input type="hidden" name="mapa_existente" id="mapa_existente_hidden" value="">
+      </form>
       {% endif %}
     </div>
 
