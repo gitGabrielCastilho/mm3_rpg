@@ -29,6 +29,7 @@ urlpatterns = [
     path('warfare/<int:pk>/posicao/<int:posicao_id>/', views_warfare.warfare_atualizar_posicao_token, name='warfare_atualizar_posicao_token'),
     path('warfare/<int:pk>/ataque/', views_warfare.warfare_resolver_ataque, name='warfare_resolver_ataque'),
     path('warfare/<int:pk>/unit/<int:unit_id>/hp/', views_warfare.warfare_ajustar_hp_unit, name='warfare_ajustar_hp_unit'),
+    path('warfare/<int:pk>/limpar/', views_warfare.warfare_limpar_historico, name='warfare_limpar_historico'),
     
     # AJAX endpoints
     path('ajax/calculate-unit-cost/', views.calculate_unit_cost, name='calculate_unit_cost'),

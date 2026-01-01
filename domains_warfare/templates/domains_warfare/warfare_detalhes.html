@@ -32,6 +32,12 @@
     <div class="combate-col-left">
       <div class="mapa-header-row">
         <h3 class="combate-section-title" style="margin:0">Histórico de Ataques</h3>
+        {% if is_gm %}
+        <form method="post" action="{% url 'warfare_limpar_historico' combate.id %}" onsubmit="return confirm('Limpar todo o histórico?');">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-secondary">Limpar histórico</button>
+        </form>
+        {% endif %}
       </div>
       {% if combate.ativo %}
       <form method="post" action="{% url 'warfare_resolver_ataque' combate.id %}" class="ataque-form combate-card">
@@ -147,11 +153,6 @@
               </div>
               <div class="grid-layer" aria-hidden="true"></div>
             </div>
-          </div>
-          <div class="mapa-zoom">
-            <button type="button" class="btn btn-sm" data-zoom="out">−</button>
-            <button type="button" class="btn btn-sm" data-zoom="reset">Reset</button>
-            <button type="button" class="btn btn-sm" data-zoom="in">+</button>
           </div>
           <div class="mapa-grid-controls">
             <label><input type="checkbox" id="grid-enable" checked> Grid</label>
@@ -426,6 +427,9 @@
             if (payload.status) {
               updateUnitHp(payload.status);
             }
+          } else if (payload.evento === 'limpar_historico') {
+            const list = document.querySelector('.turnos-list');
+            if (list) list.innerHTML = '';
           }
         };
         warfareSocket.onclose = function(){

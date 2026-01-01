@@ -719,3 +719,37 @@ def warfare_ajustar_hp_unit(request, pk, unit_id):
 
     return JsonResponse({'status': 'ok', 'unit_status': status_data})
 
+
+@login_required
+def warfare_limpar_historico(request, pk):
+    if request.method != 'POST':
+        return redirect('warfare_detalhes', pk=pk)
+
+    combate = get_object_or_404(CombateWarfare, pk=pk)
+    perfil = PerfilUsuario.objects.filter(user=request.user).first()
+
+    if not perfil or perfil.sala_atual != combate.sala:
+        messages.error(request, "Você não tem acesso a este combate.")
+        return redirect('domain_list')
+
+    if combate.sala.game_master_id != request.user.id:
+        messages.error(request, "Apenas o GM pode limpar o histórico.")
+        return redirect('warfare_detalhes', pk=pk)
+
+    TurnoWarfare.objects.filter(combate=combate).delete()
+
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'warfare_{combate.id}',
+            {
+                'type': 'combate_message',
+                'message': json.dumps({'evento': 'limpar_historico'})
+            }
+        )
+    except Exception:
+        pass
+
+    messages.success(request, "Histórico limpo.")
+    return redirect('warfare_detalhes', pk=pk)
+
