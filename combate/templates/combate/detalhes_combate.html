@@ -964,11 +964,6 @@
     const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const wsToken = window._wsToken ? `?ws_token=${encodeURIComponent(window._wsToken)}` : '';
     const wsPath = `${wsScheme}://${window.location.host}/ws/combate/${combateId}/${wsToken}`;
-    console.log('Tentando conectar WebSocket:', wsPath);
-    console.log('Token presente:', !!window._wsToken);
-    if (window._wsToken) {
-      console.log('Token primeiros 50 chars:', window._wsToken.substring(0, 50));
-    }
     let combateSocket = new WebSocket(wsPath);
   let lastEventAt = Date.now();
 
@@ -1159,7 +1154,7 @@
               },
               credentials: 'same-origin',
               body: formData,
-            }).catch(err => console.warn('Falha ao salvar desenho:', err));
+            }).catch(err => {});
           }, 'image/png');
         } catch(_) {}
       }
@@ -1453,7 +1448,7 @@
               'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
             },
             credentials: 'same-origin',
-          }).catch(err => console.warn('Falha ao limpar desenhos:', err));
+          }).catch(err => {});
         }
       }
 
@@ -1893,7 +1888,6 @@
           } catch(_) {}
         }
       } catch (err) {
-        console.warn('Refresh parcial falhou, mantendo página:', err);
       }
     }
     function rebindDragDrop(){
@@ -2395,7 +2389,6 @@
               case 'adicionar_participante':
                 // Atualização incremental sem recriar form completo
                 if (data.participante) {
-                  try { console.debug('[AJAX][adicionar_participante] id=', data.participante.id); } catch(_) {}
                   ensureAlvoHasParticipant(data.participante);
                   maybeAddToAcoesDe(data.participante);
                 }
@@ -2411,7 +2404,6 @@
                         const alvoSel = document.getElementById('alvo');
                         const exists = alvoSel && Array.from(alvoSel.options).some(o => String(o.value) === String(newId));
                         if (!exists) {
-                          console.debug('[AJAX][adicionar_participante] re-inserindo opção ausente', newId);
                           ensureAlvoHasParticipant(data.participante);
                         }
                       } catch(_) {}
@@ -2421,7 +2413,6 @@
                 break;
               case 'remover_participante':
                 if (data.participante_id) {
-                  try { console.debug('[AJAX][remover_participante] participante_id=', data.participante_id); } catch(_) {}
                   removeFromAlvo(data.participante_id);
                   removeFromAcoesDe(data.participante_id);
                   purgeTargetFromStorage(data.participante_id);
@@ -2444,7 +2435,6 @@
                         const alvoSel = document.getElementById('alvo');
                         const still = alvoSel && Array.from(alvoSel.options).some(o => String(o.value) === String(remId));
                         if (still) {
-                          console.debug('[AJAX][remover_participante] re-removendo opção persistente', remId);
                           removeFromAlvo(remId);
                         }
                       } catch(_) {}
@@ -2519,13 +2509,9 @@
           const mapa_id = payload.mapa_id;
           const tokenId = 'token-' + id;
           const token = document.getElementById(tokenId);
-          console.log('[WS] token_move:', { id, mapa_id, x, y, tokenId, tokenFound: !!token });
           if (token && Number.isFinite(x) && Number.isFinite(y)) {
             token.style.left = x + 'px';
             token.style.top = y + 'px';
-            console.log('[WS] token_move: movido para', x, y);
-          } else {
-            console.warn('[WS] token_move: token não encontrado ou coordenadas inválidas', { id, x, y, token: !!token });
           }
           break;
         }
@@ -2533,11 +2519,9 @@
           const id = payload.posicao_id;
           const size = payload.size;
           const token = document.getElementById('token-' + id);
-          console.log('[WS] token_resize:', { id, size, tokenFound: !!token });
           if (token && Number.isFinite(size)) {
             token.style.width = size + 'px';
             token.style.height = size + 'px';
-            console.log('[WS] token_resize: redimensionado para', size);
           }
           try { persistTokenSize(token); } catch(_) {}
           break;
@@ -2600,69 +2584,55 @@
         }
         case 'draw_snapshot': {
           // Recebe snapshot PNG completo via WebSocket e atualiza canvas
-          console.log('[WS] draw_snapshot recebido:', payload);
           const mapaId = payload.mapa_id;
           const snapshotData = payload.snapshot;
           if (!mapaId || !snapshotData) {
-            console.warn('[WS] draw_snapshot sem mapa_id ou snapshot:', payload);
             break;
           }
           const area = document.getElementById('mapa-area-' + mapaId);
           if (!area) {
-            console.warn('[WS] draw_snapshot: área não encontrada para mapa', mapaId);
             break;
           }
           const canvas = area.querySelector('.mapa-draw-layer');
           if (!canvas) {
-            console.warn('[WS] draw_snapshot: canvas não encontrado para mapa', mapaId);
             if (window.ensureDrawLayersAll) window.ensureDrawLayersAll();
             const canvas2 = area.querySelector('.mapa-draw-layer');
             if (!canvas2) {
-              console.error('[WS] draw_snapshot: canvas ainda não existe após ensureDrawLayersAll');
               break;
             }
             const ctx2 = canvas2.getContext('2d');
             const img2 = new Image();
             img2.onload = () => {
-              console.log('[WS] draw_snapshot: imagem carregada (fallback)', canvas2.width, 'x', canvas2.height);
               ctx2.clearRect(0, 0, canvas2.width, canvas2.height);
               ctx2.drawImage(img2, 0, 0, canvas2.width, canvas2.height);
             };
-            img2.onerror = (e) => console.error('[WS] draw_snapshot: erro ao carregar imagem', e);
             img2.src = snapshotData;
             break;
           }
           const ctx = canvas.getContext('2d');
           const img = new Image();
           img.onload = () => {
-            console.log('[WS] draw_snapshot: imagem carregada', canvas.width, 'x', canvas.height);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
           };
-          img.onerror = (e) => console.error('[WS] draw_snapshot: erro ao carregar imagem', e);
           img.src = snapshotData;
           break;
         }
         case 'clear_drawings': {
           const mapaId = payload.mapa_id;
-          console.log('[WS] clear_drawings recebido:', { mapaId });
           if (!mapaId) {
-            console.warn('[WS] clear_drawings: mapa_id ausente');
             break;
           }
           const area = document.getElementById('mapa-area-' + mapaId);
           if (!area) {
-            console.warn('[WS] clear_drawings: área não encontrada para mapa', mapaId);
             break;
           }
           const canvas = area.querySelector('.mapa-draw-layer');
           if (!canvas) {
-            console.warn('[WS] clear_drawings: canvas não encontrado para mapa', mapaId);
             break;
           }
           const ctx = canvas.getContext('2d');
           ctx.clearRect(0, 0, canvas.width, canvas.height);
-          console.log('[WS] clear_drawings: canvas limpo para mapa', mapaId);
           break;
         }
         case 'limpar_historico': {
@@ -2689,7 +2659,6 @@
                   const alvoSel = document.getElementById('alvo');
                   const exists = alvoSel && Array.from(alvoSel.options).some(o => String(o.value) === String(newId));
                   if (!exists) {
-                    console.debug('[WS][adicionar_participante] re-inserindo opção ausente', newId);
                     ensureAlvoHasParticipant(payload.participante);
                   }
                 } catch(_) {}
@@ -2705,7 +2674,6 @@
             const token = document.getElementById('token-' + remId);
             if (token) {
               token.remove();
-              console.log('[WS][remover_participante] token removido visualmente:', remId);
             }
           }
           removeFromAlvo(remId);
@@ -2726,7 +2694,6 @@
                   const alvoSel = document.getElementById('alvo');
                   const still = alvoSel && Array.from(alvoSel.options).some(o => String(o.value) === String(remId));
                   if (still) {
-                    console.debug('[WS][remover_participante] re-removendo opção persistente', remId);
                     removeFromAlvo(remId);
                   }
                 } catch(_) {}
@@ -2769,16 +2736,13 @@
     combateSocket.onopen = function(){ 
       window._combateWsActive = true; 
       stopCombatePolling(); 
-      console.log('WebSocket conectado');
     };
     combateSocket.onclose = function(e) {
       window._combateWsActive = false;
-      console.warn('WebSocket fechado (code:', e.code, '). Polling ativado.');
       startCombatePolling();
     };
     combateSocket.onerror = function(err){
       window._combateWsActive = false;
-      console.error('WebSocket erro:', err);
     };
   startHeartbeat();
 
