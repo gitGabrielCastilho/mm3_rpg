@@ -3012,41 +3012,13 @@
         mapaArea.addEventListener('wheel', function(e){
           if (!e.ctrlKey) return;
           e.preventDefault();
-          const canvas = mapaArea.querySelector('.mapa-canvas');
-          if (!canvas) return;
           let scale = parseFloat(mapaArea.dataset.scale || '1');
           const dir = e.deltaY > 0 ? -1 : 1;
           const factor = dir > 0 ? 1.1 : 1/1.1;
           scale = +(scale * factor).toFixed(3);
-          const img = canvas.querySelector('.mapa-img');
-          const baseW = img.naturalWidth || img.clientWidth;
-          const baseH = img.naturalHeight || img.clientHeight;
-          const areaW = mapaArea.clientWidth || 1;
-          const areaH = mapaArea.clientHeight || 1;
-          const fitW = areaW / (baseW || areaW);
-          const fitH = areaH / (baseH || areaH);
-          // Ao fazer zoom com a roda, mantenha a escala mínima permitindo upscaling
-          const minScale = Math.max(fitW, fitH);
-          const maxScale = 3;
-          const oldScale = parseFloat(mapaArea.dataset.scale || '1');
-          // Clamp scale to dynamic bounds
-          scale = Math.max(minScale, Math.min(maxScale, scale));
-          const areaRect = mapaArea.getBoundingClientRect();
-          const pointerX = e.clientX - areaRect.left;
-          const pointerY = e.clientY - areaRect.top;
-          canvas.style.transform = `scale(${scale})`;
-          canvas.style.minWidth = (baseW * scale) + 'px';
-          canvas.style.minHeight = (baseH * scale) + 'px';
-          mapaArea.dataset.scale = String(scale);
-          if (window.updateDrawLayerSizes) window.updateDrawLayerSizes();
-          const sx = mapaArea.scrollLeft;
-          const sy = mapaArea.scrollTop;
-          const nx = (sx + pointerX) * (scale / oldScale) - pointerX;
-          const ny = (sy + pointerY) * (scale / oldScale) - pointerY;
-          const maxScrollX = Math.max(0, mapaArea.scrollWidth - mapaArea.clientWidth);
-          const maxScrollY = Math.max(0, mapaArea.scrollHeight - mapaArea.clientHeight);
-          mapaArea.scrollLeft = Math.min(maxScrollX, Math.max(0, nx));
-          mapaArea.scrollTop = Math.min(maxScrollY, Math.max(0, ny));
+          // Use the main setScale function with pivot point to keep user's pointer in focus
+          setScale(scale, e);
+          mapaArea.dataset.wheelBound = '1';
         }, { passive: false });
         mapaArea.dataset.wheelBound = '1';
       }
