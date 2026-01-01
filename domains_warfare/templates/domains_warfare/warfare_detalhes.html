@@ -74,10 +74,35 @@
     <div class="combate-col-right">
       <div class="mapa-header-row">
         <h3 class="combate-section-title" style="margin:0">Mapa de Warfare</h3>
-        {% if is_gm %}
-        <a href="{% url 'warfare_adicionar_mapa' combate.id %}" target="_blank" rel="noopener" class="btn btn-sm" style="background: #2e7d32;">+ Adicionar Mapa</a>
+      </div>
+      {% if is_gm %}
+      <div class="combate-card mapa-inline-forms">
+        <div class="mapa-inline-col">
+          <h4 class="mapa-inline-title">Criar novo mapa</h4>
+          <form method="post" action="{% url 'warfare_adicionar_mapa' combate.id %}" enctype="multipart/form-data" class="mapa-inline-form">
+            {% csrf_token %}
+            {{ mapa_form.as_p }}
+            <button type="submit" name="criar_novo" class="btn btn-sm" style="background:#2e7d32;">Salvar novo mapa</button>
+          </form>
+        </div>
+        {% if mapas_existentes %}
+        <div class="mapa-inline-col">
+          <h4 class="mapa-inline-title">Usar mapa existente</h4>
+          <form method="post" action="{% url 'warfare_adicionar_mapa' combate.id %}" class="mapa-inline-form">
+            {% csrf_token %}
+            <label for="mapa_id" class="mapa-inline-label">Selecione:</label>
+            <select name="mapa_id" id="mapa_id" class="mapa-inline-select" required>
+              <option value="">-- Escolha um mapa --</option>
+              {% for mapa in mapas_existentes %}
+              <option value="{{ mapa.id }}">{{ mapa.nome }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" name="usar_existente" class="btn btn-sm" style="background:#1976d2;">Usar selecionado</button>
+          </form>
+        </div>
         {% endif %}
       </div>
+      {% endif %}
       <div class="combate-card mapa-expandido">
         {% if mapa_ativo %}
         <div class="mapa-wrapper">
@@ -363,6 +388,47 @@
   display: flex;
   justify-content: center;
   gap: 8px;
+}
+
+.mapa-inline-forms {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  margin-bottom: 12px;
+}
+
+.mapa-inline-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mapa-inline-title {
+  color: #d4af37;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.mapa-inline-form p {
+  margin: 0 0 8px;
+}
+
+.mapa-inline-select,
+.mapa-inline-form input[type="text"],
+.mapa-inline-form input[type="file"] {
+  width: 100%;
+  padding: 8px;
+  background: #1a1a1a;
+  border: 1px solid #3a3a3a;
+  border-radius: 4px;
+  color: #fff;
+}
+
+.mapa-inline-label {
+  display: block;
+  margin-bottom: 4px;
+  color: #aaa;
+  font-weight: 600;
 }
 
 .participantes-section {

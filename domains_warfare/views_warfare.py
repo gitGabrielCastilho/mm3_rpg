@@ -7,6 +7,7 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.db.models import Q
 from personagens.models import PerfilUsuario
+from .forms import MapaWargameForm
 from .models import Domain, Unit
 from .models_warfare import (
     CombateWarfare,
@@ -173,6 +174,8 @@ def warfare_detalhes(request, pk):
         posicoes = []
         if mapa_ativo:
             posicoes = mapa_ativo.posicoes_units.select_related('unit')
+        mapa_form = MapaWargameForm()
+        mapas_existentes = MapaWarfare.objects.all().order_by('-adicionado_em')
         
         context = {
             'combate': combate,
@@ -184,6 +187,8 @@ def warfare_detalhes(request, pk):
             'mapa_ativo': mapa_ativo,
             'posicoes': posicoes,
             'is_gm': combate.sala.game_master == request.user,
+            'mapa_form': mapa_form,
+            'mapas_existentes': mapas_existentes,
         }
         return render(request, 'domains_warfare/warfare_detalhes.html', context)
         
@@ -305,10 +310,6 @@ def warfare_adicionar_mapa(request, pk):
             messages.error(request, "Apenas o GM pode adicionar mapas.")
             return redirect('warfare_detalhes', pk=pk)
         
-        form = MapaWargameForm()
-        # Mapas existentes (qualquer combate) para reutilização; clonamos ao usar
-        mapas_existentes = MapaWarfare.objects.all().order_by('-adicionado_em')
-        
         if request.method == 'POST':
             # Se enviou um novo mapa
             if request.POST.get('criar_novo'):
@@ -328,8 +329,7 @@ def warfare_adicionar_mapa(request, pk):
                     
                     messages.success(request, f"Mapa '{mapa.nome}' adicionado com sucesso!")
                     return redirect('warfare_detalhes', pk=pk)
-                else:
-                    messages.error(request, "Erro ao criar o mapa.")
+                messages.error(request, "Erro ao criar o mapa. Verifique os campos e tente novamente.")
             
             # Se selecionou um mapa existente
             elif request.POST.get('usar_existente'):
@@ -353,13 +353,10 @@ def warfare_adicionar_mapa(request, pk):
                     
                     messages.success(request, f"Mapa '{mapa.nome}' adicionado com sucesso!")
                     return redirect('warfare_detalhes', pk=pk)
-        
-        context = {
-            'combate': combate,
-            'form': form,
-            'mapas_existentes': mapas_existentes,
-        }
-        return render(request, 'domains_warfare/warfare_adicionar_mapa.html', context)
+                messages.error(request, "Selecione um mapa válido para reutilizar.")
+
+        # GET ou POST inválido: redireciona para a página principal do combate
+        return redirect('warfare_detalhes', pk=pk)
         
     except Exception as e:
         messages.error(request, f"Erro ao adicionar mapa: {str(e)}")
