@@ -221,6 +221,18 @@
         const gridLayer = area.querySelector('.grid-layer');
         if (!canvas || !img) return;
 
+        function clampScroll(){
+          const scale = parseFloat(area.dataset.scale || '1') || 1;
+          const baseW = parseFloat(canvas.dataset.baseWidth || canvas.offsetWidth || 0);
+          const baseH = parseFloat(canvas.dataset.baseHeight || canvas.offsetHeight || 0);
+          const contentW = baseW * scale;
+          const contentH = baseH * scale;
+          const maxLeft = Math.max(0, contentW - area.clientWidth);
+          const maxTop = Math.max(0, contentH - area.clientHeight);
+          area.scrollLeft = Math.min(area.scrollLeft, maxLeft);
+          area.scrollTop = Math.min(area.scrollTop, maxTop);
+        }
+
         function minScale(){
           const baseW = parseFloat(canvas.dataset.baseWidth || '0');
           const baseH = parseFloat(canvas.dataset.baseHeight || '0');
@@ -247,6 +259,7 @@
               gridLayer.style.height = baseH + 'px';
             }
           }
+          clampScroll();
         }
 
         function initDimensions(){
@@ -312,6 +325,8 @@
         if (gridToggle) gridToggle.addEventListener('change', applyGrid);
         if (gridSizeInput) gridSizeInput.addEventListener('input', applyGrid);
         applyGrid();
+
+        area.addEventListener('scroll', clampScroll);
 
         // Drag & drop move tokens
         area.addEventListener('dragover', function(e){ e.preventDefault(); });
