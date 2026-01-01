@@ -306,8 +306,8 @@ def warfare_adicionar_mapa(request, pk):
             return redirect('warfare_detalhes', pk=pk)
         
         form = MapaWargameForm()
-        # Mapas que ainda não foram atribuídos a nenhum combate
-        mapas_existentes = MapaWarfare.objects.filter(combate__isnull=True).order_by('-adicionado_em')
+        # Mapas existentes (qualquer combate) para reutilização; clonamos ao usar
+        mapas_existentes = MapaWarfare.objects.all().order_by('-adicionado_em')
         
         if request.method == 'POST':
             # Se enviou um novo mapa
@@ -335,9 +335,13 @@ def warfare_adicionar_mapa(request, pk):
             elif request.POST.get('usar_existente'):
                 mapa_id = request.POST.get('mapa_id')
                 if mapa_id:
-                    mapa = get_object_or_404(MapaWarfare, id=mapa_id, combate__isnull=True)
-                    mapa.combate = combate
-                    mapa.save()
+                    mapa_base = get_object_or_404(MapaWarfare, id=mapa_id)
+                    # Clona o mapa para não alterar o combate original
+                    mapa = MapaWarfare.objects.create(
+                        combate=combate,
+                        nome=mapa_base.nome,
+                        imagem=mapa_base.imagem
+                    )
                     
                     # Criar posições para todas as unidades
                     for status in combate.status_units.all():
