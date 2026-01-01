@@ -457,7 +457,7 @@
 
     function sendStatusAction(unitId, action, delta){
       if (!unitId || !action) return;
-      const url = statusUrlTemplate.replace(/0\/?$/, `${unitId}/`);
+      const url = statusUrlTemplate.replace('/0/hp/', `/${unitId}/hp/`);
       const payload = {action};
       if (typeof delta !== 'undefined') payload.delta = delta;
       fetch(url, {
