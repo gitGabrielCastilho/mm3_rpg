@@ -192,7 +192,7 @@ def warfare_detalhes(request, pk):
             'posicoes': posicoes,
             'is_gm': combate.sala.game_master == request.user,
             'mapas_globais': mapas_globais,
-            'ws_token': signing.dumps({'uid': request.user.id}, salt='ws-warfare'),
+            'ws_token': signing.dumps({'uid': request.user.id}, salt='ws-combate'),
         }
         return render(request, 'domains_warfare/warfare_detalhes.html', context)
         

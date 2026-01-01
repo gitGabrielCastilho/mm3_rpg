@@ -212,14 +212,26 @@
         const zoomBar = area.parentElement ? area.parentElement.querySelector('.mapa-zoom') : null;
         if (!canvas || !img) return;
 
+        function minScale(){
+          const baseW = parseFloat(canvas.dataset.baseWidth || '0');
+          const baseH = parseFloat(canvas.dataset.baseHeight || '0');
+          const viewportW = area.clientWidth || 0;
+          const viewportH = area.clientHeight || 0;
+          if (baseW > 0 && baseH > 0 && viewportW > 0 && viewportH > 0) {
+            return Math.max(viewportW / baseW, viewportH / baseH, 0.2);
+          }
+          return 0.2;
+        }
+
         function applyScale(scale){
           const baseW = parseFloat(canvas.dataset.baseWidth || '0');
           const baseH = parseFloat(canvas.dataset.baseHeight || '0');
-          area.dataset.scale = String(scale);
-          canvas.style.transform = `scale(${scale})`;
+          const clamped = Math.max(minScale(), Math.min(3, scale));
+          area.dataset.scale = String(clamped);
+          canvas.style.transform = `scale(${clamped})`;
           if (baseW && baseH) {
-            canvas.style.minWidth = (baseW * scale) + 'px';
-            canvas.style.minHeight = (baseH * scale) + 'px';
+            canvas.style.minWidth = (baseW * clamped) + 'px';
+            canvas.style.minHeight = (baseH * clamped) + 'px';
           }
         }
 
@@ -244,7 +256,7 @@
               const dir = button.dataset.zoom;
               let scale = parseFloat(area.dataset.scale || '1') || 1;
               if (dir === 'in') scale += 0.1;
-              else if (dir === 'out') scale = Math.max(0.2, scale - 0.1);
+              else if (dir === 'out') scale = scale - 0.1;
               else scale = 1;
               applyScale(parseFloat(scale.toFixed(2)));
             });
@@ -257,7 +269,7 @@
           e.preventDefault();
           let scale = parseFloat(area.dataset.scale || '1') || 1;
           const delta = -e.deltaY * 0.0015;
-          scale = Math.max(0.2, Math.min(3, scale + delta));
+          scale = scale + delta;
           applyScale(parseFloat(scale.toFixed(2)));
         }, { passive: false });
 
