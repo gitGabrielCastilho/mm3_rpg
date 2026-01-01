@@ -172,7 +172,6 @@ def warfare_detalhes(request, pk):
         mapas = combate.mapas_warfare.filter(ativo=True)
         mapa_ativo = mapas.first()
         posicoes = PosicaoUnitWarfare.objects.filter(mapa__combate=combate).select_related('mapa', 'unit')
-        mapa_form = MapaWargameForm()
         mapas_existentes = MapaWarfare.objects.all().order_by('-adicionado_em')
         mapas_globais = mapas_existentes
         
@@ -186,7 +185,6 @@ def warfare_detalhes(request, pk):
             'mapa_ativo': mapa_ativo,
             'posicoes': posicoes,
             'is_gm': combate.sala.game_master == request.user,
-            'mapa_form': mapa_form,
             'mapas_existentes': mapas_existentes,
             'mapas_globais': mapas_globais,
         }
@@ -310,6 +308,9 @@ def warfare_adicionar_mapa(request, pk):
             messages.error(request, "Apenas o GM pode adicionar mapas.")
             return redirect('warfare_detalhes', pk=pk)
         
+        form = MapaWargameForm()
+        mapas_existentes = MapaWarfare.objects.all().order_by('-adicionado_em')
+
         if request.method == 'POST':
             # Suporta ambos padrões: hidden "mapa_existente" (combate legacy) ou "mapa_id" (form inline)
             mapa_id = request.POST.get('mapa_existente') or request.POST.get('mapa_id')
@@ -331,7 +332,7 @@ def warfare_adicionar_mapa(request, pk):
                 messages.success(request, f"Mapa '{mapa.nome}' adicionado com sucesso!")
                 return redirect('warfare_detalhes', pk=pk)
 
-            # Criar novo mapa (quando nenhum existente ou upload enviado)
+            # Criar novo mapa (upload)
             form = MapaWargameForm(request.POST, request.FILES)
             if form.is_valid():
                 mapa = form.save(commit=False)
@@ -347,8 +348,12 @@ def warfare_adicionar_mapa(request, pk):
                 return redirect('warfare_detalhes', pk=pk)
             messages.error(request, "Erro ao criar o mapa. Verifique os campos e tente novamente.")
 
-        # GET ou POST inválido: redireciona para a página principal do combate
-        return redirect('warfare_detalhes', pk=pk)
+        context = {
+            'combate': combate,
+            'form': form,
+            'mapas_existentes': mapas_existentes,
+        }
+        return render(request, 'domains_warfare/warfare_adicionar_mapa.html', context)
         
     except Exception as e:
         messages.error(request, f"Erro ao adicionar mapa: {str(e)}")
