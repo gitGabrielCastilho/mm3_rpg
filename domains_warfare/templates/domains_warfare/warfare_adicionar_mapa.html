@@ -46,33 +46,6 @@
     </div>
   </div>
 
-  {% if mapas_globais %}
-  <div class="card" style="margin-top: 2rem;">
-    <div class="card-header">
-      <h2>📂 Usar Mapa Existente</h2>
-    </div>
-    <div class="card-body">
-      <form method="post">
-        {% csrf_token %}
-        
-        <div class="form-group">
-          <label for="mapa_existente">Selecione um mapa:</label>
-          <select name="mapa_existente" id="mapa_existente" class="form-control" required>
-            <option value="">-- Selecione um mapa --</option>
-            {% for mapa in mapas_globais %}
-              <option value="{{ mapa.id }}">{{ mapa.nome }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <button type="submit" name="usar_existente" class="btn btn-secondary" style="width: 100%; margin-top: 1rem;">
-          ✅ Usar Mapa Selecionado
-        </button>
-      </form>
-    </div>
-  </div>
-  {% endif %}
-
   <div class="card" style="margin-top: 2rem;">
     <div class="card-body" style="text-align: center;">
       <a href="{% url 'warfare_detalhes' combate.id %}" class="btn btn-secondary">← Voltar para Combate</a>
