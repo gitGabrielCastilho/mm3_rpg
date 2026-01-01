@@ -174,6 +174,7 @@ def warfare_detalhes(request, pk):
         posicoes = PosicaoUnitWarfare.objects.filter(mapa__combate=combate).select_related('mapa', 'unit')
         mapas_existentes = MapaWarfare.objects.all().order_by('-adicionado_em')
         mapas_globais = mapas_existentes
+        mapa_form = MapaWargameForm()
         
         context = {
             'combate': combate,
@@ -187,6 +188,7 @@ def warfare_detalhes(request, pk):
             'is_gm': combate.sala.game_master == request.user,
             'mapas_existentes': mapas_existentes,
             'mapas_globais': mapas_globais,
+            'mapa_form': mapa_form,
         }
         return render(request, 'domains_warfare/warfare_detalhes.html', context)
         
