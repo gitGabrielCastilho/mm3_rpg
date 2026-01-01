@@ -361,3 +361,33 @@ def warfare_adicionar_mapa(request, pk):
         messages.error(request, f"Erro ao adicionar mapa: {str(e)}")
         return redirect('warfare_detalhes', pk=pk)
 
+
+@login_required
+def warfare_remover_mapa(request, pk, mapa_id):
+    """Remove um mapa do combate warfare (apenas GM)."""
+    if request.method != 'POST':
+        return redirect('warfare_detalhes', pk=pk)
+
+    try:
+        combate = get_object_or_404(CombateWarfare, pk=pk)
+        perfil = PerfilUsuario.objects.filter(user=request.user).first()
+
+        if not perfil or perfil.sala_atual != combate.sala:
+            messages.error(request, "Você não tem acesso a este combate.")
+            return redirect('domain_list')
+
+        if combate.sala.game_master != request.user:
+            messages.error(request, "Apenas o GM pode remover mapas.")
+            return redirect('warfare_detalhes', pk=pk)
+
+        mapa = get_object_or_404(MapaWarfare, pk=mapa_id, combate=combate)
+        nome = mapa.nome
+        mapa.delete()
+
+        messages.success(request, f"Mapa '{nome}' removido com sucesso.")
+        return redirect('warfare_detalhes', pk=pk)
+
+    except Exception as e:
+        messages.error(request, f"Erro ao remover mapa: {str(e)}")
+        return redirect('warfare_detalhes', pk=pk)
+
