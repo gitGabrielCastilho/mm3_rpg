@@ -596,6 +596,44 @@ def warfare_resolver_ataque(request, pk):
         descricao=descricao,
     )
 
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'warfare_{combate.id}',
+            {
+                'type': 'combate_message',
+                'message': json.dumps({
+                    'evento': 'ataque',
+                    'turno': {
+                        'id': turno.id,
+                        'hora': turno.criado_em.strftime('%H:%M'),
+                        'atacante_nome': atacante.nome,
+                        'atacante_domain': atacante.domain.nome,
+                        'alvo_nome': alvo.nome,
+                        'alvo_domain': alvo.domain.nome,
+                        'sucesso_ataque': sucesso_ataque,
+                        'sucesso_poder': sucesso_poder,
+                        'roll_ataque': ataque_total,
+                        'roll_poder': roll_poder_total,
+                        'roll_moral': roll_moral_total,
+                        'dano': dano_total,
+                        'defesa': atributos_alvo.get('defesa', 0),
+                        'resistencia': atributos_alvo.get('resistencia', 0),
+                        'descricao': descricao,
+                    },
+                    'alvo_status': {
+                        'unit_id': alvo.id,
+                        'hp_atual': status_alvo.hp_atual,
+                        'hp_max': status_alvo.hp_maximo,
+                        'diminished': status_alvo.diminished,
+                        'incapacitado': status_alvo.incapacitado,
+                    }
+                })
+            }
+        )
+    except Exception:
+        pass
+
     messages.success(
         request,
         f"{atacante.nome} atacou {alvo.nome}: {'acertou' if sucesso_ataque else 'errou'}; dano {dano_total}."

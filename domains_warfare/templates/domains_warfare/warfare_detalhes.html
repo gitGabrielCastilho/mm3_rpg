@@ -198,7 +198,7 @@
         
         {% for unit_data in units_status %}
           {% if unit_data.domain.id == participante.domain.id %}
-          <div class="unit-status-card" {% if unit_data.status.incapacitado %}style="opacity:0.5;"{% endif %}>
+          <div class="unit-status-card" data-unit-id="{{ unit_data.unit.id }}" {% if unit_data.status.incapacitado %}style="opacity:0.5;"{% endif %}>
             <div class="unit-status-top">
               <strong class="unit-nome" {% if unit_data.status.incapacitado %}style="text-decoration: line-through; color: #666;"{% endif %}>{{ unit_data.unit.nome }}</strong>
               <span class="unit-size">Size: {{ unit_data.unit.size.nome }}</span>
@@ -206,14 +206,14 @@
 
             <div class="unit-hp-row">
               <div class="unit-hp-labels">
-                <span>HP: {{ unit_data.status.hp_atual }}/{{ unit_data.status.hp_maximo }}</span>
-                <span class="unit-flags">
+                <span class="hp-value" data-unit-id="{{ unit_data.unit.id }}">HP: {{ unit_data.status.hp_atual }}/{{ unit_data.status.hp_maximo }}</span>
+                <span class="unit-flags" data-unit-id="{{ unit_data.unit.id }}">
                   {% if unit_data.status.diminished %}<span class="badge-warning">⚠ Diminished</span>{% endif %}
                   {% if unit_data.status.incapacitado %}<span class="badge-danger">✗ Incapacitado</span>{% endif %}
                 </span>
               </div>
               <div class="unit-hp-bar">
-                <div class="unit-hp-fill {% if unit_data.status.hp_atual == 0 %}hp-zero{% elif unit_data.status.diminished %}hp-dim{% else %}hp-ok{% endif %}" style="width: {% widthratio unit_data.status.hp_atual unit_data.status.hp_maximo 100 %}%;"></div>
+                <div class="unit-hp-fill {% if unit_data.status.hp_atual == 0 %}hp-zero{% elif unit_data.status.diminished %}hp-dim{% else %}hp-ok{% endif %}" data-unit-id="{{ unit_data.unit.id }}" style="width: {% widthratio unit_data.status.hp_atual unit_data.status.hp_maximo 100 %}%;"></div>
               </div>
             </div>
 
@@ -411,6 +411,11 @@
             applyTokenPosition(payload.posicao_id, payload.x, payload.y);
           } else if (payload.evento === 'token_resize') {
             applyTokenSize(payload.posicao_id, payload.size);
+          } else if (payload.evento === 'ataque') {
+            appendTurnoFromWs(payload);
+            if (payload.alvo_status) {
+              updateUnitHp(payload.alvo_status);
+            }
           }
         };
         warfareSocket.onclose = function(){
@@ -451,6 +456,99 @@
       if (!token || !size) return;
       token.style.width = `${size}px`;
       token.style.height = `${size}px`;
+    }
+
+    function updateUnitHp(status){
+      if (!status || !status.unit_id) return;
+      const hpText = document.querySelector(`.hp-value[data-unit-id="${status.unit_id}"]`);
+      if (hpText) {
+        hpText.textContent = `HP: ${status.hp_atual}/${status.hp_max}`;
+      }
+      const bar = document.querySelector(`.unit-hp-fill[data-unit-id="${status.unit_id}"]`);
+      if (bar) {
+        const pct = status.hp_max > 0 ? Math.max(0, Math.min(100, (status.hp_atual / status.hp_max) * 100)) : 0;
+        bar.style.width = `${pct}%`;
+        bar.classList.remove('hp-zero','hp-dim','hp-ok');
+        if (status.hp_atual <= 0) {
+          bar.classList.add('hp-zero');
+        } else if (status.diminished || status.hp_atual <= (status.hp_max / 2)) {
+          bar.classList.add('hp-dim');
+        } else {
+          bar.classList.add('hp-ok');
+        }
+      }
+      const flags = document.querySelector(`.unit-flags[data-unit-id="${status.unit_id}"]`);
+      if (flags) {
+        const badges = [];
+        if (status.diminished) badges.push('<span class="badge-warning">⚠ Diminished</span>');
+        if (status.incapacitado) badges.push('<span class="badge-danger">✗ Incapacitado</span>');
+        flags.innerHTML = badges.join(' ');
+      }
+      const card = document.querySelector(`.unit-status-card[data-unit-id="${status.unit_id}"]`);
+      if (card) {
+        card.style.opacity = status.incapacitado ? '0.5' : '';
+        card.classList.toggle('incapacitado', !!status.incapacitado);
+        const name = card.querySelector('.unit-nome');
+        if (name) {
+          if (status.incapacitado) {
+            name.style.textDecoration = 'line-through';
+            name.style.color = '#666';
+          } else {
+            name.style.textDecoration = '';
+            name.style.color = '';
+          }
+        }
+      }
+    }
+
+    function appendTurnoFromWs(payload){
+      if (!payload || !payload.turno) return;
+      const turno = payload.turno;
+      const list = document.querySelector('.turnos-list');
+      if (!list) return;
+      if (turno.id && list.querySelector(`[data-turno-id="${turno.id}"]`)) return;
+
+      const li = document.createElement('li');
+      li.className = 'turno-item';
+      if (turno.id) li.dataset.turnoId = turno.id;
+
+      const header = document.createElement('div');
+      header.className = 'turno-header';
+      header.innerHTML = `<strong>${turno.atacante_nome || ''}</strong> <span style="color:#888;">(${turno.atacante_domain || ''})</span><span class="turno-data">${turno.hora || ''}</span>`;
+
+      const desc = document.createElement('div');
+      desc.className = 'turno-desc';
+      const parts = [];
+      if (turno.alvo_nome) {
+        parts.push(`Atacou <strong>${turno.alvo_nome}</strong> (${turno.alvo_domain || ''})`);
+        if (turno.sucesso_ataque) {
+          parts.push(`✓ Ataque: ${turno.roll_ataque} vs DEF ${turno.defesa}`);
+          if (turno.sucesso_poder) {
+            parts.push(`→ ✓ Poder vs RES ${turno.resistencia} → <span style="color:#d33;">1 dano</span>`);
+          } else {
+            parts.push(`→ ✗ Poder resistido (roll ${turno.roll_poder || '—'} vs RES ${turno.resistencia})`);
+          }
+        } else {
+          parts.push(`✗ Ataque falhou: ${turno.roll_ataque} vs DEF ${turno.defesa}`);
+        }
+        if (turno.roll_moral !== null && turno.roll_moral !== undefined) {
+          parts.push(`Moral: ${turno.roll_moral}`);
+        }
+        if (turno.dano !== null && turno.dano !== undefined) {
+          parts.push(`Dano: ${turno.dano}`);
+        }
+      }
+      desc.innerHTML = parts.join('<br>');
+      if (turno.descricao) {
+        const extra = document.createElement('div');
+        extra.className = 'turno-desc-extra';
+        extra.textContent = turno.descricao;
+        desc.appendChild(extra);
+      }
+
+      li.appendChild(header);
+      li.appendChild(desc);
+      list.prepend(li);
     }
 
     // Bind dragstart to carry token id
@@ -824,6 +922,11 @@
 .hp-zero { background: #666; }
 .hp-dim { background: #f9a825; }
 .hp-ok { background: #2e7d32; }
+
+.unit-status-card.incapacitado .unit-nome {
+  text-decoration: line-through;
+  color: #666;
+}
 
 .unit-attrs {
   display: flex;
