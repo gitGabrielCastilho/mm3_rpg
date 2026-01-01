@@ -1967,6 +1967,37 @@
         }
         bindTokenWheelResize();
 
+        // Helper function to calculate minimum scale to cover viewport
+        function minScale(){
+          const canvas = mapaArea.querySelector('.mapa-canvas');
+          const img = canvas ? canvas.querySelector('.mapa-img') : null;
+          if (!canvas || !img) return 0.2;
+          const baseW = parseFloat(canvas.dataset.baseWidth || '0');
+          const baseH = parseFloat(canvas.dataset.baseHeight || '0');
+          const viewportW = mapaArea.clientWidth || 0;
+          const viewportH = mapaArea.clientHeight || 0;
+          if (baseW > 0 && baseH > 0 && viewportW > 0 && viewportH > 0) {
+            return Math.max(viewportW / baseW, viewportH / baseH, 0.2);
+          }
+          return 0.2;
+        }
+
+        // Helper function to clamp scroll position
+        function clampScroll(){
+          const canvas = mapaArea.querySelector('.mapa-canvas');
+          const img = canvas ? canvas.querySelector('.mapa-img') : null;
+          if (!img) return;
+          const scale = parseFloat(mapaArea.dataset.scale || '1') || 1;
+          const baseW = parseFloat(canvas.dataset.baseWidth || canvas.offsetWidth || 0);
+          const baseH = parseFloat(canvas.dataset.baseHeight || canvas.offsetHeight || 0);
+          const contentW = baseW * scale;
+          const contentH = baseH * scale;
+          const maxLeft = Math.max(0, contentW - mapaArea.clientWidth);
+          const maxTop = Math.max(0, contentH - mapaArea.clientHeight);
+          mapaArea.scrollLeft = Math.min(mapaArea.scrollLeft, maxLeft);
+          mapaArea.scrollTop = Math.min(mapaArea.scrollTop, maxTop);
+        }
+
         // Helper to set scale, expand scrollable area, and keep pointer focus (if pivot provided)
         function setScale(newScale, pivotEvent){
           const canvas = mapaArea.querySelector('.mapa-canvas');
@@ -1976,42 +2007,30 @@
           const overlayPrev = mapaArea.querySelector('.mapa-draw-preview');
           const oldScale = parseFloat(mapaArea.dataset.scale || '1');
           // Base (natural) size - store once and reuse
-          if (!mapaArea.dataset.baseWidth || !mapaArea.dataset.baseHeight) {
-            mapaArea.dataset.baseWidth = img.naturalWidth || img.clientWidth || img.offsetWidth;
-            mapaArea.dataset.baseHeight = img.naturalHeight || img.clientHeight || img.offsetHeight;
+          if (!canvas.dataset.baseWidth || !canvas.dataset.baseHeight) {
+            canvas.dataset.baseWidth = img.naturalWidth || img.clientWidth || img.offsetWidth;
+            canvas.dataset.baseHeight = img.naturalHeight || img.clientHeight || img.offsetHeight;
           }
-          const baseW = parseFloat(mapaArea.dataset.baseWidth) || 1;
-          const baseH = parseFloat(mapaArea.dataset.baseHeight) || 1;
-          // Container size and dynamic min scale to keep map covering the viewport
-          const areaW = mapaArea.clientWidth || 1;
-          const areaH = mapaArea.clientHeight || 1;
-          const fitW = areaW / baseW;
-          const fitH = areaH / baseH;
-          // ALWAYS cover viewport - no black bars
-          const minScale = Math.max(fitW, fitH);
+          const baseW = parseFloat(canvas.dataset.baseWidth) || 1;
+          const baseH = parseFloat(canvas.dataset.baseHeight) || 1;
+          // Calculate minimum scale to cover viewport and clamp
+          const minScaleVal = minScale();
           const maxScale = 3;
-          newScale = Math.max(minScale, Math.min(maxScale, newScale));
+          newScale = Math.max(minScaleVal, Math.min(maxScale, newScale));
           // Apply transform and enlarge scrollable box so scrollbars match zoom
           mapaArea.dataset.scale = String(newScale);
-          canvas.style.transformOrigin = 'top left';
           canvas.style.transform = `scale(${newScale})`;
-          canvas.style.width = baseW + 'px';
-          canvas.style.height = baseH + 'px';
           canvas.style.minWidth = (baseW * newScale) + 'px';
           canvas.style.minHeight = (baseH * newScale) + 'px';
-          // Clamp scroll to prevent black bars
-          requestAnimationFrame(function(){
-            const maxScrollX = Math.max(0, mapaArea.scrollWidth - mapaArea.clientWidth);
-            const maxScrollY = Math.max(0, mapaArea.scrollHeight - mapaArea.clientHeight);
-            mapaArea.scrollLeft = Math.min(mapaArea.scrollLeft, maxScrollX);
-            mapaArea.scrollTop = Math.min(mapaArea.scrollTop, maxScrollY);
-          });
           // Atualiza grade com novo zoom
           updateGridForArea(mapaArea);
           if (overlay && overlayPrev) {
             if (window.resizeCanvasPair) window.resizeCanvasPair(mapaArea, overlay, overlayPrev);
           }
           if (window.updateDrawLayerSizes) window.updateDrawLayerSizes();
+          
+          // Clamp scroll after transform
+          clampScroll();
 
           // Preserve focal point under cursor if event provided
           if (pivotEvent) {
