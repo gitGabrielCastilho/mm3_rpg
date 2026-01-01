@@ -31,8 +31,37 @@
     <!-- Coluna esquerda: Histórico de Ações -->
     <div class="combate-col-left">
       <div class="mapa-header-row">
-        <h3 class="combate-section-title" style="margin:0">Histórico de Ações</h3>
+        <h3 class="combate-section-title" style="margin:0">Histórico de Ataques</h3>
       </div>
+      {% if combate.ativo %}
+      <form method="post" action="{% url 'warfare_resolver_ataque' combate.id %}" class="ataque-form combate-card">
+        {% csrf_token %}
+        <div class="ataque-form-row">
+          <label class="sr-only" for="atacante-select">Atacante</label>
+          <select id="atacante-select" name="atacante_id" class="select-sm" required>
+            <option value="">Atacante</option>
+            {% for unit_data in units_status %}
+              <option value="{{ unit_data.unit.id }}" {% if unit_data.status.incapacitado %}disabled{% endif %}>
+                {{ unit_data.domain.nome }} — {{ unit_data.unit.nome }} (HP {{ unit_data.status.hp_atual }}/{{ unit_data.status.hp_maximo }})
+              </option>
+            {% endfor %}
+          </select>
+
+          <label class="sr-only" for="alvo-select">Alvo</label>
+          <select id="alvo-select" name="alvo_id" class="select-sm" required>
+            <option value="">Alvo</option>
+            {% for unit_data in units_status %}
+              <option value="{{ unit_data.unit.id }}" {% if unit_data.status.incapacitado %}disabled{% endif %}>
+                {{ unit_data.domain.nome }} — {{ unit_data.unit.nome }} (HP {{ unit_data.status.hp_atual }}/{{ unit_data.status.hp_maximo }})
+              </option>
+            {% endfor %}
+          </select>
+
+          <button type="submit" class="btn btn-sm">Atacar</button>
+        </div>
+        <div class="ataque-hint">Clique em tokens para preencher atacante/alvo.</div>
+      </form>
+      {% endif %}
       <div id="historico-card" class="combate-card" style="max-height: 600px; overflow-y: auto;">
         <ul class="turnos-list">
           {% for turno in turnos %}
@@ -58,6 +87,12 @@
               {% endif %}
               {% if turno.roll_moral %}
               <br>Moral: {{ turno.roll_moral }}
+              {% endif %}
+              {% if turno.dano_causado %}
+              <br>Dano: {{ turno.dano_causado }}
+              {% endif %}
+              {% if turno.descricao %}
+              <div class="turno-desc-extra">{{ turno.descricao }}</div>
               {% endif %}
               {% endif %}
             </div>
@@ -99,6 +134,7 @@
                   {% if posicao.mapa.id == mapa.id %}
                      <div id="token-{{ posicao.id }}" class="mapa-token token-unit"
                        data-posicao-id="{{ posicao.id }}" data-mapa-id="{{ posicao.mapa.id }}"
+                       data-unit-id="{{ posicao.unit.id }}" data-unit-name="{{ posicao.display_label|default:posicao.unit.nome }}" data-domain-name="{{ posicao.unit.domain.nome }}"
                        style="left:{{ posicao.x|default:50 }}px; top:{{ posicao.y|default:50 }}px; width:{{ posicao.token_size|default:60 }}px; height:{{ posicao.token_size|default:60 }}px; border:2px solid #fff; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:11px; text-align:center; line-height:1.1; cursor:grab; background:#1976d2;"
                        draggable="true"
                        title="{{ posicao.display_label|default:posicao.unit.nome }}">
@@ -425,7 +461,24 @@
       }
     });
 
+    const attackerSelect = document.getElementById('atacante-select');
+    const targetSelect = document.getElementById('alvo-select');
+    function wireTokenSelection(){
+      document.querySelectorAll('.mapa-token').forEach(function(token){
+        token.addEventListener('click', function(){
+          const unitId = token.dataset.unitId;
+          if (!unitId) return;
+          if (attackerSelect && !attackerSelect.value) {
+            attackerSelect.value = unitId;
+          } else if (targetSelect) {
+            targetSelect.value = unitId;
+          }
+        });
+      });
+    }
+
     setupMapAreas();
+    wireTokenSelection();
     connectWs();
   });
 </script>
@@ -530,6 +583,29 @@
   font-size: 14px;
   color: #ccc;
   line-height: 1.6;
+}
+
+.turno-desc-extra {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #aaa;
+}
+
+.ataque-form {
+  margin-bottom: 10px;
+}
+
+.ataque-form-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ataque-hint {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #999;
 }
 
 .inline-form {
