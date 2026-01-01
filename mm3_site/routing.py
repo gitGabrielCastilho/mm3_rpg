@@ -16,7 +16,9 @@ application = ProtocolTypeRouter({
     # HybridAuthMiddleware substitui AuthMiddlewareStack + token auth
     "websocket": HybridAuthMiddleware(
         URLRouter(
-            combate.routing.websocket_urlpatterns + salas.routing.websocket_urlpatterns
+            combate.routing.websocket_urlpatterns
+            + salas.routing.websocket_urlpatterns
+            + domains_warfare.routing.websocket_urlpatterns
         )
     ),
 })

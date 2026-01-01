@@ -109,12 +109,20 @@
                   {% endif %}
                 {% endfor %}
               </div>
+              <div class="grid-layer" aria-hidden="true"></div>
             </div>
           </div>
           <div class="mapa-zoom">
             <button type="button" class="btn btn-sm" data-zoom="out">−</button>
             <button type="button" class="btn btn-sm" data-zoom="reset">Reset</button>
             <button type="button" class="btn btn-sm" data-zoom="in">+</button>
+          </div>
+          <div class="mapa-grid-controls">
+            <label><input type="checkbox" id="grid-enable" checked> Grid</label>
+            <label style="display:flex; align-items:center; gap:4px;">
+              Tamanho
+              <input type="number" id="grid-size" value="50" min="5" max="400" step="5" class="input-sm" style="width:70px;">
+            </label>
           </div>
           {% if is_gm %}
           <form method="post" action="{% url 'warfare_remover_mapa' combate.id mapa.id %}" class="mapa-remover-form" onsubmit="return confirm('Remover este mapa?');">
@@ -210,6 +218,7 @@
         const canvas = area.querySelector('.mapa-canvas');
         const img = area.querySelector('.mapa-img');
         const zoomBar = area.parentElement ? area.parentElement.querySelector('.mapa-zoom') : null;
+        const gridLayer = area.querySelector('.grid-layer');
         if (!canvas || !img) return;
 
         function minScale(){
@@ -229,9 +238,14 @@
           const clamped = Math.max(minScale(), Math.min(3, scale));
           area.dataset.scale = String(clamped);
           canvas.style.transform = `scale(${clamped})`;
+          if (gridLayer) gridLayer.style.transform = `scale(${clamped})`;
           if (baseW && baseH) {
             canvas.style.minWidth = (baseW * clamped) + 'px';
             canvas.style.minHeight = (baseH * clamped) + 'px';
+            if (gridLayer) {
+              gridLayer.style.width = baseW + 'px';
+              gridLayer.style.height = baseH + 'px';
+            }
           }
         }
 
@@ -243,6 +257,10 @@
             canvas.dataset.baseHeight = h;
             canvas.style.width = w + 'px';
             canvas.style.height = h + 'px';
+            if (gridLayer) {
+              gridLayer.style.width = w + 'px';
+              gridLayer.style.height = h + 'px';
+            }
           }
           applyScale(parseFloat(area.dataset.scale || '1') || 1);
         }
@@ -272,6 +290,28 @@
           scale = scale + delta;
           applyScale(parseFloat(scale.toFixed(2)));
         }, { passive: false });
+
+        // Grid toggle
+        const gridToggle = document.getElementById('grid-enable');
+        const gridSizeInput = document.getElementById('grid-size');
+        function applyGrid(){
+          if (!gridLayer) return;
+          const enabled = gridToggle ? gridToggle.checked : false;
+          if (!enabled) {
+            gridLayer.style.backgroundImage = 'none';
+            return;
+          }
+          const size = Math.max(5, Math.min(400, parseFloat(gridSizeInput ? gridSizeInput.value : 50) || 50));
+          gridLayer.style.backgroundImage = `
+            linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px),
+            linear-gradient(180deg, rgba(255,255,255,0.15) 1px, transparent 1px)
+          `;
+          gridLayer.style.backgroundSize = `${size}px ${size}px`;
+          gridLayer.style.backgroundPosition = '0 0';
+        }
+        if (gridToggle) gridToggle.addEventListener('change', applyGrid);
+        if (gridSizeInput) gridSizeInput.addEventListener('input', applyGrid);
+        applyGrid();
 
         // Drag & drop move tokens
         area.addEventListener('dragover', function(e){ e.preventDefault(); });
@@ -518,13 +558,31 @@
   overflow: auto;
   border-radius: 8px;
   background: #0f0f0f;
-  padding: 10px;
+  padding: 0;
 }
 
 .mapa-canvas {
   position: relative;
   display: inline-block;
   transform-origin: top left;
+}
+
+.grid-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  mix-blend-mode: screen;
+  transform-origin: top left;
+}
+
+.mapa-grid-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  color: #ccc;
 }
 
 .mapa-img {
