@@ -1975,24 +1975,31 @@
           const overlay = mapaArea.querySelector('.mapa-draw-layer');
           const overlayPrev = mapaArea.querySelector('.mapa-draw-preview');
           const oldScale = parseFloat(mapaArea.dataset.scale || '1');
-          const rect = canvas.getBoundingClientRect();
-          // Base (natural) size
-          const baseW = img.naturalWidth || img.clientWidth || rect.width;
-          const baseH = img.naturalHeight || img.clientHeight || rect.height;
+          // Base (natural) size - store once and reuse
+          if (!mapaArea.dataset.baseWidth || !mapaArea.dataset.baseHeight) {
+            mapaArea.dataset.baseWidth = img.naturalWidth || img.clientWidth || img.offsetWidth;
+            mapaArea.dataset.baseHeight = img.naturalHeight || img.clientHeight || img.offsetHeight;
+          }
+          const baseW = parseFloat(mapaArea.dataset.baseWidth) || 1;
+          const baseH = parseFloat(mapaArea.dataset.baseHeight) || 1;
           // Container size and dynamic min scale to keep map covering the viewport
           const areaW = mapaArea.clientWidth || 1;
           const areaH = mapaArea.clientHeight || 1;
-          const fitW = areaW / (baseW || areaW);
-          const fitH = areaH / (baseH || areaH);
-          // Permite upscaling para cobrir a viewport quando a imagem for pequena
-          const minScale = Math.max(fitW, fitH, 0.2);
+          const fitW = areaW / baseW;
+          const fitH = areaH / baseH;
+          // ALWAYS cover viewport - no black bars
+          const minScale = Math.max(fitW, fitH);
           const maxScale = 3;
           newScale = Math.max(minScale, Math.min(maxScale, newScale));
+          // Force canvas to fill area at minimum
+          canvas.style.minWidth = '100%';
+          canvas.style.minHeight = '100%';
           // Apply transform and enlarge scrollable box so scrollbars match zoom
           mapaArea.dataset.scale = String(newScale);
+          canvas.style.transformOrigin = 'top left';
           canvas.style.transform = `scale(${newScale})`;
-          canvas.style.minWidth = (baseW * newScale) + 'px';
-          canvas.style.minHeight = (baseH * newScale) + 'px';
+          canvas.style.width = baseW + 'px';
+          canvas.style.height = baseH + 'px';
           // Clamp scroll to prevent black bars
           requestAnimationFrame(function(){
             const maxScrollX = Math.max(0, mapaArea.scrollWidth - mapaArea.clientWidth);
