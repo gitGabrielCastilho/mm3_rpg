@@ -1899,11 +1899,12 @@
     function rebindDragDrop(){
       document.querySelectorAll("[id^='mapa-area-']").forEach(function(mapaArea) {
         const canvas = mapaArea.querySelector('.mapa-canvas');
-        if (!canvas) return;
         
         mapaArea.addEventListener('dragover', function(e){ e.preventDefault(); });
         mapaArea.addEventListener('drop', function(e){
           e.preventDefault();
+          const canvas = mapaArea.querySelector('.mapa-canvas');
+          if (!canvas) return;
           const tokenId = e.dataTransfer.getData('tokenId');
           const rect = canvas.getBoundingClientRect();
           const scale = parseFloat(mapaArea.dataset.scale || '1');
@@ -1983,8 +1984,6 @@
             return minVal;
           }
           return 1;
-          }
-          return 0.2;
         }
 
         // Helper function to clamp scroll position
@@ -2875,16 +2874,11 @@
         });
       }
     }
-  // Bind inicial
-    setupTopbarMapActions();
-  ajaxifyInteractionForms();
-  });
-
-  function drag(event, id) {
-    event.dataTransfer.setData("tokenId", id);
-  }
 
   document.addEventListener("DOMContentLoaded", function() {
+    // Setup top bar map actions (must be after DOM is ready)
+    setupTopbarMapActions();
+    
     document.querySelectorAll("[id^='mapa-area-']").forEach(function(mapaArea) {
       mapaArea.addEventListener("dragover", function(e) { e.preventDefault(); });
       mapaArea.addEventListener("drop", function(e) {
