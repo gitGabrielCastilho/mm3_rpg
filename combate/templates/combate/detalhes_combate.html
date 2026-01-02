@@ -3065,19 +3065,6 @@
           
           if (window.updateDrawLayerSizes) window.updateDrawLayerSizes();
           
-          // CRITICAL: clamp scroll AFTER changing scale and minWidth/minHeight
-          // This prevents scrolling outside map bounds after zoom
-          clampScrollForArea(mapaArea);
-          
-          // Preserve focal point under cursor
-          const areaRect = mapaArea.getBoundingClientRect();
-          const pointerX = e.clientX - areaRect.left;
-          const pointerY = e.clientY - areaRect.top;
-          const sx = mapaArea.scrollLeft;
-          const sy = mapaArea.scrollTop;
-          const nx = (sx + pointerX) * (scale / lastScale) - pointerX;
-          const ny = (sy + pointerY) * (scale / lastScale) - pointerY;
-          
           // Calculate bounds using FRESH dimensions (not scrollWidth/scrollHeight which may be stale)
           let boundBaseW = img.naturalWidth || img.clientWidth || img.width || 0;
           let boundBaseH = img.naturalHeight || img.clientHeight || img.height || 0;
@@ -3089,12 +3076,24 @@
           const maxScrollX = Math.max(0, contentW - mapaArea.clientWidth);
           const maxScrollY = Math.max(0, contentH - mapaArea.clientHeight);
           
-          // Clamp focal point scroll to bounds
-          mapaArea.scrollLeft = Math.min(maxScrollX, Math.max(0, nx));
-          mapaArea.scrollTop = Math.min(maxScrollY, Math.max(0, ny));
-          
-          // FINAL clamp to guarantee we're within bounds (in case focal point math has rounding errors)
-          requestAnimationFrame(() => clampScrollForArea(mapaArea));
+          // If at minScale (no scrollable area), force scroll to 0,0
+          if (maxScrollX === 0 && maxScrollY === 0) {
+            mapaArea.scrollLeft = 0;
+            mapaArea.scrollTop = 0;
+          } else {
+            // Preserve focal point under cursor only when there's scrollable area
+            const areaRect = mapaArea.getBoundingClientRect();
+            const pointerX = e.clientX - areaRect.left;
+            const pointerY = e.clientY - areaRect.top;
+            const sx = mapaArea.scrollLeft;
+            const sy = mapaArea.scrollTop;
+            const nx = (sx + pointerX) * (scale / lastScale) - pointerX;
+            const ny = (sy + pointerY) * (scale / lastScale) - pointerY;
+            
+            // Clamp focal point scroll to bounds
+            mapaArea.scrollLeft = Math.min(maxScrollX, Math.max(0, nx));
+            mapaArea.scrollTop = Math.min(maxScrollY, Math.max(0, ny));
+          }
         }, { passive: false });
         
         mapaArea.dataset.wheelBound = '1';
