@@ -3028,8 +3028,11 @@
           const img = canvas ? canvas.querySelector('.mapa-img') : null;
           if (!canvas || !img) return;
           
-          // Get CURRENT scale
-          let scale = parseFloat(mapaArea.dataset.scale || '1');
+          // CRITICAL: Save OLD scale BEFORE modifying it (for focal point calculation)
+          const lastScale = parseFloat(mapaArea.dataset.scale || '1');
+          
+          // Calculate NEW scale
+          let scale = lastScale;
           const dir = e.deltaY > 0 ? -1 : 1;
           scale = +(scale * (dir > 0 ? 1.1 : 1/1.1)).toFixed(3);
           
@@ -3054,7 +3057,7 @@
           // ENFORCE: never go below minimum (prevents black bars)
           scale = Math.max(minScaleValue, Math.min(maxScale, scale));
           
-          lastScale = parseFloat(mapaArea.dataset.scale || '1');
+          // Update dataset with NEW scale
           mapaArea.dataset.scale = String(scale);
           canvas.style.transform = `scale(${scale})`;
           canvas.style.minWidth = (baseW * scale) + 'px';
