@@ -2055,8 +2055,8 @@
           // Apply transform and enlarge scrollable box
           mapaArea.dataset.scale = String(newScale);
           canvas.style.transform = `scale(${newScale})`;
-          canvas.style.minWidth = (baseW * newScale) + 'px';
-          canvas.style.minHeight = (baseH * newScale) + 'px';
+          canvas.style.minWidth = baseW + 'px';
+          canvas.style.minHeight = baseH + 'px';
           
           // Atualiza grade com novo zoom
           updateGridForArea(mapaArea);
@@ -3065,8 +3065,8 @@
           // Update dataset with NEW scale
           mapaArea.dataset.scale = String(scale);
           canvas.style.transform = `scale(${scale})`;
-          canvas.style.minWidth = (baseW * scale) + 'px';
-          canvas.style.minHeight = (baseH * scale) + 'px';
+          canvas.style.minWidth = baseW + 'px';
+          canvas.style.minHeight = baseH + 'px';
           
           if (window.updateDrawLayerSizes) window.updateDrawLayerSizes();
           
