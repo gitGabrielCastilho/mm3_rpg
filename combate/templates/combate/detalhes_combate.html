@@ -2077,8 +2077,13 @@
             const sy = mapaArea.scrollTop;
             const nx = (sx + pointerX) * (newScale / oldScale) - pointerX;
             const ny = (sy + pointerY) * (newScale / oldScale) - pointerY;
-            const maxScrollX = Math.max(0, mapaArea.scrollWidth - mapaArea.clientWidth);
-            const maxScrollY = Math.max(0, mapaArea.scrollHeight - mapaArea.clientHeight);
+            // Use fresh dimension calculation, not stale scrollWidth/scrollHeight
+            const canvas = mapaArea.querySelector('.mapa-canvas');
+            const img = canvas ? canvas.querySelector('.mapa-img') : null;
+            const baseW = img ? (img.naturalWidth || img.clientWidth || 0) : 0;
+            const baseH = img ? (img.naturalHeight || img.clientHeight || 0) : 0;
+            const maxScrollX = Math.max(0, baseW * newScale - mapaArea.clientWidth);
+            const maxScrollY = Math.max(0, baseH * newScale - mapaArea.clientHeight);
             mapaArea.scrollLeft = Math.min(maxScrollX, Math.max(0, nx));
             mapaArea.scrollTop = Math.min(maxScrollY, Math.max(0, ny));
           }
@@ -3069,8 +3074,19 @@
           const sy = mapaArea.scrollTop;
           const nx = (sx + pointerX) * (scale / lastScale) - pointerX;
           const ny = (sy + pointerY) * (scale / lastScale) - pointerY;
-          const maxScrollX = Math.max(0, mapaArea.scrollWidth - mapaArea.clientWidth);
-          const maxScrollY = Math.max(0, mapaArea.scrollHeight - mapaArea.clientHeight);
+          
+          // Calculate bounds using FRESH dimensions (not scrollWidth/scrollHeight which may be stale)
+          let boundBaseW = img.naturalWidth || img.clientWidth || img.width || 0;
+          let boundBaseH = img.naturalHeight || img.clientHeight || img.height || 0;
+          if (!boundBaseW) boundBaseW = 800;
+          if (!boundBaseH) boundBaseH = 600;
+          
+          const contentW = boundBaseW * scale;
+          const contentH = boundBaseH * scale;
+          const maxScrollX = Math.max(0, contentW - mapaArea.clientWidth);
+          const maxScrollY = Math.max(0, contentH - mapaArea.clientHeight);
+          
+          // Clamp focal point scroll to bounds
           mapaArea.scrollLeft = Math.min(maxScrollX, Math.max(0, nx));
           mapaArea.scrollTop = Math.min(maxScrollY, Math.max(0, ny));
         }, { passive: false });
