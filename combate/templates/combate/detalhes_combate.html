@@ -3076,11 +3076,14 @@
           const maxScrollX = Math.max(0, contentW - mapaArea.clientWidth);
           const maxScrollY = Math.max(0, contentH - mapaArea.clientHeight);
           
-          // If at minScale (no scrollable area), force scroll to 0,0
-          if (maxScrollX === 0 && maxScrollY === 0) {
+          // CRITICAL: If at or near minScale, disable overflow and force scroll to 0
+          const isAtMinScale = Math.abs(scale - minScaleValue) < 0.001;
+          if (isAtMinScale || maxScrollX <= 1 || maxScrollY <= 1) {
+            mapaArea.style.overflow = 'hidden';
             mapaArea.scrollLeft = 0;
             mapaArea.scrollTop = 0;
           } else {
+            mapaArea.style.overflow = 'auto';
             // Preserve focal point under cursor only when there's scrollable area
             const areaRect = mapaArea.getBoundingClientRect();
             const pointerX = e.clientX - areaRect.left;
@@ -3090,9 +3093,17 @@
             const nx = (sx + pointerX) * (scale / lastScale) - pointerX;
             const ny = (sy + pointerY) * (scale / lastScale) - pointerY;
             
-            // Clamp focal point scroll to bounds
+            // Clamp focal point scroll to bounds STRICTLY
             mapaArea.scrollLeft = Math.min(maxScrollX, Math.max(0, nx));
             mapaArea.scrollTop = Math.min(maxScrollY, Math.max(0, ny));
+            
+            // Additional safety clamp after a tick
+            setTimeout(() => {
+              if (mapaArea.scrollLeft > maxScrollX) mapaArea.scrollLeft = maxScrollX;
+              if (mapaArea.scrollTop > maxScrollY) mapaArea.scrollTop = maxScrollY;
+              if (mapaArea.scrollLeft < 0) mapaArea.scrollLeft = 0;
+              if (mapaArea.scrollTop < 0) mapaArea.scrollTop = 0;
+            }, 0);
           }
         }, { passive: false });
         
