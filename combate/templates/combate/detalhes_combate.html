@@ -2068,25 +2068,7 @@
           // Clamp scroll after transform
           clampScrollForArea(mapaArea);
 
-          // Preserve focal point under cursor if event provided
-          if (pivotEvent) {
-            const areaRect = mapaArea.getBoundingClientRect();
-            const pointerX = pivotEvent.clientX - areaRect.left;
-            const pointerY = pivotEvent.clientY - areaRect.top;
-            const sx = mapaArea.scrollLeft;
-            const sy = mapaArea.scrollTop;
-            const nx = (sx + pointerX) * (newScale / oldScale) - pointerX;
-            const ny = (sy + pointerY) * (newScale / oldScale) - pointerY;
-            // Use fresh dimension calculation, not stale scrollWidth/scrollHeight
-            const canvas = mapaArea.querySelector('.mapa-canvas');
-            const img = canvas ? canvas.querySelector('.mapa-img') : null;
-            const baseW = img ? (img.naturalWidth || img.clientWidth || 0) : 0;
-            const baseH = img ? (img.naturalHeight || img.clientHeight || 0) : 0;
-            const maxScrollX = Math.max(0, baseW * newScale - mapaArea.clientWidth);
-            const maxScrollY = Math.max(0, baseH * newScale - mapaArea.clientHeight);
-            mapaArea.scrollLeft = Math.min(maxScrollX, Math.max(0, nx));
-            mapaArea.scrollTop = Math.min(maxScrollY, Math.max(0, ny));
-          }
+          // Scroll will be clamped globally below; skip focal point to avoid overshoot
 
           // Enforce overflow rules at minScale and clamp again on next frame
           const imgForBounds = mapaArea.querySelector('.mapa-img');
@@ -3099,18 +3081,8 @@
             mapaArea.scrollTop = 0;
           } else {
             mapaArea.style.overflow = 'auto';
-            // Preserve focal point under cursor only when there's scrollable area
-            const areaRect = mapaArea.getBoundingClientRect();
-            const pointerX = e.clientX - areaRect.left;
-            const pointerY = e.clientY - areaRect.top;
-            const sx = mapaArea.scrollLeft;
-            const sy = mapaArea.scrollTop;
-            const nx = (sx + pointerX) * (scale / lastScale) - pointerX;
-            const ny = (sy + pointerY) * (scale / lastScale) - pointerY;
-            
-            // Clamp focal point scroll to bounds STRICTLY
-            mapaArea.scrollLeft = Math.min(maxScrollX, Math.max(0, nx));
-            mapaArea.scrollTop = Math.min(maxScrollY, Math.max(0, ny));
+            // Skip focal-point reposition to avoid overshoot; just clamp
+            clampScrollForArea(mapaArea);
           }
 
           // Absolute safety: clamp using shared helper on next frame
