@@ -2087,6 +2087,21 @@
             mapaArea.scrollLeft = Math.min(maxScrollX, Math.max(0, nx));
             mapaArea.scrollTop = Math.min(maxScrollY, Math.max(0, ny));
           }
+
+          // Enforce overflow rules at minScale and clamp again on next frame
+          const imgForBounds = mapaArea.querySelector('.mapa-img');
+          const bw = imgForBounds ? (imgForBounds.naturalWidth || imgForBounds.clientWidth || 0) : 0;
+          const bh = imgForBounds ? (imgForBounds.naturalHeight || imgForBounds.clientHeight || 0) : 0;
+          const minForArea = bw && bh ? Math.max(mapaArea.clientWidth / bw, mapaArea.clientHeight / bh) : 1;
+          const isAtMin = Math.abs(newScale - minForArea) < 0.001;
+          if (isAtMin) {
+            mapaArea.style.overflow = 'hidden';
+            mapaArea.scrollLeft = 0;
+            mapaArea.scrollTop = 0;
+          } else {
+            mapaArea.style.overflow = 'auto';
+          }
+          requestAnimationFrame(() => clampScrollForArea(mapaArea));
         }
 
         // Initialize dimensions and scale when image loads
@@ -3096,15 +3111,10 @@
             // Clamp focal point scroll to bounds STRICTLY
             mapaArea.scrollLeft = Math.min(maxScrollX, Math.max(0, nx));
             mapaArea.scrollTop = Math.min(maxScrollY, Math.max(0, ny));
-            
-            // Additional safety clamp after a tick
-            setTimeout(() => {
-              if (mapaArea.scrollLeft > maxScrollX) mapaArea.scrollLeft = maxScrollX;
-              if (mapaArea.scrollTop > maxScrollY) mapaArea.scrollTop = maxScrollY;
-              if (mapaArea.scrollLeft < 0) mapaArea.scrollLeft = 0;
-              if (mapaArea.scrollTop < 0) mapaArea.scrollTop = 0;
-            }, 0);
           }
+
+          // Absolute safety: clamp using shared helper on next frame
+          requestAnimationFrame(() => clampScrollForArea(mapaArea));
         }, { passive: false });
         
         mapaArea.dataset.wheelBound = '1';
