@@ -1420,6 +1420,41 @@
         return newCanvas;
       }
 
+      // Global helper: clamp scroll for any map area (prevents going outside bounds)
+      function clampScrollForArea(mapaArea) {
+        if (!mapaArea) return;
+        const canvas = mapaArea.querySelector('.mapa-canvas');
+        const img = canvas ? canvas.querySelector('.mapa-img') : null;
+        if (!canvas || !img) return;
+        
+        const scale = parseFloat(mapaArea.dataset.scale || '1') || 1;
+        
+        // Always read FRESH dimensions (never rely on stale cache)
+        let baseW = img.naturalWidth || img.clientWidth || img.width || 0;
+        let baseH = img.naturalHeight || img.clientHeight || img.height || 0;
+        
+        // Fallback if still zero
+        if (!baseW) baseW = 800;
+        if (!baseH) baseH = 600;
+        
+        const contentW = baseW * scale;
+        const contentH = baseH * scale;
+        const viewportW = mapaArea.clientWidth || 1;
+        const viewportH = mapaArea.clientHeight || 1;
+        
+        // Calculate max scroll: content_size - viewport_size
+        // If content fits in viewport, max scroll is 0 (no scrolling needed)
+        const maxLeft = Math.max(0, contentW - viewportW);
+        const maxTop = Math.max(0, contentH - viewportH);
+        
+        // Force scroll to stay within bounds
+        if (mapaArea.scrollLeft > maxLeft) mapaArea.scrollLeft = maxLeft;
+        if (mapaArea.scrollTop > maxTop) mapaArea.scrollTop = maxTop;
+        if (mapaArea.scrollLeft < 0) mapaArea.scrollLeft = 0;
+        if (mapaArea.scrollTop < 0) mapaArea.scrollTop = 0;
+      }
+      window.clampScrollForArea = clampScrollForArea;
+
       function ensureDrawLayersAll(){
         document.querySelectorAll("[id^='mapa-area-']").forEach(ensureDrawLayer);
       }
@@ -1987,39 +2022,6 @@
           return Math.max(minVal, 0.2); // Never less than 0.2
         }
 
-        // Helper function to clamp scroll position - prevents going outside map bounds
-        function clampScroll(){
-          const canvas = mapaArea.querySelector('.mapa-canvas');
-          const img = canvas ? canvas.querySelector('.mapa-img') : null;
-          if (!canvas || !img) return;
-          
-          const scale = parseFloat(mapaArea.dataset.scale || '1') || 1;
-          
-          // Always read FRESH dimensions (never rely on stale cache)
-          let baseW = img.naturalWidth || img.clientWidth || img.width || 0;
-          let baseH = img.naturalHeight || img.clientHeight || img.height || 0;
-          
-          // Fallback if still zero
-          if (!baseW) baseW = 800;
-          if (!baseH) baseH = 600;
-          
-          const contentW = baseW * scale;
-          const contentH = baseH * scale;
-          const viewportW = mapaArea.clientWidth || 1;
-          const viewportH = mapaArea.clientHeight || 1;
-          
-          // Calculate max scroll: content_size - viewport_size
-          // If content fits in viewport, max scroll is 0 (no scrolling needed)
-          const maxLeft = Math.max(0, contentW - viewportW);
-          const maxTop = Math.max(0, contentH - viewportH);
-          
-          // Force scroll to stay within bounds
-          if (mapaArea.scrollLeft > maxLeft) mapaArea.scrollLeft = maxLeft;
-          if (mapaArea.scrollTop > maxTop) mapaArea.scrollTop = maxTop;
-          if (mapaArea.scrollLeft < 0) mapaArea.scrollLeft = 0;
-          if (mapaArea.scrollTop < 0) mapaArea.scrollTop = 0;
-        }
-
         // Helper to set scale, expand scrollable area, and keep pointer focus (if pivot provided)
         function setScale(newScale, pivotEvent){
           const canvas = mapaArea.querySelector('.mapa-canvas');
@@ -2064,7 +2066,7 @@
           if (window.updateDrawLayerSizes) window.updateDrawLayerSizes();
           
           // Clamp scroll after transform
-          clampScroll();
+          clampScrollForArea(mapaArea);
 
           // Preserve focal point under cursor if event provided
           if (pivotEvent) {
@@ -3057,7 +3059,7 @@
           
           // CRITICAL: clamp scroll AFTER changing scale and minWidth/minHeight
           // This prevents scrolling outside map bounds after zoom
-          clampScroll();
+          clampScrollForArea(mapaArea);
           
           // Preserve focal point under cursor
           const areaRect = mapaArea.getBoundingClientRect();
