@@ -2083,7 +2083,15 @@
           } else {
             mapaArea.style.overflow = 'auto';
           }
-          requestAnimationFrame(() => clampScrollForArea(mapaArea));
+          requestAnimationFrame(() => {
+            const maxX = Math.max(0, mapaArea.scrollWidth - mapaArea.clientWidth);
+            const maxY = Math.max(0, mapaArea.scrollHeight - mapaArea.clientHeight);
+            if (mapaArea.scrollLeft > maxX) mapaArea.scrollLeft = maxX;
+            if (mapaArea.scrollTop > maxY) mapaArea.scrollTop = maxY;
+            if (mapaArea.scrollLeft < 0) mapaArea.scrollLeft = 0;
+            if (mapaArea.scrollTop < 0) mapaArea.scrollTop = 0;
+            clampScrollForArea(mapaArea);
+          });
         }
 
         // Initialize dimensions and scale when image loads
@@ -3085,8 +3093,16 @@
             clampScrollForArea(mapaArea);
           }
 
-          // Absolute safety: clamp using shared helper on next frame
-          requestAnimationFrame(() => clampScrollForArea(mapaArea));
+          // Absolute safety: clamp using shared helper on next frame (after layout flush)
+          requestAnimationFrame(() => {
+            const maxX = Math.max(0, mapaArea.scrollWidth - mapaArea.clientWidth);
+            const maxY = Math.max(0, mapaArea.scrollHeight - mapaArea.clientHeight);
+            if (mapaArea.scrollLeft > maxX) mapaArea.scrollLeft = maxX;
+            if (mapaArea.scrollTop > maxY) mapaArea.scrollTop = maxY;
+            if (mapaArea.scrollLeft < 0) mapaArea.scrollLeft = 0;
+            if (mapaArea.scrollTop < 0) mapaArea.scrollTop = 0;
+            clampScrollForArea(mapaArea);
+          });
         }, { passive: false });
         
         mapaArea.dataset.wheelBound = '1';
