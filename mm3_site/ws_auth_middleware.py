@@ -17,9 +17,14 @@ logger = logging.getLogger(__name__)
 
 def get_user_from_session(session_key):
     """Obtém user a partir da session key (síncrono)"""
+    from django.db import connection
     try:
         if not session_key:
             return None
+        
+        # Garante que a conexão está ativa antes de fazer query
+        connection.ensure_connection()
+        
         session = Session.objects.get(session_key=session_key)
         session_data = session.get_decoded()
         user_id = session_data.get('_auth_user_id')
@@ -34,6 +39,7 @@ def get_user_from_session(session_key):
 
 def get_user_from_token(token):
     """Valida o token de forma síncrona e retorna o usuário (ou None)"""
+    from django.db import connection
     try:
         logger.info(f"Token auth: validando token com salt='ws-combate'")
         data = signing.loads(token, salt='ws-combate', max_age=60*60*24*30)
@@ -42,6 +48,10 @@ def get_user_from_token(token):
         if not uid:
             logger.warning(f"Token auth: sem uid no payload")
             return None
+        
+        # Garante que a conexão está ativa antes de fazer query
+        connection.ensure_connection()
+        
         user = get_user_model().objects.filter(id=uid).first()
         if user:
             logger.info(f"Token auth OK: user {user.id} ({user.username})")
