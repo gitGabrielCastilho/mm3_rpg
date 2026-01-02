@@ -1997,7 +1997,7 @@
         }
 
         // Helper to set scale, expand scrollable area, and keep pointer focus (if pivot provided)
-        function setScale(newScale, pivotEvent, ignoreMinScale){
+        function setScale(newScale, pivotEvent){
           const canvas = mapaArea.querySelector('.mapa-canvas');
           const img = canvas ? canvas.querySelector('.mapa-img') : null;
           if (!canvas || !img) return;
@@ -2012,10 +2012,7 @@
           const baseW = parseFloat(canvas.dataset.baseWidth) || 1;
           const baseH = parseFloat(canvas.dataset.baseHeight) || 1;
           // Calculate minimum scale to cover viewport and clamp
-          let minScaleVal = 1;
-          if (!ignoreMinScale) {
-            minScaleVal = minScale();
-          }
+          const minScaleVal = minScale();
           const maxScale = 3;
           newScale = Math.max(minScaleVal, Math.min(maxScale, newScale));
           // Apply transform and enlarge scrollable box so scrollbars match zoom
@@ -2058,7 +2055,7 @@
             if (w && h) {
               canvas.dataset.baseWidth = w;
               canvas.dataset.baseHeight = h;
-              setScale(parseFloat(mapaArea.dataset.scale || '1') || 1, null, true);
+              setScale(parseFloat(mapaArea.dataset.scale || '1') || 1, null);
             }
           }
           if (img.complete) {
