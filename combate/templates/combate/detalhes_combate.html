@@ -1966,25 +1966,25 @@
 
         // Helper function to calculate minimum scale to cover viewport
         function minScale(){
+          // Returns minimum scale where image completely fills viewport (no black bars)
           const canvas = mapaArea.querySelector('.mapa-canvas');
           const img = canvas ? canvas.querySelector('.mapa-img') : null;
-          if (!canvas || !img) return 0.5;
+          if (!canvas || !img) return 1;
           
-          // Get dimensions - never use cached values that might be zero
-          let baseW = img.naturalWidth || img.clientWidth || img.offsetWidth || 0;
-          let baseH = img.naturalHeight || img.clientHeight || img.offsetHeight || 0;
+          // Always read FRESH dimensions (never use cache)
+          let baseW = img.naturalWidth || img.clientWidth || img.width || 0;
+          let baseH = img.naturalHeight || img.clientHeight || img.height || 0;
           
-          const viewportW = mapaArea.clientWidth || 0;
-          const viewportH = mapaArea.clientHeight || 0;
+          // Fallback dimensions if all fail
+          if (!baseW) baseW = 800;
+          if (!baseH) baseH = 600;
           
-          // Fallback if all dimensions are invalid
-          if (!baseW || !baseH || !viewportW || !viewportH) {
-            return 0.5;
-          }
+          const viewportW = mapaArea.clientWidth || 1;
+          const viewportH = mapaArea.clientHeight || 1;
           
-          // Return minimum scale to cover viewport (never less than fitting on screen)
+          // minScale = max(viewportW/baseW, viewportH/baseH) ensures image fills viewport
           const minVal = Math.max(viewportW / baseW, viewportH / baseH);
-          return Math.max(minVal, 0.2);
+          return Math.max(minVal, 0.2); // Never less than 0.2
         }
 
         // Helper function to clamp scroll position
@@ -2012,27 +2012,28 @@
           const overlayPrev = mapaArea.querySelector('.mapa-draw-preview');
           const oldScale = parseFloat(mapaArea.dataset.scale || '1');
           
-          // Get valid base dimensions (never allow zeros to cache)
-          let baseW = parseFloat(canvas.dataset.baseWidth) || 0;
-          let baseH = parseFloat(canvas.dataset.baseHeight) || 0;
+          // Always read FRESH dimensions from image (never rely on cache here)
+          let baseW = img.naturalWidth || img.clientWidth || img.width || 0;
+          let baseH = img.naturalHeight || img.clientHeight || img.height || 0;
           
-          // If cache invalid, get from image immediately
+          // Fallback if dimensions are still invalid
           if (!baseW || !baseH) {
-            baseW = img.naturalWidth || img.clientWidth || img.offsetWidth || 800;
-            baseH = img.naturalHeight || img.clientHeight || img.offsetHeight || 600;
-            // Only cache if valid
-            if (baseW > 0 && baseH > 0) {
-              canvas.dataset.baseWidth = baseW;
-              canvas.dataset.baseHeight = baseH;
-            }
+            baseW = baseW || 800;
+            baseH = baseH || 600;
           }
           
-          // Calculate minimum scale to cover viewport and clamp
-          const minScaleVal = minScale();
-          const maxScale = 3;
-          newScale = Math.max(minScaleVal, Math.min(maxScale, newScale));
+          // Calculate viewport
+          const areaW = mapaArea.clientWidth || 1;
+          const areaH = mapaArea.clientHeight || 1;
           
-          // Apply transform and enlarge scrollable box so scrollbars match zoom
+          // CRITICAL: minScale ensures image FILLS viewport without black bars
+          const minScaleValue = Math.max(areaW / baseW, areaH / baseH);
+          const maxScale = 3;
+          
+          // ENFORCE minimum scale (critical to prevent black bars)
+          newScale = Math.max(minScaleValue, Math.min(maxScale, newScale));
+          
+          // Apply transform and enlarge scrollable box
           mapaArea.dataset.scale = String(newScale);
           canvas.style.transform = `scale(${newScale})`;
           canvas.style.minWidth = (baseW * newScale) + 'px';
@@ -2992,14 +2993,9 @@
         }
       })();
 
-      // Wheel handler - optimized with cached dimensions
+      // Wheel handler - optimized with safe dimension handling and no black bars
       if (!mapaArea.dataset.wheelBound) {
         let lastScale = 1;
-        const invalidateCache = () => {
-          // Invalida cache quando imagem carrega ou viewport muda
-          delete mapaArea.dataset.cachedBaseW;
-          delete mapaArea.dataset.cachedBaseH;
-        };
         
         mapaArea.addEventListener('wheel', function(e){
           if (!e.ctrlKey) return;
@@ -3008,33 +3004,34 @@
           const img = canvas ? canvas.querySelector('.mapa-img') : null;
           if (!canvas || !img) return;
           
+          // Get CURRENT scale
           let scale = parseFloat(mapaArea.dataset.scale || '1');
           const dir = e.deltaY > 0 ? -1 : 1;
           scale = +(scale * (dir > 0 ? 1.1 : 1/1.1)).toFixed(3);
           
-          // Get valid dimensions (never cached if zero)
-          let baseW = parseFloat(mapaArea.dataset.cachedBaseW) || 0;
-          let baseH = parseFloat(mapaArea.dataset.cachedBaseH) || 0;
+          // Always read dimensions FRESH from image (never cached here)
+          let baseW = img.naturalWidth || img.clientWidth || img.width || 0;
+          let baseH = img.naturalHeight || img.clientHeight || img.height || 0;
           
-          // If cache is invalid/empty, get from image NOW
+          // If dimensions still zero, use safe defaults
           if (!baseW || !baseH) {
-            baseW = img.naturalWidth || img.clientWidth || img.width || 800;
-            baseH = img.naturalHeight || img.clientHeight || img.height || 600;
-            // Only cache if we got valid values
-            if (baseW > 0 && baseH > 0) {
-              mapaArea.dataset.cachedBaseW = baseW;
-              mapaArea.dataset.cachedBaseH = baseH;
-            }
+            baseW = baseW || 800;
+            baseH = baseH || 600;
           }
           
-          // Min scale: never smaller than needed to cover viewport
+          // Calculate viewport
           const areaW = mapaArea.clientWidth || 1;
           const areaH = mapaArea.clientHeight || 1;
-          const minScale = Math.max(areaW / baseW, areaH / baseH, 0.2);
+          
+          // CRITICAL: minScale must ensure image FILLS viewport (no black bars)
+          // Image fills when: baseW*scale >= areaW AND baseH*scale >= areaH
+          // So: scale >= areaW/baseW AND scale >= areaH/baseH
+          // Therefore: scale >= max(areaW/baseW, areaH/baseH)
+          const minScaleValue = Math.max(areaW / baseW, areaH / baseH);
           const maxScale = 3;
           
-          // Clamp scale
-          scale = Math.max(minScale, Math.min(maxScale, scale));
+          // ENFORCE: never go below minimum (prevents black bars)
+          scale = Math.max(minScaleValue, Math.min(maxScale, scale));
           
           lastScale = parseFloat(mapaArea.dataset.scale || '1');
           mapaArea.dataset.scale = String(scale);
@@ -3057,13 +3054,6 @@
           mapaArea.scrollLeft = Math.min(maxScrollX, Math.max(0, nx));
           mapaArea.scrollTop = Math.min(maxScrollY, Math.max(0, ny));
         }, { passive: false });
-        
-        // Invalidate cache when image loads or window resizes
-        const imgs = mapaArea.querySelectorAll('.mapa-img');
-        imgs.forEach(img => {
-          img.addEventListener('load', invalidateCache, { once: false });
-        });
-        window.addEventListener('resize', invalidateCache);
         
         mapaArea.dataset.wheelBound = '1';
       }
