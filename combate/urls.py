@@ -28,6 +28,7 @@ urlpatterns = [
     path('atualizar-posicao-token/<int:token_id>/', atualizar_posicao_token, name='atualizar_posicao_token'),
     path('<int:combate_id>/participantes-json/', participantes_json, name='participantes_json'),
     path('<int:combate_id>/tabela_participantes/', views_ajax.tabela_participantes, name='tabela_participantes'),
+    path('<int:combate_id>/status-card-json/', views_ajax.status_card_json, name='status_card_json'),
     path('mapa/<int:mapa_id>/salvar-desenho/', salvar_desenho, name='salvar_desenho'),
     path('mapa/<int:mapa_id>/limpar-desenhos/', limpar_desenhos, name='limpar_desenhos'),
     # Novos endpoints para manipulação rápida de participantes

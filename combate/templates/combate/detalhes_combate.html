@@ -2500,12 +2500,11 @@
       }
       switch (payload.evento) {
         case 'token_move': {
-          // Atualiza apenas o token informado, sem refresh de colunas
+          // Ultra-light: update token position only, no DOM traversal or refresh
           const id = payload.posicao_id;
-          const x = payload.x; const y = payload.y;
-          const mapa_id = payload.mapa_id;
-          const tokenId = 'token-' + id;
-          const token = document.getElementById(tokenId);
+          const x = payload.x;
+          const y = payload.y;
+          const token = document.getElementById('token-' + id);
           if (token && Number.isFinite(x) && Number.isFinite(y)) {
             token.style.left = x + 'px';
             token.style.top = y + 'px';
@@ -2524,36 +2523,27 @@
           break;
         }
         case 'rolagem': {
-          // Acrescenta somente ao histórico
-          const ativo = document.querySelector('.turnos-list .turno-item.ativo .turno-desc')
-                        || document.querySelector('.turnos-list .turno-item:first-child .turno-desc');
+          // Incremental update: append to history, preserve scroll intent
+          const historico = document.getElementById('historico-card');
+          const ativo = historico ? (historico.querySelector('.turno-item.ativo .turno-desc') || historico.querySelector('.turno-item:first-child .turno-desc')) : null;
+          
           if (ativo) {
-            // Detecta se usuário estava perto do final antes de inserir novo conteúdo
-            const historicoBefore = document.getElementById('historico-card');
+            // Detect if user was near bottom before update
             let wasNearBottom = false;
             try {
-              if (historicoBefore) {
-                wasNearBottom = (historicoBefore.scrollHeight - historicoBefore.scrollTop - historicoBefore.clientHeight) < 24;
+              if (historico) {
+                wasNearBottom = (historico.scrollHeight - historico.scrollTop - historico.clientHeight) < 24;
               }
             } catch(_) {}
-            const extra = document.createElement('div');
-            extra.innerHTML = payload.descricao || '';
-            // Preserva quebras de linha como HTML
-            if (ativo.dataset.rawHtml) {
-              ativo.dataset.rawHtml = (ativo.dataset.rawHtml ? ativo.dataset.rawHtml + '<br>' : '') + (payload.descricao || '');
-              ativo.innerHTML = ativo.dataset.rawHtml;
-              // Reaplica enhance somente para este bloco
-              try { enhanceHistorico(ativo.parentElement); } catch(_) {}
-            } else {
-              ativo.innerHTML = (ativo.innerHTML ? ativo.innerHTML + '<br>' : '') + extra.innerHTML;
+            
+            // Append new description incrementally
+            const newDesc = payload.descricao || '';
+            if (newDesc) {
+              ativo.innerHTML = (ativo.innerHTML ? ativo.innerHTML + '<br>' : '') + newDesc;
               try { enhanceHistorico(ativo.parentElement); } catch(_) {}
             }
-            // Só rola para o fim se o usuário já estava perto do fim
-            const historico = document.getElementById('historico-card');
-            if (wasNearBottom && historico && historico.scrollHeight > historico.clientHeight) {
-              historico.scrollTop = historico.scrollHeight;
-            }
-            // Se o evento WS informar a origem do item, anota na primeira linha recém-formatada
+            
+            // Add item origin annotation if present
             try {
               const origemWs = (payload && (payload.item_origem_nome || payload.item_origem || payload.origem_item || '')) || '';
               if (origemWs) {
@@ -2568,10 +2558,26 @@
                 }
               }
             } catch(_) {}
-            // Garante atualização do status dos participantes sem recarregar a página inteira
-            await refreshSelectors(['#status-card']);
+            
+            // Only scroll to bottom if user was already viewing bottom (preserve intent)
+            if (wasNearBottom && historico && historico.scrollHeight > historico.clientHeight) {
+              historico.scrollTop = historico.scrollHeight;
+            }
+            
+            // Light status update: fetch JSON only, don't refresh entire card
+            try {
+              fetch(`/combate/{{ combate.id }}/status-card-json/`, { cache: 'no-store' })
+                .then(r => { if (r.ok) return r.json(); })
+                .then(data => {
+                  if (data && data.html) {
+                    const sc = document.getElementById('status-card');
+                    if (sc) sc.innerHTML = data.html;
+                  }
+                })
+                .catch(() => {});
+            } catch(_) {}
           } else {
-            await refreshSelectors(['#historico-card', '#status-card']);
+            await refreshSelectors(['#historico-card']);
           }
           break;
         }
@@ -2968,41 +2974,37 @@
         }
       })();
 
-      // Wheel handler on initial bind as well
+      // Wheel handler - optimized with cached dimensions
       if (!mapaArea.dataset.wheelBound) {
+        let lastScale = 1;
         mapaArea.addEventListener('wheel', function(e){
           if (!e.ctrlKey) return;
           e.preventDefault();
           const canvas = mapaArea.querySelector('.mapa-canvas');
-          if (!canvas) return;
-          const img = canvas.querySelector('.mapa-img');
-          if (!img) return;
+          const img = canvas ? canvas.querySelector('.mapa-img') : null;
+          if (!canvas || !img) return;
           
           let scale = parseFloat(mapaArea.dataset.scale || '1');
           const dir = e.deltaY > 0 ? -1 : 1;
-          const factor = dir > 0 ? 1.1 : 1/1.1;
-          scale = +(scale * factor).toFixed(3);
+          scale = +(scale * (dir > 0 ? 1.1 : 1/1.1)).toFixed(3);
           
-          // Get base dimensions
-          const baseW = parseFloat(canvas.dataset.baseWidth) || img.naturalWidth || img.clientWidth || 0;
-          const baseH = parseFloat(canvas.dataset.baseHeight) || img.naturalHeight || img.clientHeight || 0;
+          // Cache dimensions on first run (avoid recalc every zoom)
+          if (!mapaArea.dataset.cachedBaseW) {
+            mapaArea.dataset.cachedBaseW = img.naturalWidth || img.clientWidth || 0;
+            mapaArea.dataset.cachedBaseH = img.naturalHeight || img.clientHeight || 0;
+          }
+          const baseW = parseFloat(mapaArea.dataset.cachedBaseW) || 1;
+          const baseH = parseFloat(mapaArea.dataset.cachedBaseH) || 1;
           
-          // Calculate minimum scale to cover viewport
+          // Min/max clamping
           const areaW = mapaArea.clientWidth || 1;
           const areaH = mapaArea.clientHeight || 1;
-          const minScaleVal = Math.max(areaW / (baseW || areaW), areaH / (baseH || areaH));
+          const minScale = Math.max(areaW / baseW, areaH / baseH, 0.2);
+          scale = Math.max(minScale, Math.min(3, scale));
           
-          const maxScale = 3;
-          const oldScale = parseFloat(mapaArea.dataset.scale || '1');
-          
-          // Clamp scale to dynamic bounds - ALWAYS allow minScale to prevent black bars
-          scale = Math.max(minScaleVal, Math.min(maxScale, scale));
-          
-          // Apply transform
+          lastScale = parseFloat(mapaArea.dataset.scale || '1');
           mapaArea.dataset.scale = String(scale);
           canvas.style.transform = `scale(${scale})`;
-          canvas.style.minWidth = (baseW * scale) + 'px';
-          canvas.style.minHeight = (baseH * scale) + 'px';
           
           if (window.updateDrawLayerSizes) window.updateDrawLayerSizes();
           
@@ -3012,8 +3014,8 @@
           const pointerY = e.clientY - areaRect.top;
           const sx = mapaArea.scrollLeft;
           const sy = mapaArea.scrollTop;
-          const nx = (sx + pointerX) * (scale / oldScale) - pointerX;
-          const ny = (sy + pointerY) * (scale / oldScale) - pointerY;
+          const nx = (sx + pointerX) * (scale / lastScale) - pointerX;
+          const ny = (sy + pointerY) * (scale / lastScale) - pointerY;
           const maxScrollX = Math.max(0, mapaArea.scrollWidth - mapaArea.clientWidth);
           const maxScrollY = Math.max(0, mapaArea.scrollHeight - mapaArea.clientHeight);
           mapaArea.scrollLeft = Math.min(maxScrollX, Math.max(0, nx));
@@ -3021,21 +3023,25 @@
         }, { passive: false });
         mapaArea.dataset.wheelBound = '1';
       }
-      // Clamp scroll on initial load as well
+      // Clamp scroll lazily with debounce to avoid excessive recalc on every scroll event
       if (!mapaArea.dataset.scrollBound) {
+        let clampScheduled = false;
         mapaArea.addEventListener('scroll', function(){
-          const canvas = mapaArea.querySelector('.mapa-canvas');
-          const img = canvas ? canvas.querySelector('.mapa-img') : null;
-          if (!img) return;
-          const scale = parseFloat(mapaArea.dataset.scale || '1');
-          const baseW = img.naturalWidth || img.clientWidth || 0;
-          const baseH = img.naturalHeight || img.clientHeight || 0;
-          const maxX = Math.max(0, baseW * scale - mapaArea.clientWidth);
-          const maxY = Math.max(0, baseH * scale - mapaArea.clientHeight);
-          if (mapaArea.scrollLeft > maxX) mapaArea.scrollLeft = maxX;
-          if (mapaArea.scrollTop > maxY) mapaArea.scrollTop = maxY;
-          if (mapaArea.scrollLeft < 0) mapaArea.scrollLeft = 0;
-          if (mapaArea.scrollTop < 0) mapaArea.scrollTop = 0;
+          if (clampScheduled) return;
+          clampScheduled = true;
+          requestAnimationFrame(() => {
+            clampScheduled = false;
+            const canvas = mapaArea.querySelector('.mapa-canvas');
+            const img = canvas ? canvas.querySelector('.mapa-img') : null;
+            if (!img) return;
+            const scale = parseFloat(mapaArea.dataset.scale || '1');
+            const baseW = img.naturalWidth || img.clientWidth || 0;
+            const baseH = img.naturalHeight || img.clientHeight || 0;
+            const maxX = Math.max(0, baseW * scale - mapaArea.clientWidth);
+            const maxY = Math.max(0, baseH * scale - mapaArea.clientHeight);
+            if (mapaArea.scrollLeft > maxX) mapaArea.scrollLeft = maxX;
+            if (mapaArea.scrollTop > maxY) mapaArea.scrollTop = maxY;
+          });
         }, { passive: true });
         mapaArea.dataset.scrollBound = '1';
       }
