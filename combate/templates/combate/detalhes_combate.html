@@ -3089,6 +3089,9 @@
           // Clamp focal point scroll to bounds
           mapaArea.scrollLeft = Math.min(maxScrollX, Math.max(0, nx));
           mapaArea.scrollTop = Math.min(maxScrollY, Math.max(0, ny));
+          
+          // FINAL clamp to guarantee we're within bounds (in case focal point math has rounding errors)
+          requestAnimationFrame(() => clampScrollForArea(mapaArea));
         }, { passive: false });
         
         mapaArea.dataset.wheelBound = '1';
