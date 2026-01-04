@@ -1,0 +1,1022 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div id="warfare-content" class="combate-detalhes-center" data-is-gm="{% if is_gm %}true{% else %}false{% endif %}">
+  <!-- Topo: info de turno + ações globais -->
+  <div class="turno-topbar combate-card">
+    <div class="turno-topbar-row">
+      <div class="turno-topbar-info">
+        <strong>Combate Warfare:</strong> {{ combate.nome }}
+        {% if turno_ativo %}
+        <span style="margin-left: 20px;"><strong>Turno:</strong> <span id="turno-ativo-nome">{{ turno_ativo.unit_atacante.nome }} ({{ turno_ativo.unit_atacante.domain.nome }})</span></span>
+        {% else %}
+        <span style="margin-left: 20px;"><strong>Sem turno ativo</strong></span>
+        {% endif %}
+      </div>
+      <div class="turno-topbar-actions">
+        {% if combate.ativo and is_gm %}
+        <form method="post" action="{% url 'warfare_finalizar' combate.id %}" class="inline-form">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-danger" formnovalidate>Finalizar Combate</button>
+        </form>
+        {% endif %}
+        <a href="{% url 'warfare_listar' %}" class="btn btn-sm">Voltar</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grid: Histórico (esquerda) + Mapa (centro) -->
+  <div class="combate-layout-grid" style="grid-template-columns: 1fr 2fr;">
+    <!-- Coluna esquerda: Histórico de Ações -->
+    <div class="combate-col-left">
+      <div class="mapa-header-row">
+        <h3 class="combate-section-title" style="margin:0">Histórico de Ataques</h3>
+        {% if is_gm %}
+        <form method="post" action="{% url 'warfare_limpar_historico' combate.id %}" onsubmit="return confirm('Limpar todo o histórico?');">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-secondary">Limpar histórico</button>
+        </form>
+        {% endif %}
+      </div>
+      {% if combate.ativo %}
+      <form method="post" action="{% url 'warfare_resolver_ataque' combate.id %}" class="ataque-form combate-card">
+        {% csrf_token %}
+        <div class="ataque-form-row">
+          <label class="sr-only" for="atacante-select">Atacante</label>
+          <select id="atacante-select" name="atacante_id" class="select-sm" required>
+            <option value="">Atacante</option>
+            {% for unit_data in units_status %}
+              <option value="{{ unit_data.unit.id }}" {% if unit_data.status.incapacitado %}disabled{% endif %}>
+                {{ unit_data.domain.nome }} — {{ unit_data.unit.nome }} (HP {{ unit_data.status.hp_atual }}/{{ unit_data.status.hp_maximo }})
+              </option>
+            {% endfor %}
+          </select>
+
+          <label class="sr-only" for="alvo-select">Alvo</label>
+          <select id="alvo-select" name="alvo_id" class="select-sm" required>
+            <option value="">Alvo</option>
+            {% for unit_data in units_status %}
+              <option value="{{ unit_data.unit.id }}" {% if unit_data.status.incapacitado %}disabled{% endif %}>
+                {{ unit_data.domain.nome }} — {{ unit_data.unit.nome }} (HP {{ unit_data.status.hp_atual }}/{{ unit_data.status.hp_maximo }})
+              </option>
+            {% endfor %}
+          </select>
+
+          <button type="submit" class="btn btn-sm">Atacar</button>
+        </div>
+        <div class="ataque-hint">Clique em tokens para preencher atacante/alvo.</div>
+      </form>
+      {% endif %}
+      <div id="historico-card" class="combate-card" style="max-height: 600px; overflow-y: auto;">
+        <ul class="turnos-list">
+          {% for turno in turnos %}
+          <li class="turno-item" data-turno-id="{{ turno.id }}">
+            <div class="turno-header">
+              <strong>{{ turno.unit_atacante.nome }}</strong> 
+              <span style="color: #888;">({{ turno.unit_atacante.domain.nome }})</span>
+              <span class="turno-data">{{ turno.criado_em|date:"H:i" }}</span>
+            </div>
+            <div class="turno-desc">
+              {% if turno.unit_alvo %}
+              Atacou <strong>{{ turno.unit_alvo.nome }}</strong> ({{ turno.unit_alvo.domain.nome }})
+              <br>
+              {% if turno.sucesso_ataque %}
+              ✓ Ataque: {{ turno.roll_ataque }} vs DEF
+              {% if turno.sucesso_poder %}
+              → ✓ Poder vs RES → <span style="color: #d33;">1 dano</span>
+              {% else %}
+              → ✗ Poder resistido
+              {% endif %}
+              {% else %}
+              ✗ Ataque falhou: {{ turno.roll_ataque }} vs DEF
+              {% endif %}
+              {% if turno.roll_moral %}
+              <br>Moral: {{ turno.roll_moral }}
+              {% endif %}
+              {% if turno.dano_causado %}
+              <br>Dano: {{ turno.dano_causado }}
+              {% endif %}
+              {% if turno.descricao %}
+              <div class="turno-desc-extra">{{ turno.descricao }}</div>
+              {% endif %}
+              {% endif %}
+            </div>
+          </li>
+          {% empty %}
+          <li class="turno-item vazio"><em>Nenhuma ação registrada ainda.</em></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    <!-- Coluna central: Mapa expandido -->
+    <div class="combate-col-right">
+      <div class="mapa-header-row">
+        <h3 class="combate-section-title" style="margin:0">Mapa de Warfare</h3>
+        {% if is_gm %}
+        <div class="mapa-header-actions">
+          <label for="mapa_existente_top" class="sr-only">Selecionar mapa</label>
+          <select id="mapa_existente_top" class="select-sm" title="Selecionar mapa">
+            <option value="">– mapa –</option>
+            {% for mapa in mapas_globais %}
+              <option value="{{ mapa.id }}">{{ mapa.nome }}</option>
+            {% endfor %}
+          </select>
+          <button type="button" id="btn-usar-mapa" class="btn btn-sm">Usar</button>
+          <a href="{% url 'adicionar_mapa_global' %}" target="_blank" rel="noopener" id="btn-add-mapa-link" class="btn btn-sm">Novo</a>
+        </div>
+        {% endif %}
+      </div>
+
+      {% if mapas %}
+        {% for mapa in mapas %}
+        <div class="combate-card mapa-expandido">
+          <div class="mapa-wrapper">
+            <div id="mapa-area-{{ mapa.id }}" class="mapa-area" data-scale="1">
+              <div class="mapa-canvas">
+                <img src="{{ mapa.imagem.url }}" alt="{{ mapa.nome }}" class="mapa-img" draggable="false">
+                {% for posicao in posicoes %}
+                  {% if posicao.mapa.id == mapa.id %}
+                     <div id="token-{{ posicao.id }}" class="mapa-token token-unit"
+                       data-posicao-id="{{ posicao.id }}" data-mapa-id="{{ posicao.mapa.id }}"
+                       data-unit-id="{{ posicao.unit.id }}" data-unit-name="{{ posicao.display_label|default:posicao.unit.nome }}" data-domain-name="{{ posicao.unit.domain.nome }}"
+                       style="left:{{ posicao.x|default:50 }}px; top:{{ posicao.y|default:50 }}px; width:{{ posicao.token_size|default:60 }}px; height:{{ posicao.token_size|default:60 }}px; border:2px solid #fff; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:11px; text-align:center; line-height:1.1; cursor:grab; background:#1976d2;"
+                       draggable="true"
+                       title="{{ posicao.display_label|default:posicao.unit.nome }}">
+                    <div style="white-space: pre-wrap;">
+                      {{ posicao.display_label|default:posicao.unit.nome|slice:":10" }}
+                    </div>
+                  </div>
+                  {% endif %}
+                {% endfor %}
+              </div>
+              <div class="grid-layer" aria-hidden="true"></div>
+            </div>
+          </div>
+          <div class="mapa-grid-controls">
+            <label><input type="checkbox" id="grid-enable" checked> Grid</label>
+            <label style="display:flex; align-items:center; gap:4px;">
+              Tamanho
+              <input type="number" id="grid-size" value="50" min="5" max="400" step="5" class="input-sm" style="width:70px;">
+            </label>
+          </div>
+          {% if is_gm %}
+          <form method="post" action="{% url 'warfare_remover_mapa' combate.id mapa.id %}" class="mapa-remover-form" onsubmit="return confirm('Remover este mapa?');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-danger">Remover Mapa</button>
+          </form>
+          {% endif %}
+        </div>
+        {% endfor %}
+      {% else %}
+      <div class="combate-card mapa-expandido" style="text-align: center; color: #888;">
+        <p>Nenhum mapa disponível.</p>
+        {% if is_gm %}<p><em>Use o botão "Novo" para criar um mapa em Meus Mapas e depois clique em Usar.</em></p>{% endif %}
+      </div>
+      {% endif %}
+      {% if is_gm %}
+      <form method="post" action="{% url 'warfare_adicionar_mapa' combate.id %}" id="form-mapa" style="display:none">
+        {% csrf_token %}
+        <input type="hidden" name="mapa_existente" id="mapa_existente_hidden" value="">
+      </form>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- Participantes abaixo do mapa, em grade paralela -->
+  <div class="participantes-section">
+    <div class="mapa-header-row">
+      <h3 class="combate-section-title" style="margin:0">Participantes</h3>
+    </div>
+    <div class="participantes-grid">
+      {% for participante in participantes %}
+      <div class="participante-domain-card">
+        <div class="participante-header">
+          <div class="participante-nome">{{ participante.domain.nome }} (Nível {{ participante.domain.level }})</div>
+        </div>
+        
+        {% for unit_data in units_status %}
+          {% if unit_data.domain.id == participante.domain.id %}
+          <div class="unit-status-card" data-unit-id="{{ unit_data.unit.id }}" {% if unit_data.status.incapacitado %}style="opacity:0.5;"{% endif %}>
+            <div class="unit-status-top">
+              <strong class="unit-nome" {% if unit_data.status.incapacitado %}style="text-decoration: line-through; color: #666;"{% endif %}>{{ unit_data.unit.nome }}</strong>
+              <span class="unit-size">Size: {{ unit_data.unit.size.nome }}</span>
+            </div>
+
+            <div class="unit-hp-row">
+              <div class="unit-hp-labels">
+                <span class="hp-value" data-unit-id="{{ unit_data.unit.id }}">HP: {{ unit_data.status.hp_atual }}/{{ unit_data.status.hp_maximo }}</span>
+                <span class="unit-flags" data-unit-id="{{ unit_data.unit.id }}">
+                  {% if unit_data.status.diminished %}<span class="badge-warning">⚠ Diminished</span>{% endif %}
+                  {% if unit_data.status.incapacitado %}<span class="badge-danger">✗ Incapacitado</span>{% endif %}
+                </span>
+              </div>
+              <div class="unit-hp-bar">
+                <div class="unit-hp-fill {% if unit_data.status.hp_atual == 0 %}hp-zero{% elif unit_data.status.diminished %}hp-dim{% else %}hp-ok{% endif %}" data-unit-id="{{ unit_data.unit.id }}" style="width: {% widthratio unit_data.status.hp_atual unit_data.status.hp_maximo 100 %}%;"></div>
+              </div>
+            </div>
+
+            <div class="unit-actions">
+              <button type="button" class="btn btn-sm btn-danger unit-action-btn" data-unit-id="{{ unit_data.unit.id }}" data-action="dano" data-delta="1">+1 Dano</button>
+              <button type="button" class="btn btn-sm btn-success unit-action-btn" data-unit-id="{{ unit_data.unit.id }}" data-action="curar" data-delta="1">-1 Dano</button>
+              <button type="button" class="btn btn-sm btn-secondary unit-action-btn" data-unit-id="{{ unit_data.unit.id }}" data-action="reset">Descanso</button>
+            </div>
+
+            <div class="unit-attrs">
+              <span>ATQ: {{ unit_data.atributos.ataque }}</span>
+              <span>POD: {{ unit_data.atributos.poder }}</span>
+              <span>DEF: {{ unit_data.atributos.defesa }}</span>
+              <span>RES: {{ unit_data.atributos.resistencia }}</span>
+              <span>MOR: {{ unit_data.atributos.moral }}</span>
+            </div>
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% empty %}
+      <p style="color: #888; text-align: center; padding: 20px;"><em>Nenhum participante.</em></p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function(){
+    const select = document.getElementById('mapa_existente_top');
+    const btn = document.getElementById('btn-usar-mapa');
+    const hidden = document.getElementById('mapa_existente_hidden');
+    const form = document.getElementById('form-mapa');
+    if (btn && select && hidden && form) {
+      btn.addEventListener('click', function(){
+        if (!select.value) { return; }
+        hidden.value = select.value;
+        form.submit();
+      });
+    }
+
+    function setupMapAreas(){
+      document.querySelectorAll('[id^="mapa-area-"]').forEach(function(area){
+        const canvas = area.querySelector('.mapa-canvas');
+        const img = area.querySelector('.mapa-img');
+        const zoomBar = area.parentElement ? area.parentElement.querySelector('.mapa-zoom') : null;
+        const gridLayer = area.querySelector('.grid-layer');
+        if (!canvas || !img) return;
+
+        function clampScroll(){
+          const scale = parseFloat(area.dataset.scale || '1') || 1;
+          const baseW = parseFloat(canvas.dataset.baseWidth || canvas.offsetWidth || 0);
+          const baseH = parseFloat(canvas.dataset.baseHeight || canvas.offsetHeight || 0);
+          const contentW = baseW * scale;
+          const contentH = baseH * scale;
+          const maxLeft = Math.max(0, contentW - area.clientWidth);
+          const maxTop = Math.max(0, contentH - area.clientHeight);
+          area.scrollLeft = Math.min(area.scrollLeft, maxLeft);
+          area.scrollTop = Math.min(area.scrollTop, maxTop);
+        }
+
+        function minScale(){
+          const baseW = parseFloat(canvas.dataset.baseWidth || '0');
+          const baseH = parseFloat(canvas.dataset.baseHeight || '0');
+          const viewportW = area.clientWidth || 0;
+          const viewportH = area.clientHeight || 0;
+          if (baseW > 0 && baseH > 0 && viewportW > 0 && viewportH > 0) {
+            return Math.max(viewportW / baseW, viewportH / baseH, 0.2);
+          }
+          return 0.2;
+        }
+
+        function applyScale(scale){
+          const baseW = parseFloat(canvas.dataset.baseWidth || '0');
+          const baseH = parseFloat(canvas.dataset.baseHeight || '0');
+          const clamped = Math.max(minScale(), Math.min(3, scale));
+          area.dataset.scale = String(clamped);
+          canvas.style.transform = `scale(${clamped})`;
+          if (gridLayer) gridLayer.style.transform = `scale(${clamped})`;
+          if (baseW && baseH) {
+            canvas.style.minWidth = (baseW * clamped) + 'px';
+            canvas.style.minHeight = (baseH * clamped) + 'px';
+            if (gridLayer) {
+              gridLayer.style.width = baseW + 'px';
+              gridLayer.style.height = baseH + 'px';
+            }
+          }
+          clampScroll();
+        }
+
+        function initDimensions(){
+          const w = img.naturalWidth || img.width || 0;
+          const h = img.naturalHeight || img.height || 0;
+          if (w && h) {
+            canvas.dataset.baseWidth = w;
+            canvas.dataset.baseHeight = h;
+            canvas.style.width = w + 'px';
+            canvas.style.height = h + 'px';
+            if (gridLayer) {
+              gridLayer.style.width = w + 'px';
+              gridLayer.style.height = h + 'px';
+            }
+          }
+          applyScale(parseFloat(area.dataset.scale || '1') || 1);
+        }
+
+        img.addEventListener('load', initDimensions);
+        if (img.complete) initDimensions();
+
+        if (zoomBar) {
+          zoomBar.querySelectorAll('button[data-zoom]').forEach(function(button){
+            button.addEventListener('click', function(){
+              const dir = button.dataset.zoom;
+              let scale = parseFloat(area.dataset.scale || '1') || 1;
+              if (dir === 'in') scale += 0.1;
+              else if (dir === 'out') scale = scale - 0.1;
+              else scale = 1;
+              applyScale(parseFloat(scale.toFixed(2)));
+            });
+          });
+        }
+
+        // Ctrl+scroll zoom
+        area.addEventListener('wheel', function(e){
+          if (!e.ctrlKey) return;
+          e.preventDefault();
+          let scale = parseFloat(area.dataset.scale || '1') || 1;
+          const delta = -e.deltaY * 0.0015;
+          scale = scale + delta;
+          applyScale(parseFloat(scale.toFixed(2)));
+        }, { passive: false });
+
+        // Grid toggle
+        const gridToggle = document.getElementById('grid-enable');
+        const gridSizeInput = document.getElementById('grid-size');
+        function applyGrid(){
+          if (!gridLayer) return;
+          const enabled = gridToggle ? gridToggle.checked : false;
+          if (!enabled) {
+            gridLayer.style.backgroundImage = 'none';
+            return;
+          }
+          const size = Math.max(5, Math.min(400, parseFloat(gridSizeInput ? gridSizeInput.value : 50) || 50));
+          gridLayer.style.backgroundImage = `
+            linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px),
+            linear-gradient(180deg, rgba(255,255,255,0.15) 1px, transparent 1px)
+          `;
+          gridLayer.style.backgroundSize = `${size}px ${size}px`;
+          gridLayer.style.backgroundPosition = '0 0';
+        }
+        if (gridToggle) gridToggle.addEventListener('change', applyGrid);
+        if (gridSizeInput) gridSizeInput.addEventListener('input', applyGrid);
+        applyGrid();
+
+        area.addEventListener('scroll', clampScroll);
+
+        // Drag & drop move tokens
+        area.addEventListener('dragover', function(e){ e.preventDefault(); });
+        area.addEventListener('drop', function(e){
+          e.preventDefault();
+          const tokenId = e.dataTransfer ? e.dataTransfer.getData('tokenId') : null;
+          if (!tokenId) return;
+          const token = document.getElementById('token-' + tokenId);
+          if (!token) return;
+          const rect = canvas.getBoundingClientRect();
+          const scale = parseFloat(area.dataset.scale || '1') || 1;
+          let x = (e.clientX - rect.left) / scale;
+          let y = (e.clientY - rect.top) / scale;
+          const tokenSize = parseFloat(token.style.width || '60') || 60;
+          x = x - (tokenSize / 2);
+          y = y - (tokenSize / 2);
+          const baseW = parseFloat(canvas.dataset.baseWidth || '0');
+          const baseH = parseFloat(canvas.dataset.baseHeight || '0');
+          if (baseW) x = Math.max(0, Math.min(baseW - tokenSize, x));
+          if (baseH) y = Math.max(0, Math.min(baseH - tokenSize, y));
+          sendTokenUpdate(tokenId, x, y, tokenSize);
+          applyTokenPosition(tokenId, x, y);
+        });
+
+        // Store scaler for external use
+        area._applyScale = applyScale;
+      });
+    }
+
+    // ===== WebSocket tempo real =====
+    const combateId = '{{ combate.id }}';
+    const wsToken = '{{ ws_token|default:"" }}';
+    const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const wsTokenQuery = wsToken ? `?ws_token=${encodeURIComponent(wsToken)}` : '';
+    const wsUrl = `${wsScheme}://${window.location.host}/ws/warfare/${combateId}/${wsTokenQuery}`;
+    let warfareSocket = null;
+
+    function connectWs(){
+      try {
+        warfareSocket = new WebSocket(wsUrl);
+        warfareSocket.onmessage = function(e){
+          let payload = null;
+          try { payload = JSON.parse(e.data); } catch(_) { return; }
+          if (!payload || !payload.evento) return;
+          if (payload.evento === 'token_move') {
+            applyTokenPosition(payload.posicao_id, payload.x, payload.y);
+          } else if (payload.evento === 'token_resize') {
+            applyTokenSize(payload.posicao_id, payload.size);
+          } else if (payload.evento === 'ataque') {
+            appendTurnoFromWs(payload);
+            if (payload.alvo_status) {
+              updateUnitHp(payload.alvo_status);
+            }
+          } else if (payload.evento === 'status_update') {
+            if (payload.status) {
+              updateUnitHp(payload.status);
+            }
+          } else if (payload.evento === 'limpar_historico') {
+            const list = document.querySelector('.turnos-list');
+            if (list) list.innerHTML = '';
+          }
+        };
+        warfareSocket.onclose = function(){
+          setTimeout(connectWs, 1500);
+        };
+      } catch(_) {}
+    }
+
+    function csrfToken(){
+      const m = document.cookie.match(/csrftoken=([^;]+)/);
+      return m ? m[1] : '';
+    }
+
+    const updateUrlTemplate = "{% url 'warfare_atualizar_posicao_token' combate.id 0 %}";
+    const statusUrlTemplate = "{% url 'warfare_ajustar_hp_unit' combate.id 0 %}";
+
+    function sendTokenUpdate(tokenId, x, y, size){
+      const url = updateUrlTemplate.replace(/0\/?$/, `${tokenId}/`);
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken(),
+        },
+        body: JSON.stringify({x, y, size}),
+        credentials: 'same-origin',
+      }).catch(() => {});
+    }
+
+    function sendStatusAction(unitId, action, delta){
+      if (!unitId || !action) return;
+      const url = statusUrlTemplate.replace('/0/hp/', `/${unitId}/hp/`);
+      const payload = {action};
+      if (typeof delta !== 'undefined') payload.delta = delta;
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken(),
+        },
+        body: JSON.stringify(payload),
+        credentials: 'same-origin',
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.unit_status) updateUnitHp(data.unit_status);
+      })
+      .catch(() => {});
+    }
+
+    function applyTokenPosition(tokenId, x, y){
+      const token = document.getElementById('token-' + tokenId);
+      if (!token) return;
+      token.style.left = `${x}px`;
+      token.style.top = `${y}px`;
+    }
+
+    function applyTokenSize(tokenId, size){
+      const token = document.getElementById('token-' + tokenId);
+      if (!token || !size) return;
+      token.style.width = `${size}px`;
+      token.style.height = `${size}px`;
+    }
+
+    function updateUnitHp(status){
+      if (!status || !status.unit_id) return;
+      const hpText = document.querySelector(`.hp-value[data-unit-id="${status.unit_id}"]`);
+      if (hpText) {
+        hpText.textContent = `HP: ${status.hp_atual}/${status.hp_max}`;
+      }
+      const bar = document.querySelector(`.unit-hp-fill[data-unit-id="${status.unit_id}"]`);
+      if (bar) {
+        const pct = status.hp_max > 0 ? Math.max(0, Math.min(100, (status.hp_atual / status.hp_max) * 100)) : 0;
+        bar.style.width = `${pct}%`;
+        bar.classList.remove('hp-zero','hp-dim','hp-ok');
+        if (status.hp_atual <= 0) {
+          bar.classList.add('hp-zero');
+        } else if (status.diminished || status.hp_atual <= (status.hp_max / 2)) {
+          bar.classList.add('hp-dim');
+        } else {
+          bar.classList.add('hp-ok');
+        }
+      }
+      const flags = document.querySelector(`.unit-flags[data-unit-id="${status.unit_id}"]`);
+      if (flags) {
+        const badges = [];
+        if (status.diminished) badges.push('<span class="badge-warning">⚠ Diminished</span>');
+        if (status.incapacitado) badges.push('<span class="badge-danger">✗ Incapacitado</span>');
+        flags.innerHTML = badges.join(' ');
+      }
+      const card = document.querySelector(`.unit-status-card[data-unit-id="${status.unit_id}"]`);
+      if (card) {
+        card.style.opacity = status.incapacitado ? '0.5' : '';
+        card.classList.toggle('incapacitado', !!status.incapacitado);
+        const name = card.querySelector('.unit-nome');
+        if (name) {
+          if (status.incapacitado) {
+            name.style.textDecoration = 'line-through';
+            name.style.color = '#666';
+          } else {
+            name.style.textDecoration = '';
+            name.style.color = '';
+          }
+        }
+      }
+    }
+
+    function appendTurnoFromWs(payload){
+      if (!payload || !payload.turno) return;
+      const turno = payload.turno;
+      const list = document.querySelector('.turnos-list');
+      if (!list) return;
+      if (turno.id && list.querySelector(`[data-turno-id="${turno.id}"]`)) return;
+
+      const li = document.createElement('li');
+      li.className = 'turno-item';
+      if (turno.id) li.dataset.turnoId = turno.id;
+
+      const header = document.createElement('div');
+      header.className = 'turno-header';
+      header.innerHTML = `<strong>${turno.atacante_nome || ''}</strong> <span style="color:#888;">(${turno.atacante_domain || ''})</span><span class="turno-data">${turno.hora || ''}</span>`;
+
+      const desc = document.createElement('div');
+      desc.className = 'turno-desc';
+      const parts = [];
+      if (turno.alvo_nome) {
+        parts.push(`Atacou <strong>${turno.alvo_nome}</strong> (${turno.alvo_domain || ''})`);
+        if (turno.sucesso_ataque) {
+          parts.push(`✓ Ataque: ${turno.roll_ataque} vs DEF ${turno.defesa}`);
+          if (turno.sucesso_poder) {
+            parts.push(`→ ✓ Poder vs RES ${turno.resistencia} → <span style="color:#d33;">1 dano</span>`);
+          } else {
+            parts.push(`→ ✗ Poder resistido (roll ${turno.roll_poder || '—'} vs RES ${turno.resistencia})`);
+          }
+        } else {
+          parts.push(`✗ Ataque falhou: ${turno.roll_ataque} vs DEF ${turno.defesa}`);
+        }
+        if (turno.roll_moral !== null && turno.roll_moral !== undefined) {
+          parts.push(`Moral: ${turno.roll_moral}`);
+        }
+        if (turno.dano !== null && turno.dano !== undefined) {
+          parts.push(`Dano: ${turno.dano}`);
+        }
+      }
+      desc.innerHTML = parts.join('<br>');
+      if (turno.descricao) {
+        const extra = document.createElement('div');
+        extra.className = 'turno-desc-extra';
+        extra.textContent = turno.descricao;
+        desc.appendChild(extra);
+      }
+
+      li.appendChild(header);
+      li.appendChild(desc);
+      list.prepend(li);
+    }
+
+    // Bind dragstart to carry token id
+    document.addEventListener('dragstart', function(e){
+      const t = e.target.closest && e.target.closest('.mapa-token');
+      if (t && e.dataTransfer) {
+        e.dataTransfer.setData('tokenId', t.dataset.posicaoId || t.id.replace('token-',''));
+      }
+    });
+
+    const attackerSelect = document.getElementById('atacante-select');
+    const targetSelect = document.getElementById('alvo-select');
+    function wireTokenSelection(){
+      document.querySelectorAll('.mapa-token').forEach(function(token){
+        token.addEventListener('click', function(){
+          const unitId = token.dataset.unitId;
+          if (!unitId) return;
+          if (attackerSelect && !attackerSelect.value) {
+            attackerSelect.value = unitId;
+          } else if (targetSelect) {
+            targetSelect.value = unitId;
+          }
+        });
+      });
+    }
+
+    function wireUnitActionButtons(){
+      document.querySelectorAll('.unit-action-btn').forEach(function(btn){
+        btn.addEventListener('click', function(e){
+          e.preventDefault();
+          const unitId = btn.dataset.unitId;
+          const action = btn.dataset.action;
+          const delta = btn.dataset.delta ? parseInt(btn.dataset.delta, 10) : undefined;
+          sendStatusAction(unitId, action, delta);
+        });
+      });
+    }
+
+    setupMapAreas();
+    wireTokenSelection();
+    wireUnitActionButtons();
+    connectWs();
+  });
+</script>
+<style>
+.combate-detalhes-center {
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.turno-topbar {
+  margin-bottom: 20px;
+}
+
+.turno-topbar-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.turno-topbar-info {
+  flex: 1;
+  min-width: 300px;
+}
+
+.turno-topbar-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.combate-layout-grid {
+  display: grid;
+  gap: 20px;
+  align-items: start;
+}
+
+
+.mapa-expandido {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #1a1a1a;
+}
+
+.combate-card {
+  background: #2a2a2a;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.combate-section-title {
+  color: #d4af37;
+  font-size: 1.2em;
+  margin-bottom: 10px;
+}
+
+.mapa-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.turnos-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.turno-item {
+  padding: 10px;
+  margin-bottom: 8px;
+  background: #1a1a1a;
+  border-radius: 4px;
+  border-left: 3px solid #555;
+}
+
+.turno-item.vazio {
+  text-align: center;
+  color: #888;
+  border-left: none;
+}
+
+.turno-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.turno-data {
+  font-size: 12px;
+  color: #888;
+}
+
+.turno-desc {
+  font-size: 14px;
+  color: #ccc;
+  line-height: 1.6;
+}
+
+.turno-desc-extra {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #aaa;
+}
+
+.ataque-form {
+  margin-bottom: 10px;
+}
+
+.ataque-form-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ataque-hint {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #999;
+}
+
+.inline-form {
+  display: inline;
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: none;
+  background: #3a3a3a;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.btn:hover {
+  background: #4a4a4a;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.btn-danger {
+  background: #d33;
+}
+
+.btn-danger:hover {
+  background: #b22;
+}
+
+.mapa-wrapper {
+  position: relative;
+}
+
+.mapa-area {
+  position: relative;
+  overflow: auto;
+  border-radius: 8px;
+  background: #0f0f0f;
+  padding: 0;
+}
+
+.mapa-canvas {
+  position: relative;
+  display: inline-block;
+  transform-origin: top left;
+}
+
+.grid-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  mix-blend-mode: screen;
+  transform-origin: top left;
+}
+
+.mapa-grid-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  color: #ccc;
+}
+
+.mapa-img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.mapa-token {
+  position: absolute;
+  cursor: grab;
+  user-select: none;
+  transition: transform 0.2s, box-shadow 0.2s;
+  padding: 4px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+  box-shadow: 0 0 8px rgba(0,0,0,0.5);
+}
+
+.mapa-token:hover {
+  transform: scale(1.15);
+  z-index: 10;
+  box-shadow: 0 0 12px rgba(255,255,255,0.5);
+}
+
+.mapa-token:active {
+  cursor: grabbing;
+}
+
+.token-unit {
+  animation: tokenPulse 0.3s ease-in-out;
+}
+
+@keyframes tokenPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.mapa-zoom {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+.mapa-zoom {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+
+.participantes-section {
+  margin-top: 20px;
+}
+
+.participantes-grid {
+  display: grid;
+  gap: 15px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.participante-domain-card {
+  padding: 12px;
+  background: #2a2a2a;
+  border-radius: 10px;
+  border: 1px solid #3a3a3a;
+}
+
+.participante-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.participante-nome {
+  font-weight: bold;
+  color: #d4af37;
+}
+
+.unit-status-card {
+  margin-bottom: 10px;
+  padding: 10px;
+  background: #1a1a1a;
+  border-radius: 6px;
+  border: 1px solid #333;
+}
+
+.unit-status-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.unit-nome {
+  color: #fff;
+}
+
+.unit-size {
+  font-size: 12px;
+  color: #888;
+}
+
+.unit-hp-row {
+  margin-bottom: 6px;
+}
+
+.unit-hp-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #ccc;
+}
+
+.unit-flags {
+  display: flex;
+  gap: 6px;
+}
+
+.badge-warning {
+  color: #f9a825;
+  font-size: 11px;
+}
+
+.badge-danger {
+  color: #d33;
+  font-size: 11px;
+}
+
+.unit-hp-bar {
+  background: #333;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.unit-hp-fill {
+  height: 100%;
+  transition: width 0.3s;
+}
+
+.hp-zero { background: #666; }
+.hp-dim { background: #f9a825; }
+.hp-ok { background: #2e7d32; }
+
+.unit-status-card.incapacitado .unit-nome {
+  text-decoration: line-through;
+  color: #666;
+}
+
+.unit-attrs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: #aaa;
+}
+
+.unit-actions {
+  margin-top: 8px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 1200px) {
+  .combate-layout-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+</style>
+
+<script>
+let currentZoom = 1;
+
+function zoomMap(delta) {
+  currentZoom = Math.max(0.5, Math.min(3, currentZoom + delta));
+  const mapaArea = document.querySelector('.mapa-area');
+  if (mapaArea) {
+    mapaArea.style.transform = `scale(${currentZoom})`;
+    mapaArea.style.transformOrigin = 'top left';
+  }
+}
+
+function resetZoom() {
+  currentZoom = 1;
+  const mapaArea = document.querySelector('.mapa-area');
+  if (mapaArea) {
+    mapaArea.style.transform = 'scale(1)';
+  }
+}
+</script>
+{% endblock %}
