@@ -73,7 +73,8 @@ class UnitForm(forms.ModelForm):
     class Meta:
         model = Unit
         fields = [
-            'nome', 'descricao', 'imagem', 'ancestry', 'unit_type', 'size', 'experience', 'equipment', 'traits'
+            'nome', 'descricao', 'imagem', 'ancestry', 'unit_type', 'size', 'experience', 'equipment',
+            'is_mythic', 'ataque', 'poder', 'defesa', 'resistencia', 'moral', 'traits'
         ]
         widgets = {
             'nome': forms.TextInput(attrs={'class': 'form-control'}),
@@ -84,6 +85,12 @@ class UnitForm(forms.ModelForm):
             'size': forms.Select(attrs={'class': 'form-control'}),
             'experience': forms.Select(attrs={'class': 'form-control'}),
             'equipment': forms.Select(attrs={'class': 'form-control'}),
+            'is_mythic': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'ataque': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'poder': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'defesa': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
+            'resistencia': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
+            'moral': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'max': 10}),
             'traits': forms.CheckboxSelectMultiple(attrs={'class': 'trait-checkbox'}),
         }
     
@@ -94,13 +101,12 @@ class UnitForm(forms.ModelForm):
         # Valores padrão
         if not self.instance.pk:
             # Valores padrão de atributos base
-            self.fields_defaults = {
-                'ataque': 0,
-                'poder': 0,
-                'defesa': 10,
-                'resistencia': 10,
-                'moral': 0,
-            }
+            self.fields['is_mythic'].initial = False
+            self.fields['ataque'].initial = 0
+            self.fields['poder'].initial = 0
+            self.fields['defesa'].initial = 10
+            self.fields['resistencia'].initial = 10
+            self.fields['moral'].initial = 0
             # Tenta definir experience como Green, ou deixa vazio se não existir
             try:
                 green = UnitExperience.objects.get(nome='green')

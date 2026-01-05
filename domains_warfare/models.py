@@ -658,14 +658,14 @@ class Unit(models.Model):
     
     # Atributos da Unidade (valores base, antes de modificadores)
     ataque = models.IntegerField(
-        default=1,
-        validators=[MinValueValidator(1)],
+        default=0,
+        validators=[MinValueValidator(0)],
         verbose_name="Ataque",
         help_text="Capacidade de ataque da unidade"
     )
     poder = models.IntegerField(
-        default=1,
-        validators=[MinValueValidator(1)],
+        default=0,
+        validators=[MinValueValidator(0)],
         verbose_name="Poder",
         help_text="Poder/Força da unidade"
     )
@@ -686,6 +686,12 @@ class Unit(models.Model):
         validators=[MinValueValidator(0), MaxValueValidator(10)],
         verbose_name="Moral",
         help_text="Moral da unidade (0-10)"
+    )
+
+    is_mythic = models.BooleanField(
+        default=False,
+        verbose_name="Unidade Mítica",
+        help_text="Se marcado, os atributos base podem ser definidos manualmente"
     )
     
     # Custos associados

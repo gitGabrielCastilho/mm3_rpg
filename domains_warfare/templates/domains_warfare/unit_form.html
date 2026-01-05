@@ -230,6 +230,19 @@
         margin-right: 2rem;
         padding: 1rem;
     }
+
+    .attributes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+    }
+
+    .mythic-toggle label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+    }
 </style>
 
 <div class="content-wrapper">
@@ -325,6 +338,49 @@
                 {% endif %}
                 <small>Tipo de equipamento que fornecerá modificadores de Poder e Defesa</small>
             </div>
+
+            <div class="form-group mythic-toggle {% if form.is_mythic.errors %}errors{% endif %}">
+                <label>
+                    {{ form.is_mythic }} Unidade Mítica (atributos livres)
+                </label>
+                {% if form.is_mythic.errors %}
+                    {{ form.is_mythic.errors }}
+                {% endif %}
+                <small>Marque para editar Ataque, Poder, Defesa, Resistência e Moral manualmente.</small>
+            </div>
+        </div>
+
+        <!-- Atributos Base (editáveis para unidades míticas) -->
+        <div class="form-section">
+            <h3>Atributos Base</h3>
+            <div class="attributes-grid">
+                <div class="form-group {% if form.ataque.errors %}errors{% endif %}">
+                    <label for="{{ form.ataque.id_for_label }}">Ataque</label>
+                    {{ form.ataque }}
+                    {% if form.ataque.errors %}{{ form.ataque.errors }}{% endif %}
+                </div>
+                <div class="form-group {% if form.poder.errors %}errors{% endif %}">
+                    <label for="{{ form.poder.id_for_label }}">Poder</label>
+                    {{ form.poder }}
+                    {% if form.poder.errors %}{{ form.poder.errors }}{% endif %}
+                </div>
+                <div class="form-group {% if form.defesa.errors %}errors{% endif %}">
+                    <label for="{{ form.defesa.id_for_label }}">Defesa</label>
+                    {{ form.defesa }}
+                    {% if form.defesa.errors %}{{ form.defesa.errors }}{% endif %}
+                </div>
+                <div class="form-group {% if form.resistencia.errors %}errors{% endif %}">
+                    <label for="{{ form.resistencia.id_for_label }}">Resistência</label>
+                    {{ form.resistencia }}
+                    {% if form.resistencia.errors %}{{ form.resistencia.errors }}{% endif %}
+                </div>
+                <div class="form-group {% if form.moral.errors %}errors{% endif %}">
+                    <label for="{{ form.moral.id_for_label }}">Moral</label>
+                    {{ form.moral }}
+                    {% if form.moral.errors %}{{ form.moral.errors }}{% endif %}
+                </div>
+            </div>
+            <small style="color: var(--text-muted);">Para unidades não míticas, os atributos são fixos (ATQ 0 / POD 0 / DEF 10 / RES 10 / MOR 0).</small>
         </div>
 
         <!-- Traits -->
@@ -420,6 +476,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const sizeSelect = document.getElementById('{{ form.size.id_for_label }}');
     const experienceSelect = document.getElementById('{{ form.experience.id_for_label }}');
     const equipmentSelect = document.getElementById('{{ form.equipment.id_for_label }}');
+    const mythicCheckbox = document.getElementById('{{ form.is_mythic.id_for_label }}');
+    const ataqueInput = document.getElementById('{{ form.ataque.id_for_label }}');
+    const poderInput = document.getElementById('{{ form.poder.id_for_label }}');
+    const defesaInput = document.getElementById('{{ form.defesa.id_for_label }}');
+    const resistenciaInput = document.getElementById('{{ form.resistencia.id_for_label }}');
+    const moralInput = document.getElementById('{{ form.moral.id_for_label }}');
     
     // Elementos de exibição
     const costDisplay = document.getElementById('cost-display');
@@ -464,12 +526,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 params.append('equipment', equipmentSelect.value);
             }
             
-            // Atributos com valores padrão (os atributos base agora são fixos na view)
-            params.append('ataque', '0');
-            params.append('poder', '0');
-            params.append('defesa', '10');
-            params.append('resistencia', '10');
-            params.append('moral', '0');
+            const isMythic = mythicCheckbox ? mythicCheckbox.checked : false;
+            const getVal = (el, fallback) => {
+                if (!el) return fallback;
+                const v = parseInt(el.value, 10);
+                if (Number.isNaN(v)) return fallback;
+                return v;
+            };
+            const baseAtaque = isMythic ? getVal(ataqueInput, 1) : 0;
+            const basePoder = isMythic ? getVal(poderInput, 1) : 0;
+            const baseDefesa = isMythic ? getVal(defesaInput, 1) : 10;
+            const baseResistencia = isMythic ? getVal(resistenciaInput, 1) : 10;
+            const baseMoral = isMythic ? getVal(moralInput, 0) : 0;
+            params.append('ataque', String(baseAtaque));
+            params.append('poder', String(basePoder));
+            params.append('defesa', String(baseDefesa));
+            params.append('resistencia', String(baseResistencia));
+            params.append('moral', String(baseMoral));
             
             // Traits selecionados
             traitCheckboxes.forEach(function(checkbox) {
@@ -529,12 +602,28 @@ document.addEventListener('DOMContentLoaded', function() {
     if (sizeSelect) sizeSelect.addEventListener('change', calculateCost);
     if (experienceSelect) experienceSelect.addEventListener('change', calculateCost);
     if (equipmentSelect) equipmentSelect.addEventListener('change', calculateCost);
-    
+    if (mythicCheckbox) {
+        mythicCheckbox.addEventListener('change', function(){
+            const editable = mythicCheckbox.checked;
+            [ataqueInput, poderInput, defesaInput, resistenciaInput, moralInput].forEach(function(el){
+                if (!el) return;
+                el.readOnly = !editable;
+                el.classList.toggle('read-only', !editable);
+            });
+            calculateCost();
+        });
+    }
     traitCheckboxes.forEach(function(checkbox) {
         checkbox.addEventListener('change', calculateCost);
     });
+    [ataqueInput, poderInput, defesaInput, resistenciaInput, moralInput].forEach(function(el){
+        if (el) el.addEventListener('input', calculateCost);
+    });
     
     // Calcular custo inicial ao carregar a página (para edição)
+    if (mythicCheckbox) {
+        mythicCheckbox.dispatchEvent(new Event('change'));
+    }
     calculateCost();
 });
 </script>

@@ -286,12 +286,15 @@ def unit_create(request, domain_pk):
                 unit = form.save(commit=False)
                 unit.domain = domain
                 unit.criador = request.user
-                # Definir valores fixos de atributos
-                unit.ataque = 0
-                unit.poder = 0
-                unit.defesa = 10
-                unit.resistencia = 10
-                unit.moral = 0
+                if unit.is_mythic:
+                    # usa os valores fornecidos no formulário (já validados pelo ModelForm)
+                    pass
+                else:
+                    unit.ataque = 0
+                    unit.poder = 0
+                    unit.defesa = 10
+                    unit.resistencia = 10
+                    unit.moral = 0
                 unit.save()
                 form.save_m2m()  # Salvar relacionamentos ManyToMany (traits)
                 messages.success(request, f"Unidade '{unit.nome}' criada com sucesso!")
@@ -386,12 +389,14 @@ def unit_edit(request, domain_pk, pk):
             form = UnitForm(request.POST, instance=unit, domain=domain)
             if form.is_valid():
                 unit = form.save(commit=False)
-                # Garantir que os atributos mantêm os valores fixos
-                unit.ataque = 0
-                unit.poder = 0
-                unit.defesa = 10
-                unit.resistencia = 10
-                unit.moral = 0
+                if unit.is_mythic:
+                    pass
+                else:
+                    unit.ataque = 0
+                    unit.poder = 0
+                    unit.defesa = 10
+                    unit.resistencia = 10
+                    unit.moral = 0
                 unit.save()
                 form.save_m2m()  # Salvar relacionamentos ManyToMany (traits)
                 messages.success(request, f"Unidade '{unit.nome}' atualizada com sucesso!")
@@ -458,11 +463,11 @@ def calculate_unit_cost(request):
         trait_ids = request.GET.getlist('traits')
         
         # Atributos base
-        ataque = int(request.GET.get('ataque', 1))
-        poder = int(request.GET.get('poder', 1))
-        defesa = int(request.GET.get('defesa', 1))
-        resistencia = int(request.GET.get('resistencia', 1))
-        moral = int(request.GET.get('moral', 1))
+        ataque = int(request.GET.get('ataque', 0))
+        poder = int(request.GET.get('poder', 0))
+        defesa = int(request.GET.get('defesa', 10))
+        resistencia = int(request.GET.get('resistencia', 10))
+        moral = int(request.GET.get('moral', 0))
         
         # Calcular modificadores de cada componente
         mods = {
