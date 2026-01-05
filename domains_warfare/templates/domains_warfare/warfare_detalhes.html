@@ -63,6 +63,11 @@
           <label class="sr-only" for="alvo-select">Alvo</label>
           <select id="alvo-select" name="alvo_id" class="select-sm" required>
             <option value="">Alvo</option>
+            {% if combate.fortificacao and combate.domain_defensor and combate.hp_fortificacao_atual and combate.hp_fortificacao_atual > 0 %}
+            <option value="fortificacao" style="background: #d4af37; color: #000; font-weight: bold;">
+              🏰 {{ combate.fortificacao.get_nome_display }} (HP {{ combate.hp_fortificacao_atual }}/{{ combate.fortificacao.hp_fortificacao }})
+            </option>
+            {% endif %}
             {% for unit_data in units_status %}
               <option value="{{ unit_data.unit.id }}" {% if unit_data.status.incapacitado %}disabled{% endif %}>
                 {{ unit_data.domain.nome }} — {{ unit_data.unit.nome }} (HP {{ unit_data.status.hp_atual }}/{{ unit_data.status.hp_maximo }})
@@ -72,7 +77,7 @@
 
           <button type="submit" class="btn btn-sm">Atacar</button>
         </div>
-        <div class="ataque-hint">Clique em tokens para preencher atacante/alvo.</div>
+        <div class="ataque-hint">Clique em tokens para preencher atacante/alvo. Fortificação pode ser atacada!</div>
       </form>
       {% endif %}
       <div id="historico-card" class="combate-card" style="max-height: 600px; overflow-y: auto;">
@@ -466,6 +471,11 @@
             if (payload.alvo_status) {
               updateUnitHp(payload.alvo_status);
             }
+          } else if (payload.evento === 'ataque_fortificacao') {
+            appendTurnoFromWs(payload);
+            if (payload.fort_status) {
+              updateFortificacaoHp(payload.fort_status);
+            }
           } else if (payload.evento === 'status_update') {
             if (payload.status) {
               updateUnitHp(payload.status);
@@ -579,6 +589,29 @@
         }
       }
     }
+    
+    function updateFortificacaoHp(fortStatus){
+      if (!fortStatus) return;
+      const fortHpDisplay = document.getElementById('fort-hp-display');
+      if (fortHpDisplay) {
+        fortHpDisplay.textContent = `HP: ${fortStatus.hp_atual}/${fortStatus.hp_max}`;
+        if (fortStatus.destruida) {
+          fortHpDisplay.style.color = '#d33';
+          fortHpDisplay.textContent = `HP: 0/${fortStatus.hp_max} ⚠ DESTRUÍDA`;
+        }
+      }
+      
+      // Remover fortificação do select de alvos se destruída
+      if (fortStatus.destruida) {
+        const alvoSelect = document.getElementById('alvo-select');
+        if (alvoSelect) {
+          const fortOption = alvoSelect.querySelector('option[value="fortificacao"]');
+          if (fortOption) {
+            fortOption.remove();
+          }
+        }
+      }
+    }
 
     function appendTurnoFromWs(payload){
       if (!payload || !payload.turno) return;
@@ -598,23 +631,45 @@
       const desc = document.createElement('div');
       desc.className = 'turno-desc';
       const parts = [];
+      
+      // Verificar se atacou fortificação ou unidade
       if (turno.alvo_nome) {
-        parts.push(`Atacou <strong>${turno.alvo_nome}</strong> (${turno.alvo_domain || ''})`);
-        if (turno.sucesso_ataque) {
-          parts.push(`✓ Ataque: ${turno.roll_ataque} vs DEF ${turno.defesa}`);
-          if (turno.sucesso_poder) {
-            parts.push(`→ ✓ Poder vs RES ${turno.resistencia} → <span style="color:#d33;">1 dano</span>`);
+        const isForticacao = turno.alvo_nome.includes('Cerca') || turno.alvo_nome.includes('Torre') || 
+                             turno.alvo_nome.includes('Muros') || turno.alvo_nome.includes('Portões') || 
+                             turno.alvo_nome.includes('Torreão') || turno.alvo_nome.includes('Castelo') ||
+                             turno.alvo_nome.includes('Keep');
+        
+        if (isForticacao) {
+          // Ataque à fortificação
+          parts.push(`Atacou <strong>🏰 ${turno.alvo_nome}</strong>`);
+          if (turno.sucesso_ataque) {
+            parts.push(`✓ Ataque: ${turno.roll_ataque} vs DEF ${turno.defesa}`);
+            parts.push(`<span style="color:#d33;">Dano: ${turno.dano || 1}</span>`);
+            if (turno.fortificacao_destruida) {
+              parts.push(`<span style="color:#f00; font-weight: bold;">⚠ FORTIFICAÇÃO DESTRUÍDA!</span>`);
+            }
           } else {
-            parts.push(`→ ✗ Poder resistido (roll ${turno.roll_poder || '—'} vs RES ${turno.resistencia})`);
+            parts.push(`✗ Ataque falhou: ${turno.roll_ataque} vs DEF ${turno.defesa}`);
           }
         } else {
-          parts.push(`✗ Ataque falhou: ${turno.roll_ataque} vs DEF ${turno.defesa}`);
-        }
-        if (turno.roll_moral !== null && turno.roll_moral !== undefined) {
-          parts.push(`Moral: ${turno.roll_moral}`);
-        }
-        if (turno.dano !== null && turno.dano !== undefined) {
-          parts.push(`Dano: ${turno.dano}`);
+          // Ataque a unidade (lógica original)
+          parts.push(`Atacou <strong>${turno.alvo_nome}</strong> (${turno.alvo_domain || ''})`);
+          if (turno.sucesso_ataque) {
+            parts.push(`✓ Ataque: ${turno.roll_ataque} vs DEF ${turno.defesa}`);
+            if (turno.sucesso_poder) {
+              parts.push(`→ ✓ Poder vs RES ${turno.resistencia} → <span style="color:#d33;">1 dano</span>`);
+            } else {
+              parts.push(`→ ✗ Poder resistido (roll ${turno.roll_poder || '—'} vs RES ${turno.resistencia})`);
+            }
+          } else {
+            parts.push(`✗ Ataque falhou: ${turno.roll_ataque} vs DEF ${turno.defesa}`);
+          }
+          if (turno.roll_moral !== null && turno.roll_moral !== undefined) {
+            parts.push(`Moral: ${turno.roll_moral}`);
+          }
+          if (turno.dano !== null && turno.dano !== undefined) {
+            parts.push(`Dano: ${turno.dano}`);
+          }
         }
       }
       desc.innerHTML = parts.join('<br>');

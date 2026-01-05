@@ -474,11 +474,22 @@ def warfare_resolver_ataque(request, pk):
         pk=atacante_id,
         domain__participacoes_warfare__combate=combate,
     )
-    alvo = get_object_or_404(
-        Unit,
-        pk=alvo_id,
-        domain__participacoes_warfare__combate=combate,
-    )
+    
+    # Verificar se está atacando a fortificação ou uma unidade
+    atacando_fortificacao = (alvo_id == 'fortificacao')
+    alvo = None
+    
+    if atacando_fortificacao:
+        # Validar que existe fortificação com HP > 0
+        if not combate.fortificacao or not combate.hp_fortificacao_atual or combate.hp_fortificacao_atual <= 0:
+            messages.error(request, "Não há fortificação disponível para atacar.")
+            return redirect('warfare_detalhes', pk=pk)
+    else:
+        alvo = get_object_or_404(
+            Unit,
+            pk=alvo_id,
+            domain__participacoes_warfare__combate=combate,
+        )
 
     is_gm = combate.sala.game_master_id == request.user.id
     controla_atacante = (
@@ -490,6 +501,113 @@ def warfare_resolver_ataque(request, pk):
         messages.error(request, "Você não pode agir com esta unidade.")
         return redirect('warfare_detalhes', pk=pk)
 
+    # ========== CASO 1: ATACAR FORTIFICAÇÃO ==========
+    if atacando_fortificacao:
+        status_atacante, _ = StatusUnitWarfare.objects.get_or_create(
+            combate=combate,
+            unit=atacante,
+            defaults={
+                'hp_maximo': _get_hp_from_size(atacante.size),
+                'hp_atual': _get_hp_from_size(atacante.size),
+            }
+        )
+        
+        if status_atacante.incapacitado:
+            messages.error(request, "A unidade atacante está incapacitada.")
+            return redirect('warfare_detalhes', pk=pk)
+        
+        atributos_atacante = atacante.get_atributos_finais()
+        
+        # Fortificação tem defesa fixa baseada no tipo
+        defesa_fortificacao = 10 + combate.fortificacao.defesa  # DC base 10 + bônus
+        
+        roll_ataque_d20 = random.randint(1, 20)
+        ataque_total = roll_ataque_d20 + atributos_atacante.get('ataque', 0)
+        sucesso_ataque = ataque_total >= defesa_fortificacao
+        
+        dano_total = 0
+        if sucesso_ataque:
+            # Fortificação não tem resistência - dano automático se acertar
+            dano_total = 1
+            hp_antes = combate.hp_fortificacao_atual
+            combate.hp_fortificacao_atual = max(0, combate.hp_fortificacao_atual - dano_total)
+            combate.save(update_fields=['hp_fortificacao_atual'])
+            hp_depois = combate.hp_fortificacao_atual
+            
+            fortificacao_destruida = (hp_depois == 0)
+        else:
+            hp_antes = combate.hp_fortificacao_atual
+            hp_depois = combate.hp_fortificacao_atual
+            fortificacao_destruida = False
+        
+        # Criar registro do turno
+        descricao_partes = [
+            f"Ataque d20 ({roll_ataque_d20}) + ATQ {atributos_atacante.get('ataque', 0)} = {ataque_total} vs DEF {defesa_fortificacao}",
+            "acertou a fortificação!" if sucesso_ataque else "errou a fortificação",
+        ]
+        if sucesso_ataque:
+            descricao_partes.append(f"Dano: {dano_total}")
+            descricao_partes.append(f"HP fortificação: {hp_antes} → {hp_depois}")
+            if fortificacao_destruida:
+                descricao_partes.append("⚠ FORTIFICAÇÃO DESTRUÍDA!")
+        
+        descricao = " | ".join(descricao_partes)
+        
+        ordem = combate.turnos_warfare.count() + 1
+        turno = TurnoWarfare.objects.create(
+            combate=combate,
+            unit_atacante=atacante,
+            unit_alvo=None,  # Atacou fortificação
+            ordem=ordem,
+            ativo=False,
+            tipo_acao='ataque',
+            roll_ataque=ataque_total,
+            sucesso_ataque=sucesso_ataque,
+            dano_causado=dano_total,
+            descricao=descricao,
+        )
+        
+        # Transmitir via WebSocket
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'warfare_{combate.id}',
+                {
+                    'type': 'combate_message',
+                    'message': json.dumps({
+                        'evento': 'ataque_fortificacao',
+                        'turno': {
+                            'id': turno.id,
+                            'hora': turno.criado_em.strftime('%H:%M'),
+                            'atacante_nome': atacante.nome,
+                            'atacante_domain': atacante.domain.nome,
+                            'alvo_nome': combate.fortificacao.get_nome_display(),
+                            'sucesso_ataque': sucesso_ataque,
+                            'roll_ataque': ataque_total,
+                            'dano': dano_total,
+                            'defesa': defesa_fortificacao,
+                            'descricao': descricao,
+                            'fortificacao_destruida': fortificacao_destruida,
+                        },
+                        'fort_status': {
+                            'hp_atual': hp_depois,
+                            'hp_max': combate.fortificacao.hp_fortificacao,
+                            'destruida': fortificacao_destruida,
+                        }
+                    })
+                }
+            )
+        except Exception:
+            pass
+        
+        msg_extra = " A fortificação foi destruída!" if fortificacao_destruida else ""
+        messages.success(
+            request,
+            f"{atacante.nome} atacou {combate.fortificacao.get_nome_display()}: {'acertou' if sucesso_ataque else 'errou'}; dano {dano_total}.{msg_extra}"
+        )
+        return redirect('warfare_detalhes', pk=pk)
+    
+    # ========== CASO 2: ATACAR UNIDADE (lógica original) ==========
     status_atacante, _ = StatusUnitWarfare.objects.get_or_create(
         combate=combate,
         unit=atacante,
