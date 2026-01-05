@@ -297,16 +297,17 @@ class FortificacaoAdmin(admin.ModelAdmin):
 class CombateWarfareAdmin(admin.ModelAdmin):
     """Interface administrativa para gerenciar combates warfare."""
     
-    list_display = ['nome', 'sala', 'ativo', 'criador', 'fortificacao', 'criado_em']
+    list_display = ['nome', 'sala', 'ativo', 'criador', 'domain_defensor', 'fortificacao', 'criado_em']
     list_filter = ['ativo', 'sala', 'criado_em']
-    search_fields = ['nome', 'sala__nome', 'criador__username']
+    search_fields = ['nome', 'sala__nome', 'criador__username', 'domain_defensor__nome']
     
     fieldsets = (
         ('Informações Básicas', {
             'fields': ('nome', 'sala', 'criador', 'ativo')
         }),
         ('Campo de Batalha', {
-            'fields': ('fortificacao', 'hp_fortificacao_atual')
+            'fields': ('domain_defensor', 'fortificacao', 'hp_fortificacao_atual'),
+            'description': 'Selecione qual domain está defendendo e qual fortificação está usando'
         }),
         ('Metadados', {
             'fields': ('criado_em',),
@@ -319,4 +320,4 @@ class CombateWarfareAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         """Otimiza queries."""
         qs = super().get_queryset(request)
-        return qs.select_related('sala', 'criador', 'fortificacao')
+        return qs.select_related('sala', 'criador', 'fortificacao', 'domain_defensor')

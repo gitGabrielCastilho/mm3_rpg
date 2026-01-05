@@ -61,6 +61,17 @@ class CombateWarfare(models.Model):
         help_text="Fortificação presente neste combate (bônus para defensores)"
     )
     
+    # Domain defensor (qual side está defendendo a fortificação)
+    domain_defensor = models.ForeignKey(
+        Domain,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='combates_defensores',
+        verbose_name="Domain Defensor",
+        help_text="Domain que está defendendo a fortificação"
+    )
+    
     # Rastreamento do HP da fortificação durante o combate
     hp_fortificacao_atual = models.IntegerField(
         null=True,
@@ -90,23 +101,30 @@ class CombateWarfare(models.Model):
     def get_modificadores_defesa(self, unit_alvo):
         """
         Retorna o modificador de defesa baseado na fortificação.
-        Apenas o alvo (defendendo) recebe bônus.
+        Apenas o alvo (defendendo) recebe bônus, e apenas se for do domain defensor.
         """
-        if not self.fortificacao or not self.hp_fortificacao_atual or self.hp_fortificacao_atual <= 0:
+        if not self.fortificacao or not self.domain_defensor or not self.hp_fortificacao_atual or self.hp_fortificacao_atual <= 0:
+            return 0
+        # Verifica se o alvo é do domain defensor
+        if unit_alvo.domain_id != self.domain_defensor_id:
             return 0
         return self.fortificacao.defesa
     
-    def get_modificadores_poder(self, unit_atacante):
+    def get_modificadores_poder(self, unit_alvo):
         """
         Retorna o modificador de poder baseado na fortificação.
-        Apenas para Archers defendendo na fortificação.
+        Apenas para Archers defendendo na fortificação do seu domain.
         """
-        if not self.fortificacao or not self.hp_fortificacao_atual or self.hp_fortificacao_atual <= 0:
+        if not self.fortificacao or not self.domain_defensor or not self.hp_fortificacao_atual or self.hp_fortificacao_atual <= 0:
             return 0
         
-        # Verifica se é Archer - verifica no unit_type ou no nome
-        if hasattr(unit_atacante, 'unit_type') and unit_atacante.unit_type:
-            unit_type_nome = getattr(unit_atacante.unit_type, 'nome', '')
+        # Verifica se o alvo é do domain defensor
+        if unit_alvo.domain_id != self.domain_defensor_id:
+            return 0
+        
+        # Verifica se é Archer - verifica no unit_type
+        if hasattr(unit_alvo, 'unit_type') and unit_alvo.unit_type:
+            unit_type_nome = getattr(unit_alvo.unit_type, 'nome', '')
             if 'archer' in unit_type_nome.lower():
                 return self.fortificacao.poder
         
@@ -115,9 +133,12 @@ class CombateWarfare(models.Model):
     def get_modificadores_moral(self, unit_alvo):
         """
         Retorna o modificador de moral baseado na fortificação.
-        Apenas o alvo (defendendo) recebe bônus.
+        Apenas o alvo (defendendo) recebe bônus, e apenas se for do domain defensor.
         """
-        if not self.fortificacao or not self.hp_fortificacao_atual or self.hp_fortificacao_atual <= 0:
+        if not self.fortificacao or not self.domain_defensor or not self.hp_fortificacao_atual or self.hp_fortificacao_atual <= 0:
+            return 0
+        # Verifica se o alvo é do domain defensor
+        if unit_alvo.domain_id != self.domain_defensor_id:
             return 0
         return self.fortificacao.moral
     

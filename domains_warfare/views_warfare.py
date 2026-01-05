@@ -182,6 +182,10 @@ def warfare_detalhes(request, pk):
         if combate.sala.game_master == request.user:
             mapas_globais = Mapa.objects.filter(combate__isnull=True, criado_por=request.user).order_by('-id')
         
+        # Listar todas as fortificações disponíveis
+        from .models_warfare import Fortificacao
+        fortificacoes = Fortificacao.objects.all().order_by('moral', 'defesa')
+        
         context = {
             'combate': combate,
             'participantes': participantes,
@@ -193,6 +197,7 @@ def warfare_detalhes(request, pk):
             'posicoes': posicoes,
             'is_gm': combate.sala.game_master == request.user,
             'mapas_globais': mapas_globais,
+            'fortificacoes': fortificacoes,
             'ws_token': signing.dumps({'uid': request.user.id}, salt='ws-combate'),
         }
         return render(request, 'domains_warfare/warfare_detalhes.html', context)
@@ -515,7 +520,7 @@ def warfare_resolver_ataque(request, pk):
     # Aplicar modificadores de fortificação ao alvo (defensor)
     mod_defesa_fortificacao = combate.get_modificadores_defesa(alvo)
     mod_moral_fortificacao = combate.get_modificadores_moral(alvo)
-    mod_poder_fortificacao = combate.get_modificadores_poder(atacante)  # Nota: aplicado ao atacante se for Archer
+    mod_poder_fortificacao = combate.get_modificadores_poder(alvo)  # Verificar se o alvo é Archer defensor
     
     # Aplicar modificadores aos atributos
     if mod_defesa_fortificacao > 0:
@@ -779,5 +784,66 @@ def warfare_limpar_historico(request, pk):
         pass
 
     messages.success(request, "Histórico limpo.")
+    return redirect('warfare_detalhes', pk=pk)
+
+
+@login_required
+def warfare_configurar_defensor(request, pk):
+    """Configura qual domain é o defensor e qual fortificação está usando."""
+    if request.method != 'POST':
+        return redirect('warfare_detalhes', pk=pk)
+
+    combate = get_object_or_404(CombateWarfare, pk=pk)
+    perfil = PerfilUsuario.objects.filter(user=request.user).first()
+
+    if not perfil or perfil.sala_atual != combate.sala:
+        messages.error(request, "Você não tem acesso a este combate.")
+        return redirect('domain_list')
+
+    if combate.sala.game_master_id != request.user.id:
+        messages.error(request, "Apenas o GM pode configurar o campo de batalha.")
+        return redirect('warfare_detalhes', pk=pk)
+
+    domain_defensor_id = request.POST.get('domain_defensor')
+    fortificacao_id = request.POST.get('fortificacao')
+
+    # Limpar configuração se não foi selecionado
+    if not domain_defensor_id:
+        combate.domain_defensor = None
+        combate.fortificacao = None
+        combate.hp_fortificacao_atual = None
+        combate.save()
+        messages.success(request, "Configuração de defensor removida.")
+        return redirect('warfare_detalhes', pk=pk)
+
+    # Validar que o domain existe e participa do combate
+    domain_defensor = get_object_or_404(
+        Domain,
+        pk=domain_defensor_id,
+        participacoes_warfare__combate=combate
+    )
+
+    combate.domain_defensor = domain_defensor
+
+    # Validar e aplicar fortificação se selecionada
+    if fortificacao_id:
+        from .models_warfare import Fortificacao
+        fortificacao = get_object_or_404(Fortificacao, pk=fortificacao_id)
+        combate.fortificacao = fortificacao
+        combate.hp_fortificacao_atual = fortificacao.hp_fortificacao
+    else:
+        combate.fortificacao = None
+        combate.hp_fortificacao_atual = None
+
+    combate.save()
+
+    fort_info = ""
+    if combate.fortificacao:
+        fort_info = f" com {combate.fortificacao.get_nome_display()}"
+
+    messages.success(
+        request,
+        f"{domain_defensor.nome} configurado como defensor{fort_info}."
+    )
     return redirect('warfare_detalhes', pk=pk)
 
