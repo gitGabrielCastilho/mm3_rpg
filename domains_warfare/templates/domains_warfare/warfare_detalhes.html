@@ -91,6 +91,7 @@
             </div>
             <div class="turno-desc">
               {% if turno.unit_alvo %}
+              {# Ataque a uma unidade #}
               Atacou <strong>{{ turno.unit_alvo.nome }}</strong> ({{ turno.unit_alvo.domain.nome }})
               <br>
               {% if turno.sucesso_ataque %}
@@ -109,9 +110,22 @@
               {% if turno.dano_causado %}
               <br>Dano: {{ turno.dano_causado }}
               {% endif %}
+              {% elif not turno.unit_alvo and combate.fortificacao %}
+              {# Ataque à fortificação #}
+              Atacou <strong>🏰 {{ combate.fortificacao.get_nome_display }}</strong>
+              <br>
+              {% if turno.sucesso_ataque %}
+              ✓ Ataque acertou! Roll: {{ turno.roll_ataque }}
+              <br><span style="color: #d33;">Dano: {{ turno.dano_causado }}</span>
+              {% if combate.hp_fortificacao_atual == 0 %}
+              <br><span style="color: #f00; font-weight: bold;">⚠ FORTIFICAÇÃO DESTRUÍDA!</span>
+              {% endif %}
+              {% else %}
+              ✗ Ataque falhou: {{ turno.roll_ataque }}
+              {% endif %}
+              {% endif %}
               {% if turno.descricao %}
               <div class="turno-desc-extra">{{ turno.descricao }}</div>
-              {% endif %}
               {% endif %}
             </div>
           </li>
