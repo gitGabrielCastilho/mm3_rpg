@@ -511,6 +511,20 @@ def warfare_resolver_ataque(request, pk):
 
     atributos_atacante = atacante.get_atributos_finais()
     atributos_alvo = alvo.get_atributos_finais()
+    
+    # Aplicar modificadores de fortificação ao alvo (defensor)
+    mod_defesa_fortificacao = combate.get_modificadores_defesa(alvo)
+    mod_moral_fortificacao = combate.get_modificadores_moral(alvo)
+    mod_poder_fortificacao = combate.get_modificadores_poder(atacante)  # Nota: aplicado ao atacante se for Archer
+    
+    # Aplicar modificadores aos atributos
+    if mod_defesa_fortificacao > 0:
+        atributos_alvo['defesa'] = atributos_alvo.get('defesa', 0) + mod_defesa_fortificacao
+    if mod_moral_fortificacao > 0:
+        atributos_alvo['moral'] = atributos_alvo.get('moral', 0) + mod_moral_fortificacao
+    if mod_poder_fortificacao > 0:
+        # Bônus de Poder para Archers defendendo
+        atributos_alvo['poder'] = atributos_alvo.get('poder', 0) + mod_poder_fortificacao
 
     roll_ataque_d20 = random.randint(1, 20)
     ataque_total = roll_ataque_d20 + atributos_atacante.get('ataque', 0)
@@ -561,10 +575,24 @@ def warfare_resolver_ataque(request, pk):
 
     hp_depois = status_alvo.hp_atual
 
-    descricao_partes = [
-        f"Ataque d20 ({roll_ataque_d20}) + ATQ {atributos_atacante.get('ataque', 0)} = {ataque_total} vs DEF {atributos_alvo.get('defesa', 0)}",
+    # Construir descrição da ação incluindo modificadores de fortificação
+    descricao_partes = []
+    
+    # Adicionar info de fortificação se aplicável
+    if combate.fortificacao and combate.hp_fortificacao_atual and combate.hp_fortificacao_atual > 0:
+        fort_info = f"[{combate.fortificacao.get_nome_display()} HP {combate.hp_fortificacao_atual}]"
+        if mod_defesa_fortificacao > 0:
+            fort_info += f" DEF+{mod_defesa_fortificacao}"
+        if mod_moral_fortificacao > 0:
+            fort_info += f" MOR+{mod_moral_fortificacao}"
+        if mod_poder_fortificacao > 0:
+            fort_info += f" POD+{mod_poder_fortificacao}"
+        descricao_partes.append(fort_info)
+    
+    descricao_partes.extend([
+        f"Ataque d20 ({roll_ataque_d20}) + ATQ {atributos_atacante.get('ataque', 0)} = {ataque_total} vs DEF {atributos_alvo.get('defesa', 0) - mod_defesa_fortificacao}+{mod_defesa_fortificacao}=DEF {atributos_alvo.get('defesa', 0)}" if mod_defesa_fortificacao > 0 else f"Ataque d20 ({roll_ataque_d20}) + ATQ {atributos_atacante.get('ataque', 0)} = {ataque_total} vs DEF {atributos_alvo.get('defesa', 0)}",
         "acertou" if sucesso_ataque else "errou",
-    ]
+    ])
 
     if sucesso_ataque:
         if roll_poder_total is not None:

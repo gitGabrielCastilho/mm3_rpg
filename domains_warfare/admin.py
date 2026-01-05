@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import Domain, Unit, UnitAncestry, UnitTrait, UnitExperience, UnitEquipment, UnitType, UnitSize
+from .models_warfare import CombateWarfare, ParticipanteWarfare, StatusUnitWarfare, TurnoWarfare, MapaWarfare, PosicaoUnitWarfare, Fortificacao
 
 
 @admin.register(Domain)
@@ -265,3 +266,57 @@ class UnitSizeAdmin(admin.ModelAdmin):
         """Exibe o multiplicador de custo formatado."""
         return f"{obj.multiplicador_custo}x"
     multiplicador_custo_display.short_description = 'Multiplicador de Custo'
+
+
+@admin.register(Fortificacao)
+class FortificacaoAdmin(admin.ModelAdmin):
+    """Interface administrativa para gerenciar fortificações."""
+    
+    list_display = ['get_nome_display', 'moral', 'defesa', 'poder', 'hp_fortificacao']
+    search_fields = ['nome', 'descricao']
+    list_filter = ['moral', 'defesa', 'poder']
+    
+    fieldsets = (
+        ('Informações Básicas', {
+            'fields': ('nome', 'descricao')
+        }),
+        ('Modificadores', {
+            'fields': ('moral', 'defesa', 'poder', 'hp_fortificacao'),
+            'description': 'Bônus que esta fortificação fornece aos defensores. Poder só afeta Archers.'
+        }),
+        ('Metadados', {
+            'fields': ('criado_em',),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    readonly_fields = ['criado_em']
+
+
+@admin.register(CombateWarfare)
+class CombateWarfareAdmin(admin.ModelAdmin):
+    """Interface administrativa para gerenciar combates warfare."""
+    
+    list_display = ['nome', 'sala', 'ativo', 'criador', 'fortificacao', 'criado_em']
+    list_filter = ['ativo', 'sala', 'criado_em']
+    search_fields = ['nome', 'sala__nome', 'criador__username']
+    
+    fieldsets = (
+        ('Informações Básicas', {
+            'fields': ('nome', 'sala', 'criador', 'ativo')
+        }),
+        ('Campo de Batalha', {
+            'fields': ('fortificacao', 'hp_fortificacao_atual')
+        }),
+        ('Metadados', {
+            'fields': ('criado_em',),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    readonly_fields = ['criado_em', 'criador']
+    
+    def get_queryset(self, request):
+        """Otimiza queries."""
+        qs = super().get_queryset(request)
+        return qs.select_related('sala', 'criador', 'fortificacao')

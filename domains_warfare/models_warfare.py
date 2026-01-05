@@ -50,6 +50,25 @@ class CombateWarfare(models.Model):
         related_name='combates_warfare'
     )
     
+    # Fortificação (opcional - apenas um lado pode usar)
+    fortificacao = models.ForeignKey(
+        'Fortificacao',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='combates_warfare',
+        verbose_name="Fortificação",
+        help_text="Fortificação presente neste combate (bônus para defensores)"
+    )
+    
+    # Rastreamento do HP da fortificação durante o combate
+    hp_fortificacao_atual = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name="HP Atual da Fortificação",
+        help_text="HP restante da fortificação durante o combate"
+    )
+    
     class Meta:
         verbose_name = "Combate Warfare"
         verbose_name_plural = "Combates Warfare"
@@ -61,6 +80,59 @@ class CombateWarfare(models.Model):
     def get_turno_ativo(self):
         """Retorna o turno ativo ou None."""
         return self.turnos_warfare.filter(ativo=True).first()
+    
+    def inicializar_fortificacao(self):
+        """Inicializa o HP da fortificação quando um combate é criado."""
+        if self.fortificacao and not self.hp_fortificacao_atual:
+            self.hp_fortificacao_atual = self.fortificacao.hp_fortificacao
+            self.save(update_fields=['hp_fortificacao_atual'])
+    
+    def get_modificadores_defesa(self, unit_alvo):
+        """
+        Retorna o modificador de defesa baseado na fortificação.
+        Apenas o alvo (defendendo) recebe bônus.
+        """
+        if not self.fortificacao or not self.hp_fortificacao_atual or self.hp_fortificacao_atual <= 0:
+            return 0
+        return self.fortificacao.defesa
+    
+    def get_modificadores_poder(self, unit_atacante):
+        """
+        Retorna o modificador de poder baseado na fortificação.
+        Apenas para Archers defendendo na fortificação.
+        """
+        if not self.fortificacao or not self.hp_fortificacao_atual or self.hp_fortificacao_atual <= 0:
+            return 0
+        
+        # Verifica se é Archer - verifica no unit_type ou no nome
+        if hasattr(unit_atacante, 'unit_type') and unit_atacante.unit_type:
+            unit_type_nome = getattr(unit_atacante.unit_type, 'nome', '')
+            if 'archer' in unit_type_nome.lower():
+                return self.fortificacao.poder
+        
+        return 0
+    
+    def get_modificadores_moral(self, unit_alvo):
+        """
+        Retorna o modificador de moral baseado na fortificação.
+        Apenas o alvo (defendendo) recebe bônus.
+        """
+        if not self.fortificacao or not self.hp_fortificacao_atual or self.hp_fortificacao_atual <= 0:
+            return 0
+        return self.fortificacao.moral
+    
+    def aplicar_dano_fortificacao(self, quantidade=1):
+        """
+        Aplica dano à fortificação. Retorna True se a fortificação foi destruída.
+        """
+        if not self.fortificacao or not self.hp_fortificacao_atual:
+            return False
+        
+        self.hp_fortificacao_atual = max(0, self.hp_fortificacao_atual - quantidade)
+        self.save(update_fields=['hp_fortificacao_atual'])
+        
+        # Retorna True se foi destruída
+        return self.hp_fortificacao_atual <= 0
 
 
 class ParticipanteWarfare(models.Model):
@@ -391,3 +463,75 @@ class PosicaoUnitWarfare(models.Model):
     
     def __str__(self):
         return f"{self.unit.nome} em ({self.x}, {self.y})"
+
+
+class Fortificacao(models.Model):
+    """
+    Representa uma fortificação que pode ser usada em combates warfare.
+    Fornece bônus a morais, defesa e poder (para archers) das unidades defensoras.
+    """
+    TIPOS_FORTIFICACAO = [
+        ('cerca_pedra', 'Cerca de Pedra'),
+        ('torre_guarda', 'Torre de Guarda'),
+        ('muros_cidade', 'Muros da Cidade'),
+        ('portoes_cidade', 'Portões da Cidade'),
+        ('torreao_keep', 'Torreão (Keep)'),
+        ('castelo', 'Castelo'),
+    ]
+    
+    nome = models.CharField(
+        max_length=100,
+        verbose_name="Nome",
+        choices=TIPOS_FORTIFICACAO
+    )
+    
+    moral = models.IntegerField(
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(4)],
+        verbose_name="Bônus de Moral",
+        help_text="Bônus adicionado ao roll de Moral (0-4)"
+    )
+    
+    defesa = models.IntegerField(
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(4)],
+        verbose_name="Bônus de Defesa",
+        help_text="Bônus adicionado à Defesa (0-4)"
+    )
+    
+    poder = models.IntegerField(
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(2)],
+        verbose_name="Bônus de Poder",
+        help_text="Bônus de Poder para Archers apenas (0-2)"
+    )
+    
+    hp_fortificacao = models.IntegerField(
+        default=4,
+        validators=[MinValueValidator(1), MaxValueValidator(12)],
+        verbose_name="Pontos de Vida da Fortificação",
+        help_text="HP da própria fortificação (4-12)"
+    )
+    
+    descricao = models.TextField(
+        blank=True,
+        verbose_name="Descrição",
+        help_text="Descrição detalhada da fortificação"
+    )
+    
+    criado_em = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Criado em"
+    )
+    
+    class Meta:
+        verbose_name = "Fortificação"
+        verbose_name_plural = "Fortificações"
+        unique_together = ['nome']
+    
+    def __str__(self):
+        return f"{self.get_nome_display()} (Moral +{self.moral}, Def +{self.defesa}, Poder +{self.poder})"
+    
+    def get_nome_display(self):
+        """Retorna o nome formatado da fortificação."""
+        return dict(self.TIPOS_FORTIFICACAO).get(self.nome, self.nome)
