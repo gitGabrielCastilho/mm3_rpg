@@ -2566,6 +2566,37 @@
   document.querySelectorAll('.form-acao-participante').forEach(bindAjax);
     }
 
+    // Fallback defensivo: se algum formulário for inserido/recriado sem bind,
+    // intercepta o submit e reaplica AJAX para evitar refresh completo da página.
+    (function ensureAjaxSubmitDelegation(){
+      if (document._ajaxSubmitDelegated) return;
+      document.addEventListener('submit', function(e){
+        try {
+          const form = e.target;
+          if (!form || !form.matches) return;
+          const watched =
+            form.id === 'form-d20' ||
+            form.id === 'form-ataque' ||
+            form.id === 'form-mapa' ||
+            form.id === 'form-encerrar-meus' ||
+            form.matches('.turno-topbar-actions form, .form-remover-participante, .form-add-participante, .form-limpar-historico, .mapa-remover-form, .form-acao-participante');
+          if (!watched) return;
+          if (form.dataset && form.dataset.ajaxified === '1') return;
+          // Evita navegação padrão neste envio e reenvia já com bind AJAX aplicado.
+          e.preventDefault();
+          e.stopPropagation();
+          bindAjax(form);
+          setTimeout(() => {
+            try {
+              if (typeof form.requestSubmit === 'function') form.requestSubmit();
+              else form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+            } catch(_) {}
+          }, 0);
+        } catch(_) {}
+      }, true);
+      document._ajaxSubmitDelegated = true;
+    })();
+
     combateSocket.onmessage = async function(e) {
   lastEventAt = Date.now();
       let payload = null;
@@ -2649,6 +2680,8 @@
                   if (data && data.html) {
                     const sc = document.getElementById('status-card');
                     if (sc) sc.innerHTML = data.html;
+                    // Reaplica bind AJAX para botões/formulários dentro do status atualizado.
+                    try { ajaxifyInteractionForms(); } catch(_) {}
                   }
                 })
                 .catch(() => {});
@@ -2888,6 +2921,9 @@
   updateAllGrids();
   ensureAllAreasMinScale();
   try { restoreTokenSizes(document); } catch(_) {}
+  // Importante: bind AJAX já no primeiro load (sem depender de refresh parcial)
+  // para evitar submit tradicional com reload da página ao rolar dados.
+  try { ajaxifyInteractionForms(); } catch(_) {}
   // Formata histórico ao carregar
   try { enhanceHistorico(document); } catch(_) {}
   }); // Close DOMContentLoaded from line 886
