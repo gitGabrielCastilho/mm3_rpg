@@ -883,6 +883,44 @@
 </div>
 
 <script>
+  // Coalesce de atualizações de token para evitar rajadas de POST (movimentos/resize em sequência)
+  // e manter a UI responsiva mesmo com latência/erros transitórios.
+  window._tokenUpdateState = window._tokenUpdateState || {};
+  window.postTokenUpdate = window.postTokenUpdate || function(tokenId, payload){
+    const key = String(tokenId || '');
+    if (!key) return Promise.resolve({ queued: false });
+    const state = window._tokenUpdateState;
+    if (!state[key]) state[key] = { inFlight: false, pending: null, timer: null };
+    const st = state[key];
+    st.pending = payload || {};
+
+    if (st.inFlight) return Promise.resolve({ queued: true });
+
+    const flush = () => {
+      if (!st.pending || st.inFlight) return Promise.resolve({ queued: false });
+      const body = st.pending;
+      st.pending = null;
+      st.inFlight = true;
+      return fetch(`/combate/atualizar-posicao-token/${key}/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify(body)
+      })
+        .then(() => ({ queued: !!st.pending }))
+        .catch(() => ({ queued: !!st.pending }))
+        .finally(() => {
+          st.inFlight = false;
+          if (st.pending) {
+            if (st.timer) clearTimeout(st.timer);
+            st.timer = setTimeout(() => { st.timer = null; flush(); }, 70);
+          }
+        });
+    };
+
+    return flush();
+  };
+
   document.addEventListener('DOMContentLoaded', function() {
     const combateId = '{{ combate.id }}';
     // Identificador de cliente para ignorar eco dos próprios desenhos
@@ -1925,40 +1963,39 @@
     function rebindDragDrop(){
       document.querySelectorAll("[id^='mapa-area-']").forEach(function(mapaArea) {
         const canvas = mapaArea.querySelector('.mapa-canvas');
-        
-        mapaArea.addEventListener('dragover', function(e){ e.preventDefault(); });
-        mapaArea.addEventListener('drop', function(e){
-          e.preventDefault();
-          const canvas = mapaArea.querySelector('.mapa-canvas');
-          if (!canvas) return;
-          const tokenId = e.dataTransfer.getData('tokenId');
-          const rect = canvas.getBoundingClientRect();
-          const scale = parseFloat(mapaArea.dataset.scale || '1');
-          const tokenEl = document.getElementById('token-' + tokenId);
-          const tokenSize = tokenEl ? parseFloat(getComputedStyle(tokenEl).width) || 40 : 40;
-          const half = tokenSize / 2;
-          let x = (e.clientX - rect.left - half) / scale;
-          let y = (e.clientY - rect.top - half) / scale;
-          // Clamp to image bounds (pre-transform coordinates)
-          const img = canvas.querySelector('.mapa-img');
-          const baseW = img ? (img.naturalWidth || img.clientWidth) : 0;
-          const baseH = img ? (img.naturalHeight || img.clientHeight) : 0;
-          if (baseW && baseH) {
-            x = Math.max(0, Math.min(baseW - tokenSize, x));
-            y = Math.max(0, Math.min(baseH - tokenSize, y));
-          }
-          // Snap opcional à grade
-          if (gridEnabled()) { const snapped = applyGridSnap(x, y); x = snapped.x; y = snapped.y; }
-          fetch(`/combate/atualizar-posicao-token/${tokenId}/`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({x,y})
-          }).then(() => {
+
+        if (!mapaArea.dataset.dragDropBound) {
+          mapaArea.addEventListener('dragover', function(e){ e.preventDefault(); });
+          mapaArea.addEventListener('drop', function(e){
+            e.preventDefault();
+            const canvas = mapaArea.querySelector('.mapa-canvas');
+            if (!canvas) return;
+            const tokenId = e.dataTransfer.getData('tokenId');
+            const rect = canvas.getBoundingClientRect();
+            const scale = parseFloat(mapaArea.dataset.scale || '1');
+            const tokenEl = document.getElementById('token-' + tokenId);
+            const tokenSize = tokenEl ? parseFloat(getComputedStyle(tokenEl).width) || 40 : 40;
+            const half = tokenSize / 2;
+            let x = (e.clientX - rect.left - half) / scale;
+            let y = (e.clientY - rect.top - half) / scale;
+            // Clamp to image bounds (pre-transform coordinates)
+            const img = canvas.querySelector('.mapa-img');
+            const baseW = img ? (img.naturalWidth || img.clientWidth) : 0;
+            const baseH = img ? (img.naturalHeight || img.clientHeight) : 0;
+            if (baseW && baseH) {
+              x = Math.max(0, Math.min(baseW - tokenSize, x));
+              y = Math.max(0, Math.min(baseH - tokenSize, y));
+            }
+            // Snap opcional à grade
+            if (gridEnabled()) { const snapped = applyGridSnap(x, y); x = snapped.x; y = snapped.y; }
+            // Atualização otimista: UI responde imediatamente
             const token = document.getElementById('token-' + tokenId);
             if (token) { token.style.left = x + 'px'; token.style.top = y + 'px'; }
+            // Persistência no servidor com coalescência
+            if (window.postTokenUpdate) window.postTokenUpdate(tokenId, { x, y });
           });
-        });
+          mapaArea.dataset.dragDropBound = '1';
+        }
 
         // Per-token resize with Ctrl + wheel over the token
         function bindTokenWheelResize() {
@@ -1982,12 +2019,7 @@
               // Persiste no servidor também
               try {
                 const id = (token.id || '').replace('token-','');
-                fetch(`/combate/atualizar-posicao-token/${id}/`, {
-                  method: 'POST',
-                  headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' },
-                  credentials: 'same-origin',
-                  body: JSON.stringify({ size: next })
-                }).catch(()=>{});
+                if (window.postTokenUpdate) window.postTokenUpdate(id, { size: next });
               } catch(_) {}
             }, { passive: false });
             token.dataset.wheelResized = '1';
@@ -2900,41 +2932,37 @@
     setupTopbarMapActions();
     
     document.querySelectorAll("[id^='mapa-area-']").forEach(function(mapaArea) {
-      mapaArea.addEventListener("dragover", function(e) { e.preventDefault(); });
-      mapaArea.addEventListener("drop", function(e) {
-        e.preventDefault();
-        const tokenId = e.dataTransfer.getData("tokenId");
-  const canvas = mapaArea.querySelector('.mapa-canvas') || mapaArea;
-  const rect = canvas.getBoundingClientRect();
-        const scale = parseFloat(mapaArea.dataset.scale || '1');
-        const tokenEl = document.getElementById('token-' + tokenId);
-        const tokenSize = tokenEl ? parseFloat(getComputedStyle(tokenEl).width) || 40 : 40;
-        const half = tokenSize / 2;
-        let x = (e.clientX - rect.left - half) / scale;
-        let y = (e.clientY - rect.top - half) / scale;
-        // Clamp to image bounds
-        const img = canvas.querySelector('.mapa-img');
-        const baseW = img ? (img.naturalWidth || img.clientWidth) : 0;
-        const baseH = img ? (img.naturalHeight || img.clientHeight) : 0;
-        if (baseW && baseH) {
-          x = Math.max(0, Math.min(baseW - tokenSize, x));
-          y = Math.max(0, Math.min(baseH - tokenSize, y));
-        }
-  if (window.gridEnabled && window.gridEnabled()) { const snapped = window.applyGridSnap ? window.applyGridSnap(x, y) : {x, y}; x = snapped.x; y = snapped.y; }
-        fetch(`/combate/atualizar-posicao-token/${tokenId}/`, {
-          method: "POST",
-          headers: {
-            "X-CSRFToken": "{{ csrf_token }}",
-            "Content-Type": "application/json"
-          },
-          credentials: 'same-origin',
-          body: JSON.stringify({x, y})
-        }).then(() => {
+      if (!mapaArea.dataset.dragDropBound) {
+        mapaArea.addEventListener("dragover", function(e) { e.preventDefault(); });
+        mapaArea.addEventListener("drop", function(e) {
+          e.preventDefault();
+          const tokenId = e.dataTransfer.getData("tokenId");
+          const canvas = mapaArea.querySelector('.mapa-canvas') || mapaArea;
+          const rect = canvas.getBoundingClientRect();
+          const scale = parseFloat(mapaArea.dataset.scale || '1');
+          const tokenEl = document.getElementById('token-' + tokenId);
+          const tokenSize = tokenEl ? parseFloat(getComputedStyle(tokenEl).width) || 40 : 40;
+          const half = tokenSize / 2;
+          let x = (e.clientX - rect.left - half) / scale;
+          let y = (e.clientY - rect.top - half) / scale;
+          // Clamp to image bounds
+          const img = canvas.querySelector('.mapa-img');
+          const baseW = img ? (img.naturalWidth || img.clientWidth) : 0;
+          const baseH = img ? (img.naturalHeight || img.clientHeight) : 0;
+          if (baseW && baseH) {
+            x = Math.max(0, Math.min(baseW - tokenSize, x));
+            y = Math.max(0, Math.min(baseH - tokenSize, y));
+          }
+          if (window.gridEnabled && window.gridEnabled()) { const snapped = window.applyGridSnap ? window.applyGridSnap(x, y) : {x, y}; x = snapped.x; y = snapped.y; }
           const token = document.getElementById("token-" + tokenId);
-          token.style.left = x + "px";
-          token.style.top = y + "px";
+          if (token) {
+            token.style.left = x + "px";
+            token.style.top = y + "px";
+          }
+          if (window.postTokenUpdate) window.postTokenUpdate(tokenId, { x, y });
         });
-      });
+        mapaArea.dataset.dragDropBound = '1';
+      }
       // Bind per-token Ctrl+wheel resize on initial load as well
       mapaArea.querySelectorAll('.mapa-token').forEach(token => {
         if (token.dataset.wheelResized) return;
@@ -2955,12 +2983,7 @@
           try { persistTokenSize(token); } catch(_) {}
           try {
             const id = (token.id || '').replace('token-','');
-            fetch(`/combate/atualizar-posicao-token/${id}/`, {
-              method: 'POST',
-              headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' },
-              credentials: 'same-origin',
-              body: JSON.stringify({ size: next })
-            }).catch(()=>{});
+            if (window.postTokenUpdate) window.postTokenUpdate(id, { size: next });
           } catch(_) {}
         }, { passive: false });
         token.dataset.wheelResized = '1';
