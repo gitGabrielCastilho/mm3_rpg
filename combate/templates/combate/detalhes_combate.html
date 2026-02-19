@@ -1008,7 +1008,10 @@
       _hbTimer = setInterval(() => {
         const idleMs = Date.now() - lastEventAt;
         if (idleMs > 12000) { // >12s sem eventos: garante refresh e polling ligado
-          startCombatePolling();
+          // Só ativa polling quando WS estiver realmente indisponível.
+          // Evita refreshes periódicos desnecessários (flicker) com WS saudável porém ocioso.
+          if (!window._combateWsActive) startCombatePolling();
+          if (window._combateWsActive) return;
           // Se usuário está interagindo com selects/inputs, não force refresh agora
           try {
             const ae = document.activeElement;
@@ -1861,13 +1864,14 @@
   } catch(_) {}
         // Ajuste de scroll apenas se o card foi realmente substituído
         if (replacedHistorico) {
-          // Sempre faz scroll para o final do histórico após atualização
+          // Preserva intenção do usuário: só vai ao fim se já estava no fim.
+          // Caso contrário, mantém a posição anterior de leitura.
           const historico = document.getElementById('historico-card');
           if (historico) {
             // Aguarda um tick para garantir que o DOM foi renderizado
             setTimeout(() => {
               if (historico.scrollHeight > historico.clientHeight) {
-                historico.scrollTop = historico.scrollHeight;
+                historico.scrollTop = historicoWasNearBottom ? historico.scrollHeight : historicoPrevScroll;
               }
             }, 0);
           }
@@ -1913,15 +1917,8 @@
       if (el) el.textContent = window._lastTurnDisplayNome;
     }
   } catch(_) {}
-        // Restaura posição de scroll global se estava próximo ao fim
-        if (replacedHistorico || (selectors||[]).includes('#historico-card')) {
-          try {
-            const newDocHeight = document.body.scrollHeight;
-            const targetGap = wasDocNearBottom ? 0 : prevBottomGap;
-            const targetY = Math.max(0, newDocHeight - window.innerHeight - targetGap);
-            window.scrollTo({ top: targetY, behavior: 'auto' });
-          } catch(_) {}
-        }
+        // Não ajusta o scroll global da página aqui.
+        // Isso causava "reset" perceptível enquanto o usuário navegava.
       } catch (err) {
       }
     }
