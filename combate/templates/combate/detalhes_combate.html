@@ -532,7 +532,10 @@
         const prevValue = poderSelect.value; // fallback: preserva seleção atual
         const mySeq = ++_poderReqSeq;
         const baseUrl = (window._poderesAjaxUrl || '/combate/poderes-personagem-ajax/');
-        const url = baseUrl + (baseUrl.indexOf('?') === -1 ? '?' : '&') + 'personagem_id=' + encodeURIComponent(personagemId);
+        const url = baseUrl + (baseUrl.indexOf('?') === -1 ? '?' : '&')
+          + 'personagem_id=' + encodeURIComponent(personagemId)
+          + '&participante_id=' + encodeURIComponent(val || '')
+          + '&combate_id=' + encodeURIComponent(combateId);
         fetch(url)
           .then(resp => resp.json())
           .then(data => {
@@ -547,7 +550,10 @@
                 // Exibe origem do item quando aplicável
                 const deItem = (p.de_item === true || p.de_item === '1');
                 const origem = (p.item_origem_nome || p.item_origem || '');
-                opt.textContent = deItem && origem ? (p.nome + ' — item: ' + origem) : p.nome;
+                const chargesText = (p.uses_charges && p.charges_atual !== null && p.charges_max !== null)
+                  ? (` — Charges: ${p.charges_atual}/${p.charges_max}`)
+                  : '';
+                opt.textContent = (deItem && origem ? (p.nome + ' — item: ' + origem) : p.nome) + chargesText;
                 if (p.tipo) opt.dataset.tipo = p.tipo;
                 if (p.duracao) opt.dataset.duracao = p.duracao;
                 if (p.equivalentes) opt.dataset.equivalentes = p.equivalentes.join(',');

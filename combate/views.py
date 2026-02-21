@@ -33,6 +33,121 @@ def _expects_json(request) -> bool:
     accept = request.headers.get('accept', '')
     return 'application/json' in accept.lower()
 
+
+def _base_charges_from_poder(poder: Poder) -> int:
+    try:
+        return max(0, int(getattr(poder, 'charges', 0) or 0))
+    except Exception:
+        return 0
+
+
+def _charge_state_for_poder(participante: Participante, poder: Poder) -> tuple[str | None, int | None, int | None]:
+    """Retorna (key, atual, maximo) para powers com charges.
+
+    Para poderes sem mecânica de charges, retorna (None, None, None).
+    """
+    base = _base_charges_from_poder(poder)
+    if base <= 0:
+        return None, None, None
+
+    key = str(getattr(poder, 'id', '') or '')
+    if not key:
+        return None, None, None
+
+    try:
+        charges_atuais = dict(getattr(participante, 'charges_atuais', None) or {})
+    except Exception:
+        charges_atuais = {}
+    try:
+        charges_maximos = dict(getattr(participante, 'charges_maximos', None) or {})
+    except Exception:
+        charges_maximos = {}
+
+    try:
+        maximo = int(charges_maximos.get(key, 0) or 0)
+    except Exception:
+        maximo = 0
+    if maximo <= 0:
+        maximo = base
+
+    if key in charges_atuais:
+        try:
+            atual = int(charges_atuais.get(key, 0) or 0)
+        except Exception:
+            atual = maximo
+    else:
+        atual = maximo
+
+    return key, max(0, atual), max(1, maximo)
+
+
+def _consume_charge_for_power_use(participante: Participante, poder: Poder) -> dict:
+    """Consome 1 charge de um poder e persiste no estado do participante.
+
+    Retorno:
+      - uses_charges: bool
+      - blocked: bool
+      - remaining: int | None
+      - max: int | None
+    """
+    key, atual, maximo = _charge_state_for_poder(participante, poder)
+    if key is None:
+        return {'uses_charges': False, 'blocked': False, 'remaining': None, 'max': None}
+
+    if (atual or 0) <= 0:
+        return {'uses_charges': True, 'blocked': True, 'remaining': 0, 'max': maximo}
+
+    try:
+        charges_atuais = dict(getattr(participante, 'charges_atuais', None) or {})
+    except Exception:
+        charges_atuais = {}
+    try:
+        charges_maximos = dict(getattr(participante, 'charges_maximos', None) or {})
+    except Exception:
+        charges_maximos = {}
+
+    remaining = max(0, int(atual) - 1)
+    charges_atuais[key] = remaining
+    charges_maximos[key] = int(maximo or 1)
+    participante.charges_atuais = charges_atuais
+    participante.charges_maximos = charges_maximos
+    participante.save(update_fields=['charges_atuais', 'charges_maximos'])
+
+    return {'uses_charges': True, 'blocked': False, 'remaining': remaining, 'max': int(maximo or 1)}
+
+
+def _recarregar_charges_participante(participante: Participante) -> int:
+    """Restaura charges do participante para o máximo conhecido/base e retorna quantos poderes foram recarregados."""
+    try:
+        charges_atuais = dict(getattr(participante, 'charges_atuais', None) or {})
+    except Exception:
+        charges_atuais = {}
+    try:
+        charges_maximos = dict(getattr(participante, 'charges_maximos', None) or {})
+    except Exception:
+        charges_maximos = {}
+
+    recarregados = 0
+    for poder in Poder.objects.filter(personagem=participante.personagem):
+        base = _base_charges_from_poder(poder)
+        if base <= 0:
+            continue
+        key = str(poder.id)
+        try:
+            maximo = int(charges_maximos.get(key, 0) or 0)
+        except Exception:
+            maximo = 0
+        if maximo <= 0:
+            maximo = base
+        charges_maximos[key] = maximo
+        charges_atuais[key] = maximo
+        recarregados += 1
+
+    participante.charges_atuais = charges_atuais
+    participante.charges_maximos = charges_maximos
+    participante.save(update_fields=['charges_atuais', 'charges_maximos'])
+    return recarregados
+
 """Endpoints e views do combate."""
 
 # --- Helpers para Aprimorar + Itens ---
@@ -535,6 +650,18 @@ def poderes_personagem_ajax(request):
     except Exception:
         logger.warning("[poderes_personagem_ajax] sync_item_powers falhou", exc_info=True)
 
+    combate_id = request.GET.get('combate_id')
+    participante_id = request.GET.get('participante_id')
+    participante_ctx = None
+    if participante_id:
+        try:
+            participante_qs = Participante.objects.select_related('personagem')
+            if combate_id:
+                participante_qs = participante_qs.filter(combate_id=int(combate_id))
+            participante_ctx = participante_qs.get(id=int(participante_id), personagem=personagem)
+        except Exception:
+            participante_ctx = None
+
     # Agrupa poderes por nome para evitar duplicatas quando estão encadeados (ligados)
     # Regra: com a nova validação, somente poderes com MESMO nome podem estar ligados.
     # Inclui item_origem nos poderes e também nos ligados para evitar N+1
@@ -546,6 +673,11 @@ def poderes_personagem_ajax(request):
     )
     grupos = {}
     for poder in poderes_qs:
+        key, atual, maximo = _charge_state_for_poder(participante_ctx, poder) if participante_ctx else (None, None, None)
+        uses_charges = key is not None
+        if uses_charges and (atual or 0) <= 0:
+            continue
+
         nome = poder.nome
         entry = grupos.get(nome)
         if not entry:
@@ -556,7 +688,10 @@ def poderes_personagem_ajax(request):
                 'duracao': poder.duracao,
                 'ids_equivalentes': set([poder.id]),
                 'de_item': bool(getattr(poder, 'de_item', False)),
-                'itens_origem': set([getattr(getattr(poder, 'item_origem', None), 'nome', '')]) if getattr(poder, 'de_item', False) and getattr(poder, 'item_origem', None) else set()
+                'itens_origem': set([getattr(getattr(poder, 'item_origem', None), 'nome', '')]) if getattr(poder, 'de_item', False) and getattr(poder, 'item_origem', None) else set(),
+                'uses_charges': uses_charges,
+                'charges_atual': int(atual or 0) if uses_charges else None,
+                'charges_max': int(maximo or 0) if uses_charges else None,
             }
         else:
             # Se já existe um representante, só agrega o id
@@ -566,6 +701,13 @@ def poderes_personagem_ajax(request):
                 entry['de_item'] = True
                 if getattr(poder, 'item_origem', None) and getattr(poder.item_origem, 'nome', None):
                     entry.setdefault('itens_origem', set()).add(poder.item_origem.nome)
+            if uses_charges:
+                prev_atual = entry.get('charges_atual')
+                if prev_atual is None or int(atual or 0) > int(prev_atual or 0):
+                    entry['id'] = poder.id
+                    entry['charges_atual'] = int(atual or 0)
+                    entry['charges_max'] = int(maximo or 0)
+                entry['uses_charges'] = True
         # Também adiciona ids dos ligados (mesmo nome pela validação)
         for ligado in poder.ligados.all():
             grupos[nome]['ids_equivalentes'].add(ligado.id)
@@ -592,6 +734,9 @@ def poderes_personagem_ajax(request):
             'equivalentes': list(sorted(g['ids_equivalentes'])),
             'de_item': bool(g.get('de_item', False)),
             'item_origem_nome': item_origem_nome,
+            'uses_charges': bool(g.get('uses_charges', False)),
+            'charges_atual': g.get('charges_atual'),
+            'charges_max': g.get('charges_max'),
         })
     poderes.sort(key=lambda x: x['nome'].lower())
     return JsonResponse({'poderes': poderes})
@@ -2092,12 +2237,24 @@ def realizar_ataque(request, combate_id):
                     anteriores.update(ativo=False)
                     resultados.append(f"[Concentração] {atacante.nome} reutilizou {poder_atual.nome}: instância anterior encerrada.")
 
-            # Exibir charges (se houver) no cabeçalho do chat
-            try:
-                charges_val = int(getattr(poder_atual, 'charges', 0) or 0)
-            except Exception:
-                charges_val = 0
-            charges_piece = (f" — Charges: {charges_val}" if charges_val > 0 else "")
+            # Demais tipos precisam de alvos; se ausentes no poder principal aborta tudo, se em encadeados apenas pula
+            if getattr(poder_atual, 'tipo', '') != 'descritivo' and not alvo_ids:
+                if idx == 0:  # principal sem alvo não-descritivo -> ignora ação
+                    return redirect('detalhes_combate', combate_id=combate_id)
+                continue
+
+            # Consome charge ao usar o poder (uma vez por poder, não por alvo)
+            charge_state = _consume_charge_for_power_use(participante_atacante, poder_atual)
+            if charge_state.get('uses_charges') and charge_state.get('blocked'):
+                resultados.append(
+                    f"{atacante.nome} tentou usar {poder_atual.nome}, mas está sem Charges (0/{charge_state.get('max')}). "
+                    f"Use Descanso para recarregar."
+                )
+                continue
+
+            charges_piece = ""
+            if charge_state.get('uses_charges'):
+                charges_piece = f" — Charges: {charge_state.get('remaining')}/{charge_state.get('max')}"
             # Indica origem de item no cabeçalho principal (idx == 0)
             try:
                 origem_piece = ""
@@ -2132,13 +2289,6 @@ def realizar_ataque(request, combate_id):
                 )
                 resultados.append(resultado)
                 continue
-
-            # Demais tipos precisam de alvos; se ausentes no poder principal aborta tudo, se em encadeados apenas pula
-            if not alvo_ids:
-                if idx == 0:  # principal sem alvo não-descritivo -> ignora ação
-                    return redirect('detalhes_combate', combate_id=combate_id)
-                else:
-                    continue
 
             for alvo_id in alvo_ids:
                 participante_alvo = get_object_or_404(Participante, id=alvo_id, combate_id=combate_id)
@@ -3773,8 +3923,13 @@ def descansar_participante(request, combate_id, participante_id):
     participante.bonus_temporario = 0
     participante.penalidade_temporaria = 0
     participante.save(update_fields=['dano', 'ferimentos', 'aflicao', 'bonus_temporario', 'penalidade_temporaria'])
+
+    poderes_recarregados = _recarregar_charges_participante(participante)
     
-    msg = f"{participante.personagem.nome} descansou e recuperou toda saúde (dano, ferimentos e aflições zerados)."
+    msg = (
+        f"{participante.personagem.nome} descansou e recuperou toda saúde "
+        f"(dano, ferimentos e aflições zerados). Charges recarregadas em {poderes_recarregados} poder(es)."
+    )
     
     turno_ativo = Turno.objects.filter(combate=combate, ativo=True).first()
     if turno_ativo:

@@ -21,6 +21,10 @@ class Participante(models.Model):
     penalidade_temporaria = models.IntegerField(default=0) # Para Debuff
     # Próximo bônus específico por atributo (para Aprimorar instantâneo): {"forca": 2, "vigor": 1, ...}
     proximo_bonus_por_atributo = models.JSONField(default=dict, blank=True)
+    # Estado de charges por poder durante o combate (chave = poder_id como string)
+    charges_atuais = models.JSONField(default=dict, blank=True)
+    # Snapshot do máximo de charges no combate para restaurar em descanso
+    charges_maximos = models.JSONField(default=dict, blank=True)
     # Ferimentos: penalidade cumulativa única em salvamentos contra Dano e Aflição
     ferimentos = models.IntegerField(default=0)
     # CD fixo usado para reduzir Aflição (mesmo CD que a causou)

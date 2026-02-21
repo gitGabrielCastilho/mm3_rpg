@@ -61,7 +61,7 @@
           </form>
           <form method="post" action="{% url 'descansar_participante' combate.id p.id %}" class="form-acao-participante" style="display:inline;">
             {% csrf_token %}
-            <button type="submit" class="btn-acao-small btn-info" title="Recuperação completa" onclick="return confirm('Descansar {{ p.personagem.nome }}? Isso irá zerar dano, ferimentos e aflições.');">Descanso</button>
+            <button type="submit" class="btn-acao-small btn-info" title="Recuperação completa e recarga de Charges" onclick="return confirm('Descansar {{ p.personagem.nome }}? Isso irá zerar dano, ferimentos e aflições e recarregar Charges.');">Descanso</button>
           </form>
         {% else %}
           <span style="color:#666;">—</span>
