@@ -553,7 +553,9 @@
                 const chargesText = (p.uses_charges && p.charges_atual !== null && p.charges_max !== null)
                   ? (` — Charges: ${p.charges_atual}/${p.charges_max}`)
                   : '';
-                opt.textContent = (deItem && origem ? (p.nome + ' — item: ' + origem) : p.nome) + chargesText;
+                const blockedText = (p.charges_blocked === true) ? ' (esgotado)' : '';
+                opt.textContent = (deItem && origem ? (p.nome + ' — item: ' + origem) : p.nome) + chargesText + blockedText;
+                if (p.charges_blocked === true) opt.disabled = true;
                 if (p.tipo) opt.dataset.tipo = p.tipo;
                 if (p.duracao) opt.dataset.duracao = p.duracao;
                 if (p.equivalentes) opt.dataset.equivalentes = p.equivalentes.join(',');
@@ -561,8 +563,8 @@
                 if (origem) opt.dataset.itemOrigem = origem;
                 // Prefer savedValue; depois tenta prevValue (qualquer equivalente também vale)
                 const eqSet = new Set([String(p.id)].concat((p.equivalentes||[]).map(String)));
-                if (!restored && savedValue && eqSet.has(String(savedValue))) { opt.selected = true; restored = true; }
-                else if (!restored && eqSet.has(String(prevValue))) { opt.selected = true; restored = true; }
+                if (!restored && savedValue && eqSet.has(String(savedValue)) && p.charges_blocked !== true) { opt.selected = true; restored = true; }
+                else if (!restored && eqSet.has(String(prevValue)) && p.charges_blocked !== true) { opt.selected = true; restored = true; }
                 poderSelect.appendChild(opt);
               });
             } else {

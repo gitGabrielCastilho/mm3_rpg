@@ -675,8 +675,7 @@ def poderes_personagem_ajax(request):
     for poder in poderes_qs:
         key, atual, maximo = _charge_state_for_poder(participante_ctx, poder) if participante_ctx else (None, None, None)
         uses_charges = key is not None
-        if uses_charges and (atual or 0) <= 0:
-            continue
+        charges_blocked = bool(uses_charges and (atual or 0) <= 0)
 
         nome = poder.nome
         entry = grupos.get(nome)
@@ -692,6 +691,7 @@ def poderes_personagem_ajax(request):
                 'uses_charges': uses_charges,
                 'charges_atual': int(atual or 0) if uses_charges else None,
                 'charges_max': int(maximo or 0) if uses_charges else None,
+                'charges_blocked': charges_blocked,
             }
         else:
             # Se já existe um representante, só agrega o id
@@ -707,6 +707,7 @@ def poderes_personagem_ajax(request):
                     entry['id'] = poder.id
                     entry['charges_atual'] = int(atual or 0)
                     entry['charges_max'] = int(maximo or 0)
+                    entry['charges_blocked'] = charges_blocked
                 entry['uses_charges'] = True
         # Também adiciona ids dos ligados (mesmo nome pela validação)
         for ligado in poder.ligados.all():
@@ -737,6 +738,7 @@ def poderes_personagem_ajax(request):
             'uses_charges': bool(g.get('uses_charges', False)),
             'charges_atual': g.get('charges_atual'),
             'charges_max': g.get('charges_max'),
+            'charges_blocked': bool(g.get('charges_blocked', False)),
         })
     poderes.sort(key=lambda x: x['nome'].lower())
     return JsonResponse({'poderes': poderes})
