@@ -171,13 +171,15 @@
               id="token-{{ posicao.id }}"
               class="mapa-token"
               style="left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:{{ posicao.token_size|default:40 }}px; height:{{ posicao.token_size|default:40 }}px;"
-              draggable="true"
+              data-can-move="{% if combate.sala.game_master == user or posicao.participante.personagem.usuario_id == user.id %}1{% else %}0{% endif %}"
+              draggable="{% if combate.sala.game_master == user or posicao.participante.personagem.usuario_id == user.id %}true{% else %}false{% endif %}"
               ondragstart="drag(event, {{ posicao.id }})"
               loading="lazy" decoding="async">
                 {% else %}
          <div id="token-{{ posicao.id }}" class="mapa-token token-fallback"
            style="left:{{ posicao.x }}px; top:{{ posicao.y }}px; width:{{ posicao.token_size|default:40 }}px; height:{{ posicao.token_size|default:40 }}px;"
-           draggable="true"
+           data-can-move="{% if combate.sala.game_master == user or posicao.participante.personagem.usuario_id == user.id %}1{% else %}0{% endif %}"
+           draggable="{% if combate.sala.game_master == user or posicao.participante.personagem.usuario_id == user.id %}true{% else %}false{% endif %}"
            ondragstart="drag(event, {{ posicao.id }})"
            title="{{ posicao.display_label|default:posicao.participante.personagem.nome }}">
                     {{ posicao.display_label|default:posicao.participante.personagem.nome }}
@@ -896,16 +898,16 @@
   window._tokenUpdateState = window._tokenUpdateState || {};
   window.postTokenUpdate = window.postTokenUpdate || function(tokenId, payload){
     const key = String(tokenId || '');
-    if (!key) return Promise.resolve({ queued: false });
+    if (!key) return Promise.resolve({ queued: false, ok: false });
     const state = window._tokenUpdateState;
     if (!state[key]) state[key] = { inFlight: false, pending: null, timer: null };
     const st = state[key];
     st.pending = payload || {};
 
-    if (st.inFlight) return Promise.resolve({ queued: true });
+    if (st.inFlight) return Promise.resolve({ queued: true, ok: true });
 
     const flush = () => {
-      if (!st.pending || st.inFlight) return Promise.resolve({ queued: false });
+      if (!st.pending || st.inFlight) return Promise.resolve({ queued: false, ok: true });
       const body = st.pending;
       st.pending = null;
       st.inFlight = true;
@@ -915,8 +917,15 @@
         credentials: 'same-origin',
         body: JSON.stringify(body)
       })
-        .then(() => ({ queued: !!st.pending }))
-        .catch(() => ({ queued: !!st.pending }))
+        .then((resp) => {
+          if (!resp.ok) {
+            const err = new Error('token-update-failed');
+            err.status = resp.status;
+            throw err;
+          }
+          return { queued: !!st.pending, ok: true };
+        })
+        .catch((err) => ({ queued: !!st.pending, ok: false, status: (err && err.status) ? err.status : 0 }))
         .finally(() => {
           st.inFlight = false;
           if (st.pending) {
@@ -1979,10 +1988,11 @@
             const canvas = mapaArea.querySelector('.mapa-canvas');
             if (!canvas) return;
             const tokenId = e.dataTransfer.getData('tokenId');
+            const token = document.getElementById('token-' + tokenId);
+            if (!token || token.dataset.canMove !== '1') return;
             const rect = canvas.getBoundingClientRect();
             const scale = parseFloat(mapaArea.dataset.scale || '1');
-            const tokenEl = document.getElementById('token-' + tokenId);
-            const tokenSize = tokenEl ? parseFloat(getComputedStyle(tokenEl).width) || 40 : 40;
+            const tokenSize = parseFloat(getComputedStyle(token).width) || 40;
             const half = tokenSize / 2;
             let x = (e.clientX - rect.left - half) / scale;
             let y = (e.clientY - rect.top - half) / scale;
@@ -1997,10 +2007,19 @@
             // Snap opcional à grade
             if (gridEnabled()) { const snapped = applyGridSnap(x, y); x = snapped.x; y = snapped.y; }
             // Atualização otimista: UI responde imediatamente
-            const token = document.getElementById('token-' + tokenId);
-            if (token) { token.style.left = x + 'px'; token.style.top = y + 'px'; }
+            const prevX = parseFloat(token.style.left || getComputedStyle(token).left) || 0;
+            const prevY = parseFloat(token.style.top || getComputedStyle(token).top) || 0;
+            token.style.left = x + 'px';
+            token.style.top = y + 'px';
             // Persistência no servidor com coalescência
-            if (window.postTokenUpdate) window.postTokenUpdate(tokenId, { x, y });
+            if (window.postTokenUpdate) {
+              window.postTokenUpdate(tokenId, { x, y }).then((res) => {
+                if (res && res.ok === false) {
+                  token.style.left = prevX + 'px';
+                  token.style.top = prevY + 'px';
+                }
+              });
+            }
           });
           mapaArea.dataset.dragDropBound = '1';
         }
@@ -2010,6 +2029,7 @@
           mapaArea.querySelectorAll('.mapa-token').forEach(token => {
             if (token.dataset.wheelResized) return;
             token.addEventListener('wheel', function(e){
+              if (token.dataset.canMove !== '1') return;
               if (!e.ctrlKey) return; // only when holding Ctrl
               e.preventDefault();
               e.stopPropagation();
@@ -2021,13 +2041,22 @@
               let next = +(cur * factor).toFixed(2);
               const min = 20, max = 120;
               next = Math.max(min, Math.min(max, next));
+              const prevSize = cur;
               token.style.width = next + 'px';
               token.style.height = next + 'px';
               try { persistTokenSize(token); } catch(_) {}
               // Persiste no servidor também
               try {
                 const id = (token.id || '').replace('token-','');
-                if (window.postTokenUpdate) window.postTokenUpdate(id, { size: next });
+                if (window.postTokenUpdate) {
+                  window.postTokenUpdate(id, { size: next }).then((res) => {
+                    if (res && res.ok === false) {
+                      token.style.width = prevSize + 'px';
+                      token.style.height = prevSize + 'px';
+                      try { persistTokenSize(token); } catch(_) {}
+                    }
+                  });
+                }
               } catch(_) {}
             }, { passive: false });
             token.dataset.wheelResized = '1';
@@ -2968,7 +2997,13 @@
     }
 
   function drag(event, id) {
+    const token = document.getElementById('token-' + id);
+    if (!token || token.dataset.canMove !== '1') {
+      event.preventDefault();
+      return false;
+    }
     event.dataTransfer.setData("tokenId", id);
+    return true;
   }
 
   document.addEventListener("DOMContentLoaded", function() {
@@ -2981,11 +3016,12 @@
         mapaArea.addEventListener("drop", function(e) {
           e.preventDefault();
           const tokenId = e.dataTransfer.getData("tokenId");
+          const token = document.getElementById("token-" + tokenId);
+          if (!token || token.dataset.canMove !== '1') return;
           const canvas = mapaArea.querySelector('.mapa-canvas') || mapaArea;
           const rect = canvas.getBoundingClientRect();
           const scale = parseFloat(mapaArea.dataset.scale || '1');
-          const tokenEl = document.getElementById('token-' + tokenId);
-          const tokenSize = tokenEl ? parseFloat(getComputedStyle(tokenEl).width) || 40 : 40;
+          const tokenSize = parseFloat(getComputedStyle(token).width) || 40;
           const half = tokenSize / 2;
           let x = (e.clientX - rect.left - half) / scale;
           let y = (e.clientY - rect.top - half) / scale;
@@ -2998,12 +3034,18 @@
             y = Math.max(0, Math.min(baseH - tokenSize, y));
           }
           if (window.gridEnabled && window.gridEnabled()) { const snapped = window.applyGridSnap ? window.applyGridSnap(x, y) : {x, y}; x = snapped.x; y = snapped.y; }
-          const token = document.getElementById("token-" + tokenId);
-          if (token) {
-            token.style.left = x + "px";
-            token.style.top = y + "px";
+          const prevX = parseFloat(token.style.left || getComputedStyle(token).left) || 0;
+          const prevY = parseFloat(token.style.top || getComputedStyle(token).top) || 0;
+          token.style.left = x + "px";
+          token.style.top = y + "px";
+          if (window.postTokenUpdate) {
+            window.postTokenUpdate(tokenId, { x, y }).then((res) => {
+              if (res && res.ok === false) {
+                token.style.left = prevX + 'px';
+                token.style.top = prevY + 'px';
+              }
+            });
           }
-          if (window.postTokenUpdate) window.postTokenUpdate(tokenId, { x, y });
         });
         mapaArea.dataset.dragDropBound = '1';
       }
@@ -3011,6 +3053,7 @@
       mapaArea.querySelectorAll('.mapa-token').forEach(token => {
         if (token.dataset.wheelResized) return;
         token.addEventListener('wheel', function(e){
+          if (token.dataset.canMove !== '1') return;
           if (!e.ctrlKey) return;
           e.preventDefault();
           e.stopPropagation();
@@ -3022,12 +3065,21 @@
           let next = +(cur * factor).toFixed(2);
           const min = 20, max = 120;
           next = Math.max(min, Math.min(max, next));
+          const prevSize = cur;
           token.style.width = next + 'px';
           token.style.height = next + 'px';
           try { persistTokenSize(token); } catch(_) {}
           try {
             const id = (token.id || '').replace('token-','');
-            if (window.postTokenUpdate) window.postTokenUpdate(id, { size: next });
+            if (window.postTokenUpdate) {
+              window.postTokenUpdate(id, { size: next }).then((res) => {
+                if (res && res.ok === false) {
+                  token.style.width = prevSize + 'px';
+                  token.style.height = prevSize + 'px';
+                  try { persistTokenSize(token); } catch(_) {}
+                }
+              });
+            }
           } catch(_) {}
         }, { passive: false });
         token.dataset.wheelResized = '1';
