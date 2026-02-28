@@ -4,42 +4,57 @@ Combina autenticação via sessão + token na query string.
 """
 import logging
 import urllib.parse
-from functools import partial
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.sessions.models import Session
 from django.core import signing
 from asgiref.sync import sync_to_async
-from channels.db import database_sync_to_async
 
 logger = logging.getLogger(__name__)
 
 
+def _is_connection_closed_error(exc: Exception) -> bool:
+    msg = str(exc).lower()
+    return 'connection is closed' in msg or 'server closed the connection' in msg
+
+
 def get_user_from_session(session_key):
     """Obtém user a partir da session key (síncrono)"""
-    from django.db import connection
-    try:
-        if not session_key:
+    from django.db import close_old_connections, connection
+    if not session_key:
+        return None
+
+    for attempt in range(2):
+        try:
+            # Fecha conexões antigas/stale e garante conexão ativa nesta thread
+            close_old_connections()
+            connection.ensure_connection()
+
+            session = Session.objects.get(session_key=session_key)
+            session_data = session.get_decoded()
+            user_id = session_data.get('_auth_user_id')
+            if user_id:
+                user = get_user_model().objects.get(id=user_id)
+                logger.info(f"Session auth OK: user {user.id}")
+                return user
             return None
-        
-        # Garante que a conexão está ativa antes de fazer query
-        connection.ensure_connection()
-        
-        session = Session.objects.get(session_key=session_key)
-        session_data = session.get_decoded()
-        user_id = session_data.get('_auth_user_id')
-        if user_id:
-            user = get_user_model().objects.get(id=user_id)
-            logger.info(f"Session auth OK: user {user.id}")
-            return user
-    except Exception as e:
-        logger.info(f"Session auth failed: {e}")
+        except Exception as e:
+            # Erro transitório comum em PaaS (conexão reciclada/fechada)
+            if attempt == 0 and _is_connection_closed_error(e):
+                logger.warning("Session auth: conexão fechada, tentando reconectar 1x")
+                try:
+                    connection.close()
+                except Exception:
+                    pass
+                continue
+            logger.info(f"Session auth failed: {e}")
+            return None
     return None
 
 
 def get_user_from_token(token):
     """Valida o token de forma síncrona e retorna o usuário (ou None)"""
-    from django.db import connection
+    from django.db import close_old_connections, connection
     try:
         logger.info(f"Token auth: validando token com salt='ws-combate'")
         data = signing.loads(token, salt='ws-combate', max_age=60*60*24*30)
@@ -48,16 +63,29 @@ def get_user_from_token(token):
         if not uid:
             logger.warning(f"Token auth: sem uid no payload")
             return None
-        
-        # Garante que a conexão está ativa antes de fazer query
-        connection.ensure_connection()
-        
-        user = get_user_model().objects.filter(id=uid).first()
-        if user:
-            logger.info(f"Token auth OK: user {user.id} ({user.username})")
-        else:
-            logger.warning(f"Token auth: user {uid} não existe")
-        return user
+
+        for attempt in range(2):
+            try:
+                # Fecha conexões antigas/stale e garante conexão ativa nesta thread
+                close_old_connections()
+                connection.ensure_connection()
+
+                user = get_user_model().objects.filter(id=uid).first()
+                if user:
+                    logger.info(f"Token auth OK: user {user.id} ({user.username})")
+                else:
+                    logger.warning(f"Token auth: user {uid} não existe")
+                return user
+            except Exception as e:
+                # Erro transitório comum em PaaS (conexão reciclada/fechada)
+                if attempt == 0 and _is_connection_closed_error(e):
+                    logger.warning("Token auth: conexão fechada, tentando reconectar 1x")
+                    try:
+                        connection.close()
+                    except Exception:
+                        pass
+                    continue
+                raise
     except signing.BadSignature:
         logger.warning(f"Token auth: assinatura inválida")
     except signing.SignatureExpired:

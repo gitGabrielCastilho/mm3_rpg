@@ -1019,7 +1019,12 @@
     const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const wsToken = window._wsToken ? `?ws_token=${encodeURIComponent(window._wsToken)}` : '';
     const wsPath = `${wsScheme}://${window.location.host}/ws/combate/${combateId}/${wsToken}`;
-    let combateSocket = new WebSocket(wsPath);
+    let combateSocket = null;
+    let _wsReconnectTimer = null;
+    let _wsReconnectAttempts = 0;
+    let _wsManualClose = false;
+    const WS_RECONNECT_BASE_MS = 1000;
+    const WS_RECONNECT_MAX_MS = 15000;
   let lastEventAt = Date.now();
 
   // Fallback: polling quando WS não estiver disponível ou WS ficar ocioso
@@ -2634,7 +2639,7 @@
       document._ajaxSubmitDelegated = true;
     })();
 
-    combateSocket.onmessage = async function(e) {
+    const handleCombateWsMessage = async function(e) {
   lastEventAt = Date.now();
       let payload = null;
       try { payload = JSON.parse(e.data); } catch(_) {}
@@ -2883,21 +2888,69 @@
     };
 
     window._combateWsActive = false;
-    combateSocket.onopen = function(){ 
-      window._combateWsActive = true; 
-      stopCombatePolling(); 
-    };
-    combateSocket.onclose = function(e) {
-      window._combateWsActive = false;
-      startCombatePolling();
-    };
-    combateSocket.onerror = function(err){
-      window._combateWsActive = false;
-    };
+    function scheduleCombateWsReconnect() {
+      if (_wsManualClose || _wsReconnectTimer) return;
+      _wsReconnectAttempts += 1;
+      const delay = Math.min(WS_RECONNECT_MAX_MS, WS_RECONNECT_BASE_MS * (2 ** (_wsReconnectAttempts - 1)));
+      _wsReconnectTimer = setTimeout(() => {
+        _wsReconnectTimer = null;
+        connectCombateSocket();
+      }, delay);
+    }
+
+    function bindCombateSocketHandlers(socket) {
+      socket.onmessage = handleCombateWsMessage;
+      socket.onopen = function(){ 
+        window._combateWsActive = true;
+        _wsReconnectAttempts = 0;
+        stopCombatePolling();
+      };
+      socket.onclose = function(e) {
+        window._combateWsActive = false;
+        startCombatePolling();
+        if (!_wsManualClose && e && e.code !== 1000) {
+          scheduleCombateWsReconnect();
+        }
+      };
+      socket.onerror = function(){
+        window._combateWsActive = false;
+      };
+    }
+
+    function connectCombateSocket() {
+      try {
+        if (combateSocket && (combateSocket.readyState === WebSocket.OPEN || combateSocket.readyState === WebSocket.CONNECTING)) return;
+        combateSocket = new WebSocket(wsPath);
+        bindCombateSocketHandlers(combateSocket);
+      } catch(_) {
+        window._combateWsActive = false;
+        startCombatePolling();
+        scheduleCombateWsReconnect();
+      }
+    }
+
+    window.addEventListener('beforeunload', function(){
+      _wsManualClose = true;
+      if (_wsReconnectTimer) {
+        clearTimeout(_wsReconnectTimer);
+        _wsReconnectTimer = null;
+      }
+      try {
+        if (combateSocket && (combateSocket.readyState === WebSocket.OPEN || combateSocket.readyState === WebSocket.CONNECTING)) {
+          combateSocket.close(1000, 'page unload');
+        }
+      } catch(_) {}
+    });
+
+    connectCombateSocket();
   startHeartbeat();
 
     window.enviarMensagemCombate = function(msg) {
-      combateSocket.send(msg);
+      try {
+        if (combateSocket && combateSocket.readyState === WebSocket.OPEN) {
+          combateSocket.send(msg);
+        }
+      } catch(_) {}
     };
 
     // ====== Equalização de alturas (Mapa x Ações) e (Histórico x Status) ======
