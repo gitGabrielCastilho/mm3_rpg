@@ -116,7 +116,10 @@
           </select>
           <button type="button" id="btn-usar-mapa" class="btn btn-sm">Usar</button>
           <a href="{% url 'adicionar_mapa' combate.id %}" target="_blank" rel="noopener" id="btn-add-mapa-link" class="btn btn-sm">Novo</a>
-          <!-- Grade opcional para precisão de movimento -->
+        </div>
+        {% endif %}
+        <div class="mapa-header-actions">
+          <!-- Grade opcional para precisão de movimento (visual para todos) -->
           <label style="margin-left:8px; display:inline-flex; align-items:center; gap:4px;">
             <input type="checkbox" id="grid-enable" checked> Grade
           </label>
@@ -126,7 +129,6 @@
             <option value="60">60px</option>
           </select>
         </div>
-        {% endif %}
       </div>
       <div class="mapa-draw-toolbar">
         <div class="mdt-group">
