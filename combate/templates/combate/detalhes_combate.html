@@ -136,7 +136,7 @@
       </div>
       <div class="mapa-draw-toolbar">
         <div class="mdt-group">
-          <button type="button" id="mdt-toggle-draw" class="mdt-btn">Desenho: OFF</button>
+          <button type="button" id="mdt-toggle-draw" class="mdt-btn" onclick="if(window._toggleDrawEnabled){window._toggleDrawEnabled();}">Desenho: OFF</button>
           <button type="button" data-draw-mode="pen" class="mdt-btn active">Lápis</button>
           <button type="button" data-draw-mode="eraser" class="mdt-btn">Borracha</button>
           <button type="button" data-draw-mode="rect" class="mdt-btn">Retângulo</button>
@@ -1271,6 +1271,34 @@
         const savedEnabled = localStorage.getItem(DRAW_ENABLED_KEY);
         if (savedEnabled !== null) drawEnabled = savedEnabled === '1';
       } catch(_) {}
+
+      function applyDrawEnabledUI(){
+        const tb = document.querySelector('.mapa-draw-toolbar');
+        const toggleBtn = tb ? tb.querySelector('#mdt-toggle-draw') : null;
+        if (toggleBtn) {
+          toggleBtn.textContent = drawEnabled ? 'Desenho: ON' : 'Desenho: OFF';
+          toggleBtn.classList.toggle('active', drawEnabled);
+          toggleBtn.setAttribute('aria-pressed', drawEnabled ? 'true' : 'false');
+        }
+        document.querySelectorAll('.mapa-draw-layer, .mapa-draw-preview').forEach(cv => {
+          cv.style.pointerEvents = drawEnabled ? 'auto' : 'none';
+        });
+      }
+
+      function setDrawEnabled(v){
+        drawEnabled = !!v;
+        try { localStorage.setItem(DRAW_ENABLED_KEY, drawEnabled ? '1' : '0'); } catch(_) {}
+        window._drawEnabled = drawEnabled;
+        applyDrawEnabledUI();
+      }
+
+      function toggleDrawEnabled(){
+        setDrawEnabled(!drawEnabled);
+      }
+
+      window._setDrawEnabled = setDrawEnabled;
+      window._toggleDrawEnabled = toggleDrawEnabled;
+      window._drawEnabled = drawEnabled;
       
       let currentSize = 4;
 
@@ -1628,18 +1656,6 @@
       function setupToolbar(){
         const tb = document.querySelector('.mapa-draw-toolbar');
         if (!tb || tb.dataset.bound) return;
-
-        function applyDrawEnabledUI(){
-          const toggleBtn = tb.querySelector('#mdt-toggle-draw');
-          if (toggleBtn) {
-            toggleBtn.textContent = drawEnabled ? 'Desenho: ON' : 'Desenho: OFF';
-            toggleBtn.classList.toggle('active', drawEnabled);
-            toggleBtn.setAttribute('aria-pressed', drawEnabled ? 'true' : 'false');
-          }
-          document.querySelectorAll('.mapa-draw-layer, .mapa-draw-preview').forEach(cv => {
-            cv.style.pointerEvents = drawEnabled ? 'auto' : 'none';
-          });
-        }
         
         // Restore saved color selection
         const firstColor = tb.querySelector(`[data-draw-color="${currentColor}"]`) || tb.querySelector('[data-draw-color]');
@@ -1654,9 +1670,7 @@
           const colorBtn = e.target.closest('[data-draw-color]');
           const toggleBtn = e.target.closest('#mdt-toggle-draw');
           if (toggleBtn){
-            drawEnabled = !drawEnabled;
-            try { localStorage.setItem(DRAW_ENABLED_KEY, drawEnabled ? '1' : '0'); } catch(_) {}
-            applyDrawEnabledUI();
+            toggleDrawEnabled();
             return;
           }
           if (modeBtn){
@@ -1683,6 +1697,8 @@
 
       document.addEventListener('DOMContentLoaded', function(){
         setupToolbar();
+        // Reaplica estado global de desenho ao iniciar (inclui páginas com refresh parcial prévio)
+        try { if (typeof window._setDrawEnabled === 'function') window._setDrawEnabled(!!window._drawEnabled); } catch(_) {}
         // Force immediate canvas creation
         ensureDrawLayersAll();
         updateDrawLayerSizes();
