@@ -136,6 +136,7 @@
       </div>
       <div class="mapa-draw-toolbar">
         <div class="mdt-group">
+          <button type="button" id="mdt-toggle-draw" class="mdt-btn">Desenho: OFF</button>
           <button type="button" data-draw-mode="pen" class="mdt-btn active">Lápis</button>
           <button type="button" data-draw-mode="eraser" class="mdt-btn">Borracha</button>
           <button type="button" data-draw-mode="rect" class="mdt-btn">Retângulo</button>
@@ -1256,15 +1257,19 @@
       const DRAW_COLORS = ['#d33','#1e88e5','#2e7d32','#f9a825','#000000','#ffffff'];
       const DRAW_MODE_KEY = `combate:${combateId}:drawMode`;
       const DRAW_COLOR_KEY = `combate:${combateId}:drawColor`;
+      const DRAW_ENABLED_KEY = `combate:${combateId}:drawEnabled`;
       
       // Restore saved mode/color or default
       let currentMode = 'pen';
       let currentColor = DRAW_COLORS[0];
+      let drawEnabled = false;
       try {
         const savedMode = localStorage.getItem(DRAW_MODE_KEY);
         if (savedMode && ['pen','eraser','rect','circle'].includes(savedMode)) currentMode = savedMode;
         const savedColor = localStorage.getItem(DRAW_COLOR_KEY);
         if (savedColor && DRAW_COLORS.includes(savedColor)) currentColor = savedColor;
+        const savedEnabled = localStorage.getItem(DRAW_ENABLED_KEY);
+        if (savedEnabled !== null) drawEnabled = savedEnabled === '1';
       } catch(_) {}
       
       let currentSize = 4;
@@ -1368,9 +1373,9 @@
           // Immediately set dimensions before first draw
           resizeCanvasPair(mapaArea, canvas, preview);
         }
-        // Canvases recebem input direto para desenho; tokens permanecem acima via z-index.
-        canvas.style.pointerEvents = 'auto';
-        preview.style.pointerEvents = 'auto';
+        // Só recebe eventos quando o modo desenho está ativo.
+        canvas.style.pointerEvents = drawEnabled ? 'auto' : 'none';
+        preview.style.pointerEvents = drawEnabled ? 'auto' : 'none';
         // Bind drawing events (will skip if already bound)
         bindDrawing(mapaArea, canvas, preview);
          // Mark as initialized so we don't reinitialize
@@ -1467,6 +1472,7 @@
         }
 
         function onDown(e){
+          if (!drawEnabled) return;
           // Only respond to mouse button 0 (left click) or touch
           if (e.button !== 0 && e.button !== undefined && e.type !== 'touchstart') return;
           
@@ -1622,6 +1628,18 @@
       function setupToolbar(){
         const tb = document.querySelector('.mapa-draw-toolbar');
         if (!tb || tb.dataset.bound) return;
+
+        function applyDrawEnabledUI(){
+          const toggleBtn = tb.querySelector('#mdt-toggle-draw');
+          if (toggleBtn) {
+            toggleBtn.textContent = drawEnabled ? 'Desenho: ON' : 'Desenho: OFF';
+            toggleBtn.classList.toggle('active', drawEnabled);
+            toggleBtn.setAttribute('aria-pressed', drawEnabled ? 'true' : 'false');
+          }
+          document.querySelectorAll('.mapa-draw-layer, .mapa-draw-preview').forEach(cv => {
+            cv.style.pointerEvents = drawEnabled ? 'auto' : 'none';
+          });
+        }
         
         // Restore saved color selection
         const firstColor = tb.querySelector(`[data-draw-color="${currentColor}"]`) || tb.querySelector('[data-draw-color]');
@@ -1634,6 +1652,13 @@
         tb.addEventListener('click', (e)=>{
           const modeBtn = e.target.closest('[data-draw-mode]');
           const colorBtn = e.target.closest('[data-draw-color]');
+          const toggleBtn = e.target.closest('#mdt-toggle-draw');
+          if (toggleBtn){
+            drawEnabled = !drawEnabled;
+            try { localStorage.setItem(DRAW_ENABLED_KEY, drawEnabled ? '1' : '0'); } catch(_) {}
+            applyDrawEnabledUI();
+            return;
+          }
           if (modeBtn){
             currentMode = modeBtn.dataset.drawMode;
             setActiveMode(modeBtn);
@@ -1650,6 +1675,7 @@
         if (sizeSel) sizeSel.addEventListener('change', ()=>{ currentSize = parseInt(sizeSel.value, 10) || 4; });
         const clearBtn = tb.querySelector('#mdt-clear');
         if (clearBtn) clearBtn.addEventListener('click', clearAllDrawings);
+        applyDrawEnabledUI();
         tb.dataset.bound = '1';
       }
 
