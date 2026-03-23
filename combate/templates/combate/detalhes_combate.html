@@ -1308,15 +1308,7 @@
         }
         document.querySelectorAll('.mapa-draw-layer').forEach(cv => { cv.style.pointerEvents = 'none'; });
         document.querySelectorAll('.mapa-draw-preview').forEach(cv => { cv.style.pointerEvents = drawEnabled ? 'auto' : 'none'; });
-        if (!drawEnabled) {
-          document.querySelectorAll("[id^='mapa-area-']").forEach(area => {
-            try { delete area.dataset.rulerAnchorX; delete area.dataset.rulerAnchorY; } catch(_) {}
-          });
-          document.querySelectorAll('.mapa-draw-preview').forEach(cv => {
-            try { cv.getContext('2d').clearRect(0,0,cv.width,cv.height); } catch(_) {}
-          });
-          clearRulerReadout();
-        }
+        if (!drawEnabled) clearRulerReadout();
       }
 
       function setDrawEnabled(v){
@@ -1408,15 +1400,27 @@
           savedImage = temp;
         }
 
-        [canvas, preview].forEach(cv => {
-          if (!cv) return;
-          cv.width = targetW;
-          cv.height = targetH;
-          cv.style.width = targetW + 'px'; // parent transform handles scale
-          cv.style.height = targetH + 'px';
-          cv.style.transformOrigin = 'top left';
-          cv.style.transform = 'none';
-        });
+        // IMPORTANTE: atribuir width/height limpa o canvas.
+        // Só redimensionamos quando realmente mudou.
+        if (needsResize) {
+          [canvas, preview].forEach(cv => {
+            if (!cv) return;
+            cv.width = targetW;
+            cv.height = targetH;
+            cv.style.width = targetW + 'px'; // parent transform handles scale
+            cv.style.height = targetH + 'px';
+            cv.style.transformOrigin = 'top left';
+            cv.style.transform = 'none';
+          });
+        } else {
+          [canvas, preview].forEach(cv => {
+            if (!cv) return;
+            cv.style.width = targetW + 'px';
+            cv.style.height = targetH + 'px';
+            cv.style.transformOrigin = 'top left';
+            cv.style.transform = 'none';
+          });
+        }
 
         // Restore drawings after resize
         if (savedImage && canvas) {
@@ -1501,23 +1505,6 @@
         const ctxPrev = preview.getContext('2d');
         let drawing = false;
         let start = {x:0, y:0};
-
-        function getRulerAnchor(){
-          const x = parseFloat(mapaArea.dataset.rulerAnchorX || '');
-          const y = parseFloat(mapaArea.dataset.rulerAnchorY || '');
-          if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-          return { x, y };
-        }
-
-        function setRulerAnchor(point){
-          if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) {
-            delete mapaArea.dataset.rulerAnchorX;
-            delete mapaArea.dataset.rulerAnchorY;
-            return;
-          }
-          mapaArea.dataset.rulerAnchorX = String(point.x);
-          mapaArea.dataset.rulerAnchorY = String(point.y);
-        }
 
         function strokeLine(from, to, mode){
           ctx.save();
@@ -1620,22 +1607,6 @@
           
           e.preventDefault();
           e.stopPropagation();
-
-          if (currentMode === 'ruler') {
-            const point = toCoord(e, mapaArea);
-            const anchor = getRulerAnchor();
-            if (!anchor) {
-              setRulerAnchor(point);
-              drawShape('ruler', point, point);
-              setRulerReadout('Régua: ponto A definido. Selecione o ponto B.');
-            } else {
-              drawShape('ruler', anchor, point);
-              setRulerAnchor(null);
-              setTimeout(() => { try { ctxPrev.clearRect(0,0,preview.width,preview.height); } catch(_) {} }, 1500);
-            }
-            return;
-          }
-
           drawing = true;
           start = toCoord(e, mapaArea);
           mapaArea.dataset.drawing = '1';
@@ -1646,18 +1617,14 @@
           }
           
           // desenha um ponto imediato para feedback
-          strokeLine(start, start, currentMode);
+          if (currentMode === 'ruler') {
+            drawShape('ruler', start, start);
+          } else {
+            strokeLine(start, start, currentMode);
+          }
         }
 
         function onMove(e){
-          const rulerAnchor = getRulerAnchor();
-          if (currentMode === 'ruler' && rulerAnchor) {
-            e.preventDefault();
-            e.stopPropagation();
-            const pos = toCoord(e, mapaArea);
-            drawShape('ruler', rulerAnchor, pos);
-            return;
-          }
           if (!drawing) return;
           e.preventDefault();
           e.stopPropagation();
@@ -1679,6 +1646,10 @@
           // Salva apenas traços completos ao soltar o mouse
           if (currentMode === 'pen' || currentMode === 'eraser') {
             strokeLine(start, pos, currentMode);
+          } else if (currentMode === 'ruler') {
+            drawShape('ruler', start, pos);
+            // Régua é somente visual; não persiste no canvas de desenho
+            setTimeout(() => { try { ctxPrev.clearRect(0,0,preview.width,preview.height); } catch(_) {} }, 1200);
           } else {
             commitShape(currentMode, start, pos);
           }
@@ -1802,14 +1773,7 @@
             try { cv.getContext('2d').clearRect(0,0,cv.width,cv.height); } catch(_) {}
           }
         });
-        document.querySelectorAll("[id^='mapa-area-']").forEach(area => {
-          try { delete area.dataset.rulerAnchorX; delete area.dataset.rulerAnchorY; } catch(_) {}
-        });
-        if (currentMode === 'ruler') {
-          setRulerReadout('Régua: selecione o ponto A.');
-        } else {
-          clearRulerReadout();
-        }
+        if (currentMode !== 'ruler') clearRulerReadout();
         try { localStorage.setItem(DRAW_MODE_KEY, currentMode); } catch(_) {}
       }
 
