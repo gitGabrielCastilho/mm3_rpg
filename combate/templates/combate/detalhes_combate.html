@@ -756,7 +756,7 @@
     }
     canvas.mapa-draw-layer,
     canvas.mapa-draw-preview{
-      position:absolute; left:0; top:0; pointer-events:auto; z-index:50; touch-action:none;
+      position:absolute; left:0; top:0; pointer-events:auto; z-index:25; touch-action:none;
     }
     .mapa-grid-overlay{
       position:absolute;
@@ -1125,9 +1125,11 @@
     }
     function persistGridState(nextState) {
       const current = window._gridState || {};
+      const hasEnabled = nextState && typeof nextState.enabled === 'boolean';
+      const hasSize = nextState && typeof nextState.size !== 'undefined';
       const merged = {
-        enabled: typeof nextState?.enabled === 'boolean' ? nextState.enabled : !!current.enabled,
-        size: normalizeGridSize(typeof nextState?.size !== 'undefined' ? nextState.size : current.size),
+        enabled: hasEnabled ? nextState.enabled : !!current.enabled,
+        size: normalizeGridSize(hasSize ? nextState.size : current.size),
       };
       window._gridState = merged;
       const marker = getGridStateMarker();
@@ -1366,9 +1368,9 @@
           // Immediately set dimensions before first draw
           resizeCanvasPair(mapaArea, canvas, preview);
         }
-        // Keep canvases transparent to pointer hit-testing; we listen on mapaArea
-        canvas.style.pointerEvents = 'none';
-        preview.style.pointerEvents = 'none';
+        // Canvases recebem input direto para desenho; tokens permanecem acima via z-index.
+        canvas.style.pointerEvents = 'auto';
+        preview.style.pointerEvents = 'auto';
         // Bind drawing events (will skip if already bound)
         bindDrawing(mapaArea, canvas, preview);
          // Mark as initialized so we don't reinitialize
