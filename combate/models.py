@@ -6,6 +6,8 @@ class Combate(models.Model):
     sala = models.ForeignKey('salas.Sala', on_delete=models.CASCADE, related_name='combates', null=True, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
     ativo = models.BooleanField(default=True)
+    grid_enabled = models.BooleanField(default=True)
+    grid_size = models.PositiveIntegerField(default=40)
 
     def __str__(self):
         return f"Combate #{self.id} - {'Ativo' if self.ativo else 'Finalizado'}"

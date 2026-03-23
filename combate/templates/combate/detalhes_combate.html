@@ -14,9 +14,14 @@
   window._isPersonagemAllowed = function(pid){ try { return window._allowedPersonagemIdsStr.indexOf(String(pid)) !== -1; } catch(_) { return true; } };
   // URL resolvida pelo Django para evitar problemas de prefixo em produção
   window._poderesAjaxUrl = "{% url 'poderes_personagem_ajax' %}";
+  window._gridSettingsUrl = "{% url 'atualizar_grid_combate' combate.id %}";
   // Token assinado para autenticar WebSocket mesmo com bloqueio de cookies
   window._wsToken = "{{ ws_token }}";
   window._wsUserId = "{{ request.user.id }}";
+  window._gridState = {
+    enabled: {% if grid_enabled %}true{% else %}false{% endif %},
+    size: {{ grid_size|default:40 }}
+  };
 </script>
 <div id="combate-content" class="combate-detalhes-center" data-is-gm="{% if combate.sala.game_master == user %}true{% else %}false{% endif %}">
   <!-- Topo: info de turno + ações globais -->
@@ -105,6 +110,7 @@
     <div class="combate-col-right">
       <div class="mapa-header-row">
         <h3 class="combate-section-title" style="margin:0">Mapa do Combate</h3>
+        <div id="grid-state" hidden data-grid-enabled="{% if grid_enabled %}true{% else %}false{% endif %}" data-grid-size="{{ grid_size|default:40 }}"></div>
         {% if combate.sala.game_master == user %}
         <div class="mapa-header-actions">
           <label for="mapa_existente_top" class="sr-only">Selecionar mapa</label>
@@ -116,19 +122,17 @@
           </select>
           <button type="button" id="btn-usar-mapa" class="btn btn-sm">Usar</button>
           <a href="{% url 'adicionar_mapa' combate.id %}" target="_blank" rel="noopener" id="btn-add-mapa-link" class="btn btn-sm">Novo</a>
-        </div>
-        {% endif %}
-        <div class="mapa-header-actions">
-          <!-- Grade opcional para precisão de movimento (visual para todos) -->
+          <!-- Grade opcional para precisão de movimento -->
           <label style="margin-left:8px; display:inline-flex; align-items:center; gap:4px;">
-            <input type="checkbox" id="grid-enable" checked> Grade
+            <input type="checkbox" id="grid-enable" {% if grid_enabled %}checked{% endif %}> Grade
           </label>
           <select id="grid-size" class="select-sm" title="Tamanho da grade" style="margin-left:4px;">
-            <option value="20">20px</option>
-            <option value="40" selected>40px</option>
-            <option value="60">60px</option>
+            <option value="20" {% if grid_size == 20 %}selected{% endif %}>20px</option>
+            <option value="40" {% if grid_size == 40 %}selected{% endif %}>40px</option>
+            <option value="60" {% if grid_size == 60 %}selected{% endif %}>60px</option>
           </select>
         </div>
+        {% endif %}
       </div>
       <div class="mapa-draw-toolbar">
         <div class="mdt-group">
@@ -1104,40 +1108,77 @@
     }
     function stopHeartbeat(){ if (_hbTimer) { clearInterval(_hbTimer); _hbTimer = null; } }
 
-    // Persistência de preferências da grade por combate
-    const GRID_ENABLED_KEY = `combate:${combateId}:gridEnabled`;
-    const GRID_SIZE_KEY = `combate:${combateId}:gridSize`;
-    function persistGridState() {
+    function normalizeGridSize(value) {
+      const parsed = parseInt(value, 10);
+      if (!Number.isFinite(parsed)) return 40;
+      return Math.max(10, Math.min(200, parsed));
+    }
+    function getGridStateMarker() {
+      return document.getElementById('grid-state');
+    }
+    function syncGridStateFromDom() {
+      const marker = getGridStateMarker();
+      if (!marker) return;
+      const enabled = String(marker.dataset.gridEnabled || '').toLowerCase() === 'true';
+      const size = normalizeGridSize(marker.dataset.gridSize || 40);
+      window._gridState = { enabled, size };
+    }
+    function persistGridState(nextState) {
+      const current = window._gridState || {};
+      const merged = {
+        enabled: typeof nextState?.enabled === 'boolean' ? nextState.enabled : !!current.enabled,
+        size: normalizeGridSize(typeof nextState?.size !== 'undefined' ? nextState.size : current.size),
+      };
+      window._gridState = merged;
+      const marker = getGridStateMarker();
+      if (marker) {
+        marker.dataset.gridEnabled = merged.enabled ? 'true' : 'false';
+        marker.dataset.gridSize = String(merged.size);
+      }
       const cb = document.getElementById('grid-enable');
       const sel = document.getElementById('grid-size');
-      if (cb) localStorage.setItem(GRID_ENABLED_KEY, cb.checked ? '1' : '0');
-      if (sel) localStorage.setItem(GRID_SIZE_KEY, sel.value || '40');
+      if (cb) cb.checked = merged.enabled;
+      if (sel) {
+        sel.value = String(merged.size);
+        sel.disabled = !merged.enabled;
+      }
     }
     function restoreGridStateIfNeeded() {
-      const cb = document.getElementById('grid-enable');
-      const sel = document.getElementById('grid-size');
-      const savedEnabled = localStorage.getItem(GRID_ENABLED_KEY);
-      const savedSize = localStorage.getItem(GRID_SIZE_KEY);
-      if (cb && !cb.dataset.restored && savedEnabled !== null) {
-        cb.checked = savedEnabled === '1';
-        cb.dataset.restored = '1';
-      }
-      if (sel && !sel.dataset.restored && savedSize) {
-        sel.value = savedSize;
-        sel.dataset.restored = '1';
-      }
+      syncGridStateFromDom();
+      persistGridState(window._gridState || { enabled: true, size: 40 });
+    }
+    function submitGridState(nextState) {
+      return fetch(window._gridSettingsUrl, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': '{{ csrf_token }}',
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json',
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          enabled: !!nextState.enabled,
+          size: normalizeGridSize(nextState.size),
+        })
+      })
+      .then(async (resp) => {
+        let data = {};
+        try { data = await resp.json(); } catch(_) {}
+        if (!resp.ok) throw new Error((data && data.error) || 'grid_update_failed');
+        persistGridState({ enabled: !!data.enabled, size: data.size });
+        updateAllGrids();
+        return data;
+      });
     }
 
 
     // ====== Grade (grid) opcional para melhorar precisão com zoom ======
   function gridEnabled(){
-      const cb = document.getElementById('grid-enable');
-      return !!(cb && cb.checked);
+      return !!(window._gridState && window._gridState.enabled);
     }
     function getGridSize(){
-      const sel = document.getElementById('grid-size');
-      const v = sel && parseInt(sel.value, 10);
-      return Number.isFinite(v) && v > 4 ? v : 40;
+      return normalizeGridSize(window._gridState && window._gridState.size);
     }
     function applyGridSnap(x, y){
       const cell = getGridSize();
@@ -1753,14 +1794,29 @@
     function setupGridControls(){
       const cb = document.getElementById('grid-enable');
       const sel = document.getElementById('grid-size');
-      // Restaura estado salvo (se houver)
       restoreGridStateIfNeeded();
       if (cb && !cb.dataset.bound){
-        cb.addEventListener('change', () => { persistGridState(); updateAllGrids(); });
+        cb.addEventListener('change', () => {
+          const next = { enabled: !!cb.checked, size: getGridSize() };
+          persistGridState(next);
+          updateAllGrids();
+          submitGridState(next).catch(() => {
+            restoreGridStateIfNeeded();
+            updateAllGrids();
+          });
+        });
         cb.dataset.bound = '1';
       }
       if (sel && !sel.dataset.bound){
-        sel.addEventListener('change', () => { persistGridState(); updateAllGrids(); });
+        sel.addEventListener('change', () => {
+          const next = { enabled: gridEnabled(), size: sel.value };
+          persistGridState(next);
+          updateAllGrids();
+          submitGridState(next).catch(() => {
+            restoreGridStateIfNeeded();
+            updateAllGrids();
+          });
+        });
         sel.dataset.bound = '1';
       }
     }
@@ -2797,6 +2853,11 @@
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
           };
           img.src = snapshotData;
+          break;
+        }
+        case 'grid_settings': {
+          persistGridState({ enabled: !!payload.enabled, size: payload.size });
+          updateAllGrids();
           break;
         }
         case 'clear_drawings': {

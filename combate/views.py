@@ -933,6 +933,8 @@ def detalhes_combate(request, combate_id):
         'allowed_personagem_ids': allowed_personagem_ids,
         'ws_token': signing.dumps({'uid': request.user.id}, salt='ws-combate'),
         'desenhos_salvos': {str(m.id): m.desenhos_json or [] for m in combate.mapas.all()},
+        'grid_enabled': bool(getattr(combate, 'grid_enabled', True)),
+        'grid_size': int(getattr(combate, 'grid_size', 40) or 40),
     }
 
     return render(request, 'combate/detalhes_combate.html', context)
@@ -988,6 +990,54 @@ def atualizar_posicao_token(request, token_id):
             # Em dev, ignore falha de broadcast para não quebrar o movimento do token
             pass
         return JsonResponse({"status": "ok"})
+
+
+@login_required
+@require_POST
+def atualizar_grid_combate(request, combate_id):
+    combate = get_object_or_404(Combate.objects.select_related('sala'), id=combate_id)
+    if combate.sala.game_master != request.user:
+        return JsonResponse({'error': 'forbidden'}, status=403)
+
+    try:
+        data = json.loads(request.body or '{}')
+    except Exception:
+        return JsonResponse({'error': 'invalid_json'}, status=400)
+
+    enabled = bool(data.get('enabled', False))
+    size_raw = data.get('size', combate.grid_size)
+    try:
+        size = int(size_raw)
+    except Exception:
+        size = int(combate.grid_size or 40)
+    size = max(10, min(200, size))
+
+    combate.grid_enabled = enabled
+    combate.grid_size = size
+    combate.save(update_fields=['grid_enabled', 'grid_size'])
+
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'combate_{combate.id}',
+            {
+                'type': 'combate_message',
+                'message': json.dumps({
+                    'evento': 'grid_settings',
+                    'enabled': combate.grid_enabled,
+                    'size': combate.grid_size,
+                })
+            }
+        )
+    except Exception:
+        logger.warning("Falha ao enviar evento 'grid_settings' via Channels (ignorado)", exc_info=True)
+
+    return JsonResponse({
+        'status': 'ok',
+        'evento': 'grid_settings',
+        'enabled': combate.grid_enabled,
+        'size': combate.grid_size,
+    })
 
 @login_required
 @require_POST
