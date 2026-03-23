@@ -1380,14 +1380,16 @@
 
       function ensureDrawLayer(mapaArea){
         if (!mapaArea) return;
+
+        const holder = mapaArea.querySelector('.mapa-canvas') || mapaArea;
        
          // Skip if already initialized
          if (mapaArea.dataset.drawLayerInitialized === '1') {
            return;
          }
        
-        let canvas = mapaArea.querySelector('.mapa-draw-layer');
-        let preview = mapaArea.querySelector('.mapa-draw-preview');
+        let canvas = holder.querySelector('.mapa-draw-layer');
+        let preview = holder.querySelector('.mapa-draw-preview');
         if (!canvas) {
           canvas = document.createElement('canvas');
           canvas.className = 'mapa-draw-layer';
@@ -1395,9 +1397,9 @@
           preview = document.createElement('canvas');
           preview.className = 'mapa-draw-preview';
           preview.style.pointerEvents = 'none';
-          // Append to mapaArea directly, not to .mapa-canvas
-          mapaArea.appendChild(canvas);
-          mapaArea.appendChild(preview);
+          // Mantém no mesmo contexto transformado do mapa para alinhar zoom/scroll.
+          holder.appendChild(canvas);
+          holder.appendChild(preview);
           // Immediately set dimensions before first draw
           resizeCanvasPair(mapaArea, canvas, preview);
         }
