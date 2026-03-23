@@ -1289,6 +1289,22 @@
         try { localStorage.setItem(DRAW_ENABLED_KEY, drawEnabled ? '1' : '0'); } catch(_) {}
         window._drawEnabled = drawEnabled;
         applyDrawEnabledUI();
+        if (drawEnabled) {
+          try {
+            if (window.ensureDrawLayersAll) window.ensureDrawLayersAll();
+            if (window.updateDrawLayerSizes) window.updateDrawLayerSizes();
+            // Alguns layouts estabilizam após alguns frames (load/refresh parcial).
+            let tries = 0;
+            const maxTries = 20;
+            const tick = () => {
+              tries += 1;
+              try { if (window.ensureDrawLayersAll) window.ensureDrawLayersAll(); } catch(_) {}
+              try { if (window.updateDrawLayerSizes) window.updateDrawLayerSizes(); } catch(_) {}
+              if (tries < maxTries) setTimeout(tick, 120);
+            };
+            setTimeout(tick, 0);
+          } catch(_) {}
+        }
       }
 
       function toggleDrawEnabled(){
@@ -1381,6 +1397,7 @@
         if (!mapaArea) return;
 
         const holder = mapaArea.querySelector('.mapa-canvas') || mapaArea;
+        const img = holder.querySelector('.mapa-img');
        
          // Skip if already initialized
          if (mapaArea.dataset.drawLayerInitialized === '1') {
@@ -1401,6 +1418,14 @@
           holder.appendChild(preview);
           // Immediately set dimensions before first draw
           resizeCanvasPair(mapaArea, canvas, preview);
+        }
+        // Recalibra dimensões quando a imagem terminar de carregar.
+        if (img && !img.dataset.drawLoadBound) {
+          img.addEventListener('load', function(){
+            try { resizeCanvasPair(mapaArea, canvas, preview); } catch(_) {}
+            try { if (window.updateDrawLayerSizes) window.updateDrawLayerSizes(); } catch(_) {}
+          });
+          img.dataset.drawLoadBound = '1';
         }
         // A camada final não captura eventos; preview captura quando desenho está ativo.
         canvas.style.pointerEvents = 'none';
