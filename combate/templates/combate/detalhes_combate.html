@@ -1280,9 +1280,8 @@
           toggleBtn.classList.toggle('active', drawEnabled);
           toggleBtn.setAttribute('aria-pressed', drawEnabled ? 'true' : 'false');
         }
-        document.querySelectorAll('.mapa-draw-layer, .mapa-draw-preview').forEach(cv => {
-          cv.style.pointerEvents = drawEnabled ? 'auto' : 'none';
-        });
+        document.querySelectorAll('.mapa-draw-layer').forEach(cv => { cv.style.pointerEvents = 'none'; });
+        document.querySelectorAll('.mapa-draw-preview').forEach(cv => { cv.style.pointerEvents = drawEnabled ? 'auto' : 'none'; });
       }
 
       function setDrawEnabled(v){
@@ -1403,8 +1402,8 @@
           // Immediately set dimensions before first draw
           resizeCanvasPair(mapaArea, canvas, preview);
         }
-        // Só recebe eventos quando o modo desenho está ativo.
-        canvas.style.pointerEvents = drawEnabled ? 'auto' : 'none';
+        // A camada final não captura eventos; preview captura quando desenho está ativo.
+        canvas.style.pointerEvents = 'none';
         preview.style.pointerEvents = drawEnabled ? 'auto' : 'none';
         // Bind drawing events (will skip if already bound)
         bindDrawing(mapaArea, canvas, preview);
@@ -1511,9 +1510,11 @@
           // Only respond to mouse button 0 (left click) or touch
           if (e.button !== 0 && e.button !== undefined && e.type !== 'touchstart') return;
           
-          // Check if clicking on a token - if so, ignore and let token drag happen
-          const target = e.target;
-          if (target && target.closest && target.closest('.mapa-token')) return;
+          // Se houver token sob o cursor, prioriza token e não desenha.
+          try {
+            const under = document.elementFromPoint(e.clientX, e.clientY);
+            if (under && under.closest && under.closest('.mapa-token')) return;
+          } catch(_) {}
           
           e.preventDefault();
           e.stopPropagation();
@@ -1522,8 +1523,8 @@
           mapaArea.dataset.drawing = '1';
           
           // Try to set pointer capture if available
-          if (e.pointerId !== undefined && canvas.setPointerCapture) {
-            try { canvas.setPointerCapture(e.pointerId); } catch(_){}
+          if (e.pointerId !== undefined && preview.setPointerCapture) {
+            try { preview.setPointerCapture(e.pointerId); } catch(_){ }
           }
           
           // desenha um ponto imediato para feedback
@@ -1559,8 +1560,8 @@
           setTimeout(() => salvarCanvasCompleto(mapaArea), 50);
           drawing = false;
           delete mapaArea.dataset.drawing;
-          if (e.pointerId !== undefined && canvas.releasePointerCapture) {
-            try { canvas.releasePointerCapture(e.pointerId); } catch(_){ }
+          if (e.pointerId !== undefined && preview.releasePointerCapture) {
+            try { preview.releasePointerCapture(e.pointerId); } catch(_){ }
           }
         }
 
@@ -1581,9 +1582,7 @@
           target.addEventListener('pointercancel', onUp, false);
         }
 
-        // Bind tanto na área quanto nas camadas de desenho para cobrir cenários de propagação/bubble.
-        bindDrawEventsOn(mapaArea);
-        bindDrawEventsOn(canvas);
+        // Bind principal na camada preview para evitar conflito com pan/drag do mapa.
         bindDrawEventsOn(preview);
 
         canvas.dataset.drawingBound = '1';
