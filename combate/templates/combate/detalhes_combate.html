@@ -141,6 +141,7 @@
           <button type="button" data-draw-mode="eraser" class="mdt-btn" onclick="if(window._setDrawMode){window._setDrawMode('eraser');}">Borracha</button>
           <button type="button" data-draw-mode="rect" class="mdt-btn" onclick="if(window._setDrawMode){window._setDrawMode('rect');}">Retângulo</button>
           <button type="button" data-draw-mode="circle" class="mdt-btn" onclick="if(window._setDrawMode){window._setDrawMode('circle');}">Círculo</button>
+          <button type="button" data-draw-mode="ruler" class="mdt-btn" onclick="if(window._setDrawMode){window._setDrawMode('ruler');}">Régua</button>
         </div>
         <div class="mdt-group mdt-colors">
           <button type="button" data-draw-color="#d33" style="background:#d33" onclick="if(window._setDrawColor){window._setDrawColor('#d33');}"></button>
@@ -158,6 +159,7 @@
             <option value="10">10px</option>
           </select>
           <button type="button" id="mdt-clear" class="mdt-btn" onclick="if(window._clearAllDrawings){window._clearAllDrawings();}">Limpar</button>
+          <span id="mdt-ruler-readout" class="mdt-readout">Régua: --</span>
         </div>
       </div>
       {% if combate.mapas.all %}
@@ -755,10 +757,24 @@
       border-color:#e6c200;
       color:#23272a;
     }
+    .mdt-readout{
+      display:inline-flex;
+      align-items:center;
+      min-height:32px;
+      padding:0 10px;
+      border:1px dashed #4b4b4b;
+      border-radius:8px;
+      color:#d9d9d9;
+      font-size:12px;
+      font-weight:600;
+      letter-spacing:0.02em;
+      white-space:nowrap;
+    }
     canvas.mapa-draw-layer,
     canvas.mapa-draw-preview{
       position:absolute; left:0; top:0; pointer-events:auto; z-index:25; touch-action:none;
     }
+    .mapa-draw-preview.ruler-mode{ cursor: crosshair; }
     .mapa-grid-overlay{
       position:absolute;
       left:0;
@@ -1265,12 +1281,22 @@
       let drawEnabled = false;
       try {
         const savedMode = localStorage.getItem(DRAW_MODE_KEY);
-        if (savedMode && ['pen','eraser','rect','circle'].includes(savedMode)) currentMode = savedMode;
+        if (savedMode && ['pen','eraser','rect','circle','ruler'].includes(savedMode)) currentMode = savedMode;
         const savedColor = localStorage.getItem(DRAW_COLOR_KEY);
         if (savedColor && DRAW_COLORS.includes(savedColor)) currentColor = savedColor;
         const savedEnabled = localStorage.getItem(DRAW_ENABLED_KEY);
         if (savedEnabled !== null) drawEnabled = savedEnabled === '1';
       } catch(_) {}
+
+      function setRulerReadout(text){
+        const el = document.getElementById('mdt-ruler-readout');
+        if (!el) return;
+        el.textContent = text || 'Régua: --';
+      }
+
+      function clearRulerReadout(){
+        setRulerReadout('Régua: --');
+      }
 
       function applyDrawEnabledUI(){
         const tb = document.querySelector('.mapa-draw-toolbar');
@@ -1282,6 +1308,7 @@
         }
         document.querySelectorAll('.mapa-draw-layer').forEach(cv => { cv.style.pointerEvents = 'none'; });
         document.querySelectorAll('.mapa-draw-preview').forEach(cv => { cv.style.pointerEvents = drawEnabled ? 'auto' : 'none'; });
+        if (!drawEnabled) clearRulerReadout();
       }
 
       function setDrawEnabled(v){
@@ -1489,6 +1516,31 @@
         function drawShape(shape, from, to){
           ctxPrev.clearRect(0,0,preview.width,preview.height);
           if (!shape) return;
+          if (shape === 'ruler') {
+            const dx = to.x - from.x;
+            const dy = to.y - from.y;
+            const distPx = Math.sqrt((dx * dx) + (dy * dy));
+            const cellSize = (typeof getGridSize === 'function') ? Math.max(1, getGridSize()) : 40;
+            const squares = distPx / cellSize;
+            const feet = squares * 5;
+            ctxPrev.save();
+            ctxPrev.lineWidth = 2;
+            ctxPrev.strokeStyle = '#00d1ff';
+            ctxPrev.setLineDash([8, 6]);
+            ctxPrev.beginPath();
+            ctxPrev.moveTo(from.x, from.y);
+            ctxPrev.lineTo(to.x, to.y);
+            ctxPrev.stroke();
+            ctxPrev.setLineDash([]);
+            ctxPrev.fillStyle = '#00d1ff';
+            ctxPrev.beginPath();
+            ctxPrev.arc(from.x, from.y, 4, 0, Math.PI * 2);
+            ctxPrev.arc(to.x, to.y, 4, 0, Math.PI * 2);
+            ctxPrev.fill();
+            ctxPrev.restore();
+            setRulerReadout(`Régua: ${squares.toFixed(1)} quadrados (${feet.toFixed(1)}ft)`);
+            return;
+          }
           const w = to.x - from.x;
           const h = to.y - from.y;
           ctxPrev.save();
@@ -1553,7 +1605,11 @@
           }
           
           // desenha um ponto imediato para feedback
-          strokeLine(start, start, currentMode);
+          if (currentMode === 'ruler') {
+            drawShape('ruler', start, start);
+          } else {
+            strokeLine(start, start, currentMode);
+          }
         }
 
         function onMove(e){
@@ -1578,11 +1634,15 @@
           // Salva apenas traços completos ao soltar o mouse
           if (currentMode === 'pen' || currentMode === 'eraser') {
             strokeLine(start, pos, currentMode);
+          } else if (currentMode === 'ruler') {
+            drawShape('ruler', start, pos);
+            // Régua é somente visual; não persiste no canvas de desenho
+            setTimeout(() => { try { ctxPrev.clearRect(0,0,preview.width,preview.height); } catch(_) {} }, 1200);
           } else {
             commitShape(currentMode, start, pos);
           }
           // Captura snapshot do canvas e salva de uma vez
-          setTimeout(() => salvarCanvasCompleto(mapaArea), 50);
+          if (currentMode !== 'ruler') setTimeout(() => salvarCanvasCompleto(mapaArea), 50);
           drawing = false;
           delete mapaArea.dataset.drawing;
           if (e.pointerId !== undefined && preview.releasePointerCapture) {
@@ -1691,10 +1751,17 @@
       }
 
       function setDrawMode(mode){
-        if (!['pen','eraser','rect','circle'].includes(String(mode || ''))) return;
+        if (!['pen','eraser','rect','circle','ruler'].includes(String(mode || ''))) return;
         currentMode = String(mode);
         const tb = document.querySelector('.mapa-draw-toolbar');
         if (tb) setActiveMode(tb.querySelector(`[data-draw-mode="${currentMode}"]`));
+        document.querySelectorAll('.mapa-draw-preview').forEach(cv => {
+          cv.classList.toggle('ruler-mode', currentMode === 'ruler');
+          if (currentMode !== 'ruler') {
+            try { cv.getContext('2d').clearRect(0,0,cv.width,cv.height); } catch(_) {}
+          }
+        });
+        if (currentMode !== 'ruler') clearRulerReadout();
         try { localStorage.setItem(DRAW_MODE_KEY, currentMode); } catch(_) {}
       }
 
