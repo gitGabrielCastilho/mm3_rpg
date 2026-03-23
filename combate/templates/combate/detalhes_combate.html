@@ -118,7 +118,7 @@
           <a href="{% url 'adicionar_mapa' combate.id %}" target="_blank" rel="noopener" id="btn-add-mapa-link" class="btn btn-sm">Novo</a>
           <!-- Grade opcional para precisão de movimento -->
           <label style="margin-left:8px; display:inline-flex; align-items:center; gap:4px;">
-            <input type="checkbox" id="grid-enable"> Grade
+            <input type="checkbox" id="grid-enable" checked> Grade
           </label>
           <select id="grid-size" class="select-sm" title="Tamanho da grade" style="margin-left:4px;">
             <option value="20">20px</option>
@@ -752,10 +752,23 @@
     canvas.mapa-draw-preview{
       position:absolute; left:0; top:0; pointer-events:auto; z-index:50; touch-action:none;
     }
+    .mapa-grid-overlay{
+      position:absolute;
+      left:0;
+      top:0;
+      width:100%;
+      height:100%;
+      pointer-events:none;
+      z-index:20;
+      background-repeat:repeat;
+      opacity:0;
+      transition: opacity 0.15s ease;
+    }
     .mapa-draw-layer{ cursor: crosshair; }
     .mapa-canvas, .mapa-img, canvas.mapa-draw-layer, canvas.mapa-draw-preview { user-select:none; }
     .mapa-canvas { position: relative; }
-    .mapa-img { display:block; max-width:100%; height:auto; object-fit:contain; }
+    .mapa-img { display:block; max-width:100%; height:auto; object-fit:contain; position:relative; z-index:10; }
+    .mapa-token { z-index:30; }
     .mapa-debug-url { font-size:12px; color:#888; margin-top:4px; word-break:break-all; }
     
     /* Estilos para logs de ataque formatados */
@@ -1133,23 +1146,34 @@
     function updateGridForArea(mapaArea){
       const canvas = mapaArea && mapaArea.querySelector('.mapa-canvas');
       if (!canvas) return;
+      let overlay = canvas.querySelector('.mapa-grid-overlay');
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.className = 'mapa-grid-overlay';
+        canvas.appendChild(overlay);
+      }
       if (!gridEnabled()){
-        canvas.style.backgroundImage = '';
-        canvas.style.backgroundSize = '';
-        canvas.style.backgroundPosition = '';
+        overlay.style.backgroundImage = '';
+        overlay.style.backgroundSize = '';
+        overlay.style.backgroundPosition = '';
+        overlay.style.opacity = '0';
         return;
       }
-      const scale = parseFloat(mapaArea.dataset.scale || '1');
       const cell = getGridSize();
-      const cellPx = Math.max(4, Math.round(cell * scale));
-      // Linhas de 1px cinza claro; duas grades (x e y)
-      const line = 'rgba(0,0,0,0.12)';
-      canvas.style.backgroundImage = `
-        repeating-linear-gradient(to right, ${line} 0, ${line} 1px, transparent 1px, transparent ${cellPx}px),
-        repeating-linear-gradient(to bottom, ${line} 0, ${line} 1px, transparent 1px, transparent ${cellPx}px)
+      const cellPx = Math.max(6, Math.round(cell));
+      // A camada já sofre zoom junto com o mapa (via transform da .mapa-canvas).
+      // Portanto, usamos o tamanho lógico da célula sem multiplicar por escala.
+      const lineDark = 'rgba(0,0,0,0.35)';
+      const lineLight = 'rgba(255,255,255,0.22)';
+      overlay.style.backgroundImage = `
+        repeating-linear-gradient(to right, ${lineDark} 0, ${lineDark} 1px, transparent 1px, transparent ${cellPx}px),
+        repeating-linear-gradient(to bottom, ${lineDark} 0, ${lineDark} 1px, transparent 1px, transparent ${cellPx}px),
+        repeating-linear-gradient(to right, ${lineLight} 0, ${lineLight} 1px, transparent 1px, transparent ${cellPx}px),
+        repeating-linear-gradient(to bottom, ${lineLight} 0, ${lineLight} 1px, transparent 1px, transparent ${cellPx}px)
       `;
-      canvas.style.backgroundSize = `${cellPx}px ${cellPx}px`;
-      canvas.style.backgroundPosition = '0 0';
+      overlay.style.backgroundSize = `${cellPx}px ${cellPx}px`;
+      overlay.style.backgroundPosition = '0 0';
+      overlay.style.opacity = '1';
     }
     function updateAllGrids(){
       document.querySelectorAll("[id^='mapa-area-']").forEach(updateGridForArea);
