@@ -1415,10 +1415,15 @@
       function toCoord(e, mapaArea){
         const canvas = mapaArea.querySelector('.mapa-draw-layer');
         const rect = canvas ? canvas.getBoundingClientRect() : mapaArea.getBoundingClientRect();
-        const scale = parseFloat(mapaArea.dataset.scale || '1') || 1;
+        const rx = rect.width > 0 ? rect.width : 1;
+        const ry = rect.height > 0 ? rect.height : 1;
+        const px = (e.clientX - rect.left);
+        const py = (e.clientY - rect.top);
+        const mappedX = canvas ? (px * (canvas.width / rx)) : px;
+        const mappedY = canvas ? (py * (canvas.height / ry)) : py;
         return {
-          x: (e.clientX - rect.left + mapaArea.scrollLeft) / scale,
-          y: (e.clientY - rect.top + mapaArea.scrollTop) / scale,
+          x: mappedX,
+          y: mappedY,
           canvas
         };
       }
