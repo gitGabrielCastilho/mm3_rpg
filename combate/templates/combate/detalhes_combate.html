@@ -137,27 +137,27 @@
       <div class="mapa-draw-toolbar">
         <div class="mdt-group">
           <button type="button" id="mdt-toggle-draw" class="mdt-btn" onclick="if(window._toggleDrawEnabled){window._toggleDrawEnabled();}">Desenho: OFF</button>
-          <button type="button" data-draw-mode="pen" class="mdt-btn active">Lápis</button>
-          <button type="button" data-draw-mode="eraser" class="mdt-btn">Borracha</button>
-          <button type="button" data-draw-mode="rect" class="mdt-btn">Retângulo</button>
-          <button type="button" data-draw-mode="circle" class="mdt-btn">Círculo</button>
+          <button type="button" data-draw-mode="pen" class="mdt-btn active" onclick="if(window._setDrawMode){window._setDrawMode('pen');}">Lápis</button>
+          <button type="button" data-draw-mode="eraser" class="mdt-btn" onclick="if(window._setDrawMode){window._setDrawMode('eraser');}">Borracha</button>
+          <button type="button" data-draw-mode="rect" class="mdt-btn" onclick="if(window._setDrawMode){window._setDrawMode('rect');}">Retângulo</button>
+          <button type="button" data-draw-mode="circle" class="mdt-btn" onclick="if(window._setDrawMode){window._setDrawMode('circle');}">Círculo</button>
         </div>
         <div class="mdt-group mdt-colors">
-          <button type="button" data-draw-color="#d33" style="background:#d33"></button>
-          <button type="button" data-draw-color="#1e88e5" style="background:#1e88e5"></button>
-          <button type="button" data-draw-color="#2e7d32" style="background:#2e7d32"></button>
-          <button type="button" data-draw-color="#f9a825" style="background:#f9a825"></button>
-          <button type="button" data-draw-color="#000000" style="background:#000000"></button>
-          <button type="button" data-draw-color="#ffffff" style="background:#ffffff; border:1px solid #ccc"></button>
+          <button type="button" data-draw-color="#d33" style="background:#d33" onclick="if(window._setDrawColor){window._setDrawColor('#d33');}"></button>
+          <button type="button" data-draw-color="#1e88e5" style="background:#1e88e5" onclick="if(window._setDrawColor){window._setDrawColor('#1e88e5');}"></button>
+          <button type="button" data-draw-color="#2e7d32" style="background:#2e7d32" onclick="if(window._setDrawColor){window._setDrawColor('#2e7d32');}"></button>
+          <button type="button" data-draw-color="#f9a825" style="background:#f9a825" onclick="if(window._setDrawColor){window._setDrawColor('#f9a825');}"></button>
+          <button type="button" data-draw-color="#000000" style="background:#000000" onclick="if(window._setDrawColor){window._setDrawColor('#000000');}"></button>
+          <button type="button" data-draw-color="#ffffff" style="background:#ffffff; border:1px solid #ccc" onclick="if(window._setDrawColor){window._setDrawColor('#ffffff');}"></button>
         </div>
         <div class="mdt-group">
-          <select id="mdt-size">
+          <select id="mdt-size" onchange="if(window._setDrawSize){window._setDrawSize(this.value);}">
             <option value="2">2px</option>
             <option value="4" selected>4px</option>
             <option value="6">6px</option>
             <option value="10">10px</option>
           </select>
-          <button type="button" id="mdt-clear" class="mdt-btn">Limpar</button>
+          <button type="button" id="mdt-clear" class="mdt-btn" onclick="if(window._clearAllDrawings){window._clearAllDrawings();}">Limpar</button>
         </div>
       </div>
       {% if combate.mapas.all %}
@@ -1557,21 +1557,27 @@
           }
         }
 
-        // Attach event listeners to mapaArea (parent), not canvas
-        // This captures all events in the area and lets us dispatch to canvas
-        mapaArea.addEventListener('pointerdown', onDown, false);
-        mapaArea.addEventListener('mousedown', onDown, false);
-        mapaArea.addEventListener('touchstart', onDown, { passive: false });
-        
-        mapaArea.addEventListener('pointermove', onMove, false);
-        mapaArea.addEventListener('mousemove', onMove, false);
-        mapaArea.addEventListener('touchmove', onMove, { passive: false });
-        
-        mapaArea.addEventListener('pointerup', onUp, false);
-        mapaArea.addEventListener('mouseup', onUp, false);
-        mapaArea.addEventListener('touchend', onUp, { passive: false });
-        
-        mapaArea.addEventListener('pointercancel', onUp, false);
+        function bindDrawEventsOn(target){
+          if (!target) return;
+          target.addEventListener('pointerdown', onDown, false);
+          target.addEventListener('mousedown', onDown, false);
+          target.addEventListener('touchstart', onDown, { passive: false });
+
+          target.addEventListener('pointermove', onMove, false);
+          target.addEventListener('mousemove', onMove, false);
+          target.addEventListener('touchmove', onMove, { passive: false });
+
+          target.addEventListener('pointerup', onUp, false);
+          target.addEventListener('mouseup', onUp, false);
+          target.addEventListener('touchend', onUp, { passive: false });
+
+          target.addEventListener('pointercancel', onUp, false);
+        }
+
+        // Bind tanto na área quanto nas camadas de desenho para cobrir cenários de propagação/bubble.
+        bindDrawEventsOn(mapaArea);
+        bindDrawEventsOn(canvas);
+        bindDrawEventsOn(preview);
 
         canvas.dataset.drawingBound = '1';
         mapaArea.dataset.drawBound = '1';
@@ -1653,6 +1659,38 @@
         }
       }
 
+      function setDrawMode(mode){
+        if (!['pen','eraser','rect','circle'].includes(String(mode || ''))) return;
+        currentMode = String(mode);
+        const tb = document.querySelector('.mapa-draw-toolbar');
+        if (tb) setActiveMode(tb.querySelector(`[data-draw-mode="${currentMode}"]`));
+        try { localStorage.setItem(DRAW_MODE_KEY, currentMode); } catch(_) {}
+      }
+
+      function setDrawColor(color){
+        if (!DRAW_COLORS.includes(String(color || ''))) return;
+        currentColor = String(color);
+        const tb = document.querySelector('.mapa-draw-toolbar');
+        if (tb) {
+          tb.querySelectorAll('[data-draw-color]').forEach(b=>b.classList.remove('active'));
+          const btn = tb.querySelector(`[data-draw-color="${currentColor}"]`);
+          if (btn) btn.classList.add('active');
+        }
+        try { localStorage.setItem(DRAW_COLOR_KEY, currentColor); } catch(_) {}
+      }
+
+      function setDrawSize(size){
+        const parsed = parseInt(size, 10);
+        currentSize = Number.isFinite(parsed) ? Math.max(1, Math.min(64, parsed)) : 4;
+        const sel = document.getElementById('mdt-size');
+        if (sel) sel.value = String(currentSize);
+      }
+
+      window._setDrawMode = setDrawMode;
+      window._setDrawColor = setDrawColor;
+      window._setDrawSize = setDrawSize;
+      window._clearAllDrawings = clearAllDrawings;
+
       function setupToolbar(){
         const tb = document.querySelector('.mapa-draw-toolbar');
         if (!tb || tb.dataset.bound) return;
@@ -1674,21 +1712,19 @@
             return;
           }
           if (modeBtn){
-            currentMode = modeBtn.dataset.drawMode;
-            setActiveMode(modeBtn);
-            try { localStorage.setItem(DRAW_MODE_KEY, currentMode); } catch(_) {}
+            setDrawMode(modeBtn.dataset.drawMode);
           }
           if (colorBtn){
-            currentColor = colorBtn.dataset.drawColor;
-            tb.querySelectorAll('[data-draw-color]').forEach(b=>b.classList.remove('active'));
-            colorBtn.classList.add('active');
-            try { localStorage.setItem(DRAW_COLOR_KEY, currentColor); } catch(_) {}
+            setDrawColor(colorBtn.dataset.drawColor);
           }
         });
         const sizeSel = tb.querySelector('#mdt-size');
-        if (sizeSel) sizeSel.addEventListener('change', ()=>{ currentSize = parseInt(sizeSel.value, 10) || 4; });
+        if (sizeSel) sizeSel.addEventListener('change', ()=>{ setDrawSize(sizeSel.value); });
         const clearBtn = tb.querySelector('#mdt-clear');
         if (clearBtn) clearBtn.addEventListener('click', clearAllDrawings);
+        setDrawMode(currentMode);
+        setDrawColor(currentColor);
+        setDrawSize(currentSize);
         applyDrawEnabledUI();
         tb.dataset.bound = '1';
       }
