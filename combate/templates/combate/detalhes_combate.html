@@ -136,7 +136,7 @@
       </div>
       <div class="mapa-draw-toolbar">
         <div class="mdt-group">
-          <button type="button" id="mdt-toggle-draw" class="mdt-btn">Desenho: OFF</button>
+          <button type="button" id="mdt-toggle-draw" class="mdt-btn" onclick="if(window._toggleDrawEnabled){window._toggleDrawEnabled();} if(window.event){window.event.stopPropagation();}">Desenho: OFF</button>
           <button type="button" data-draw-mode="pen" class="mdt-btn active" onclick="if(window._setDrawMode){window._setDrawMode('pen');}">Lápis</button>
           <button type="button" data-draw-mode="eraser" class="mdt-btn" onclick="if(window._setDrawMode){window._setDrawMode('eraser');}">Borracha</button>
           <button type="button" data-draw-mode="rect" class="mdt-btn" onclick="if(window._setDrawMode){window._setDrawMode('rect');}">Retângulo</button>
@@ -1816,11 +1816,6 @@
         tb.addEventListener('click', (e)=>{
           const modeBtn = e.target.closest('[data-draw-mode]');
           const colorBtn = e.target.closest('[data-draw-color]');
-          const toggleBtn = e.target.closest('#mdt-toggle-draw');
-          if (toggleBtn){
-            toggleDrawEnabled();
-            return;
-          }
           if (modeBtn){
             setDrawMode(modeBtn.dataset.drawMode);
           }
