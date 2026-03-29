@@ -90,9 +90,15 @@
 
   function appendNota(nota) {
     const lista = document.getElementById('notas-lista');
-    const div = document.createElement('div');
-    div.className = 'nota-item';
-    div.dataset.id = nota.id;
+    if (!lista || !nota || typeof nota.id === 'undefined' || nota.id === null) return;
+    const notaId = String(nota.id);
+    let div = lista.querySelector(`.nota-item[data-id="${notaId}"]`);
+    if (!div) {
+      div = document.createElement('div');
+      div.className = 'nota-item';
+      div.dataset.id = notaId;
+      lista.appendChild(div);
+    }
     div.innerHTML = `
       <div class="nota-header">
         <strong>${nota.nome_usuario}</strong>
@@ -107,7 +113,6 @@
       </div>
       <hr>
     `;
-    lista.appendChild(div);
   }
 
   function atualizarNota(nota) {
