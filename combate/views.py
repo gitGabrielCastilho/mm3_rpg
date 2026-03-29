@@ -846,8 +846,14 @@ def detalhes_combate(request, combate_id):
     except Exception:
         turno_ativo_display = turno_ativo.personagem.nome if turno_ativo else None
     mapas_globais = Mapa.objects.filter(combate__isnull=True, criado_por=request.user).order_by('-id')
-    mapa = combate.mapas.first()
-    posicoes = PosicaoPersonagem.objects.filter(mapa=mapa).select_related('participante__personagem') if mapa else []
+    mapas_do_combate = combate.mapas.all()
+    mapa = mapas_do_combate.first()
+    # Defensivo: nunca renderizar tokens fora do combate atual, mesmo que um mapa reutilizado tenha sobras.
+    posicoes = PosicaoPersonagem.objects.filter(
+        mapa__in=mapas_do_combate,
+        mapa__combate=combate,
+        participante__combate=combate,
+    ).select_related('participante__personagem')
 
     # Não pré-carrega poderes do turno_ativo para evitar alternância no formulário.
     # O frontend busca via AJAX conforme o participante selecionado em "Ações de".
@@ -3381,6 +3387,8 @@ def adicionar_mapa(request, combate_id):
                         'combate': combate,
                         'mapas_globais': mapas_globais,
                     }, status=400)
+                # Se um mapa global foi usado em outro combate antes, elimina posições antigas de outros combates.
+                PosicaoPersonagem.objects.filter(mapa=mapa).exclude(participante__combate=combate).delete()
                 # CRIA OS TOKENS PARA TODOS OS PARTICIPANTES JÁ EXISTENTES
                 participantes = Participante.objects.filter(combate=combate)
                 for participante in participantes:
