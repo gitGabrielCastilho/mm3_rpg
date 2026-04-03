@@ -9,8 +9,20 @@
     {% for npc in npcs %}
       <li class="npc-item">
         <div class="npc-info">
-          <span class="personagem-link">{{ npc.nome }}</span>
-          <span class="personagem-np">(NP {{ npc.nivel_poder|default:"?" }})</span>
+          <span style="display:flex; align-items:center; gap:10px;">
+            {% if npc.foto %}
+              <img src="{{ npc.foto.url }}" alt="Retrato de {{ npc.nome }}" style="width:40px; height:40px; border-radius:50%; object-fit:cover; border:1px solid #666;">
+            {% else %}
+              <span aria-hidden="true" style="width:40px; height:40px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:#2a2a2a; color:#bbb; border:1px solid #555; font-size:0.95rem;">{{ npc.nome|first|upper }}</span>
+            {% endif %}
+            <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <span class="personagem-link">{{ npc.nome }}</span>
+              {% if npc.campanga %}
+                <span style="font-size:0.72rem; padding:2px 8px; border-radius:999px; background:#5a1f1f; color:#ffd9d9; border:1px solid #8a3a3a;">Capanga</span>
+              {% endif %}
+              <span class="personagem-np">(NP {{ npc.nivel_poder|default:"?" }})</span>
+            </span>
+          </span>
         </div>
         <div class="npc-actions">
           <a href="{% url 'editar_npc' npc.id %}">
