@@ -24,6 +24,7 @@ def domain_list(request):
         
         # Todos os domínios da sala do usuário
         domains = Domain.objects.filter(sala=perfil.sala_atual).order_by('nome')
+        from personagens.models import Personagem
         
         # Preparar contexto com permissões para cada domain
         domains_with_perms = []
@@ -37,6 +38,20 @@ def domain_list(request):
                 custos = unit.get_custos_finais()
                 total_custo_ouro += custos['custo_ouro']
                 total_upkeep += custos['upkeep']
+
+            # Montante total de ouro do domínio (tesouraria + ouro dos membros)
+            member_user_ids = set(domain.jogadores_acesso.values_list('id', flat=True))
+            if domain.criador_id:
+                member_user_ids.add(domain.criador_id)
+            if domain.governante_id and getattr(domain.governante, 'usuario_id', None):
+                member_user_ids.add(domain.governante.usuario_id)
+
+            total_ouro_membros = int(
+                Personagem.objects.filter(usuario_id__in=member_user_ids)
+                .aggregate(total=Coalesce(Sum('inventario__ouro'), 0))['total']
+                or 0
+            )
+            total_ouro_dominio = int(domain.ouro or 0) + total_ouro_membros
             
             domains_with_perms.append({
                 'domain': domain,
@@ -44,6 +59,7 @@ def domain_list(request):
                 'pode_deletar': domain.pode_deletar(request.user),
                 'total_custo_ouro': total_custo_ouro,
                 'total_upkeep': total_upkeep,
+                'total_ouro_dominio': total_ouro_dominio,
             })
         
         context = {
