@@ -128,6 +128,7 @@ def domain_detail(request, pk):
                 })
 
         pode_ver_ouro_membros = request.user.id in member_user_ids
+        total_ouro_dominio = int(domain.ouro or 0) + total_ouro_membros
         
         context = {
             'domain': domain,
@@ -139,6 +140,7 @@ def domain_detail(request, pk):
             'jogadores_ouro': jogadores_ouro,
             'total_ouro_membros': total_ouro_membros,
             'pode_ver_ouro_membros': pode_ver_ouro_membros,
+            'total_ouro_dominio': total_ouro_dominio,
         }
         return render(request, 'domains_warfare/domain_detail.html', context)
     except Exception as e:
