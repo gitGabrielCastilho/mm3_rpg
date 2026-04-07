@@ -56,6 +56,14 @@
                 <span class="stat-label">🕵️ Espionage:</span>
                 <span class="stat-value {% if item.domain.espionage < 0 %}negative{% elif item.domain.espionage > 0 %}positive{% endif %}">{{ item.domain.espionage|add_sign }}</span>
               </div>
+              <div class="stat-item">
+                <span class="stat-label">📚 Lore:</span>
+                <span class="stat-value {% if item.domain.lore < 0 %}negative{% elif item.domain.lore > 0 %}positive{% endif %}">{{ item.domain.lore|add_sign }}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">⚔️ Operations:</span>
+                <span class="stat-value {% if item.domain.operations < 0 %}negative{% elif item.domain.operations > 0 %}positive{% endif %}">{{ item.domain.operations|add_sign }}</span>
+              </div>
             </div>
 
             {% if item.total_custo_ouro > 0 or item.total_upkeep > 0 %}
