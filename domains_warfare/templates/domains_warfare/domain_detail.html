@@ -288,6 +288,39 @@
         {% endif %}
       </div>
     </div>
+
+    {% if pode_ver_ouro_membros %}
+    <!-- Ouro dos Membros -->
+    <div class="card">
+      <div class="card-header">
+        <h2>🪙 Ouro dos Jogadores do Domínio</h2>
+      </div>
+      <div class="card-body">
+        {% if jogadores_ouro %}
+          <div class="units-costs-list">
+            {% for item in jogadores_ouro %}
+              <div class="unit-cost-row">
+                <div class="unit-cost-name">{{ item.jogador.username }}</div>
+                <div class="unit-cost-values">
+                  <span class="cost-badge">{{ item.ouro }} ⚜</span>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+          <div class="cost-total">
+            <div class="total-row">
+              <span class="total-label">Total Acumulado:</span>
+              <span class="total-value">{{ total_ouro_membros }} ⚜</span>
+            </div>
+          </div>
+        {% else %}
+          <div class="info-row">
+            <span class="info-label">Nenhum jogador vinculado ao domínio.</span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
   </div>
 
   <!-- Metadados -->

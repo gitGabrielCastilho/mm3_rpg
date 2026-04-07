@@ -1,8 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import Q, Sum
+from django.db.models.functions import Coalesce
 from django.http import JsonResponse
+from django.contrib.auth.models import User
 from .models import Domain, Unit, UnitAncestry, UnitType, UnitSize, UnitExperience, UnitEquipment, UnitTrait
 from .forms import DomainForm, UnitForm
 from salas.models import Sala
@@ -81,6 +83,35 @@ def domain_detail(request, pk):
                 'unit': unit,
                 'custos': custos
             })
+
+        # Ouro dos jogadores pertencentes ao domínio (com base nos inventários dos personagens)
+        from personagens.models import Personagem
+
+        member_user_ids = set(domain.jogadores_acesso.values_list('id', flat=True))
+        if domain.criador_id:
+            member_user_ids.add(domain.criador_id)
+        if domain.governante_id and getattr(domain.governante, 'usuario_id', None):
+            member_user_ids.add(domain.governante.usuario_id)
+
+        jogadores_ouro = []
+        total_ouro_membros = 0
+        if member_user_ids:
+            ouro_por_usuario = {
+                row['usuario_id']: int(row['total_ouro'] or 0)
+                for row in Personagem.objects.filter(usuario_id__in=member_user_ids)
+                .values('usuario_id')
+                .annotate(total_ouro=Coalesce(Sum('inventario__ouro'), 0))
+            }
+            membros = User.objects.filter(id__in=member_user_ids).order_by('username')
+            for membro in membros:
+                ouro = ouro_por_usuario.get(membro.id, 0)
+                total_ouro_membros += ouro
+                jogadores_ouro.append({
+                    'jogador': membro,
+                    'ouro': ouro,
+                })
+
+        pode_ver_ouro_membros = request.user.id in member_user_ids
         
         context = {
             'domain': domain,
@@ -89,6 +120,9 @@ def domain_detail(request, pk):
             'units_custos': units_custos,
             'total_custo_ouro': total_custo_ouro,
             'total_upkeep': total_upkeep,
+            'jogadores_ouro': jogadores_ouro,
+            'total_ouro_membros': total_ouro_membros,
+            'pode_ver_ouro_membros': pode_ver_ouro_membros,
         }
         return render(request, 'domains_warfare/domain_detail.html', context)
     except Exception as e:
