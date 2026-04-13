@@ -1112,6 +1112,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const checkbox = tr.querySelector('input[type="checkbox"][name="vantagens"]');
     if (checkbox) checkbox.addEventListener('change', filtrar);
   });
+  window.addEventListener('pageshow', function(){ if (container) container.scrollTop = 0; });
   if (container) container.scrollTop = 0;
   filtrar();
 });

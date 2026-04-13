@@ -180,11 +180,24 @@ def criar_personagem(request):
     meio = len(pericias) // 2 + len(pericias) % 2
     pericias_col1 = pericias[:meio]
     pericias_col2 = pericias[meio:]
+    try:
+        _vant_vals = form['vantagens'].value() or []
+    except Exception:
+        _vant_vals = []
+    if not isinstance(_vant_vals, (list, tuple, set)):
+        _vant_vals = [_vant_vals] if _vant_vals else []
+    vantagens_selecionadas_ids = set()
+    for _v in _vant_vals:
+        try:
+            vantagens_selecionadas_ids.add(int(_v))
+        except Exception:
+            continue
     context = {
         'form': form,
         'inventario_form': inventario_form,
         'formset': formset,
         'itens_possuido_ids': [],
+        'vantagens_selecionadas_ids': vantagens_selecionadas_ids,
         'caracteristicas': [
             'forca', 'vigor', 'destreza', 'agilidade', 'luta', 'inteligencia', 'prontidao', 'presenca'
         ],

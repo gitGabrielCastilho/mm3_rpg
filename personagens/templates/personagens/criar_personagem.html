@@ -71,7 +71,7 @@
           <input type="checkbox" id="filtro-vantagem-selecionada" style="margin: 0;">
         </label>
       </div>
-      <div class="table-container">
+      <div class="table-container" id="vantagens-table-container" style="max-height:320px; overflow-y:auto; overscroll-behavior:contain;">
         <table id="tabela-vantagens" class="table-scroll" border="1" style="width:100%;">
           
           <thead>
@@ -82,16 +82,18 @@
             </tr>
           </thead>
           <tbody>
+            {% with vantagens_selecionadas=vantagens_selecionadas_ids %}
             {% for vantagem in form.fields.vantagens.queryset %}
               <tr>
                 <td style="text-align: center;">
                   <input type="checkbox" name="vantagens" value="{{ vantagem.id }}"
-                    {% if vantagem.id|stringformat:"s" in form.vantagens.value %}checked{% endif %}>
+                    {% if vantagem.id in vantagens_selecionadas %}checked{% endif %}>
                 </td>
                 <td class="nome-vantagem">{{ vantagem.nome }}</td>
                 <td>{{ vantagem.descricao }}</td>
               </tr>
             {% endfor %}
+            {% endwith %}
           </tbody>
         </table>
       </div>
@@ -1137,6 +1139,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const busca = document.getElementById('busca-vantagem');
   const filtroSelecionada = document.getElementById('filtro-vantagem-selecionada');
   const linhas = document.querySelectorAll('#tabela-vantagens tbody tr');
+  const container = document.getElementById('vantagens-table-container');
 
   function filtrar() {
     const texto = busca.value.toLowerCase();
@@ -1156,6 +1159,7 @@ document.addEventListener('DOMContentLoaded', function() {
         tr.style.display = 'none';
       }
     });
+    if (container) container.scrollTop = 0;
   }
 
   busca.addEventListener('input', filtrar);
@@ -1164,6 +1168,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const checkbox = tr.querySelector('input[type="checkbox"][name="vantagens"]');
     if (checkbox) checkbox.addEventListener('change', filtrar);
   });
+  window.addEventListener('pageshow', function(){ if (container) container.scrollTop = 0; });
+  if (container) container.scrollTop = 0;
   filtrar();
 });
 </script>
