@@ -10,9 +10,14 @@
   overflow-y: auto;
   position: relative;
 }
+#vantagens-table-container {
+  scroll-padding-top: 0;
+  padding-top: 0;
+}
 #tabela-vantagens {
   border-collapse: separate;
   border-spacing: 0;
+  margin: 0;
 }
 #tabela-vantagens thead th {
   position: static;

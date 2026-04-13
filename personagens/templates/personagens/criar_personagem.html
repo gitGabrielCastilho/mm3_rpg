@@ -1138,8 +1138,21 @@ document.addEventListener('DOMContentLoaded', function() {
 document.addEventListener('DOMContentLoaded', function() {
   const busca = document.getElementById('busca-vantagem');
   const filtroSelecionada = document.getElementById('filtro-vantagem-selecionada');
+  const tbody = document.querySelector('#tabela-vantagens tbody');
   const linhas = document.querySelectorAll('#tabela-vantagens tbody tr');
   const container = document.getElementById('vantagens-table-container');
+
+  if (busca) busca.value = '';
+  if (filtroSelecionada) filtroSelecionada.checked = false;
+
+  if (tbody) {
+    const sorted = Array.from(tbody.querySelectorAll('tr')).sort((a, b) => {
+      const na = (a.querySelector('.nome-vantagem')?.textContent || '').trim().toLowerCase();
+      const nb = (b.querySelector('.nome-vantagem')?.textContent || '').trim().toLowerCase();
+      return na.localeCompare(nb, 'pt-BR', { sensitivity: 'base' });
+    });
+    sorted.forEach(tr => tbody.appendChild(tr));
+  }
 
   function filtrar() {
     const texto = busca.value.toLowerCase();
@@ -1168,8 +1181,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const checkbox = tr.querySelector('input[type="checkbox"][name="vantagens"]');
     if (checkbox) checkbox.addEventListener('change', filtrar);
   });
-  window.addEventListener('pageshow', function(){ if (container) container.scrollTop = 0; });
-  if (container) container.scrollTop = 0;
+  window.addEventListener('pageshow', function(){
+    if (busca) busca.value = '';
+    if (filtroSelecionada) filtroSelecionada.checked = false;
+    if (container) container.scrollTop = 0;
+    filtrar();
+  });
+  if (container) {
+    container.scrollTop = 0;
+    requestAnimationFrame(() => { container.scrollTop = 0; });
+    setTimeout(() => { container.scrollTop = 0; }, 80);
+  }
   filtrar();
 });
 </script>
