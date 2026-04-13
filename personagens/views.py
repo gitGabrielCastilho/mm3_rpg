@@ -441,70 +441,88 @@ def editar_personagem(request, personagem_id):
             queryset=poderes_queryset,
         )
         if form.is_valid() and inventario_form.is_valid() and formset.is_valid():
-            personagem = form.save(commit=False)
-            personagem.sala = sala_atual
-            personagem.save()
+            # Regra explícita: se um poder é "de vantagem", a vantagem de origem
+            # deve estar selecionada na seção de Vantagens.
+            vantagens_ids = set(str(v) for v in request.POST.getlist('vantagens'))
+            faltantes_vantagem_origem = []
+            for idx, f in enumerate(formset.forms):
+                cd = getattr(f, 'cleaned_data', None) or {}
+                if not cd or cd.get('DELETE'):
+                    continue
+                if cd.get('de_vantagem'):
+                    v_origem = cd.get('vantagem_origem')
+                    if v_origem and str(v_origem.id) not in vantagens_ids:
+                        f.add_error('vantagem_origem', 'Selecione esta vantagem na lista de Vantagens para manter este poder como "Poder de Vantagem".')
+                        faltantes_vantagem_origem.append(f'poder[{idx}] -> {v_origem}')
 
-            # Inventário: preservar itens selecionados no formulário E itens de poderes
-            inv = inventario_form.save(commit=False)
-            inv.personagem = personagem
-            inv.save()
-            # Limpa e remonta o conjunto de itens
-            inv.itens.clear()
-            itens_selecionados = list(inventario_form.cleaned_data.get('itens') or [])
-            if itens_selecionados:
-                inv.itens.add(*itens_selecionados)
+            if faltantes_vantagem_origem:
+                messages.error(
+                    request,
+                    'Não foi possível salvar: há poderes marcados como "Poder de Vantagem" cuja vantagem de origem não está selecionada em Vantagens.'
+                )
+                logger.warning(
+                    '[editar_personagem] Vantagens de origem não selecionadas para poderes: %s',
+                    '; '.join(faltantes_vantagem_origem)
+                )
+            else:
+                personagem = form.save(commit=False)
+                personagem.sala = sala_atual
+                personagem.save()
 
-            poderes = formset.save(commit=False)
+                # Inventário: preservar itens selecionados no formulário E itens de poderes
+                inv = inventario_form.save(commit=False)
+                inv.personagem = personagem
+                inv.save()
+                # Limpa e remonta o conjunto de itens
+                inv.itens.clear()
+                itens_selecionados = list(inventario_form.cleaned_data.get('itens') or [])
+                if itens_selecionados:
+                    inv.itens.add(*itens_selecionados)
 
-            # Coleta vantagens selecionadas manualmente
-            vantagens_ids = set(request.POST.getlist('vantagens'))
+                poderes = formset.save(commit=False)
 
-            for poder in poderes:
-                poder.personagem = personagem
-                poder.save()
-                # Adiciona vantagem ao personagem se for poder de vantagem
-                if getattr(poder, 'de_vantagem', False) and getattr(poder, 'vantagem_origem', None):
-                    vantagens_ids.add(str(poder.vantagem_origem.id))
-                # Adiciona item ao inventário se for poder de item
-                if getattr(poder, 'de_item', False) and getattr(poder, 'item_origem', None):
-                    inv.itens.add(poder.item_origem)
+                for poder in poderes:
+                    poder.personagem = personagem
+                    poder.save()
+                    # Adiciona item ao inventário se for poder de item
+                    if getattr(poder, 'de_item', False) and getattr(poder, 'item_origem', None):
+                        inv.itens.add(poder.item_origem)
 
-            # Após salvar/remontar itens, sincroniza poderes de item
-            try:
-                inv.sync_item_powers()
-            except Exception as e:
-                logger.warning("[editar_personagem] sync_item_powers falhou: %s", e)
+                # Após salvar/remontar itens, sincroniza poderes de item
+                try:
+                    inv.sync_item_powers()
+                except Exception as e:
+                    logger.warning("[editar_personagem] sync_item_powers falhou: %s", e)
 
-            # Processa exclusões do formset
-            for obj in formset.deleted_objects:
-                obj.delete()
+                # Processa exclusões do formset
+                for obj in formset.deleted_objects:
+                    obj.delete()
 
-            # Salva todas as vantagens (sem duplicidade)
-            personagem.vantagens.set(vantagens_ids)
+                # Salva apenas as vantagens selecionadas manualmente no formulário
+                personagem.vantagens.set(vantagens_ids)
 
-            # InlineFormSet não tem M2M, mas chamamos para consistência
-            formset.save_m2m()
-            # Auto-link: em edição, sincroniza ligações por (nome, modo, duração)
-            try:
-                poderes_personagem = list(Poder.objects.filter(personagem=personagem))
-                grupos = {}
-                for p in poderes_personagem:
-                    chave = (p.nome, p.modo, p.duracao)
-                    grupos.setdefault(chave, []).append(p)
-                for grupo in grupos.values():
-                    if len(grupo) < 2:
-                        # se só 1 no grupo, zera ligações dele
-                        g = grupo[0]
-                        if getattr(g, 'ligados', None) is not None:
-                            g.ligados.clear()
-                        continue
-                    for p in grupo:
-                        outros = [q for q in grupo if q.id != p.id]
-                        p.ligados.set(outros)
-            except Exception as e:
-                logger.warning("[editar_personagem] Auto-link falhou: %s", e)
-            return redirect('listar_personagens')
+                # InlineFormSet não tem M2M, mas chamamos para consistência
+                formset.save_m2m()
+                # Auto-link: em edição, sincroniza ligações por (nome, modo, duração)
+                try:
+                    poderes_personagem = list(Poder.objects.filter(personagem=personagem))
+                    grupos = {}
+                    for p in poderes_personagem:
+                        chave = (p.nome, p.modo, p.duracao)
+                        grupos.setdefault(chave, []).append(p)
+                    for grupo in grupos.values():
+                        if len(grupo) < 2:
+                            # se só 1 no grupo, zera ligações dele
+                            g = grupo[0]
+                            if getattr(g, 'ligados', None) is not None:
+                                g.ligados.clear()
+                            continue
+                        for p in grupo:
+                            outros = [q for q in grupo if q.id != p.id]
+                            p.ligados.set(outros)
+                except Exception as e:
+                    logger.warning("[editar_personagem] Auto-link falhou: %s", e)
+                return redirect('listar_personagens')
         else:
             # Surface concise error indicators via messages
             from django.forms.utils import ErrorDict
@@ -588,12 +606,26 @@ def editar_personagem(request, personagem_id):
     pericias_col2 = pericias[meio:]
     # Pré-computa IDs de itens possuídos para evitar checagens caras no template
     itens_possuido_ids = set(inventario.itens.values_list('id', flat=True))
+    # IDs de vantagens selecionadas no estado atual do formulário (POST inválido ou GET)
+    try:
+        _vant_vals = form['vantagens'].value() or []
+    except Exception:
+        _vant_vals = []
+    if not isinstance(_vant_vals, (list, tuple, set)):
+        _vant_vals = [_vant_vals] if _vant_vals else []
+    vantagens_selecionadas_ids = set()
+    for _v in _vant_vals:
+        try:
+            vantagens_selecionadas_ids.add(int(_v))
+        except Exception:
+            continue
 
     context = {
         'form': form,
         'inventario_form': inventario_form,
         'formset': formset,
         'itens_possuido_ids': list(itens_possuido_ids),
+        'vantagens_selecionadas_ids': vantagens_selecionadas_ids,
         'caracteristicas': [
             'forca', 'vigor', 'destreza', 'agilidade', 'luta', 'inteligencia', 'prontidao', 'presenca'
         ],

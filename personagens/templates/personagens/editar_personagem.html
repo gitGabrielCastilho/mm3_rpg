@@ -71,7 +71,7 @@
           <input type="checkbox" id="filtro-vantagem-selecionada" style="margin: 0;">
         </label>
       </div>
-      <div class="table-container">
+      <div class="table-container" id="vantagens-table-container" style="max-height:320px; overflow-y:auto; overscroll-behavior:contain;">
         <table id="tabela-vantagens" class="table-scroll" border="1" style="width:100%;">
           
           <thead>
@@ -82,12 +82,12 @@
             </tr>
           </thead>
           <tbody>
-            {% with vantagens_selecionadas=form.vantagens.value %}
+            {% with vantagens_selecionadas=vantagens_selecionadas_ids %}
               {% for vantagem in form.fields.vantagens.queryset %}
                 <tr>
                   <td style="text-align: center;">
                     <input type="checkbox" name="vantagens" value="{{ vantagem.id }}"
-                      {% if vantagens_selecionadas and vantagem.id|stringformat:"s" in vantagens_selecionadas|stringformat:"s" %}checked{% endif %}>
+                      {% if vantagem.id in vantagens_selecionadas %}checked{% endif %}>
                   </td>
                   <td class="nome-vantagem">{{ vantagem.nome }}</td>
                   <td>{{ vantagem.descricao }}</td>
@@ -730,7 +730,7 @@ document.addEventListener('DOMContentLoaded', function(){
     marcar('total_fortitude', (fortitudeTot + vontadeTot) <= lim);
     marcar('total_vontade', (fortitudeTot + vontadeTot) <= lim);
     const violacao = document.querySelector('.violacao-limite');
-    const submitBtn = document.querySelector('form input[type="submit"]');
+    const submitBtn = document.querySelector('form button[type="submit"], form input[type="submit"]');
     if(submitBtn){ submitBtn.disabled = !!violacao; submitBtn.title = violacao ? 'Corrija limites de defesas para salvar.' : ''; }
     setRuleViolations(violacao ? ['Limites de defesas violados. Ajuste os totais em vermelho para salvar.'] : []);
   }
@@ -1090,6 +1090,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const busca = document.getElementById('busca-vantagem');
   const filtroSelecionada = document.getElementById('filtro-vantagem-selecionada');
   const linhas = document.querySelectorAll('#tabela-vantagens tbody tr');
+  const container = document.getElementById('vantagens-table-container');
 
   function filtrar() {
     const texto = (busca?.value || '').toLowerCase();
@@ -1102,6 +1103,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const matchSelecionada = !soSelecionada || selecionada;
       tr.style.display = (matchNome && matchSelecionada) ? '' : 'none';
     });
+    if (container) container.scrollTop = 0;
   }
 
   busca && busca.addEventListener('input', filtrar);
@@ -1110,6 +1112,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const checkbox = tr.querySelector('input[type="checkbox"][name="vantagens"]');
     if (checkbox) checkbox.addEventListener('change', filtrar);
   });
+  if (container) container.scrollTop = 0;
   filtrar();
 });
 </script>
