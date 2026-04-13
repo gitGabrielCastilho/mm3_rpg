@@ -15,8 +15,8 @@
   border-spacing: 0;
 }
 #tabela-vantagens thead th {
-  position: sticky;
-  top: 0;
+  position: static;
+  top: auto;
   z-index: 3;
   background: #232323 !important;
   color: var(--text-main) !important;
@@ -39,6 +39,20 @@
   table-layout: fixed;
   border-collapse: collapse;
 }
+/* Keep vantagens table on native table layout to avoid clipping from generic table rules. */
+#tabela-vantagens,
+#tabela-vantagens thead,
+#tabela-vantagens tbody,
+#tabela-vantagens tr,
+#tabela-vantagens th,
+#tabela-vantagens td {
+  display: table;
+}
+#tabela-vantagens thead { display: table-header-group; }
+#tabela-vantagens tbody { display: table-row-group; }
+#tabela-vantagens tr { display: table-row; }
+#tabela-vantagens th,
+#tabela-vantagens td { display: table-cell; }
 /* Alinhamento das colunas da tabela de vantagens */
 .vantagens-table {
   table-layout: fixed;
