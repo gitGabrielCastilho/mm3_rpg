@@ -542,6 +542,15 @@ thead {
   gap: 1rem;
   margin-bottom: 0.5rem;
 }
+/* Exception: vantagem list container must stay in normal block flow.
+   The generic flex rule above can vertically center the table and clip first rows. */
+.personagem-form-fields > .table-container,
+.personagem-form-fields > #vantagens-table-container {
+  display: block !important;
+  align-items: initial !important;
+  gap: 0 !important;
+  margin-bottom: 0.5rem;
+}
 .personagem-form-fields > div > label {
   min-width: 120px;
   margin-bottom: 0;
