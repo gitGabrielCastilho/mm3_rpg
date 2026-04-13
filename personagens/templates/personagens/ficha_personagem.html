@@ -5,11 +5,16 @@
 <div class="ficha-center">
   <style>
     /* Pares label:valor em colunas dentro de cada card (valores próximos aos rótulos) */
-    .ficha-card .ficha-list.pares { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px 18px; }
-    .ficha-card .ficha-list.pares li { display: grid; grid-template-columns: auto max-content; align-items: center; gap: 8px; }
+    .ficha-card .ficha-list.pares { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px 18px; }
+    .ficha-card .ficha-list.pares li { display: inline-flex; align-items: baseline; justify-content: flex-start; gap: 6px; flex-wrap: wrap; }
     .ficha-card .ficha-list.pares .lbl { margin-right: 0; }
     .ficha-card .ficha-list.pares .lbl::after { content: ':'; margin-left: 4px; }
-    .ficha-card .ficha-list.pares .val { text-align: left; }
+    .ficha-card .ficha-list.pares .val { text-align: left; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    /* Em telas menores, prioriza leitura vertical */
+    @media (max-width: 640px) {
+      .ficha-card .ficha-list.pares { grid-template-columns: 1fr; gap: 6px; }
+    }
   </style>
   <div class="ficha-header">
     {% if personagem.foto %}
